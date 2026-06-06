@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}Product Inventory - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <h4 class="fw-bold m-0 text-primary">Product Inventory</h4>
+        <form method="GET" class="d-flex flex-wrap gap-2 align-items-center">
+            <select name="branch" class="form-select rounded-pill shadow-sm flex-grow-1" style="min-width: 150px;" onchange="this.form.submit()">
+                <option value="">All Branches</option>
+                {% for b in branches %}
+                <option value="{{ b.id }}" {% if b.id|stringformat:"s" == selected_branch %}selected{% endif %}>{{ b.name }} ({{ b.code }})</option>
+                {% endfor %}
+            </select>
+            <div class="d-flex gap-2 flex-grow-1">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0 rounded-start-pill text-muted small">From</span>
+                    <input type="date" name="start_date" class="form-control border-start-0 rounded-end-pill shadow-sm" value="{{ start_date }}" onchange="this.form.submit()">
+                </div>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0 rounded-start-pill text-muted small">To</span>
+                    <input type="date" name="end_date" class="form-control border-start-0 rounded-end-pill shadow-sm" value="{{ end_date }}" onchange="this.form.submit()">
+                </div>
+            </div>
+            <a href="{% url 'owner_inventory_view' %}" class="btn btn-light rounded-pill px-3 shadow-sm btn-sm">Clear</a>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm overflow-hidden">
+    <!-- Desktop Table View -->
+    <div class="table-responsive d-none d-md-block">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+                <tr class="x-small text-uppercase fw-bold text-muted">
+                    <th class="ps-4">Branch</th>
+                    <th>Product</th>
+                    <th>Barcode</th>
+                    <th>Stock</th>
+                    <th class="text-center">Status</th>
+                    <th>Date & Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in page_obj %}
+                <tr class="inventory-row" data-branch-id="{{ item.branch.id }}">
+                    <td class="ps-4">
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3">{{ item.branch.name }} ({{ item.branch.code }})</span>
+                    </td>
+                    <td class="fw-bold text-dark">{{ item.product.name }}</td>
+                    <td><code class="bg-light px-2 rounded">{{ item.product.barcode }}</code></td>
+                    <td class="fw-bold fs-5 text-primary">{{ item.stock_quantity }}</td>
+                    <td class="text-center">
+                        {% if item.stock_quantity <= item.low_stock_threshold %}
+                        <span class="badge bg-danger rounded-pill px-2">Low</span>
+                        {% else %}
+                        <span class="badge bg-success rounded-pill px-2">OK</span>
+                        {% endif %}
+                    </td>
+                    <td class="small text-muted">{{ item.last_updated|date:"d M, H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">No inventory data available.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="d-md-none">
+        {% for item in page_obj %}
+        <div class="p-3 border-bottom inventory-row" data-branch-id="{{ item.branch.id }}">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <h6 class="fw-bold mb-0 text-dark">{{ item.product.name }}</h6>
+                    <small class="text-muted">Barcode: {{ item.product.barcode }}</small>
+                </div>
+                <span class="badge bg-secondary-subtle text-secondary rounded-pill">{{ item.branch.name }} ({{ item.branch.code }})</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <span class="fs-4 fw-bold text-primary me-2">{{ item.stock_quantity }}</span>
+                    <span class="text-muted small">in stock</span>
+                </div>
+                <div>
+                    {% if item.stock_quantity <= item.low_stock_threshold %}
+                    <span class="badge bg-danger rounded-pill">Low Stock</span>
+                    {% else %}
+                    <span class="badge bg-success rounded-pill">Stock OK</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="mt-2 text-muted x-small">
+                Last updated: {{ item.last_updated|date:"d M, H:i" }}
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-5 text-muted">No inventory data available.</div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link text-decoration-none rounded-pill me-2 shadow-sm" href="?page={{ page_obj.previous_page_number }}&branch={{ selected_branch|default:'' }}&start_date={{ start_date }}&end_date={{ end_date }}">Previous</a></li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link rounded-pill me-2 border-0 bg-transparent">Previous</span></li>
+        {% endif %}
+        
+        {% for i in page_obj.paginator.page_range %}
+        {% if page_obj.number == i %}
+        <li class="page-item active"><span class="page-link rounded-pill mx-1 shadow-sm">{{ i }}</span></li>
+        {% else %}
+        <li class="page-item"><a class="page-link text-decoration-none rounded-pill mx-1 shadow-sm" href="?page={{ i }}&branch={{ selected_branch|default:'' }}&start_date={{ start_date }}&end_date={{ end_date }}">{{ i }}</a></li>
+        {% endif %}
+        {% endfor %}
+        
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link text-decoration-none rounded-pill ms-2 shadow-sm" href="?page={{ page_obj.next_page_number }}&branch={{ selected_branch|default:'' }}&start_date={{ start_date }}&end_date={{ end_date }}">Next</a></li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link rounded-pill ms-2 border-0 bg-transparent">Next</span></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

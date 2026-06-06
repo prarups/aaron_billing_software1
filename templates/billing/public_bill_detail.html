@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill {{ bill.invoice_number|default:bill.id }} - {{ bill.branch.name }}</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        .receipt-card {
+            max-width: 500px;
+            margin: 2rem auto;
+            border: none;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-whatsapp {
+            background-color: #25D366;
+            border: none;
+            transition: all 0.3s ease;
+        }
+        .btn-whatsapp:hover {
+            background-color: #20ba56;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+            color: white;
+        }
+        .btn-instagram {
+            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+            border: none;
+            transition: all 0.3s ease;
+        }
+        .btn-instagram:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 39, 67, 0.3);
+            color: white;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+        .animate-bounce {
+            display: inline-block;
+            animation: bounce 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    {% load static %}
+    <div class="container px-3">
+        <div class="card receipt-card overflow-hidden">
+            <div class="card-body p-4 p-md-5">
+                <!-- Header -->
+                <div class="text-center mb-4">
+                    <div class="d-flex align-items-center justify-content-center gap-2 mb-3">
+                        <img src="{% static 'images/aronlogo.png' %}" alt="Aaron Garments" style="height:36px; width:auto;"/>
+                        <span class="fw-bold fs-3 tracking-tight text-primary">Aaron <span class="text-secondary">Garments</span></span>
+                    </div>
+                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                        <i class="bi bi-receipt-cutoff fs-2"></i>
+                    </div>
+                    <h4 class="fw-semibold mb-1 text-muted">{{ bill.branch.name }} (Code: {{ bill.branch.code }})</h4>
+                    <span class="badge bg-success-subtle text-success rounded-pill px-3 py-1.5 small fw-bold">
+                        <i class="bi bi-patch-check-fill me-1"></i> Digital Receipt
+                    </span>
+                </div>
+
+                <!-- Meta -->
+                <div class="d-flex justify-content-between mb-4 pb-4 border-bottom">
+                    <div>
+                        <p class="x-small text-muted text-uppercase fw-bold mb-1">Invoice No</p>
+                        <p class="fw-bold mb-0">{{ bill.invoice_number|default:bill.id }}</p>
+                    </div>
+                    <div class="text-end">
+                        <p class="x-small text-muted text-uppercase fw-bold mb-1">Date</p>
+                        <p class="fw-bold mb-0">{{ bill.created_at|date:"d M Y" }}</p>
+                    </div>
+                </div>
+
+                <!-- Items -->
+                <div class="mb-4">
+                    {% for item in items %}
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <p class="fw-semibold mb-0">{{ item.product.name }}</p>
+                            <p class="x-small text-muted mb-0">₹{{ item.unit_price|floatformat:0 }} x {{ item.quantity }}</p>
+                            {% if item.savings > 0 %}
+                            <div class="mt-1">
+                                <span class="badge bg-success-subtle text-success rounded-pill x-small fw-semibold" style="font-size: 0.72rem;">
+                                    <i class="bi bi-tag-fill me-1"></i> Combo Saved: ₹{{ item.savings|floatformat:0 }} (Original: ₹{{ item.product.price|floatformat:0 }} each)
+                                </span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <p class="fw-bold mb-0">₹{{ item.subtotal|floatformat:0 }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Total -->
+                <div class="bg-light rounded-4 p-4 mb-4">
+                    {% if bill.total_savings > 0 %}
+                    <div class="d-flex justify-content-between align-items-center border-bottom mb-2 pb-2">
+                        <span class="text-muted small">Subtotal (Original)</span>
+                        <span class="text-dark small">₹{{ bill.total_amount|add:bill.total_savings|floatformat:0 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted small">Total Savings</span>
+                        <span class="text-success fw-bold">- ₹{{ bill.total_savings|floatformat:0 }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="d-flex justify-content-between align-items-center mb-0">
+                        <span class="fw-bold text-muted">FINAL TOTAL</span>
+                        <span class="h4 fw-bold text-primary mb-0">₹{{ bill.total_amount|floatformat:0 }}</span>
+                    </div>
+                    {% if bill.total_savings > 0 %}
+                    <div class="text-center mt-3 pt-3 border-top">
+                        <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2 border border-success border-opacity-25 mt-1" style="font-size: 0.85rem;">
+                            <i class="bi bi-stars me-1"></i> You saved ₹{{ bill.total_savings|floatformat:0 }} on this purchase!
+                        </span>
+                    </div>
+                    {% endif %}
+                    {% if bill.payment_method == 'split' %}
+                    <div class="d-flex justify-content-between border-top mt-3 pt-3">
+                        <div class="text-muted small">
+                            <i class="bi bi-cash me-1"></i>Cash: ₹{{ bill.cash_amount|floatformat:0 }}
+                        </div>
+                        <div class="text-muted small">
+                            <i class="bi bi-credit-card me-1"></i>Online: ₹{{ bill.online_amount|floatformat:0 }}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-muted small mt-2 text-end">
+                        Paid via {{ bill.get_payment_method_display }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Actions -->
+                <div class="d-grid gap-3">
+                    <button onclick="window.print()" class="btn btn-outline-primary rounded-pill py-3 fw-bold">
+                        <i class="bi bi-printer-fill me-2"></i>Print Receipt
+                    </button>
+                    <p class="text-center x-small text-muted mt-2 mb-0">
+                        <i class="bi bi-info-circle me-1"></i> Use your browser's "Print to PDF" to save a copy.
+                    </p>
+                </div>
+
+                <!-- Social Connect / Lead Generation -->
+                <div class="border-top mt-4 pt-4 text-center">
+                    <h6 class="fw-bold text-dark mb-2">
+                        <i class="bi bi-gift-fill text-warning me-2 animate-bounce"></i>Get Exclusive Offers & Updates!
+                    </h6>
+                    <p class="x-small text-muted mb-3">Join our community and follow us to stay updated with latest arrivals and deals.</p>
+                    <div class="d-grid gap-2">
+                        <a href="https://chat.whatsapp.com/your-whatsapp-group-link" target="_blank" class="btn btn-whatsapp rounded-pill py-2.5 fw-bold text-white d-flex align-items-center justify-content-center gap-2 shadow-sm text-decoration-none">
+                            <i class="bi bi-whatsapp fs-5"></i> Join Our WhatsApp Group
+                        </a>
+                        <a href="https://instagram.com/your-instagram-profile" target="_blank" class="btn btn-instagram rounded-pill py-2.5 fw-bold text-white d-flex align-items-center justify-content-center gap-2 shadow-sm text-decoration-none">
+                            <i class="bi bi-instagram fs-5"></i> Follow Us on Instagram
+                        </a>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4 pt-2">
+                    <p class="text-muted small mb-0">Thank you for your purchase!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

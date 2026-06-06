@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Staff List - Aaron Billing{% endblock %}
+
+{% block content %}
+<h2 class="title mb-4">Staff & Assigning</h2>
+<div class="table-responsive">
+    <table class="table table-hover align-middle" id="staffTable">
+        <thead class="table-light">
+            <tr>
+                <th>Employee ID</th>
+                <th>Username</th>
+                <th>Full Name</th>
+                <th>Role</th>
+                <th>Active</th>
+                <th>Assigned Branches</th>
+                <th class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for staff in staff_list %}
+            <tr id="staff-row-{{ staff.id }}" class="staff-row" data-branches="{% for b in staff.branches.all %}branch-{{ b.id }} {% endfor %}">
+                <td class="fw-bold text-muted">{{ staff.employee_id|default:"-" }}</td>
+                <td class="fw-bold text-primary">@{{ staff.username }}</td>
+                <td>{{ staff.first_name }} {{ staff.last_name }}</td>
+                <td>
+                    {% if staff.role == 'manager' %}
+                    <span class="badge badge-role-manager rounded-pill px-3 py-1 text-uppercase small">Manager</span>
+                    {% else %}
+                    <span class="badge badge-role-staff rounded-pill px-3 py-1 text-uppercase small">Staff</span>
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="activeSwitch{{ staff.id }}" {% if staff.is_active %}checked{% endif %} onchange="toggleStaffActive('{{ staff.id }}', this.checked)">
+                    </div>
+                </td>
+                <td>
+                    {% for b in staff.branches.all %}
+                    <span class="badge bg-light text-dark border rounded-pill px-2 py-1 mb-1 me-1">{{ b.name }}</span>
+                    {% empty %}
+                    <span class="text-muted small">No branch assigned</span>
+                    {% endfor %}
+                </td>
+                <td class="text-center hover-actions">
+                    <button class="btn btn-outline-primary btn-sm rounded-circle me-1 px-2 py-1" onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}')" title="Edit Staff / Assign Branch">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm rounded-circle px-2 py-1" onclick="confirmDelete('{% url 'staff_delete' staff.id %}', 'Staff account \"{{ staff.username }}\"')" title="Delete Account">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center py-4 text-muted">No staff accounts registered yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{{ block.super }}
+function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId) {
+    document.getElementById('editStaffForm').action = `/users/staff/edit/${id}/`;
+    document.getElementById('editStaffUsername').value = username;
+    document.getElementById('editStaffFirstName').value = firstName;
+    document.getElementById('editStaffLastName').value = lastName;
+    document.getElementById('editStaffPassword').value = '';
+    document.getElementById('editStaffEmployeeId').value = employeeId === 'None' ? '' : employeeId;
+    const roleSelect = document.getElementById('editStaffRole');
+    for (let i = 0; i < roleSelect.options.length; i++) {
+        roleSelect.options[i].selected = (roleSelect.options[i].value === role);
+    }
+    const branchSelect = document.getElementById('branchSelectEdit');
+    for (let i = 0; i < branchSelect.options.length; i++) {
+        branchSelect.options[i].selected = false;
+    }
+    if (branchIdsStr) {
+        const assignedIds = branchIdsStr.split(',').map(Number);
+        for (let i = 0; i < branchSelect.options.length; i++) {
+            if (assignedIds.includes(Number(branchSelect.options[i].value))) {
+                branchSelect.options[i].selected = true;
+            }
+        }
+    }
+    const modal = new bootstrap.Modal(document.getElementById('editStaffModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

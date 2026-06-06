@@ -1,0 +1,916 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - Aaron Billing{% endblock %}
+
+{% block extra_css %}
+<style>
+    #ownerDashboardTabs {
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(10px);
+    }
+    #ownerDashboardTabs .nav-link {
+        color: #4b5563;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    #ownerDashboardTabs .nav-link:hover {
+        color: var(--primary);
+    }
+    #ownerDashboardTabs .nav-link.active {
+        background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+        color: white !important;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+    .badge-role-manager {
+        background-color: rgba(79, 70, 229, 0.1) !important;
+        color: var(--primary) !important;
+    }
+    .badge-role-staff {
+        background-color: rgba(217, 70, 239, 0.1) !important;
+        color: var(--secondary) !important;
+    }
+    .badge-role-admin {
+        background-color: rgba(245, 158, 11, 0.1) !important;
+        color: #d97706 !important;
+    }
+    .hover-actions .btn {
+        opacity: 0.85;
+        transition: opacity 0.2s, transform 0.2s;
+    }
+    .hover-actions .btn:hover {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+    /* Branch Picker Checkbox List */
+    .branch-picker {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.75rem;
+        background: #fff;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .branch-picker .branch-search {
+        border: none;
+        border-bottom: 1px solid #e5e7eb;
+        border-radius: 0.75rem 0.75rem 0 0;
+        padding: 10px 14px;
+        font-size: 0.875rem;
+        background: #f9fafb;
+    }
+    .branch-picker .branch-search:focus {
+        outline: none;
+        background: #fff;
+        box-shadow: none;
+    }
+    .branch-picker .branch-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 14px;
+        cursor: pointer;
+        transition: background 0.15s;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .branch-picker .branch-item:last-child {
+        border-bottom: none;
+    }
+    .branch-picker .branch-item:hover {
+        background: #f0f0ff;
+    }
+    .branch-picker .branch-item input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        border: 2px solid #d1d5db;
+        margin-right: 10px;
+        accent-color: #6366f1;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .branch-picker .branch-item label {
+        cursor: pointer;
+        margin: 0;
+        font-size: 0.9rem;
+        color: #374151;
+        flex: 1;
+    }
+    .branch-picker .branch-item input[type="checkbox"]:checked + label {
+        color: #4f46e5;
+        font-weight: 600;
+    }
+    .branch-picker .no-match {
+        padding: 12px 14px;
+        text-align: center;
+        color: #9ca3af;
+        font-size: 0.85rem;
+        display: none;
+    }
+    /* Modal select/dropdown overrides — kill Tom Select backgrounds */
+    .modal .ts-wrapper .ts-control {
+        background: #fff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 2rem !important;
+        box-shadow: none !important;
+    }
+    .modal .ts-wrapper .ts-control .item {
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #212529 !important;
+    }
+    .modal .ts-dropdown {
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .modal .ts-dropdown .option {
+        background: none !important;
+        color: #212529 !important;
+    }
+    .modal .ts-dropdown .option:hover,
+    .modal .ts-dropdown .option.active {
+        background: #f0f0f0 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Premium Tab Bar -->
+<div class="row mb-4">
+    <div class="col-12">
+        <ul class="nav nav-pills nav-fill p-1 rounded-pill shadow-sm" id="ownerDashboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active rounded-pill py-2 fw-bold" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">
+                    <i class="bi bi-speedometer2 me-2"></i>Overview
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link rounded-pill py-2 fw-bold" id="branches-tab" data-bs-toggle="tab" data-bs-target="#branches" type="button" role="tab" aria-controls="branches" aria-selected="false">
+                    <i class="bi bi-shop me-2"></i>All Branches
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link rounded-pill py-2 fw-bold" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff" type="button" role="tab" aria-controls="staff" aria-selected="false">
+                    <i class="bi bi-people-fill me-2"></i>Staff & Assigning
+                </button>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="tab-content" id="ownerDashboardTabContent">
+    <!-- 1. OVERVIEW TAB -->
+    <div class="tab-pane fade show active animate-fade-in" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="glass-card p-4 h-100 bg-vibrant stats-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-white-50 small mb-0">Total Sales (Today)</h6>
+                        <a href="{% url 'export_sales_csv' %}" class="btn btn-sm btn-light rounded-pill x-small py-0 opacity-75">Export CSV</a>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h2 class="mb-0 fw-bold">₹{{ total_sales_today|default:"0"|floatformat:0 }}</h2>
+                        <i class="bi bi-wallet2 fs-1 text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="glass-card p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted small mb-1">Active Branches</h6>
+                            <h2 class="mb-0 fw-bold">{{ branch_count }}</h2>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle">
+                            <i class="bi bi-grid text-primary fs-3"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="glass-card p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted small mb-1">Transactions (Today)</h6>
+                            <h2 class="mb-0 fw-bold">{{ transaction_count_today }}</h2>
+                        </div>
+                        <div class="bg-info bg-opacity-10 p-3 rounded-circle">
+                            <i class="bi bi-receipt text-info fs-3"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <a href="{% url 'product_list' %}?filter=low_stock" class="text-decoration-none">
+                    <div class="glass-card p-4 h-100 {% if low_stock_count > 0 %}border-danger{% endif %} text-shadow-none">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted small mb-1">Low Stock Alerts</h6>
+                                <h2 class="mb-0 fw-bold {% if low_stock_count > 0 %}text-danger animate-pulse{% endif %}">{{ low_stock_count }}</h2>
+                            </div>
+                            <div class="bg-danger bg-opacity-10 p-3 rounded-circle">
+                                <i class="bi bi-exclamation-triangle-fill text-danger fs-3"></i>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-4" style="animation-delay: 0.1s;">
+            <div class="col-md-8">
+                <div class="glass-card p-4">
+                    <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-bar-chart-fill me-2"></i>Branch Performance</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Branch Name</th>
+                                    <th>Sales (Today)</th>
+                                    <th>Staff Count</th>
+                                    <th>Monthly Goal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for branch in branches %}
+                                <tr>
+                                    <td>{{ branch.name }} ({{ branch.code }})</td>
+                                    <td class="fw-bold">₹{{ branch.today_sales|default:"0" }}</td>
+                                    <td>{{ branch.active_staff_count }} Assigned</td>
+                                    <td>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-success" style="width: 25%;"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-card p-4">
+                    <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-clock-history me-2"></i>Recent Sales</h5>
+                    <div class="list-group list-group-flush">
+                        {% for bill in recent_bills %}
+                        <div class="list-group-item px-0 x-small bg-transparent">
+                            <div class="d-flex justify-content-between">
+                                <span>{{ bill.invoice_number|default:bill.id }} - {{ bill.branch.name|truncatechars:10 }}</span>
+                                <span class="fw-bold text-success">₹{{ bill.total_amount }}</span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-4">
+                            <p class="text-muted">No transactions recorded yet.</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. BRANCHES TAB -->
+    <div class="tab-pane fade animate-fade-in" id="branches" role="tabpanel" aria-labelledby="branches-tab">
+        <div class="glass-card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="fw-bold text-primary mb-0"><i class="bi bi-shop me-2"></i>Overall Branches</h5>
+                <button class="btn btn-primary btn-sm rounded-pill px-3 shadow" data-bs-toggle="modal" data-bs-target="#addBranchModal">
+                    <i class="bi bi-plus-circle me-1"></i>Create New Branch
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Branch ID / Code</th>
+                            <th>Branch Name</th>
+                            <th>Location</th>
+                            <th>Contact</th>
+                            <th>Invoice Prefix</th>
+                            <th>Staff Count</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for branch in branches %}
+                        <tr id="branch-row-{{ branch.id }}">
+                            <td class="fw-bold text-muted">{{ branch.code|default:branch.id }}</td>
+                            <td class="fw-bold text-primary">{{ branch.name }}</td>
+                            <td>{{ branch.location }}</td>
+                            <td>{{ branch.contact_number|default:"-" }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ branch.invoice_prefix }}</span></td>
+                            <td><span class="badge bg-primary bg-opacity-10 text-primary">{{ branch.active_staff_count }} staff</span></td>
+                            <td class="text-center hover-actions">
+                                <button class="btn btn-outline-primary btn-sm rounded-circle me-1 px-2 py-1" 
+                                        onclick="openEditBranchModal('{{ branch.id }}', '{{ branch.name }}', '{{ branch.location }}', '{{ branch.contact_number }}', '{{ branch.invoice_prefix }}')" 
+                                        title="Edit Branch">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm rounded-circle px-2 py-1" 
+                                        onclick="confirmDelete('{% url 'branch_delete' branch.id %}', 'Branch &quot;{{ branch.name }}&quot;')" 
+                                        title="Delete Branch">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">No branches created yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. STAFF TAB -->
+    <div class="tab-pane fade animate-fade-in" id="staff" role="tabpanel" aria-labelledby="staff-tab">
+        <div class="glass-card p-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <h5 class="fw-bold text-primary mb-0 me-3"><i class="bi bi-people-fill me-2"></i>Staff & Assigning</h5>
+                    <div class="input-group input-group-sm" style="max-width: 250px;">
+                        <label class="input-group-text bg-light border-0 rounded-start-pill"><i class="bi bi-filter"></i></label>
+                        <select id="branchFilterSelect" class="form-select border-0 bg-light rounded-end-pill" onchange="filterStaff()" data-no-search>
+                            <option value="all">Show All Branches</option>
+                            {% for branch in branches %}
+                            <option value="branch-{{ branch.id }}">{{ branch.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="input-group input-group-sm" style="max-width: 200px;">
+                        <label class="input-group-text bg-light border-0 rounded-start-pill"><i class="bi bi-person-badge"></i></label>
+                        <select id="roleFilterSelect" class="form-select border-0 bg-light rounded-end-pill" onchange="filterStaff()" data-no-search>
+                            <option value="all">Show All Roles</option>
+                            <option value="owner">Admin</option>
+                            <option value="manager">Manager</option>
+                            <option value="staff">Staff</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm rounded-pill px-3 shadow align-self-start align-self-md-auto" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+                    <i class="bi bi-person-plus me-1"></i>Add Staff
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="staffTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Employee ID</th>
+                            <th>Username</th>
+                            <th>Full Name</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th class="text-center">Product edit rights</th>
+                            <th>Assigned Branches</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for staff in staff_list %}
+                        <tr id="staff-row-{{ staff.id }}" class="staff-row" data-branches="{% for b in staff.branches.all %}branch-{{ b.id }} {% endfor %}" data-role="{{ staff.role }}">
+                            <td class="fw-bold text-muted">{{ staff.employee_id|default:"-" }}</td>
+                            <td class="fw-bold text-primary">@{{ staff.username }}</td>
+                            <td>{{ staff.first_name }} {{ staff.last_name }}</td>
+                             <td>
+                                 {% if staff.role == 'owner' %}
+                                 <span class="badge badge-role-admin rounded-pill px-3 py-1 text-uppercase small">Admin</span>
+                                 {% elif staff.role == 'manager' %}
+                                 <span class="badge badge-role-manager rounded-pill px-3 py-1 text-uppercase small">Manager</span>
+                                 {% else %}
+                                 <span class="badge badge-role-staff rounded-pill px-3 py-1 text-uppercase small">Staff</span>
+                                 {% endif %}
+                             </td>
+                            <td class="text-center">
+                                <div class="form-check form-switch d-inline-block">
+                                    <input class="form-check-input" type="checkbox" id="activeSwitch{{ staff.id }}" {% if staff.is_active %}checked{% endif %} onchange="toggleStaffActive('{{ staff.id }}', this.checked)" {% if staff == request.user %}disabled title="You cannot deactivate your own account"{% endif %}>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                {% if staff.role == 'manager' %}
+                                <div class="form-check form-switch d-inline-block">
+                                    <input class="form-check-input" type="checkbox" id="productRightsSwitch{{ staff.id }}" {% if staff.has_product_rights %}checked{% endif %} onchange="toggleProductRights('{{ staff.id }}', this.checked)">
+                                </div>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% for b in staff.branches.all %}
+                                <span class="badge bg-light text-dark border rounded-pill px-2 py-1 mb-1 me-1">{{ b.name }}</span>
+                                {% empty %}
+                                <span class="text-muted small">No branch assigned</span>
+                                {% endfor %}
+                            </td>
+                            <td class="text-center hover-actions">
+                                <button class="btn btn-outline-primary btn-sm rounded-circle me-1 px-2 py-1" 
+                                        onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}')" 
+                                        title="Edit Staff / Assign Branch">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm rounded-circle px-2 py-1" 
+                                        onclick="confirmDelete('{% url 'staff_delete' staff.id %}', 'Staff account &quot;{{ staff.username }}&quot;')" 
+                                        title="Delete Account">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">No staff accounts registered yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if staff_list.has_other_pages %}
+            <nav aria-label="Staff pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if staff_list.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link rounded-pill border-0 shadow-sm px-3 mx-1" href="?staff_page={{ staff_list.previous_page_number }}#staff">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for i in staff_list.paginator.page_range %}
+                        {% if staff_list.number == i %}
+                        <li class="page-item active">
+                            <span class="page-link rounded-circle border-0 shadow px-3 mx-1 bg-primary text-white border-0">{{ i }}</span>
+                        </li>
+                        {% elif i > staff_list.number|add:-3 and i < staff_list.number|add:3 %}
+                        <li class="page-item">
+                            <a class="page-link rounded-circle border-0 shadow-sm px-3 mx-1" href="?staff_page={{ i }}#staff">{{ i }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if staff_list.has_next %}
+                    <li class="page-item">
+                        <a class="page-link rounded-pill border-0 shadow-sm px-3 mx-1" href="?staff_page={{ staff_list.next_page_number }}#staff">Next</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!--                  MODALS SECTION                -->
+<!-- ============================================== -->
+
+<!-- 1. Add Branch Modal -->
+<div class="modal fade" id="addBranchModal" tabindex="-1" aria-labelledby="addBranchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold" id="addBranchModalLabel"><i class="bi bi-shop text-primary me-2"></i>Create New Branch</h5>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'branch_create' %}" method="post">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Branch Name</label>
+                        {{ branch_form.name }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Location</label>
+                        {{ branch_form.location }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Contact Number</label>
+                        {{ branch_form.contact_number }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Invoice Prefix</label>
+                        {{ branch_form.invoice_prefix }}
+                        <div class="form-text x-small">A unique prefix for invoice numbers (e.g. "AG")</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Create Branch</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Edit Branch Modal -->
+<div class="modal fade" id="editBranchModal" tabindex="-1" aria-labelledby="editBranchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold" id="editBranchModalLabel"><i class="bi bi-pencil text-primary me-2"></i>Edit Branch Details</h5>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editBranchForm" method="post" action="">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Branch Name</label>
+                        <input type="text" name="name" id="editBranchName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Location</label>
+                        <input type="text" name="location" id="editBranchLocation" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Contact Number</label>
+                        <input type="text" name="contact_number" id="editBranchContact" class="form-control rounded-pill shadow-sm border-0 bg-light px-3">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Invoice Prefix</label>
+                        <input type="text" name="invoice_prefix" id="editBranchPrefix" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Add Staff Modal -->
+<div class="modal fade" id="addStaffModal" tabindex="-1" aria-labelledby="addStaffModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold" id="addStaffModalLabel"><i class="bi bi-person-plus text-primary me-2"></i>Add Staff Account</h5>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'staff_create' %}" method="post">
+                {% csrf_token %}
+                
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <!-- Account Details Card -->
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted mb-3">Account Details</h6>
+                                    <div class="row g-2">
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Username</label>
+                                            {{ staff_form.username }}
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">First Name</label>
+                                            {{ staff_form.first_name }}
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Last Name</label>
+                                            {{ staff_form.last_name }}
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Password</label>
+                                            {{ staff_form.password }}
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Employee ID</label>
+                                            {{ staff_form.employee_id }}
+                                            <div class="form-text small">Auto-generated based on branch if left blank.</div>
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Role</label>
+                                            {{ staff_form.role }}
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Active</label>
+                                            {{ staff_form.is_active }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Branch Assignment Card -->
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm mt-3">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted mb-3"><i class="bi bi-shop me-1"></i>Assign Branches</h6>
+                                    <div class="branch-picker" id="branchPickerAdd">
+                                        <input type="text" class="branch-search w-100" placeholder="🔍 Search branches..." oninput="filterBranchPicker('branchPickerAdd', this.value)">
+                                        {% for branch in branches %}
+                                        <div class="branch-item">
+                                            <input type="checkbox" name="branches" value="{{ branch.id }}" id="addBranch{{ branch.id }}">
+                                            <label for="addBranch{{ branch.id }}">{{ branch.name }} <span class="text-muted small">— {{ branch.location }}</span></label>
+                                        </div>
+                                        {% endfor %}
+                                        <div class="no-match">No branches found</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 4. Edit Staff Modal -->
+<div class="modal fade" id="editStaffModal" tabindex="-1" aria-labelledby="editStaffModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold" id="editStaffModalLabel"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Staff / Assign Branches</h5>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editStaffForm" method="post" action="">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <!-- Account Details Card -->
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted mb-3">Account Details</h6>
+                                    <div class="row g-2">
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Username</label>
+                                            <input type="text" name="username" id="editStaffUsername" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">First Name</label>
+                                            <input type="text" name="first_name" id="editStaffFirstName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3">
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Last Name</label>
+                                            <input type="text" name="last_name" id="editStaffLastName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3">
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">New Password (Leave blank to keep current)</label>
+                                            <input type="password" name="password" id="editStaffPassword" class="form-control rounded-pill shadow-sm border-0 bg-light px-3">
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Role</label>
+                                             <select name="role" id="editStaffRole" class="form-select rounded-pill shadow-sm border-0 bg-light px-3" data-no-search="true" required>
+                                                 <option value="owner">Admin</option>
+                                                 <option value="manager">Manager</option>
+                                                 <option value="staff">Staff</option>
+                                             </select>
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Employee ID</label>
+                                            <input type="text" name="employee_id" id="editStaffEmployeeId" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Employee ID (Auto-generated if blank)">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Branch Assignment Card -->
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm mt-3">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted mb-3"><i class="bi bi-shop me-1"></i>Assign Branches</h6>
+                                    <div class="branch-picker" id="branchPickerEdit">
+                                        <input type="text" class="branch-search w-100" placeholder="🔍 Search branches..." oninput="filterBranchPicker('branchPickerEdit', this.value)">
+                                        {% for branch in branches %}
+                                        <div class="branch-item">
+                                            <input type="checkbox" name="branches" value="{{ branch.id }}" id="editBranch{{ branch.id }}">
+                                            <label for="editBranch{{ branch.id }}">{{ branch.name }} <span class="text-muted small">— {{ branch.location }}</span></label>
+                                        </div>
+                                        {% endfor %}
+                                        <div class="no-match">No branches found</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 5. Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-danger text-white border-0">
+                <h6 class="modal-title fw-bold" id="deleteConfirmModalLabel"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Delete</h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="deleteForm" method="post" action="">
+                {% csrf_token %}
+                <div class="modal-body p-4 text-center">
+                    <p class="mb-0">Are you sure you want to delete <strong id="deleteTargetName" class="text-danger"></strong>?</p>
+                    <p class="x-small text-muted mt-2">This action is permanent and cannot be undone.</p>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3 d-flex justify-content-center">
+                    <button type="button" class="btn btn-secondary rounded-pill px-3 py-1" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-3 py-1">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // JS functions to open modals and inject dynamic data
+    
+    function openEditBranchModal(id, name, location, contact, prefix) {
+        document.getElementById('editBranchForm').action = `/users/branch/edit/${id}/`;
+        document.getElementById('editBranchName').value = name;
+        document.getElementById('editBranchLocation').value = location;
+        document.getElementById('editBranchContact').value = contact === 'None' ? '' : contact;
+        document.getElementById('editBranchPrefix').value = prefix;
+        
+        const modal = new bootstrap.Modal(document.getElementById('editBranchModal'));
+        modal.show();
+    }
+
+    function confirmDelete(url, name) {
+        const deleteForm = document.getElementById('deleteForm');
+        if (deleteForm) {
+            deleteForm.action = url;
+        }
+        const targetNameElem = document.getElementById('deleteTargetName');
+        if (targetNameElem) {
+            targetNameElem.textContent = name;
+        }
+        const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        modal.show();
+    }
+
+    function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId) {
+        document.getElementById('editStaffForm').action = `/users/staff/edit/${id}/`;
+        document.getElementById('editStaffUsername').value = username;
+        document.getElementById('editStaffFirstName').value = firstName;
+        document.getElementById('editStaffLastName').value = lastName;
+        document.getElementById('editStaffPassword').value = '';
+        document.getElementById('editStaffEmployeeId').value = (employeeId === 'None' || !employeeId) ? '' : employeeId;
+
+        // Set role via Tom Select API if available, otherwise fallback to native
+        const roleEl = document.getElementById('editStaffRole');
+        if (roleEl && roleEl.tomselect) {
+            roleEl.tomselect.setValue(role, true);
+        } else if (roleEl) {
+            roleEl.value = role;
+        }
+
+        // Set branch checkboxes in the edit picker
+        const picker = document.getElementById('branchPickerEdit');
+        const checkboxes = picker.querySelectorAll('input[type="checkbox"]');
+        const assignedIds = branchIdsStr ? branchIdsStr.split(',').map(s => s.trim()) : [];
+        checkboxes.forEach(function(cb) {
+            cb.checked = assignedIds.includes(cb.value);
+        });
+        // Clear search
+        const searchInput = picker.querySelector('.branch-search');
+        if (searchInput) { searchInput.value = ''; }
+        picker.querySelectorAll('.branch-item').forEach(el => el.style.display = '');
+        const noMatch = picker.querySelector('.no-match');
+        if (noMatch) noMatch.style.display = 'none';
+
+        const modal = new bootstrap.Modal(document.getElementById('editStaffModal'));
+        modal.show();
+    }
+
+    // Toggle staff active status via AJAX
+    function toggleStaffActive(staffId, isActive) {
+        const csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (!csrfEl) { alert('CSRF token not found.'); return; }
+        fetch(`/users/staff/toggle/${staffId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfEl.value
+            },
+            body: JSON.stringify({ is_active: isActive })
+        })
+        .then(response => {
+            if (response.redirected || response.status === 401 || response.status === 302) {
+                alert('Session expired. Please reload the page to log in again.');
+                window.location.reload();
+                return;
+            }
+            if (!response.ok) {
+                throw new Error('Server returned error status ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.status !== 'success') {
+                alert('Failed to update status.');
+            }
+        })
+        .catch((err) => {
+            console.error(err);
+            alert('Failed to update status. Please check your connection or session.');
+        });
+    }
+
+    // Toggle manager product rights via AJAX
+    function toggleProductRights(staffId, hasProductRights) {
+        const csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (!csrfEl) { alert('CSRF token not found.'); return; }
+        fetch(`/users/staff/toggle-product-rights/${staffId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfEl.value
+            },
+            body: JSON.stringify({ has_product_rights: hasProductRights })
+        })
+        .then(response => {
+            if (response.redirected || response.status === 401 || response.status === 302) {
+                alert('Session expired. Please reload the page to log in again.');
+                window.location.reload();
+                return;
+            }
+            if (!response.ok) {
+                throw new Error('Server returned error status ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.status !== 'success') {
+                alert('Failed to update product rights.');
+            }
+        })
+        .catch((err) => {
+            console.error(err);
+            alert('Failed to update product rights. Please check your connection or session.');
+        });
+    }
+
+    // Staff combined branch and role filter on table
+    function filterStaff() {
+        const branchVal = document.getElementById('branchFilterSelect').value;
+        const roleVal = document.getElementById('roleFilterSelect').value;
+        
+        document.querySelectorAll('.staff-row').forEach(function(row) {
+            const matchesBranch = (branchVal === 'all') || row.dataset.branches.includes(branchVal);
+            const matchesRole = (roleVal === 'all') || (row.dataset.role === roleVal);
+            
+            if (matchesBranch && matchesRole) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // Search filter for branch checkbox pickers
+    function filterBranchPicker(pickerId, query) {
+        const picker = document.getElementById(pickerId);
+        const items = picker.querySelectorAll('.branch-item');
+        const noMatch = picker.querySelector('.no-match');
+        const q = query.toLowerCase();
+        let visible = 0;
+        items.forEach(function(item) {
+            const label = item.querySelector('label').textContent.toLowerCase();
+            if (label.includes(q)) {
+                item.style.display = '';
+                visible++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        if (noMatch) {
+            noMatch.style.display = visible === 0 ? 'block' : 'none';
+        }
+    }
+
+    // Persist active tab across page refreshes via URL hash
+    document.addEventListener("DOMContentLoaded", function() {
+        const hash = window.location.hash;
+        if (hash) {
+            const tabEl = document.querySelector(`button[data-bs-target="${hash}"]`);
+            if (tabEl) {
+                const tab = new bootstrap.Tab(tabEl);
+                tab.show();
+            }
+        }
+        // Update URL hash when clicking tabs
+        const tabButtons = document.querySelectorAll('#ownerDashboardTabs button');
+        tabButtons.forEach(btn => {
+            btn.addEventListener('shown.bs.tab', function(e) {
+                window.location.hash = e.target.getAttribute('data-bs-target');
+            });
+        });
+    });
+</script>
+
+{% endblock %}
+

@@ -1,0 +1,304 @@
+{% extends 'base.html' %}
+
+{% block title %}Stock Correction - {{ product.name }} @ {{ branch.name }} ({{ branch.code }}){% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+        <div>
+            <h4 class="fw-bold m-0 text-primary"><i class="bi bi-pencil-square me-2"></i>Wrong Entry Correction</h4>
+            <p class="text-muted small mb-0">Reconciliation-based stock adjustment with full audit trail</p>
+        </div>
+        <a href="{% url 'stock_pivot_report' %}" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm btn-sm mt-3 mt-md-0">
+            <i class="bi bi-arrow-left me-1"></i> Back to Report
+        </a>
+    </div>
+
+    <!-- Error Alert -->
+    {% if error_msg %}
+    <div class="alert alert-danger border-0 shadow-sm rounded-3 animate-fade-in" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error_msg }}
+    </div>
+    {% endif %}
+
+    <!-- Success Messages -->
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} border-0 shadow-sm rounded-3 animate-fade-in" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>{{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="row g-4">
+        <!-- Left Column: Reconciliation Info -->
+        <div class="col-12 col-lg-7">
+            <!-- Product & Branch Card -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+                <div class="card-body p-4" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle bg-white bg-opacity-25 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+                            <i class="bi bi-box-seam text-white fs-4"></i>
+                        </div>
+                        <div class="text-white">
+                            <h5 class="fw-bold mb-0">{{ product.name }}</h5>
+                            <div class="d-flex gap-3 mt-1 small opacity-75">
+                                <span><i class="bi bi-upc me-1"></i>{{ product.barcode }}</span>
+                                <span><i class="bi bi-geo-alt me-1"></i>{{ branch.name }} ({{ branch.code }})</span>
+                                <span><i class="bi bi-tag me-1"></i>₹{{ product.price|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reconciliation Breakdown -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-calculator me-2 text-primary"></i>Today's Stock Reconciliation</h6>
+                    <p class="text-muted x-small mb-0 mt-1">Formula: Opening + In − Out + Correction = Closing</p>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <div class="row g-3 text-center">
+                        <div class="col">
+                            <div class="rounded-3 p-3" style="background: #f0f4ff;">
+                                <div class="x-small text-muted fw-bold text-uppercase">Opening</div>
+                                <div class="fs-4 fw-bold text-dark" id="val-opening">{{ opening_balance }}</div>
+                            </div>
+                        </div>
+                        <div class="col-auto d-flex align-items-center">
+                            <span class="text-success fw-bold fs-5">+</span>
+                        </div>
+                        <div class="col">
+                            <div class="rounded-3 p-3" style="background: #ecfdf5;">
+                                <div class="x-small text-muted fw-bold text-uppercase">In</div>
+                                <div class="fs-4 fw-bold text-success">{{ period_in }}</div>
+                            </div>
+                        </div>
+                        <div class="col-auto d-flex align-items-center">
+                            <span class="text-danger fw-bold fs-5">−</span>
+                        </div>
+                        <div class="col">
+                            <div class="rounded-3 p-3" style="background: #fef2f2;">
+                                <div class="x-small text-muted fw-bold text-uppercase">Out</div>
+                                <div class="fs-4 fw-bold text-danger">{{ period_out }}</div>
+                            </div>
+                        </div>
+                        <div class="col-auto d-flex align-items-center">
+                            <span class="text-warning fw-bold fs-5">±</span>
+                        </div>
+                        <div class="col">
+                            <div class="rounded-3 p-3 border border-warning" style="background: #fffbeb;">
+                                <div class="x-small text-muted fw-bold text-uppercase">Correction</div>
+                                <div class="fs-4 fw-bold text-warning" id="val-correction">0</div>
+                            </div>
+                        </div>
+                        <div class="col-auto d-flex align-items-center">
+                            <span class="text-primary fw-bold fs-5">=</span>
+                        </div>
+                        <div class="col">
+                            <div class="rounded-3 p-3 border border-primary border-2" style="background: #eef2ff;">
+                                <div class="x-small text-muted fw-bold text-uppercase">New Closing</div>
+                                <div class="fs-4 fw-bold text-primary" id="val-new-closing">{{ current_stock }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status indicator -->
+                    <div class="mt-3 text-center">
+                        <span class="badge rounded-pill px-4 py-2 shadow-sm" id="status-badge"
+                              style="font-size: 0.85rem; background: {% if current_stock > 0 %}#22c55e{% else %}#ef4444{% endif %}; color: white;">
+                            {% if current_stock > 0 %}
+                            <i class="bi bi-check-circle me-1"></i> IN STOCK ({{ current_stock }})
+                            {% else %}
+                            <i class="bi bi-x-circle me-1"></i> OUT OF STOCK
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Correction Form -->
+        <div class="col-12 col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-tools me-2 text-warning"></i>Apply Correction</h6>
+                    <p class="text-muted x-small mb-0 mt-1">Enter a positive number to add stock, or a negative number (e.g. -90) to reduce.</p>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <form method="POST" id="adjustForm">
+                        {% csrf_token %}
+
+                        <div class="form-check form-switch mb-3 bg-light p-2 rounded border">
+                            <input class="form-check-input ms-0 me-2" type="checkbox" id="is_damage" name="is_damage" value="true">
+                            <label class="form-check-label small fw-bold text-danger" for="is_damage">
+                                <i class="bi bi-shield-x me-1"></i> Mark as Damaged Stock
+                            </label>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted" id="amount_label" for="correction_amount">Correction Amount</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text border-0 bg-light rounded-start-pill"><i id="amount_icon" class="bi bi-plus-slash-minus text-warning"></i></span>
+                                <input type="number" name="correction_amount" id="correction_amount"
+                                       class="form-control border-0 bg-light rounded-end-pill fw-bold text-center"
+                                       placeholder="e.g. -90" value="0" required autofocus
+                                       style="font-size: 1.5rem;">
+                            </div>
+                            <div class="form-text x-small" id="amount_help">
+                                Example: Entered 100 instead of 10? Type <code>-90</code> to correct.
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-muted" for="reason">Reason / Reference</label>
+                            <textarea name="reason" id="reason" rows="2"
+                                      class="form-control border-0 bg-light rounded-3"
+                                      placeholder="e.g. Wrong entry: typed 100 instead of 10"></textarea>
+                        </div>
+
+                        <!-- Preview -->
+                        <div class="rounded-3 p-3 mb-4" id="preview-box" style="background: #f0f4ff; border: 1px solid #c7d2fe;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="small text-muted">Current Stock:</span>
+                                <span class="fw-bold">{{ current_stock }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="small text-muted">Correction:</span>
+                                <span class="fw-bold" id="preview-correction">0</span>
+                            </div>
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="small fw-bold text-primary">New Closing:</span>
+                                <span class="fw-bold fs-5 text-primary" id="preview-new-closing">{{ current_stock }}</span>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 shadow-sm fw-bold" id="submitBtn">
+                            <i class="bi bi-check2-circle me-2"></i>Apply Correction
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Recent Adjustments -->
+            {% if recent_adjustments %}
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-clock-history me-2 text-secondary"></i>Recent Corrections</h6>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <div class="list-group list-group-flush">
+                        {% for adj in recent_adjustments %}
+                        <div class="list-group-item border-0 px-0 py-2">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <span class="badge {% if adj.correction_amount >= 0 %}bg-success{% else %}bg-danger{% endif %} rounded-pill me-1">
+                                        {% if adj.correction_amount >= 0 %}+{% endif %}{{ adj.correction_amount }}
+                                    </span>
+                                    <span class="small text-muted">→ Cl: {{ adj.closing_stock }}</span>
+                                </div>
+                                <span class="x-small text-muted">{{ adj.created_at|date:"d M, H:i" }}</span>
+                            </div>
+                            {% if adj.reason %}
+                            <div class="x-small text-muted mt-1"><i class="bi bi-chat-dots me-1"></i>{{ adj.reason }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    const openingBalance = {{ opening_balance }};
+    const periodIn = {{ period_in }};
+    const periodOut = {{ period_out }};
+    const currentStock = {{ current_stock }};
+
+    const isDamage = document.getElementById('is_damage');
+    const amountLabel = document.getElementById('amount_label');
+    const amountIcon = document.getElementById('amount_icon');
+    const amountHelp = document.getElementById('amount_help');
+    const correctionInput = document.getElementById('correction_amount');
+    
+    const valCorrection = document.getElementById('val-correction');
+    const valNewClosing = document.getElementById('val-new-closing');
+    const previewCorrection = document.getElementById('preview-correction');
+    const previewNewClosing = document.getElementById('preview-new-closing');
+    const statusBadge = document.getElementById('status-badge');
+    const previewBox = document.getElementById('preview-box');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function updateView() {
+        const checked = isDamage.checked;
+        if (checked) {
+            amountLabel.textContent = "Damaged Quantity";
+            amountIcon.className = "bi bi-shield-x text-danger";
+            amountHelp.innerHTML = "Enter the number of damaged units (will be subtracted from stock).";
+            correctionInput.placeholder = "e.g. 5";
+            if (parseInt(correctionInput.value) < 0) {
+                correctionInput.value = Math.abs(parseInt(correctionInput.value));
+            }
+        } else {
+            amountLabel.textContent = "Correction Amount";
+            amountIcon.className = "bi bi-plus-slash-minus text-warning";
+            amountHelp.innerHTML = "Example: Entered 100 instead of 10? Type <code>-90</code> to correct.";
+            correctionInput.placeholder = "e.g. -90";
+        }
+        
+        const rawVal = parseInt(correctionInput.value) || 0;
+        const corr = checked ? -Math.abs(rawVal) : rawVal;
+        const newClosing = openingBalance + periodIn - periodOut + corr;
+
+        // Update reconciliation display
+        valCorrection.textContent = (corr >= 0 ? '+' : '') + corr;
+        valNewClosing.textContent = newClosing;
+
+        // Update preview
+        previewCorrection.textContent = (corr >= 0 ? '+' : '') + corr;
+        previewNewClosing.textContent = newClosing;
+
+        // Color coding
+        if (newClosing < 0) {
+            previewBox.style.background = '#fef2f2';
+            previewBox.style.borderColor = '#fca5a5';
+            previewNewClosing.className = 'fw-bold fs-5 text-danger';
+            valNewClosing.className = 'fs-4 fw-bold text-danger';
+            statusBadge.style.background = '#ef4444';
+            statusBadge.innerHTML = '<i class="bi bi-x-circle me-1"></i> INVALID (negative)';
+            submitBtn.disabled = true;
+        } else if (newClosing === 0) {
+            previewBox.style.background = '#fffbeb';
+            previewBox.style.borderColor = '#fde68a';
+            previewNewClosing.className = 'fw-bold fs-5 text-danger';
+            valNewClosing.className = 'fs-4 fw-bold text-danger';
+            statusBadge.style.background = '#ef4444';
+            statusBadge.innerHTML = '<i class="bi bi-x-circle me-1"></i> OUT OF STOCK';
+            submitBtn.disabled = false;
+        } else {
+            previewBox.style.background = '#f0f4ff';
+            previewBox.style.borderColor = '#c7d2fe';
+            previewNewClosing.className = 'fw-bold fs-5 text-primary';
+            valNewClosing.className = 'fs-4 fw-bold text-primary';
+            statusBadge.style.background = '#22c55e';
+            statusBadge.innerHTML = '<i class="bi bi-check-circle me-1"></i> IN STOCK (' + newClosing + ')';
+            submitBtn.disabled = false;
+        }
+    }
+
+    correctionInput.addEventListener('input', updateView);
+    isDamage.addEventListener('change', function() {
+        correctionInput.value = '0';
+        updateView();
+    });
+
+    // Trigger initial state
+    updateView();
+</script>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Update Product Inventory - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card border-0 shadow-sm p-4 h-100 bg-white">
+            <h5 class="fw-bold mb-4 text-primary">Update Product Inventory</h5>
+            <p class="text-muted small mb-3">Product: <span class="fw-bold text-dark">{{ inventory.product.name }}</span></p>
+            
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">Current Stock Quantity</label>
+                    {{ form.stock_quantity }}
+                </div>
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-muted">Low Stock Threshold</label>
+                    {{ form.low_stock_threshold }}
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex mt-4">
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 flex-grow-1 fw-bold shadow-sm">
+                        <i class="bi bi-save me-1"></i> Save Changes
+                    </button>
+                    <a href="{% url 'manager_inventory_list' %}" class="btn btn-light rounded-pill px-4 py-2">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Aaron Billing{% endblock %}</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Custom Vibrant Premium Styles -->
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <!-- Tom Select Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #6366f1;
+            --accent-color: #f59e0b;
+            --bg-color: #f9fafb;
+            --sidebar-bg: #ffffff;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #1f2937;
+        }
+
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            padding: 0.75rem 1rem;
+        }
+
+        .navbar-brand {
+            font-weight: 800;
+            background: linear-gradient(135deg, #4f46e5, #d946ef);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.5rem;
+        }
+
+        .nav-link {
+            font-weight: 500;
+            color: #4b5563;
+        }
+
+        .nav-link:hover {
+            color: #d946ef;
+        }
+
+        /* Colorful Headers */
+        h1, h2, h3, h4, h5 {
+            color: #312e81;
+            font-weight: 700;
+        }
+        
+        .text-primary {
+            color: #4f46e5 !important;
+        }
+
+        /* Gradient Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, #4f46e5, #d946ef);
+            border: none;
+            color: white;
+            box-shadow: 0 4px 15px rgba(217, 70, 239, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #4338ca, #c026d3);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(217, 70, 239, 0.4);
+            color: white;
+        }
+        
+        .btn-outline-primary {
+            border-color: #4f46e5;
+            color: #4f46e5;
+        }
+        
+        .btn-outline-primary:hover {
+            background: linear-gradient(135deg, #4f46e5, #d946ef);
+            border-color: transparent;
+            color: white;
+        }
+
+        .card {
+            border: none;
+            border-radius: 0.75rem;
+            box-shadow: var(--card-shadow);
+        }
+
+        /* Responsive Sidebar for larger screens */
+        @media (min-width: 992px) {
+            .main-content {
+                padding: 2rem;
+            }
+        }
+
+        /* Fast POS Feel */
+        .pos-item-card {
+            transition: transform 0.1s ease;
+            cursor: pointer;
+        }
+
+        .pos-item-card:active {
+            transform: scale(0.98);
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <img src="{% static 'images/aronlogo.png' %}" alt="Aaron Billing" style="height:24px; width:auto;" class="align-self-center me-2"/>
+                <span class="fw-bold tracking-tight">Aaron<span class="text-secondary">Billing</span></span>
+            </a>
+            <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <i class="bi bi-grid-fill text-primary fs-3"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
+                        </li>
+                        {% if user.role == 'owner' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'admin:core_branch_changelist' %}">Adminpage</a>
+                            </li>
+                        {% endif %}
+                        {% if user.role != 'staff' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'product_list' %}">Products</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'stock_pivot_report' %}">Stock Report</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'owner_bill_list' %}">Sales Report</a>
+                            </li>
+                        {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'pos_index' %}">POS Billing</a>
+                        </li>
+                    {% endif %}
+                </ul>
+                <div class="d-flex flex-column flex-lg-row align-items-lg-center mt-3 mt-lg-0">
+                    {% if user.is_authenticated %}
+                        {% if user.get_accessible_branches.count > 1 or user.is_owner %}
+                            {% if request.resolver_match.url_name == 'pos_index' %}
+                            <form method="post" action="{% url 'switch_branch' %}" class="me-lg-3 mb-3 mb-lg-0">
+                                {% csrf_token %}
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-light border-0 rounded-start-pill"><i class="bi bi-shop"></i></span>
+                                    <select name="branch_id" class="form-select border-0 bg-light rounded-end-pill" data-no-search onchange="this.form.submit()">
+                                        {% for b in user.get_accessible_branches %}
+                                        <option value="{{ b.id }}" {% if b == user.active_branch %}selected{% endif %}>
+                                            {{ b.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </form>
+                            {% endif %}
+                        {% endif %}
+                        <div class="d-flex align-items-center justify-content-between w-100 w-lg-auto gap-3">
+                            <span class="text-muted small text-nowrap">
+                                <i class="bi bi-person-circle me-1"></i>{{ user.username }}
+                            </span>
+                            <form method="post" action="{% url 'logout' %}" class="d-inline mb-0">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">Logout</button>
+                            </form>
+                        </div>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="btn btn-primary rounded-pill px-4">Login</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container-fluid main-content py-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-4 rounded-3" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-white border-top shadow-sm text-center">
+        <div class="container-fluid">
+            <span class="text-muted small">Build version: <strong class="text-primary">1.2.0-stable</strong> | Release Date: <strong>2026-06-06</strong></span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Tom Select JS & Global Searchable Dropdown Initializer -->
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            function initTomSelect(el) {
+                // Ensure it is a select, not already initialized, and not flagged to ignore
+                if (el.tagName === 'SELECT' && !el.classList.contains('tomselected')) {
+                    if (el.dataset.noSearch !== undefined) return;
+                    
+                    try {
+                        const settings = {
+    placeholder: el.getAttribute('placeholder') || 'Select...',
+    create: false,
+    allowEmptyOption: false,
+    plugins: ['dropdown_input'], // search field inside the dropdown panel
+    onInitialize: function() {
+        const wrapper = this.wrapper;
+        // Copy essential aesthetic classes from select to the Tom Select wrapper
+        el.classList.forEach(cls => {
+            if (
+                cls.includes('pill') || 
+                cls.includes('bg-') || 
+                cls.includes('border-') || 
+                cls.includes('form-select') ||
+                cls.includes('shadow-')
+            ) {
+                wrapper.classList.add(cls);
+            }
+        });
+    }
+};
+                        
+                        new TomSelect(el, settings);
+            // Ensure no option is pre‑selected so the placeholder is visible
+            if (el.tomselect) { el.tomselect.clear(); }
+                    } catch (e) {
+                        console.error('Error initializing Tom Select:', e);
+                    }
+                }
+            }
+
+            // Initial auto-wrapper for all selects
+            document.querySelectorAll("select").forEach(initTomSelect);
+
+            // Observe dynamic DOM insertions (like returns search, dynamically created forms, etc.)
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1) {
+                            if (node.tagName === 'SELECT') {
+                                initTomSelect(node);
+                            } else {
+                                node.querySelectorAll('select').forEach(initTomSelect);
+                            }
+                        }
+                    });
+                });
+            });
+
+            observer.observe(document.body, { childList: true, subtree: true });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Staff Dashboard - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4 animate-fade-in">
+    <div class="col-12">
+        <div class="glass-card p-4 bg-vibrant text-center stats-card">
+            <h3 class="mb-1 fw-bold">Welcome, {{ user.username }}</h3>
+            <p class="text-white-50 small mb-4"><i class="bi bi-shop me-1"></i>{{ user.active_branch.name }}{% if user.active_branch %} ({{ user.active_branch.code }}){% endif %}</p>
+            <div class="d-grid gap-3">
+                <a href="{% url 'pos_index' %}" class="btn btn-light btn-lg rounded-pill fw-bold text-primary shadow py-3">
+                    <i class="bi bi-plus-circle me-2"></i>Create New Bill
+                </a>
+                <a href="{% url 'staff_activity' %}" class="btn btn-outline-light btn-sm rounded-pill opacity-75">
+                   <i class="bi bi-graph-up me-1"></i> View My Activity
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4 animate-fade-in" style="animation-delay: 0.1s;">
+    <div class="col-6">
+        <div class="glass-card p-4 text-center">
+            <h6 class="text-muted small mb-1">Today's Sales</h6>
+            <h4 class="fw-bold text-primary mb-0">₹{{ my_sales_today|default:"0"|floatformat:0 }}</h4>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="glass-card p-4 text-center">
+            <h6 class="text-muted small mb-1">Bills Created</h6>
+            <h4 class="fw-bold text-indigo mb-0">{{ my_bill_count }}</h4>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 animate-fade-in" style="animation-delay: 0.2s;">
+    <div class="col-12">
+        <div class="glass-card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="fw-bold m-0 text-primary">Recent Activity</h5>
+                <i class="bi bi-calendar3 text-muted"></i>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for bill in recent_my_bills %}
+                <div class="list-group-item px-0">
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-bold small">{{ bill.invoice_number|default:bill.id }} - {{ bill.customer_name|default:"Guest" }}</span>
+                        <span class="text-success small fw-bold">₹{{ bill.total_amount }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-5">
+                    <i class="bi bi-receipt-cutoff fs-1 text-muted opacity-25 mb-3 d-block"></i>
+                    <p class="text-muted">No bills generated today.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

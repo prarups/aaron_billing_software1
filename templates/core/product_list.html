@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+
+{% block title %}Product Master - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 animate-fade-in text-white">
+    <div>
+        <h4 class="fw-bold m-0 text-primary">Product Master</h4>
+        <p class="text-muted small mb-0">View and manage products across branches</p>
+    </div>
+    <div class="d-flex gap-2 mt-3 mt-md-0 flex-wrap">
+        <a href="{% url 'export_products_csv' %}?q={{ q }}&branch={{ selected_branch }}&filter={{ active_filter }}" class="btn btn-outline-success rounded-pill px-4 shadow-sm btn-sm">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export
+        </a>
+        {% if request.user.role == 'owner' or request.user.has_product_rights %}
+        <a href="{% url 'bulk_insert' %}" class="btn btn-outline-primary rounded-pill px-4 shadow-sm btn-sm">
+            <i class="bi bi-cloud-upload me-1"></i> Bulk Insert
+        </a>
+        <a href="{% url 'product_create' %}" class="btn btn-primary rounded-pill px-4 shadow-sm btn-sm">
+            <i class="bi bi-plus-lg me-1"></i> Add New
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Stats -->
+    <div class="col-12 col-md-3">
+        <div class="card p-3 border-0 shadow-sm bg-white">
+            <div class="small fw-bold text-muted">Product Registrations</div>
+            <div class="fs-4 fw-bold text-success">{{ stats.registration_count|default:"0" }}</div>
+        </div>
+    </div>
+
+<!-- Filters -->
+<div class="card border-0 shadow-sm p-3 mb-4 bg-white animate-fade-in" style="overflow: visible;">
+    <form method="GET" class="row g-3 align-items-end">
+        {% if active_filter == 'zero_stock' %}
+        <input type="hidden" name="filter" value="zero_stock">
+        {% endif %}
+        
+        <div class="col-12 col-md-4">
+            <label class="form-label small fw-bold text-muted">Search Product</label>
+            <div class="input-group">
+                <input type="text" name="q" class="form-control rounded-pill-start border-0 bg-light" placeholder="Name or Barcode..." value="{{ q }}">
+                <button class="btn btn-primary rounded-pill-end shadow-sm" type="submit">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <label class="form-label small fw-bold text-muted">Filter by Branch</label>
+            <select name="branch" class="form-select rounded-pill border-0 bg-light" onchange="this.form.submit()" data-no-search>
+                <option value="">All Branches</option>
+                {% for b in branches %}
+                <option value="{{ b.id }}" {% if b.id|stringformat:"s" == selected_branch %}selected{% endif %}>{{ b.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <label class="form-label small fw-bold text-muted">Stock Status</label>
+            <select name="filter" class="form-select rounded-pill border-0 bg-light" onchange="this.form.submit()" data-no-search>
+                <option value="">All Status</option>
+                <option value="low_stock" {% if active_filter == 'low_stock' %}selected{% endif %}>Low Stock</option>
+                <option value="zero_stock" {% if active_filter == 'zero_stock' %}selected{% endif %}>Zero Stock</option>
+            </select>
+        </div>
+    </form>
+</div>
+
+<div class="glass-card border-0 shadow-sm overflow-hidden animate-fade-in" style="animation-delay: 0.1s;">
+    <!-- Desktop Table View -->
+    <div class="table-responsive d-none d-md-block">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+                <tr class="x-small text-uppercase fw-bold text-muted">
+                    <th class="ps-4">Branch</th>
+                    <th>Product Name</th>
+                    <th>Barcode</th>
+                    <th>Price</th>
+                    <th>Combos</th>
+                    <th>Stock</th>
+                    <th class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reg in page_obj %}
+                <tr>
+                    <td class="ps-4">
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3">{{ reg.branch.name }} ({{ reg.branch.code }})</span>
+                    </td>
+                    <td class="fw-bold text-dark">{{ reg.product.name }}</td>
+                    <td><code class="bg-light px-2 rounded-pill">{{ reg.product.barcode }}</code></td>
+                    <td class="fw-bold text-primary">
+                        {% if request.user.role == 'owner' or request.user.has_product_rights %}
+                        <span class="inline-edit price-edit" data-id="{{ reg.product.pk }}" data-type="price">
+                            ₹<span class="value">{{ reg.product.price|floatformat:0 }}</span>
+                        </span>
+                        {% else %}
+                        <span>₹{{ reg.product.price|floatformat:0 }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% for combo in reg.product.combos.all %}
+                        <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1 me-1 mb-1" style="font-size:0.7rem;">{{ combo.quantity }}pcs → ₹{{ combo.price|floatformat:0 }}</span>
+                        {% empty %}
+                        <span class="text-muted x-small">—</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% if request.user.role == 'owner' or request.user.has_product_rights %}
+                        <span class="inline-edit stock-edit {% if reg.stock_quantity <= reg.low_stock_threshold %}text-danger fw-bold{% endif %}" data-id="{{ reg.id }}" data-type="stock">
+                            <span class="value">{{ reg.stock_quantity }}</span>
+                        </span>
+                        {% else %}
+                        <span class="{% if reg.stock_quantity <= reg.low_stock_threshold %}text-danger fw-bold{% endif %}">{{ reg.stock_quantity }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if request.user.role == 'owner' or request.user.has_product_rights %}
+                        <a href="{% url 'product_update' reg.product.pk %}?reg_id={{ reg.id }}" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
+                            <i class="bi bi-pencil-square me-1"></i> Edit
+                        </a>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center py-5 text-muted">No products found. Start by adding one.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="d-md-none bg-white bg-opacity-50">
+        {% for reg in page_obj %}
+        <div class="p-4 border-bottom position-relative hover-lift">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 small">{{ reg.branch.name }} ({{ reg.branch.code }})</span>
+                <div class="fw-bold text-primary h5 mb-0">
+                    ₹{{ reg.product.price|floatformat:0 }}
+                </div>
+            </div>
+            <div class="mb-2">
+                <div class="fw-bold text-dark h6 mb-1">{{ reg.product.name }}</div>
+                <div class="x-small text-muted">Barcode: {{ reg.product.barcode }}</div>
+                <div class="x-small text-muted mt-1">Stock: {{ reg.stock_quantity }}</div>
+                {% if reg.product.combos.all %}
+                <div class="mt-2">
+                    {% for combo in reg.product.combos.all %}
+                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1 me-1 mb-1" style="font-size:0.68rem;">{{ combo.quantity }}pcs → ₹{{ combo.price|floatformat:0 }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% if request.user.role == 'owner' or request.user.has_product_rights %}
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <a href="{% url 'product_update' reg.product.pk %}?reg_id={{ reg.id }}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                    <i class="bi bi-pencil me-1"></i> Edit
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="text-center py-5 text-muted small">No products found.</div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav aria-label="Page navigation" class="mt-4 animate-fade-in">
+    <ul class="pagination justify-content-center flex-wrap gap-1">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link rounded-pill border-0 shadow-sm" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if selected_branch %}&branch={{ selected_branch }}{% endif %}{% if active_filter %}&filter={{ active_filter }}{% endif %}">Previous</a>
+        </li>
+        {% endif %}
+
+        {% for i in page_obj.paginator.page_range %}
+            {% if page_obj.number == i %}
+            <li class="page-item active">
+                <span class="page-link rounded-pill border-0 shadow-sm bg-primary text-white">{{ i }}</span>
+            </li>
+            {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link rounded-pill border-0 shadow-sm" href="?page={{ i }}{% if q %}&q={{ q }}{% endif %}{% if selected_branch %}&branch={{ selected_branch }}{% endif %}{% if active_filter %}&filter={{ active_filter }}{% endif %}">{{ i }}</a>
+            </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link rounded-pill border-0 shadow-sm" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if selected_branch %}&branch={{ selected_branch }}{% endif %}{% if active_filter %}&filter={{ active_filter }}{% endif %}">Next</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<style>
+    .inline-edit { cursor: pointer; border-bottom: 1px dashed transparent; transition: all 0.2s; padding: 2px 5px; border-radius: 4px; display: inline-block; }
+    .inline-edit:hover { border-bottom-color: var(--bs-primary); background: rgba(0,0,0,0.02); }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.inline-edit').forEach(el => {
+            el.addEventListener('click', function() {
+                if (this.querySelector('input')) return;
+                
+                const type = this.dataset.type;
+                const id = this.dataset.id;
+                const oldValue = this.innerHTML;
+                const valueSpan = this.querySelector('.value');
+                const originalValue = valueSpan.innerText.trim();
+                
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.className = 'form-control form-control-sm rounded-pill d-inline-block shadow-sm border-primary';
+                input.style.width = '100px';
+                input.value = originalValue;
+                
+                this.innerHTML = '';
+                this.appendChild(input);
+                input.focus();
+
+                const finish = (content) => {
+                    this.innerHTML = content;
+                };
+
+                const save = async () => {
+                    const newValue = input.value;
+                    if (newValue === originalValue) {
+                        finish(oldValue);
+                        return;
+                    }
+
+                    input.disabled = true;
+                    const url = type === 'price' ? 
+                        `{% url 'update_product_price_ajax' 0 %}`.replace('0', id) :
+                        `{% url 'update_product_stock_ajax' 0 %}`.replace('0', id);
+
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify({ [type]: newValue })
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (type === 'price') {
+                                finish(`₹<span class="value">${data.price}</span>`);
+                            } else {
+                                const isLow = data.stock <= (parseInt('{{ reg.low_stock_threshold|default:10 }}'));
+                                this.classList.toggle('text-danger', isLow);
+                                this.classList.toggle('fw-bold', isLow);
+                                finish(`<span class="value">${data.stock}</span>`);
+                            }
+                        } else {
+                            finish(oldValue);
+                        }
+                    } catch (error) {
+                        finish(oldValue);
+                    }
+                };
+
+                input.onblur = save;
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') input.blur();
+                    if (e.key === 'Escape') finish(oldValue);
+                };
+            });
+        });
+    });
+</script>
+{% endblock %}

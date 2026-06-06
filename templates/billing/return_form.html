@@ -1,0 +1,488 @@
+{% extends 'base.html' %}
+
+{% block title %}Process Return – Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 720px;">
+
+    <!-- Header -->
+    <div class="text-center mb-4">
+        <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 rounded-circle mb-3" style="width:64px;height:64px;">
+            <i class="bi bi-arrow-return-left fs-3 text-warning"></i>
+        </div>
+        <h4 class="fw-bold mb-1">Process Return</h4>
+        <p class="text-muted small mb-0">Select the product from the bill, specify condition & action</p>
+    </div>
+
+    <!-- Alerts -->
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger border-0 rounded-4 shadow-sm">
+        {% for error in form.non_field_errors %}
+        <div><i class="bi bi-exclamation-triangle me-1"></i> {{ error }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} border-0 rounded-4 shadow-sm">{{ msg }}</div>
+    {% endfor %}
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-body p-4">
+            <form method="post" novalidate id="returnForm">
+                {% csrf_token %}
+
+                <!-- Invoice ID -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">{{ form.invoice_id.label }}</label>
+                    {{ form.invoice_id }}
+                    {% if form.invoice_id.errors %}
+                    <div class="text-danger small mt-1">{{ form.invoice_id.errors.0 }}</div>
+                    {% endif %}
+                    <div class="text-muted x-small mt-1" id="billInfo"></div>
+                </div>
+
+                <!-- Purchased Products List -->
+                <div id="purchasedProductsContainer" class="card bg-light border-0 rounded-4 mb-4" style="display:none;">
+                    <div class="card-body p-3">
+                        <div class="small fw-bold text-muted mb-2"><i class="bi bi-cart-check me-1"></i> Products Purchased in this Bill</div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0 small" id="purchasedProductsTable">
+                                <thead>
+                                    <tr class="x-small text-uppercase text-muted border-bottom">
+                                        <th class="ps-2">Product Name</th>
+                                        <th>Barcode</th>
+                                        <th>Qty</th>
+                                        <th>Price</th>
+                                        <th class="text-center" style="width: 80px;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="purchasedProductsBody">
+                                    <!-- Dynamically filled by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Selection -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">Product to Return</label>
+                    <select name="bill_item" id="id_bill_item" class="form-select rounded-pill border-0 bg-light" required>
+                        <option value="">-- Load bill first --</option>
+                    </select>
+                    {% if form.bill_item.errors %}
+                    <div class="text-danger small mt-1">{{ form.bill_item.errors.0 }}</div>
+                    {% endif %}
+                    <div class="text-muted x-small mt-1" id="productInfo"></div>
+                </div>
+
+                <!-- Quantity -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">{{ form.quantity.label }}</label>
+                    {{ form.quantity }}
+                    {% if form.quantity.errors %}
+                        <div class="text-danger small mt-1">
+                            {{ form.quantity.errors.0 }}
+                        </div>
+                    {% endif %}
+                </div>
+                <!-- Hidden field for return items JSON -->
+                {{ form.return_items }}
+                <!-- Add to Return List button -->
+                <button type="button" id="addReturnBtn" class="btn btn-outline-primary w-100 rounded-pill mt-2 mb-3">
+                    <i class="bi bi-plus-circle me-1"></i> Add Item to Return List
+                </button>
+
+                <!-- Condition & Action (side by side) -->
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small fw-bold text-muted">{{ form.condition.label }}</label>
+                        {{ form.condition }}
+                        {% if form.condition.errors %}
+                        <div class="text-danger small mt-1">{{ form.condition.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-bold text-muted">{{ form.action_type.label }}</label>
+                        {{ form.action_type }}
+                        {% if form.action_type.errors %}
+                        <div class="text-danger small mt-1">{{ form.action_type.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Condition Info Cards -->
+                <div class="mb-3" id="conditionInfo" style="display:none;">
+                    <div class="alert border-0 rounded-4 mb-0 py-2 px-3 small" id="conditionAlert">
+                        <i class="bi" id="conditionIcon"></i>
+                        <span id="conditionText"></span>
+                    </div>
+                </div>
+
+                <!-- Pending Return List -->
+                <div id="returnListContainer" class="card bg-light border-0 rounded-4 mb-4" style="display:none;">
+                    <div class="card-body p-3">
+                        <div class="small fw-bold text-muted mb-2"><i class="bi bi-list-check me-1"></i> Return List</div>
+                        <table class="table table-sm align-middle mb-0 small" id="returnListTable">
+                            <thead>
+                                <tr class="x-small text-uppercase text-muted">
+                                    <th>Product</th>
+                                    <th>Qty</th>
+                                    <th>Price</th>
+                                    <th class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Reason -->
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-muted">{{ form.reason.label }}</label>
+                    {{ form.reason }}
+                    {% if form.reason.errors %}
+                    <div class="text-danger small mt-1">{{ form.reason.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Summary Card -->
+                <div class="card bg-light border-0 rounded-4 mb-4" id="summaryCard" style="display:none;">
+                    <div class="card-body p-3">
+                        <div class="small fw-bold text-muted mb-2"><i class="bi bi-receipt me-1"></i> Return Summary</div>
+                        <table class="table table-sm table-borderless mb-0 small" id="summaryTable">
+                            <thead class="x-small text-uppercase text-muted border-bottom">
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Qty × Price</th>
+                                    <th>Refund Amount</th>
+                                    <th>Stock Impact</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summaryBody">
+                                <!-- rows will be inserted by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-warning w-100 rounded-pill py-2 fw-bold shadow-sm">
+                    <i class="bi bi-check-circle me-1"></i> Confirm Return
+                </button>
+                <a href="{% url 'owner_bill_list' %}" class="btn btn-light w-100 rounded-pill py-2 mt-2">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Sales Report
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+    const invoiceInput = document.getElementById('id_invoice_id');
+    const itemSelect = document.getElementById('id_bill_item');
+    const qtyInput = document.getElementById('id_quantity');
+    const conditionSelect = document.getElementById('id_condition');
+    const actionSelect = document.getElementById('id_action_type');
+    const billInfo = document.getElementById('billInfo');
+    const productInfo = document.getElementById('productInfo');
+    const conditionInfo = document.getElementById('conditionInfo');
+    const conditionAlert = document.getElementById('conditionAlert');
+    const conditionIcon = document.getElementById('conditionIcon');
+    const conditionText = document.getElementById('conditionText');
+    const summaryCard = document.getElementById('summaryCard');
+    let currentItems = [];
+    const returnList = [];
+    const returnListTableBody = document.querySelector('#returnListTable tbody');
+    const returnListContainer = document.getElementById('returnListContainer');
+    const addReturnBtn = document.getElementById('addReturnBtn');
+    const returnItemsField = document.getElementById('id_return_items');
+
+    // Restore returnList from returnItemsField value on load (e.g., after validation error)
+    if (returnItemsField && returnItemsField.value) {
+        try {
+            const savedItems = JSON.parse(returnItemsField.value);
+            savedItems.forEach(item => {
+                returnList.push(item);
+            });
+        } catch (e) {
+            console.error('Error parsing saved return items:', e);
+        }
+    }
+
+    // Pre-loaded items from server (for initial page load with invoice_id)
+    const preloaded = {{ bill_items_json|safe }};
+    if (preloaded && preloaded.length > 0) {
+        populateItems(preloaded);
+    }
+
+    // Fetch items when invoice ID changes
+    let fetchTimer;
+    invoiceInput.addEventListener('input', function(){
+        clearTimeout(fetchTimer);
+        const val = this.value.trim();
+        if (!val) { resetItems(); return; }
+        fetchTimer = setTimeout(() => fetchBillItems(val), 400);
+    });
+
+    // Also trigger initial load if the input already has a value
+    if (invoiceInput.value.trim()) {
+        fetchBillItems(invoiceInput.value.trim());
+    }
+
+    function fetchBillItems(invoiceId) {
+        billInfo.textContent = 'Loading...';
+        fetch(`{% url 'get_bill_items' %}?invoice_id=${invoiceId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    billInfo.innerHTML = '<span class="text-danger">' + data.error + '</span>';
+                    resetItems();
+                    return;
+                }
+                if (data.items.length === 0) {
+                    billInfo.innerHTML = '<span class="text-danger">No items found in this bill</span>';
+                    resetItems();
+                    return;
+                }
+                billInfo.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Bill found – ' + data.items.length + ' product(s)</span>';
+                populateItems(data.items);
+            })
+            .catch(() => {
+                billInfo.innerHTML = '<span class="text-danger">Error loading bill</span>';
+                resetItems();
+            });
+    }
+
+    function populateItems(items) {
+        currentItems = items;
+        itemSelect.innerHTML = '<option value="">-- Select product --</option>';
+        
+        const tbody = document.getElementById('purchasedProductsBody');
+        tbody.innerHTML = '';
+
+        items.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            
+            const remaining = item.remaining_quantity !== undefined ? item.remaining_quantity : item.quantity;
+            const returned = item.returned_quantity !== undefined ? item.returned_quantity : 0;
+            
+            opt.textContent = `${item.product_name} (Qty: ${item.quantity}`;
+            if (returned > 0) {
+                opt.textContent += `, Returned: ${returned}`;
+            }
+            opt.textContent += `, Remaining: ${remaining} × ₹${item.unit_price})`;
+            
+            opt.dataset.qty = remaining;
+            opt.dataset.price = item.unit_price;
+            opt.dataset.name = item.product_name;
+            
+            if (remaining <= 0) {
+                opt.disabled = true;
+                opt.textContent += ' [Fully Returned]';
+            }
+            
+            itemSelect.appendChild(opt);
+
+            // Create table row
+            const row = document.createElement('tr');
+            
+            let qtyBadge = `<span class="badge bg-secondary-subtle text-secondary rounded-pill px-2">x${item.quantity}</span>`;
+            if (returned > 0) {
+                qtyBadge += ` <span class="badge bg-danger-subtle text-danger rounded-pill px-2" style="font-size: 0.7rem;">Returned: ${returned}</span>`;
+            }
+            
+            const isSelectDisabled = remaining <= 0;
+            const btnClass = isSelectDisabled ? 'btn btn-secondary btn-sm rounded-pill py-0 px-3' : 'btn btn-warning btn-sm rounded-pill py-0 px-3 select-return-btn';
+            const btnText = isSelectDisabled ? 'Fully Returned' : 'Select';
+            const btnDisabledAttr = isSelectDisabled ? 'disabled' : '';
+
+            row.innerHTML = `
+                <td class="fw-semibold text-dark ps-2">${item.product_name}</td>
+                <td><code class="text-muted small">${item.product_barcode || 'N/A'}</code></td>
+                <td>${qtyBadge}</td>
+                <td>₹${item.unit_price}</td>
+                <td class="text-center">
+                    <button type="button" class="${btnClass}" data-id="${item.id}" ${btnDisabledAttr} style="font-size: 0.75rem;">
+                        ${btnText}
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        document.getElementById('purchasedProductsContainer').style.display = 'block';
+
+        // Add event listeners to the Select buttons
+        tbody.querySelectorAll('.select-return-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const itemId = this.dataset.id;
+                itemSelect.value = itemId;
+                itemSelect.dispatchEvent(new Event('change'));
+                
+                // Focus on quantity field
+                qtyInput.focus();
+            });
+        });
+        
+        // Refresh UI to show restored items
+        refreshReturnListUI();
+    }
+
+    function resetItems() {
+        currentItems = [];
+        itemSelect.innerHTML = '<option value="">-- Load bill first --</option>';
+        productInfo.textContent = '';
+        summaryCard.style.display = 'none';
+        document.getElementById('purchasedProductsContainer').style.display = 'none';
+    }
+
+    // Item selected
+    itemSelect.addEventListener('change', function(){
+        const opt = this.options[this.selectedIndex];
+        if (opt && opt.dataset.qty) {
+            const maxQty = parseInt(opt.dataset.qty);
+            qtyInput.max = maxQty;
+            qtyInput.value = maxQty > 0 ? 1 : 0;
+            productInfo.innerHTML = `<i class="bi bi-info-circle me-1"></i>Remaining returnable qty: <strong>${maxQty}</strong> | Unit price: <strong>₹${opt.dataset.price}</strong>`;
+        } else {
+            productInfo.textContent = '';
+        }
+        updateSummary();
+    });
+
+    // Condition / action change
+    conditionSelect.addEventListener('change', updateConditionInfo);
+    actionSelect.addEventListener('change', updateConditionInfo);
+    qtyInput.addEventListener('input', updateSummary);
+
+    function updateConditionInfo() {
+        const cond = conditionSelect.value;
+        const action = actionSelect.value;
+        conditionInfo.style.display = 'block';
+
+        if (cond === 'DAMAGED') {
+            conditionAlert.className = 'alert border-0 rounded-4 mb-0 py-2 px-3 small bg-danger bg-opacity-10 text-danger';
+            conditionIcon.className = 'bi bi-exclamation-triangle-fill me-1';
+            conditionText.textContent = 'Damaged product will NOT be added to sellable stock. A damage adjustment (Op/In/Out/Cl) will be recorded.';
+        } else if (cond === 'GOOD' && action === 'REFUND') {
+            conditionAlert.className = 'alert border-0 rounded-4 mb-0 py-2 px-3 small bg-success bg-opacity-10 text-success';
+            conditionIcon.className = 'bi bi-box-seam me-1';
+            conditionText.textContent = 'Good condition product will be added back to stock. Credit note issued for refund.';
+        } else if (cond === 'GOOD' && action === 'EXCHANGE') {
+            conditionAlert.className = 'alert border-0 rounded-4 mb-0 py-2 px-3 small bg-primary bg-opacity-10 text-primary';
+            conditionIcon.className = 'bi bi-arrow-left-right me-1';
+            conditionText.textContent = 'Good condition product will be added back to stock. Customer can exchange for another product.';
+        } else {
+            conditionInfo.style.display = 'none';
+        }
+        updateSummary();
+    }
+
+    function updateSummary() {
+        // Build summary rows for each item in returnList
+        const summaryBody = document.getElementById('summaryBody');
+        summaryBody.innerHTML = '';
+        if (returnList.length === 0) {
+            summaryCard.style.display = 'none';
+            return;
+        }
+        returnList.forEach(item => {
+            const cond = item.condition;
+            const refund = item.quantity * item.price;
+            const stockImpact = cond === 'GOOD'
+                ? `<span class="text-success">+${item.quantity} added back to stock</span>`
+                : `<span class="text-danger">Damaged – adjustment</span>`;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="fw-semibold text-dark ps-2">${item.name}</td>
+                <td>${item.quantity} × ₹${item.price}</td>
+                <td>₹${refund}</td>
+                <td>${stockImpact}</td>
+            `;
+            summaryBody.appendChild(row);
+        });
+        summaryCard.style.display = 'block';
+    }
+
+    function refreshReturnListUI() {
+        // Clear table
+        returnListTableBody.innerHTML = '';
+        returnList.forEach((item, idx) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="fw-semibold text-dark ps-2">${item.name}</td>
+                <td>${item.quantity}</td>
+                <td>₹${item.price}</td>
+                <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm rounded-pill py-0 px-2 remove-return-btn" data-index="${idx}" style="font-size:0.75rem;">Remove</button></td>
+            `;
+            returnListTableBody.appendChild(row);
+        });
+        // Show/hide container
+        returnListContainer.style.display = returnList.length > 0 ? 'block' : 'none';
+        // Update hidden field with full details so we can restore them on reload!
+        returnItemsField.value = JSON.stringify(returnList.map(i => ({
+            id: i.id,
+            name: i.name,
+            price: i.price,
+            quantity: i.quantity,
+            condition: i.condition,
+            action_type: i.action_type
+        })));
+        // Update summary after list changes
+        updateSummary();
+    }
+
+    addReturnBtn.addEventListener('click', function(){
+        const opt = itemSelect.options[itemSelect.selectedIndex];
+        if (!opt || !opt.value) { alert('Select a product first.'); return; }
+        
+        // 1. Prevent duplicate entries in returnList
+        const alreadyInList = returnList.some(item => item.id == opt.value);
+        if (alreadyInList) {
+            alert('This product is already added to the return list. If you want to change its quantity, please remove it and add it again.');
+            return;
+        }
+
+        const maxQty = parseInt(opt.dataset.qty);
+        const qty = parseInt(qtyInput.value) || 1;
+        if (qty < 1 || qty > maxQty) { alert(`Quantity must be between 1 and ${maxQty} (remaining returnable quantity).`); return; }
+        
+        // Add to list
+        returnList.push({
+            id: opt.value,
+            name: opt.dataset.name,
+            price: parseInt(opt.dataset.price),
+            quantity: qty,
+            condition: conditionSelect.value,
+            action_type: actionSelect.value
+        });
+        refreshReturnListUI();
+    });
+
+    // Delegate remove button clicks
+    returnListTableBody.addEventListener('click', function(e){
+        if (e.target && e.target.matches('.remove-return-btn')) {
+            const idx = parseInt(e.target.dataset.index);
+            if (!isNaN(idx)) {
+                returnList.splice(idx, 1);
+                refreshReturnListUI();
+            }
+        }
+    });
+
+    // Ensure hidden field is updated on form submit
+    const returnForm = document.getElementById('returnForm');
+    returnForm.addEventListener('submit', function(){
+        // hidden field already synced
+    });
+
+    // Trigger on page load
+    updateConditionInfo();
+    refreshReturnListUI();
+})();
+</script>
+{% endblock %}

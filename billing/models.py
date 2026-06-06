@@ -1,0 +1,74 @@
+from django.db import models
+from django.conf import settings
+import uuid
+# Import additional models defined in separate file
+from .return_models import ReturnRequest, CreditNote
+
+class Bill(models.Model):
+    PAYMENT_CHOICES = (
+        ('cash', 'Cash'),
+        ('online', 'Online'),
+        ('split', 'Split Payment'),
+    )
+    branch = models.ForeignKey('core.Branch', on_delete=models.CASCADE, related_name='bills')
+    staff = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='bills_created')
+    customer_name = models.CharField(max_length=100, blank=True, null=True)
+    customer_phone = models.CharField(max_length=15, blank=True, null=True)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=0, default=0)
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=0, default=0)
+    cash_amount = models.DecimalField(max_digits=12, decimal_places=0, default=0)
+    online_amount = models.DecimalField(max_digits=12, decimal_places=0, default=0)
+    payment_method = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default='cash')
+    share_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    sequence_number = models.PositiveIntegerField(null=True, blank=True, db_index=True)
+    invoice_number = models.CharField(max_length=50, unique=True, null=True, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def item_savings(self):
+        from decimal import Decimal
+        return sum((Decimal(str(item.savings)) for item in self.items.all()), Decimal('0'))
+
+    @property
+    def total_savings(self):
+        from decimal import Decimal
+        return Decimal(str(self.item_savings)) + Decimal(str(self.discount_amount))
+
+    def save(self, *args, **kwargs):
+        if not self.invoice_number:
+            max_seq = Bill.objects.filter(branch=self.branch).aggregate(models.Max('sequence_number'))['sequence_number__max'] or 0
+            self.sequence_number = max_seq + 1
+            prefix = self.branch.invoice_prefix or 'AG'
+            self.invoice_number = f"{prefix}-{self.sequence_number:04d}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        bill_num = self.invoice_number or f"#{self.id}"
+        return f"Bill {bill_num} - {self.branch.name} - {self.total_amount}"
+
+class BillItem(models.Model):
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey('core.Product', on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=0)
+    subtotal = models.DecimalField(max_digits=12, decimal_places=0)
+
+    @property
+    def regular_total(self):
+        from decimal import Decimal
+        return Decimal(str(self.product.price)) * self.quantity
+
+    @property
+    def savings(self):
+        from decimal import Decimal
+        reg_total = self.regular_total
+        sub = Decimal(str(self.subtotal))
+        return reg_total - sub if reg_total > sub else Decimal('0')
+
+    def save(self, *args, **kwargs):
+        if self.subtotal is None:
+            self.subtotal = self.unit_price * self.quantity
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.product.name} x {self.quantity}"

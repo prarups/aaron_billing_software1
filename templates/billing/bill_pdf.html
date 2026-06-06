@@ -1,0 +1,157 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Bill {{ bill.invoice_number|default:bill.id }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            font-size: 22px;
+            margin: 0 0 5px 0;
+            color: #1a3c5e;
+        }
+        .header p {
+            margin: 2px 0;
+            font-size: 11px;
+            color: #555;
+        }
+        .bill-meta {
+            display: table;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        .bill-meta .left, .bill-meta .right {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+        }
+        .bill-meta .right {
+            text-align: right;
+        }
+        .bill-meta p {
+            margin: 3px 0;
+            font-size: 11px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        thead th {
+            background-color: #1a3c5e;
+            color: white;
+            padding: 8px 6px;
+            text-align: left;
+            font-size: 11px;
+        }
+        thead th.right { text-align: right; }
+        tbody tr:nth-child(even) {
+            background-color: #f5f8ff;
+        }
+        tbody td {
+            padding: 7px 6px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 11px;
+        }
+        tbody td.right { text-align: right; }
+        .totals {
+            text-align: right;
+            border-top: 2px solid #333;
+            padding-top: 8px;
+        }
+        .totals p {
+            margin: 4px 0;
+            font-size: 12px;
+        }
+        .totals .grand-total {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1a3c5e;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #ccc;
+            font-size: 10px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Aaron Garments</h1>
+        <p>{{ bill.branch.name }} (Code: {{ bill.branch.code }}) &bull; Tax Invoice / Cash Bill</p>
+    </div>
+
+    <div class="bill-meta">
+        <div class="left">
+            <p><strong>Bill No:</strong> {{ bill.invoice_number|default:bill.id }}</p>
+            <p><strong>Date:</strong> {{ bill.created_at|date:"d M Y, h:i A" }}</p>
+            <p><strong>Staff:</strong> {{ bill.staff.get_full_name|default:bill.staff.username }}</p>
+        </div>
+        <div class="right">
+            <p><strong>Customer:</strong> {{ bill.customer_name|default:"Walk-in Customer" }}</p>
+            {% if bill.customer_phone %}
+            <p><strong>Phone:</strong> {{ bill.customer_phone }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Product</th>
+                <th class="right">Unit Price</th>
+                <th class="right">Qty</th>
+                <th class="right">Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in bill.items.all %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>
+                    <strong>{{ item.product.name }}</strong>
+                    {% if item.savings > 0 %}
+                    <br><span style="font-size: 9px; color: #28a745;">Combo Saved: &#8377;{{ item.savings|floatformat:0 }} (Original: &#8377;{{ item.product.price|floatformat:0 }} each)</span>
+                    {% endif %}
+                </td>
+                <td class="right">&#8377;{{ item.unit_price|floatformat:0 }}</td>
+                <td class="right">{{ item.quantity }}</td>
+                <td class="right">&#8377;{{ item.subtotal|floatformat:0 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="totals">
+        {% if bill.total_savings > 0 %}
+        <p>Subtotal (Original): &#8377;{{ bill.total_amount|add:bill.total_savings|floatformat:0 }}</p>
+        <p style="color: #28a745;">Total Savings: - &#8377;{{ bill.total_savings|floatformat:0 }}</p>
+        {% endif %}
+        <p class="grand-total">Total: &#8377;{{ bill.total_amount|floatformat:0 }}</p>
+    </div>
+
+    <div class="footer">
+        <p>Thank you for shopping with us!</p>
+        <p>{{ bill.branch.name }} (Code: {{ bill.branch.code }}) &bull; {{ bill.created_at|date:"Y" }}</p>
+    </div>
+</body>
+</html>

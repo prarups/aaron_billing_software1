@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+
+{% block title %}Bulk Insert Products - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center animate-fade-in">
+    <div class="col-12 col-lg-8">
+
+        <!-- Header -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+            <div>
+                <h4 class="fw-bold m-0 text-primary"><i class="bi bi-cloud-upload me-2"></i>Bulk Insert Products</h4>
+                <p class="text-muted small mb-0">Upload a CSV file to add or update multiple products at once</p>
+            </div>
+            <a href="{% url 'product_list' %}" class="btn btn-outline-secondary rounded-pill px-4 btn-sm mt-3 mt-md-0">
+                <i class="bi bi-arrow-left me-1"></i> Back to Products
+            </a>
+        </div>
+
+        <!-- Results Banner -->
+        {% if results %}
+        <div class="card border-0 shadow-sm mb-4 overflow-hidden animate-fade-in">
+            <div class="card-body p-0">
+                <div class="row g-0">
+                    <div class="col-6 p-4 bg-success bg-opacity-10 text-center">
+                        <div class="fs-2 fw-bold text-success">{{ results.success_count }}</div>
+                        <div class="small fw-bold text-muted">Imported Successfully</div>
+                    </div>
+                    <div class="col-6 p-4 bg-danger bg-opacity-10 text-center">
+                        <div class="fs-2 fw-bold text-danger">{{ results.error_count }}</div>
+                        <div class="small fw-bold text-muted">Errors</div>
+                    </div>
+                </div>
+                {% if results.errors %}
+                <div class="p-3 border-top bg-light">
+                    <h6 class="fw-bold small text-danger mb-2"><i class="bi bi-exclamation-triangle me-1"></i> Error Details</h6>
+                    <div class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
+                        {% for err in results.errors %}
+                        <div class="list-group-item bg-transparent border-0 py-1 px-0 x-small text-danger">
+                            <i class="bi bi-dot"></i> {{ err }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Messages -->
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show border-0 shadow-sm rounded-3" role="alert">
+            <i class="bi bi-exclamation-circle me-1"></i> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+
+        <!-- Upload Card -->
+        <div class="card border-0 shadow-sm p-4 mb-4 bg-white">
+            <form method="post" enctype="multipart/form-data" id="upload-form">
+                {% csrf_token %}
+                
+                <!-- Drop Zone -->
+                <div class="upload-zone text-center p-5 rounded-3 mb-4" id="drop-zone">
+                    <input type="file" name="csv_file" id="csv-file-input" accept=".csv" class="d-none">
+                    <div id="upload-placeholder">
+                        <div class="mb-3">
+                            <i class="bi bi-cloud-arrow-up fs-1 text-primary opacity-50"></i>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-1">Drop your CSV file here</h6>
+                        <p class="text-muted small mb-3">or click to browse</p>
+                        <button type="button" class="btn btn-outline-primary rounded-pill px-4 btn-sm" onclick="document.getElementById('csv-file-input').click()">
+                            <i class="bi bi-folder2-open me-1"></i> Choose File
+                        </button>
+                    </div>
+                    <div id="file-selected" class="d-none">
+                        <i class="bi bi-file-earmark-check fs-1 text-success d-block mb-2"></i>
+                        <h6 class="fw-bold text-success mb-1" id="file-name">file.csv</h6>
+                        <p class="text-muted x-small mb-0" id="file-size">0 KB</p>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="d-grid gap-2 d-md-flex">
+                    <button type="submit" class="btn btn-primary rounded-pill px-5 py-2 flex-grow-1 fw-bold shadow-sm" id="submit-btn" disabled>
+                        <i class="bi bi-upload me-1"></i> Import Products
+                    </button>
+                    <a href="{% url 'download_bulk_template' %}" class="btn btn-outline-success rounded-pill px-4 py-2">
+                        <i class="bi bi-download me-1"></i> Download Template
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Instructions -->
+        <div class="card border-0 shadow-sm p-4 bg-white">
+            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-info-circle me-1"></i> CSV Format Guide</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-3">
+                    <thead class="bg-light">
+                        <tr class="x-small text-uppercase text-muted fw-bold">
+                            <th>Column</th>
+                            <th>Required</th>
+                            <th>Example</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody class="small">
+                        <tr>
+                            <td class="fw-bold">Branch</td>
+                            <td><span class="badge bg-warning-subtle text-warning rounded-pill">Optional</span></td>
+                            <td><code>Main Store</code></td>
+                            <td>Branch name. Creates new branch if not found.</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Product Name</td>
+                            <td><span class="badge bg-danger-subtle text-danger rounded-pill">Required</span></td>
+                            <td><code>Blue Jeans</code></td>
+                            <td>Name of the product</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Barcode</td>
+                            <td><span class="badge bg-danger-subtle text-danger rounded-pill">Required</span></td>
+                            <td><code>BJ001</code></td>
+                            <td>Unique barcode for POS scanning</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Price</td>
+                            <td><span class="badge bg-warning-subtle text-warning rounded-pill">Optional</span></td>
+                            <td><code>1299</code></td>
+                            <td>Unit price (defaults to 0)</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Stock</td>
+                            <td><span class="badge bg-warning-subtle text-warning rounded-pill">Optional</span></td>
+                            <td><code>50</code></td>
+                            <td>Stock quantity (defaults to 0)</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Low Stock Level</td>
+                            <td><span class="badge bg-warning-subtle text-warning rounded-pill">Optional</span></td>
+                            <td><code>10</code></td>
+                            <td>Low stock alert threshold (defaults to 10)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="alert alert-info border-0 py-2 small mb-0 rounded-3">
+                <i class="bi bi-lightbulb me-1"></i>
+                <strong>Tip:</strong> If a product with the same barcode already exists, its name and price will be updated. If the branch entry already exists, the stock levels will be updated.
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .upload-zone {
+        border: 2px dashed rgba(var(--bs-primary-rgb), 0.3);
+        background: rgba(var(--bs-primary-rgb), 0.02);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+        border-color: var(--bs-primary);
+        background: rgba(var(--bs-primary-rgb), 0.06);
+        transform: translateY(-2px);
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('csv-file-input');
+    const submitBtn = document.getElementById('submit-btn');
+    const placeholder = document.getElementById('upload-placeholder');
+    const fileSelected = document.getElementById('file-selected');
+    const fileName = document.getElementById('file-name');
+    const fileSize = document.getElementById('file-size');
+
+    // Click to browse
+    dropZone.addEventListener('click', function(e) {
+        if (e.target.tagName !== 'BUTTON') fileInput.click();
+    });
+
+    // Drag and drop
+    ['dragenter', 'dragover'].forEach(event => {
+        dropZone.addEventListener(event, (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(event => {
+        dropZone.addEventListener(event, (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+        });
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            fileInput.files = files;
+            showFile(files[0]);
+        }
+    });
+
+    // File selected
+    fileInput.addEventListener('change', function() {
+        if (this.files.length) {
+            showFile(this.files[0]);
+        }
+    });
+
+    function showFile(file) {
+        placeholder.classList.add('d-none');
+        fileSelected.classList.remove('d-none');
+        fileName.textContent = file.name;
+        fileSize.textContent = (file.size / 1024).toFixed(1) + ' KB';
+        submitBtn.disabled = false;
+    }
+});
+</script>
+{% endblock %}

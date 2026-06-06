@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+
+{% block title %}Bill {{ bill.invoice_number|default:bill.id }} - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center animate-fade-in">
+    <div class="col-md-7">
+        <div class="glass-card border-0 shadow-lg overflow-hidden">
+            <!-- Receipt Header -->
+            <div class="card-body p-4">
+                <div class="text-center mb-4 bg-vibrant p-4 mx-n4 mt-n4">
+                    <h3 class="fw-bold text-white mb-1">Aaron Garments</h3>
+                    <p class="text-white opacity-75 small mb-0">{{ bill.branch.name }} (Code: {{ bill.branch.code }}) &bull; Tax Invoice / Official Bill</p>
+                </div>
+
+                <!-- Bill Meta -->
+                <div class="row mb-3 pb-3 border-bottom">
+                    <div class="col-6">
+                        <p class="small mb-1"><span class="text-muted">Bill No</span><br><strong>{{ bill.invoice_number|default:bill.id }}</strong>
+                        </p>
+                        <p class="small mb-0"><span class="text-muted">Date</span><br><strong>{{ bill.created_at|date:"d M Y, h:i A" }}</strong></p>
+                    </div>
+                    <div class="col-6 text-end">
+                        <div class="d-flex justify-content-end align-items-center mb-1">
+                            <span class="small text-muted me-2">Customer</span>
+                            <button class="btn btn-sm btn-light p-1 custom-edit-btn" data-bs-toggle="modal"
+                                data-bs-target="#editCustomerModal" title="Edit Customer">
+                                <i class="bi bi-pencil-square text-primary"></i>
+                            </button>
+                        </div>
+                        <p class="small mb-1"><strong>{{ bill.customer_name|default:"Walk-in" }}</strong></p>
+                        {% if bill.customer_phone %}
+                        <p class="small mb-0"><strong>{{ bill.customer_phone }}</strong></p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <table class="table table-sm align-middle mb-3">
+                    <thead class="bg-light">
+                        <tr class="small text-muted fw-bold">
+                            <th>#</th>
+                            <th>Product</th>
+                            <th class="text-center">Qty</th>
+                            <th class="text-end">Price</th>
+                            <th class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td class="small">{{ forloop.counter }}</td>
+                            <td class="fw-semibold">
+                                <div>{{ item.product.name }}</div>
+                                {% if item.savings > 0 %}
+                                <div class="mt-1">
+                                    <span class="badge bg-success-subtle text-success rounded-pill x-small fw-semibold" style="font-size: 0.72rem;">
+                                        <i class="bi bi-tag-fill me-1"></i> Combo Saved: ₹{{ item.savings|floatformat:0 }} (Original: ₹{{ item.product.price|floatformat:0 }} each)
+                                    </span>
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">{{ item.quantity }}</td>
+                            <td class="text-end small">₹{{ item.unit_price|floatformat:0 }}</td>
+                            <td class="text-end fw-bold">₹{{ item.subtotal|floatformat:0 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <!-- Grand Total -->
+                <div class="bg-vibrant glass-card p-4 mx-n2 mb-4">
+                    {% if bill.total_savings > 0 %}
+                    <div
+                        class="d-flex justify-content-between align-items-center border-bottom border-white border-opacity-25 mb-2 pb-2">
+                        <span class="text-white opacity-75 small">Subtotal (Original)</span>
+                        <span class="text-white small">₹{{ bill.total_amount|add:bill.total_savings|floatformat:0 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-white opacity-75 small">Total Savings</span>
+                        <span class="text-white fw-bold">- ₹{{ bill.total_savings|floatformat:0 }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-white opacity-75 fw-bold">FINAL TOTAL</span>
+                        <h2 class="fw-bold text-white mb-0">₹{{ bill.total_amount|floatformat:0 }}</h2>
+                    </div>
+                    {% if bill.total_savings > 0 %}
+                    <div class="text-center mt-3 pt-3 border-top border-white border-opacity-25">
+                        <span class="badge bg-white text-success rounded-pill px-3 py-2 mt-1">
+                            <i class="bi bi-stars me-1"></i> You saved ₹{{ bill.total_savings|floatformat:0 }}!
+                        </span>
+                    </div>
+                    {% endif %}
+                    {% if bill.payment_method == 'split' %}
+                    <div class="d-flex justify-content-between border-top border-white border-opacity-25 mt-3 pt-3">
+                        <div class="text-white opacity-75 small">
+                            <i class="bi bi-cash me-1"></i>Cash: ₹{{ bill.cash_amount|floatformat:0 }}
+                        </div>
+                        <div class="text-white opacity-75 small">
+                            <i class="bi bi-credit-card me-1"></i>Online: ₹{{ bill.online_amount|floatformat:0 }}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-white opacity-75 small mt-2 d-flex justify-content-end">
+                        Paid via {{ bill.get_payment_method_display }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Public Link for staff to copy -->
+                <div class="glass-card p-3 mb-4 bg-light bg-opacity-50 border-0">
+                    <label class="form-label x-small text-muted text-uppercase fw-bold mb-2">Customer's Digital
+                        Receipt</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control bg-white border-0 py-2 rounded-pill-sm me-1 px-3"
+                            value="{{ public_url }}" id="publicLink" readonly>
+                        <button class="btn btn-vibrant rounded-pill-sm px-3 shadow-none" type="button"
+                            onclick="copyLink(this)">
+                            <i class="bi bi-copy"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-grid gap-3">
+                    <div class="d-flex gap-2">
+                        {% if wa_link %}
+                        <a href="{{ wa_link }}" target="_blank"
+                            class="btn btn-success rounded-pill-sm px-4 fw-bold flex-grow-1 py-3 shadow">
+                            <i class="bi bi-whatsapp me-2"></i>Send Bill
+                        </a>
+                        {% endif %}
+                    </div>
+                    <a href="{% url 'pos_index' %}"
+                        class="btn btn-outline-primary rounded-pill-sm px-4 py-3 border-0 bg-light">
+                        <i class="bi bi-plus-circle me-1"></i> New Transaction
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Customer Modal -->
+<div class="modal fade" id="editCustomerModal" tabindex="-1" aria-labelledby="editCustomerModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold fs-6" id="editCustomerModalLabel"><i
+                        class="bi bi-person-lines-fill me-2 text-primary"></i>Edit Customer</h5>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="editCustomerForm">
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Customer Name</label>
+                        <input type="text" class="form-control" id="editCustomerName"
+                            value="{{ bill.customer_name|default:'' }}">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Phone Number</label>
+                        <input type="text" class="form-control" id="editCustomerPhone"
+                            value="{{ bill.customer_phone|default:'' }}">
+                    </div>
+                    <button type="button" class="btn btn-primary w-100 rounded-pill py-2 fw-bold"
+                        onclick="updateCustomer()">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function copyLink(btn) {
+        const copyText = document.getElementById("publicLink");
+        if (copyText) {
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(copyText.value);
+
+            // Change icon to tick
+            const icon = btn.querySelector('i');
+            if (icon) {
+                const originalClass = icon.className;
+                icon.className = 'bi bi-check2 text-success';
+
+                // Revert after 2 seconds
+                setTimeout(() => {
+                    icon.className = originalClass;
+                }, 2000);
+            }
+        }
+    }
+
+    function updateCustomer() {
+        const name = document.getElementById('editCustomerName').value;
+        const phone = document.getElementById('editCustomerPhone').value;
+
+        fetch("{% url 'update_customer_details' bill.id %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                customer_name: name,
+                customer_phone: phone
+            })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert("Error: " + data.error);
+                }
+            })
+            .catch(err => {
+                alert("Network error.");
+            });
+    }
+</script>
+<style>
+    .custom-edit-btn {
+        border-radius: 50%;
+        width: 25px;
+        height: 25px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .custom-edit-btn i {
+        font-size: 0.8rem;
+    }
+</style>
+{% endblock %}

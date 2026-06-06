@@ -1,0 +1,648 @@
+{% extends 'base.html' %}
+
+{% block title %}POS - Aaron Billing{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cart-item {
+        border-bottom: 1px solid #edf2f7;
+        padding-bottom: 0.6rem;
+        margin-bottom: 0.6rem;
+    }
+    .cart-item-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #2d3748;
+    }
+    .cart-item-price {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--bs-primary);
+    }
+    .scanner-container {
+        border-radius: 1rem;
+        overflow: hidden;
+        background: #000;
+        margin-bottom: 1rem;
+        display: none;
+    }
+    #reader {
+        width: 100%;
+    }
+    .qty-control {
+        width: 100px;
+    }
+    .btn-xs {
+        padding: 0.15rem 0.45rem;
+        font-size: 0.75rem;
+        border-radius: 0.5rem;
+    }
+    /* Mobile optimization */
+    @media (max-width: 991.98px) {
+        .pos-container {
+            flex-direction: row;
+        }
+        .cart-card .card-header, .cart-card .card-footer {
+            padding: 0.4rem !important;
+        }
+        .cart-item {
+            padding-bottom: 0.25rem;
+            margin-bottom: 0.25rem;
+        }
+        .cart-item-name, .cart-item-price {
+            font-size: 0.7rem !important;
+        }
+        .qty-control {
+            width: 70px;
+        }
+        .pos-item-card {
+            padding: 0.25rem !important;
+        }
+        .pos-item-card .fw-bold {
+            font-size: 0.65rem !important;
+        }
+        .pos-item-card .text-primary {
+            font-size: 0.65rem !important;
+        }
+        .cart-card h5, .cart-card h6 { font-size: 0.8rem !important; }
+        .cart-card .badge { font-size: 0.6rem !important; }
+        .qty-control .btn, .qty-control input { padding: 0.1rem !important; font-size: 0.7rem !important; }
+    }
+    .pos-item-card {
+        transition: transform 0.1s;
+        cursor: pointer;
+    }
+    .pos-item-card:active {
+        transform: scale(0.95);
+    }
+
+    /* Scan Feedback Toast */
+    #scan-toast {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.85);
+        z-index: 9999;
+        min-width: 220px;
+        padding: 1rem 1.5rem;
+        border-radius: 1.25rem;
+        font-weight: 700;
+        font-size: 1.1rem;
+        text-align: center;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+    }
+    #scan-toast.show {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    #scan-toast.toast-success {
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: #fff;
+    }
+    #scan-toast.toast-error {
+        background: linear-gradient(135deg, #ef4444, #b91c1c);
+        color: #fff;
+        animation: blink-error 0.15s ease alternate 3;
+    }
+    @keyframes blink-error {
+        from { opacity: 1; }
+        to   { opacity: 0.3; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Scan Feedback Toast -->
+<div id="scan-toast"></div>
+
+<div class="pos-wrapper animate-fade-in">
+    <!-- Mobile Tabs Toggle (Shown only on mobile) -->
+    <div class="d-lg-none mb-3">
+        <div class="glass-card p-1 d-flex">
+            <button class="btn btn-vibrant flex-grow-1 rounded-pill-sm py-2 mx-1" id="tab-catalog" onclick="switchTab('catalog')">
+                <i class="bi bi-grid-3x3-gap me-2"></i>Catalog
+            </button>
+            <button class="btn btn-outline-primary flex-grow-1 border-0 rounded-pill-sm py-2 mx-1" id="tab-cart" onclick="switchTab('cart')">
+                <i class="bi bi-cart3 me-2"></i>Cart <span class="badge bg-primary ms-1" id="mobile-cart-badge">0</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-3 pos-container">
+        <!-- POS Catalog (Left Side on Desktop) -->
+        <div class="col-lg-7" id="section-catalog">
+            <div class="glass-card p-4 mb-3 border-0 shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold m-0 text-primary"><i class="bi bi-search me-2"></i>Search Items</h5>
+                    <button class="btn btn-vibrant btn-sm rounded-pill px-3 shadow-sm" id="toggle-scanner">
+                        <i class="bi bi-camera me-1"></i> Scan
+                    </button>
+                </div>
+                
+                <!-- Scanner -->
+                <div class="scanner-container mb-3" id="scanner-wrapper">
+                    <div id="reader"></div>
+                </div>
+
+                <!-- Manual Search -->
+                <div class="row g-2">
+                    <div class="col-8 col-md-9">
+                        <input type="text" id="barcode-input" class="form-control rounded-pill border-0 shadow-sm bg-light py-2 px-4" placeholder="Enter Barcode...">
+                    </div>
+                    <div class="col-4 col-md-3">
+                        <button class="btn btn-vibrant w-100 rounded-pill shadow-sm py-2" id="add-by-barcode">Add</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product List / Quick Pick -->
+            <div class="glass-card p-4 border-0 shadow-sm mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="text-muted small fw-bold m-0">QUICK SELECT</h6>
+                    <span class="text-primary small fw-bold">{{ products.count }} Items</span>
+                </div>
+                <div class="row g-2 product-grid">
+                    {% for reg in registrations %}
+                    <div class="col-4 col-sm-3 col-md-2">
+                        <div class="pos-item-card glass-card p-2 text-center h-100 border-0 bg-white" 
+                             id="product-{{ reg.product.id }}"
+                             data-combos='[{% for c in reg.product.combos.all %}{"quantity": {{ c.quantity }}, "price": {{ c.price|floatformat:0 }}}{% if not forloop.last %},{% endif %}{% endfor %}]'
+                             onclick="addToCart('{{ reg.product.id }}', '{{ reg.product.name|escapejs }}', '{{ reg.product.price|floatformat:0 }}', '{{ reg.stock_quantity }}', this.getAttribute('data-combos'))">
+                            <div class="stock-badge {% if reg.stock_quantity <= reg.low_stock_threshold %}bg-danger{% else %}bg-success{% endif %}">
+                                S: {{ reg.stock_quantity }}
+                            </div>
+                            <div class="fw-bold x-small text-truncate text-dark mb-1" title="{{ reg.product.name }}">{{ reg.product.name }}</div>
+                            <div class="text-primary fw-bold small">₹{{ reg.product.price|floatformat:0 }}</div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12 text-center py-5 text-muted">
+                        <i class="bi bi-inbox fs-1 d-block mb-2 opacity-25"></i>
+                        No products available in this branch.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Cart (Right Side on Desktop) -->
+        <div class="col-lg-5 d-none d-lg-block" id="section-cart">
+            <div class="glass-card h-100 d-flex flex-column shadow-sm border-0 cart-card">
+                <div class="card-header bg-transparent py-4 px-4 border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold m-0 text-primary"><i class="bi bi-bag-check-fill me-2"></i>Checkout</h5>
+                    <span class="badge bg-vibrant rounded-pill px-3 py-2" id="cart-count">0 Items</span>
+                </div>
+                <div class="card-body flex-grow-1 overflow-auto px-4 py-0" id="cart-container" style="min-height: 300px; max-height: 60vh;">
+                    <div class="text-center py-5" id="empty-cart-msg">
+                        <i class="bi bi-cart-x fs-1 text-muted opacity-25 d-block mb-3"></i>
+                        <p class="text-muted">No items added to bill.</p>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent p-4 border-0">
+                    <div class="glass-card p-3 mb-3 bg-light bg-opacity-50 border-0">
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white border-0 rounded-pill-sm me-1"><i class="bi bi-person"></i></span>
+                                    <input type="text" id="customer-name" class="form-control form-control-sm rounded-pill-sm bg-white border-0" placeholder="Customer Name">
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white border-0 rounded-pill-sm me-1"><i class="bi bi-whatsapp"></i></span>
+                                    <input type="text" id="customer-phone" class="form-control form-control-sm rounded-pill-sm bg-white border-0" placeholder="Phone Number">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="btn-group w-100 shadow-sm" role="group">
+                            <input type="radio" class="btn-check" name="payment_method" id="pay-cash" value="cash" checked autocomplete="off">
+                            <label class="btn btn-outline-secondary border-0 py-2 rounded-start-pill" for="pay-cash">CASH</label>
+                            
+                            <input type="radio" class="btn-check" name="payment_method" id="pay-online" value="online" autocomplete="off">
+                            <label class="btn btn-outline-secondary border-0 py-2" for="pay-online">ONLINE</label>
+
+                            <input type="radio" class="btn-check" name="payment_method" id="pay-split" value="split" autocomplete="off">
+                            <label class="btn btn-outline-secondary border-0 py-2 rounded-end-pill" for="pay-split">SPLIT</label>
+                        </div>
+                    </div>
+
+                    <!-- Split Payment Inputs -->
+                    <div id="split-inputs" class="glass-card p-3 mb-3 bg-light bg-opacity-50 border-0 d-none animate-fade-in">
+                        <label class="form-label x-small text-muted text-uppercase fw-bold mb-2">Split Amounts</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white border-0 small">Cash</span>
+                                    <input type="number" step="1" id="split-cash" class="form-control form-control-sm border-0 px-2" placeholder="0" oninput="calculateSplit('cash')">
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white border-0 small">Online</span>
+                                    <input type="number" step="1" id="split-online" class="form-control form-control-sm border-0 px-2" placeholder="0" oninput="calculateSplit('online')">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="split-warning" class="x-small text-danger mt-2 d-none">Sum must match total!</div>
+                    </div>
+                    
+                    <div class="glass-card p-3 mb-3 bg-light bg-opacity-50 border-0 animate-fade-in">
+                        <label class="form-label x-small text-muted text-uppercase fw-bold mb-2">Discount Amount</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-white border-0 small">₹</span>
+                            <input type="number" id="discount-amount" class="form-control form-control-sm border-0 px-2" placeholder="0" oninput="renderCart()">
+                        </div>
+                    </div>
+                    
+                    <div id="savings-row" class="d-none justify-content-between align-items-center mb-1 animate-fade-in">
+                        <span class="text-success small fw-bold">YOU SAVE</span>
+                        <span class="text-success small fw-bold" id="cart-savings">₹0</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <span class="text-muted fw-bold">FINAL TOTAL</span>
+                        <h3 class="fw-bold text-primary mb-0" id="cart-total">₹0</h3>
+                    </div>
+                    
+                    <button class="btn btn-vibrant w-100 rounded-pill py-3 fw-bold shadow-lg" id="checkout-btn" disabled>
+                        <i class="bi bi-check-all fs-4 me-2"></i> COMPLETE BILLING
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Extra Mobile Specific CSS -->
+<style>
+    @media (max-width: 991.98px) {
+        .pos-container { margin-bottom: 5rem; }
+        .product-grid .col-4 { flex: 0 0 33.333%; }
+        .cart-card { min-height: 80vh; }
+    }
+    .pos-item-card {
+        user-select: none;
+    }
+    .stats-card::after { opacity: 0.1; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+    let cart = [];
+    const html5QrCode = new Html5Qrcode("reader");
+    let isScannerOpen = false;
+    let scanCooldown = false;
+
+    function showScanToast(message, type) {
+        const toast = document.getElementById('scan-toast');
+        toast.textContent = message;
+        toast.className = `show toast-${type}`;
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 1800);
+    }
+
+    // Mobile tabs
+    function switchTab(tab) {
+        const catalog = document.getElementById('section-catalog');
+        const cartSection = document.getElementById('section-cart');
+        const tabCatalog = document.getElementById('tab-catalog');
+        const tabCart = document.getElementById('tab-cart');
+
+        if (tab === 'catalog') {
+            catalog.classList.remove('d-none');
+            cartSection.classList.add('d-none');
+            tabCatalog.className = 'btn btn-vibrant flex-grow-1 rounded-pill-sm py-2 mx-1';
+            tabCart.className = 'btn btn-outline-primary flex-grow-1 border-0 rounded-pill-sm py-2 mx-1';
+        } else {
+            catalog.classList.add('d-none');
+            cartSection.classList.remove('d-none', 'd-lg-block');
+            tabCatalog.className = 'btn btn-outline-primary flex-grow-1 border-0 rounded-pill-sm py-2 mx-1';
+            tabCart.className = 'btn btn-vibrant flex-grow-1 rounded-pill-sm py-2 mx-1';
+        }
+    }
+
+    // Cart Management
+    function addToCart(id, name, price, stock, combosStr="[]") {
+        stock = parseInt(stock);
+        let combos = [];
+        try { combos = JSON.parse(combosStr); } catch(e) {}
+        
+        const productEl = document.getElementById(`product-${id}`);
+        if (productEl) {
+            productEl.classList.add('cart-added');
+            setTimeout(() => productEl.classList.remove('cart-added'), 300);
+        }
+
+        const existing = cart.find(item => item.id === id);
+        if (existing) {
+            if (existing.quantity >= stock) {
+                showToast(`Only ${stock} items available in stock`, 'error');
+                return;
+            }
+            existing.quantity++;
+        } else {
+            if (stock <= 0) {
+                showToast(`Out of stock`, 'error');
+                return;
+            }
+            cart.push({ id, name, price: parseFloat(price), quantity: 1, stock: stock, combos: combos });
+        }
+        renderCart();
+        
+        // Haptic feel
+        if (window.navigator.vibrate) window.navigator.vibrate(50);
+    }
+
+    function removeFromCart(id) {
+        cart = cart.filter(item => item.id !== id);
+        renderCart();
+    }
+
+    function updateQty(id, delta) {
+        const item = cart.find(i => i.id === id);
+        if (item) {
+            if (delta > 0 && item.quantity >= item.stock) {
+                showToast(`Only ${item.stock} items available`, 'error');
+                return;
+            }
+            item.quantity += delta;
+            if (item.quantity <= 0) removeFromCart(id);
+            else renderCart();
+        }
+    }
+
+    function renderCart() {
+        const container = document.getElementById('cart-container');
+        const totalEl = document.getElementById('cart-total');
+        const countEl = document.getElementById('cart-count');
+        const badgeEl = document.getElementById('mobile-cart-badge');
+        const checkoutBtn = document.getElementById('checkout-btn');
+
+        if (cart.length === 0) {
+            container.innerHTML = `<div class="text-center py-5" id="empty-cart-msg">
+                                    <i class="bi bi-cart-x fs-1 text-muted opacity-25 d-block mb-3"></i>
+                                    <p class="text-muted">Empty Cart</p>
+                                   </div>`;
+            totalEl.innerText = "₹0";
+            countEl.innerText = "0 Items";
+            if (badgeEl) badgeEl.innerText = "0";
+            checkoutBtn.disabled = true;
+            return;
+        }
+
+        checkoutBtn.disabled = false;
+        container.innerHTML = '';
+        let subtotalAmt = 0;
+        let count = 0;
+
+        cart.forEach(item => {
+            let qtyRemaining = item.quantity;
+            let subtotal = 0;
+            let combos = item.combos || [];
+            combos.sort((a, b) => b.quantity - a.quantity);
+            
+            for (let c of combos) {
+                if (qtyRemaining >= c.quantity && c.quantity > 0) {
+                    let numCombos = Math.floor(qtyRemaining / c.quantity);
+                    subtotal += numCombos * c.price;
+                    qtyRemaining %= c.quantity;
+                }
+            }
+            subtotal += qtyRemaining * item.price;
+            
+            subtotalAmt += subtotal;
+            count += item.quantity;
+            const itemHtml = `
+                <div class="cart-item glass-card p-3 mb-2 bg-white border-0 shadow-none">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="fw-bold small">${item.name}</span>
+                        <span class="fw-bold text-primary">₹${Math.round(subtotal)}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center bg-light rounded-pill px-2 py-1">
+                            <button class="btn btn-sm btn-link text-muted p-0" onclick="updateQty('${item.id}', -1)"><i class="bi bi-dash-circle-fill"></i></button>
+                            <span class="mx-3 fw-bold small">${item.quantity}</span>
+                            <button class="btn btn-sm btn-link text-primary p-0" onclick="updateQty('${item.id}', 1)"><i class="bi bi-plus-circle-fill"></i></button>
+                        </div>
+                        <button class="btn btn-link text-danger p-0" onclick="removeFromCart('${item.id}')">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', itemHtml);
+        });
+
+        const discount = parseFloat(document.getElementById('discount-amount')?.value) || 0;
+        let total = Math.max(0, subtotalAmt - discount);
+
+        totalEl.innerText = `₹${Math.round(total)}`;
+        
+        const savingsRow = document.getElementById('savings-row');
+        const savingsEl = document.getElementById('cart-savings');
+        if (discount > 0) {
+            savingsRow.classList.remove('d-none');
+            savingsRow.classList.add('d-flex');
+            savingsEl.innerText = `₹${Math.round(discount)}`;
+        } else {
+            savingsRow.classList.remove('d-flex');
+            savingsRow.classList.add('d-none');
+        }
+
+        countEl.innerText = `${count} Items`;
+        if (badgeEl) badgeEl.innerText = count;
+        calculateSplit(null); // re-calculate split if it's open
+    }
+
+    // Barcode Search
+    document.getElementById('add-by-barcode').addEventListener('click', () => {
+        const barcode = document.getElementById('barcode-input').value;
+        if (!barcode) return;
+        
+        fetch(`/billing/get-product/?barcode=${barcode}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    showScanToast('❌ Not Found', 'error');
+                } else {
+                    addToCart(data.id.toString(), data.name, data.price, data.stock, JSON.stringify(data.combos || []));
+                    showScanToast('✅ ' + data.name, 'success');
+                    document.getElementById('barcode-input').value = '';
+                }
+            });
+    });
+
+    // Scanner
+    document.getElementById('toggle-scanner').addEventListener('click', () => {
+        const wrapper = document.getElementById('scanner-wrapper');
+        const btn = document.getElementById('toggle-scanner');
+        if (isScannerOpen) {
+            html5QrCode.stop().then(() => {
+                wrapper.style.display = 'none';
+                isScannerOpen = false;
+                btn.innerHTML = '<i class="bi bi-camera me-1"></i> Scan';
+            });
+        } else {
+            wrapper.style.display = 'block';
+            btn.innerHTML = '<i class="bi bi-x-lg me-1"></i> Close';
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 10, qrbox: { width: 250, height: 150 } },
+                (decodedText) => {
+                    if (scanCooldown) return;
+                    scanCooldown = true;
+                    setTimeout(() => { scanCooldown = false; }, 1500);
+
+                    fetch(`/billing/get-product/?barcode=${decodedText}`)
+                        .then(async response => {
+                            if (response.ok) {
+                                const product = await response.json();
+                                addToCart(product.id.toString(), product.name, product.price, product.stock, JSON.stringify(product.combos || []));
+                                showScanToast('✅ ' + product.name, 'success');
+                                if (window.navigator.vibrate) window.navigator.vibrate(100);
+                            } else {
+                                showScanToast('❌ Not Found', 'error');
+                                if (window.navigator.vibrate) window.navigator.vibrate([50, 50, 50]);
+                            }
+                        });
+                },
+                (errorMessage) => { /* ignore */ }
+            ).then(() => {
+                isScannerOpen = true;
+            }).catch(err => alert("Camera permission denied."));
+        }
+    });
+
+    // Payment Method Toggle
+    document.querySelectorAll('input[name="payment_method"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const splitInputs = document.getElementById('split-inputs');
+            if (e.target.value === 'split') {
+                splitInputs.classList.remove('d-none');
+                const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                const discount = parseFloat(document.getElementById('discount-amount').value) || 0;
+                const total = Math.max(0, Math.round(subtotal - discount));
+                document.getElementById('split-cash').value = total;
+                document.getElementById('split-online').value = 0;
+            } else {
+                splitInputs.classList.add('d-none');
+            }
+        });
+    });
+
+    function calculateSplit(source) {
+        if (document.getElementById('pay-split') && !document.getElementById('pay-split').checked) return;
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const discount = parseFloat(document.getElementById('discount-amount').value) || 0;
+        // Compute total as integer (rounded)
+        const rawTotal = Math.max(0, subtotal - discount);
+        const total = Math.round(rawTotal);
+        const cashInput = document.getElementById('split-cash');
+        const onlineInput = document.getElementById('split-online');
+        const warning = document.getElementById('split-warning');
+
+        if (!source) {
+            cashInput.value = total;
+            onlineInput.value = 0;
+        }
+
+        let cash = parseFloat(cashInput.value) || 0;
+        let online = parseFloat(onlineInput.value) || 0;
+
+        if (source === 'cash') {
+            online = Math.max(0, total - cash);
+            onlineInput.value = online;
+        } else if (source === 'online') {
+            cash = Math.max(0, total - online);
+            cashInput.value = cash;
+        }
+
+        // Allow small tolerance for rounding errors
+        if (Math.abs(cash + online - total) > 0.01) {
+            warning.classList.remove('d-none');
+        } else {
+            warning.classList.add('d-none');
+        }
+    }
+
+    // Checkout
+    document.getElementById('checkout-btn').addEventListener('click', () => {
+        const btn = document.getElementById('checkout-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>PROCESSING...';
+
+        const customerName = document.getElementById('customer-name').value;
+        const customerPhone = document.getElementById('customer-phone').value;
+        const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+        
+        let cash_amount = 0;
+        let online_amount = 0;
+        const discount_amount = parseFloat(document.getElementById('discount-amount').value) || 0;
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        // Use precise total with two decimals
+        const rawTotal = Math.max(0, subtotal - discount_amount);
+        const total = Math.round(rawTotal);
+        
+        if (paymentMethod === 'cash') {
+            cash_amount = total;
+        } else if (paymentMethod === 'online') {
+            online_amount = total;
+        } else {
+            cash_amount = parseFloat(document.getElementById('split-cash').value) || 0;
+            online_amount = parseFloat(document.getElementById('split-online').value) || 0;
+            // Allow small tolerance for floating point errors
+            if (Math.abs(cash_amount + online_amount - total) > 0.01) {
+                alert("Error: Split amounts must equal the total bill value: " + total);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-all fs-4 me-2"></i> COMPLETE BILLING';
+                return;
+            }
+        }
+
+        fetch('/billing/process-bill/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                items: cart,
+                customer_name: customerName,
+                customer_phone: customerPhone,
+                payment_method: paymentMethod,
+                cash_amount: cash_amount,
+                online_amount: online_amount,
+                discount_amount: discount_amount
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = `/billing/bill/${data.bill_id}/`;
+            } else {
+                alert("Error: " + data.error);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-all fs-4 me-2"></i> COMPLETE BILLING';
+            }
+        })
+        .catch(err => {
+            alert("Network error. Please try again.");
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-all fs-4 me-2"></i> COMPLETE BILLING';
+        });
+    });
+
+    // Initial State Check
+    if (window.innerWidth < 992) {
+        switchTab('catalog');
+    }
+</script>
+{% endblock %}
