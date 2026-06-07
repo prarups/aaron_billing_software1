@@ -41,6 +41,11 @@ domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
 if domain:
     ALLOWED_HOSTS.append(domain)
 
+render_domain = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if render_domain:
+    ALLOWED_HOSTS.append(render_domain)
+
+
 
 
 # Application definition
@@ -104,17 +109,22 @@ if DEBUG:
         }
     }
 else:
-    # Production: PostgreSQL (Railway or custom)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('POSTGRES_DB', 'aaron_billing_db'),
-            'USER': os.environ.get('POSTGRES_USER', 'postgres'),
-            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'p@ssw0rd'),
-            'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
-            'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+    # Production: PostgreSQL (Railway, Render, or custom)
+    if os.environ.get('DATABASE_URL'):
+        DATABASES = {
+            'default': dj_database_url.config(conn_max_age=600)
         }
-    }
+    else:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': os.environ.get('POSTGRES_DB', 'aaron_billing_db'),
+                'USER': os.environ.get('POSTGRES_USER', 'postgres'),
+                'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'p@ssw0rd'),
+                'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+                'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+            }
+        }
 
 
 # Password validation
@@ -164,10 +174,22 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard_redirect'
 LOGOUT_REDIRECT_URL = 'login'
 
-# Railway / Production settings
-CSRF_TRUSTED_ORIGINS = [os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'http://localhost:8000')]
-if os.environ.get('RAILWAY_PUBLIC_DOMAIN'):
-    CSRF_TRUSTED_ORIGINS = [f"https://{os.environ['RAILWAY_PUBLIC_DOMAIN']}"]
+# Railway / Render / Production settings
+CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']
+
+railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+if railway_domain:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{railway_domain}")
+
+render_domain = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if render_domain:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{render_domain}")
+
+custom_csrf = os.environ.get('CSRF_TRUSTED_ORIGINS')
+if custom_csrf:
+    for origin in custom_csrf.split(','):
+        if origin.strip():
+            CSRF_TRUSTED_ORIGINS.append(origin.strip())
 
 # Security headers for production
 if not DEBUG:
