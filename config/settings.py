@@ -13,10 +13,13 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import os
 import dj_database_url
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load environment variables from .env file
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -28,10 +31,16 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-_lu+wc&olsa#wd(n=(2a(
 DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-ALLOWED_HOSTS = ['*']
+allowed_hosts_env = os.environ.get('ALLOWED_HOSTS')
+if allowed_hosts_env:
+    ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
+else:
+    ALLOWED_HOSTS = ['*']
+
 domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
 if domain:
     ALLOWED_HOSTS.append(domain)
+
 
 
 # Application definition

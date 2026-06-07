@@ -4,6 +4,53 @@
 
 {% block extra_css %}
 <style>
+    /* Premium Compact Typography and Colors */
+    .text-xs {
+        font-size: 0.78rem !important;
+    }
+    .text-xxs {
+        font-size: 0.68rem !important;
+        letter-spacing: 0.05em;
+    }
+    .table-compact {
+        font-size: 0.82rem;
+    }
+    .table-compact th {
+        font-size: 0.72rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        color: #64748b;
+        padding: 8px 10px !important;
+        background-color: #f8fafc;
+        border-bottom: 2px solid #e2e8f0 !important;
+    }
+    .table-compact td {
+        padding: 8px 10px !important;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .table-compact tbody tr:hover {
+        background-color: rgba(99, 102, 241, 0.01) !important;
+    }
+
+    /* Branch scroll list */
+    .branch-scroll-list {
+        max-height: 280px;
+        overflow-y: auto;
+        padding-right: 4px;
+    }
+    .branch-scroll-list::-webkit-scrollbar {
+        width: 3px;
+    }
+    .branch-scroll-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .branch-scroll-list::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+
     #ownerDashboardTabs {
         border: 1px solid rgba(255, 255, 255, 0.4);
         background: rgba(255, 255, 255, 0.5);
@@ -161,55 +208,85 @@
 <div class="tab-content" id="ownerDashboardTabContent">
     <!-- 1. OVERVIEW TAB -->
     <div class="tab-pane fade show active animate-fade-in" id="overview" role="tabpanel" aria-labelledby="overview-tab">
-        <div class="row g-4 mb-4">
-            <div class="col-md-3">
-                <div class="glass-card p-4 h-100 bg-vibrant stats-card">
+        <!-- Date Filters and Export -->
+        <div class="glass-card p-3 mb-3 border-0 bg-opacity-75 shadow-sm">
+            <form method="GET" class="row g-3 align-items-center">
+                <div class="col-12 col-lg-4">
+                    <span class="text-primary fw-bold text-xs"><i class="bi bi-calendar-range-fill me-1.5"></i>Performance & Sales Date Range</span>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2.5">From</span>
+                        <input type="date" name="from_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ start_date }}">
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2.5">To</span>
+                        <input type="date" name="to_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ end_date }}">
+                    </div>
+                </div>
+                <div class="col-12 col-lg-2 d-flex gap-2 justify-content-lg-end">
+                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 py-1.5 text-xs fw-semibold flex-grow-1 flex-lg-grow-0">
+                        Apply
+                    </button>
+                    {% if is_filtered %}
+                    <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5 py-1.5 text-xs" title="Clear Filters">
+                        <i class="bi bi-x"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        <div class="row g-2 mb-3">
+            <div class="col-6 col-md-3">
+                <div class="glass-card p-3 h-100 bg-vibrant stats-card border-0">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="text-white-50 small mb-0">Total Sales (Today)</h6>
-                        <a href="{% url 'export_sales_csv' %}" class="btn btn-sm btn-light rounded-pill x-small py-0 opacity-75">Export CSV</a>
+                        <span class="text-white-50 text-xxs text-uppercase fw-bold mb-0">{{ stats_label }}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <h2 class="mb-0 fw-bold">₹{{ total_sales_today|default:"0"|floatformat:0 }}</h2>
-                        <i class="bi bi-wallet2 fs-1 text-white-50"></i>
+                        <span class="fs-5 fw-bold mb-0 text-white">₹{{ total_sales_today|default:"0"|floatformat:0 }}</span>
+                        <i class="bi bi-wallet2 fs-4 text-white-50"></i>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="glass-card p-4 h-100">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted small mb-1">Active Branches</h6>
-                            <h2 class="mb-0 fw-bold">{{ branch_count }}</h2>
-                        </div>
-                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle">
-                            <i class="bi bi-grid text-primary fs-3"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="glass-card p-4 h-100">
+            <div class="col-6 col-md-3">
+                <div class="glass-card p-3 h-100">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-muted small mb-1">Transactions (Today)</h6>
-                            <h2 class="mb-0 fw-bold">{{ transaction_count_today }}</h2>
+                            <span class="text-muted text-xxs text-uppercase fw-bold mb-1 d-block">Active Branches</span>
+                            <span class="fs-5 fw-bold mb-0 text-dark">{{ branch_count }}</span>
                         </div>
-                        <div class="bg-info bg-opacity-10 p-3 rounded-circle">
-                            <i class="bi bi-receipt text-info fs-3"></i>
+                        <div class="bg-primary bg-opacity-10 p-2 rounded-circle">
+                            <i class="bi bi-grid text-primary fs-5"></i>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-6 col-md-3">
+                <div class="glass-card p-3 h-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted text-xxs text-uppercase fw-bold mb-1 d-block">{{ trans_label }}</span>
+                            <span class="fs-5 fw-bold mb-0 text-dark">{{ transaction_count_today }}</span>
+                        </div>
+                        <div class="bg-info bg-opacity-10 p-2 rounded-circle">
+                            <i class="bi bi-receipt text-info fs-5"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
                 <a href="{% url 'product_list' %}?filter=low_stock" class="text-decoration-none">
-                    <div class="glass-card p-4 h-100 {% if low_stock_count > 0 %}border-danger{% endif %} text-shadow-none">
+                    <div class="glass-card p-3 h-100 {% if low_stock_count > 0 %}border-danger{% endif %} text-shadow-none">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="text-muted small mb-1">Low Stock Alerts</h6>
-                                <h2 class="mb-0 fw-bold {% if low_stock_count > 0 %}text-danger animate-pulse{% endif %}">{{ low_stock_count }}</h2>
+                                <span class="text-muted text-xxs text-uppercase fw-bold mb-1 d-block">Low Stock Alerts</span>
+                                <span class="fs-5 fw-bold mb-0 {% if low_stock_count > 0 %}text-danger animate-pulse{% endif %}">{{ low_stock_count }}</span>
                             </div>
-                            <div class="bg-danger bg-opacity-10 p-3 rounded-circle">
-                                <i class="bi bi-exclamation-triangle-fill text-danger fs-3"></i>
+                            <div class="bg-danger bg-opacity-10 p-2 rounded-circle">
+                                <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
                             </div>
                         </div>
                     </div>
@@ -217,16 +294,21 @@
             </div>
         </div>
 
-        <div class="row g-4" style="animation-delay: 0.1s;">
+        <div class="row g-3" style="animation-delay: 0.1s;">
             <div class="col-md-8">
-                <div class="glass-card p-4">
-                    <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-bar-chart-fill me-2"></i>Branch Performance</h5>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
+                <div class="glass-card p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-bar-chart-fill me-1.5"></i>Branch Performance</h6>
+                        <a href="{% url 'export_dashboard_sales_csv' %}?from_date={{ start_date }}&to_date={{ end_date }}" class="btn btn-outline-success btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm">
+                            <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i>Export CSV
+                        </a>
+                    </div>
+                    <div class="table-responsive branch-scroll-list">
+                        <table class="table align-middle table-compact">
+                            <thead class="sticky-top bg-white" style="z-index: 2;">
+                                <tr class="border-bottom">
                                     <th>Branch Name</th>
-                                    <th>Sales (Today)</th>
+                                    <th>Sales ({% if is_filtered %}Period{% else %}Today{% endif %})</th>
                                     <th>Staff Count</th>
                                     <th>Monthly Goal</th>
                                 </tr>
@@ -234,11 +316,11 @@
                             <tbody>
                                 {% for branch in branches %}
                                 <tr>
-                                    <td>{{ branch.name }} ({{ branch.code }})</td>
-                                    <td class="fw-bold">₹{{ branch.today_sales|default:"0" }}</td>
-                                    <td>{{ branch.active_staff_count }} Assigned</td>
+                                    <td class="fw-semibold text-dark">{{ branch.name }} ({{ branch.code }})</td>
+                                    <td class="fw-bold text-primary">₹{{ branch.today_sales|default:"0" }}</td>
+                                    <td class="text-muted">{{ branch.active_staff_count }} Assigned</td>
                                     <td>
-                                        <div class="progress" style="height: 8px;">
+                                        <div class="progress" style="height: 6px;">
                                             <div class="progress-bar bg-success" style="width: 25%;"></div>
                                         </div>
                                     </td>
@@ -250,19 +332,22 @@
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="glass-card p-4">
-                    <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-clock-history me-2"></i>Recent Sales</h5>
+                <div class="glass-card p-3">
+                    <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-clock-history me-1.5"></i>Recent Sales</h6>
                     <div class="list-group list-group-flush">
                         {% for bill in recent_bills %}
-                        <div class="list-group-item px-0 x-small bg-transparent">
-                            <div class="d-flex justify-content-between">
-                                <span>{{ bill.invoice_number|default:bill.id }} - {{ bill.branch.name|truncatechars:10 }}</span>
+                        <div class="list-group-item px-0 py-2 text-xs bg-transparent border-light">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="fw-semibold text-dark d-block">#{{ bill.invoice_number|default:bill.id }}</span>
+                                    <span class="text-muted text-xxs">{{ bill.branch.name|truncatechars:15 }}</span>
+                                </div>
                                 <span class="fw-bold text-success">₹{{ bill.total_amount }}</span>
                             </div>
                         </div>
                         {% empty %}
                         <div class="text-center py-4">
-                            <p class="text-muted">No transactions recorded yet.</p>
+                            <p class="text-muted text-xs mb-0">No transactions recorded yet.</p>
                         </div>
                         {% endfor %}
                     </div>
@@ -273,46 +358,46 @@
 
     <!-- 2. BRANCHES TAB -->
     <div class="tab-pane fade animate-fade-in" id="branches" role="tabpanel" aria-labelledby="branches-tab">
-        <div class="glass-card p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h5 class="fw-bold text-primary mb-0"><i class="bi bi-shop me-2"></i>Overall Branches</h5>
-                <button class="btn btn-primary btn-sm rounded-pill px-3 shadow" data-bs-toggle="modal" data-bs-target="#addBranchModal">
-                    <i class="bi bi-plus-circle me-1"></i>Create New Branch
+        <div class="glass-card p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold text-primary mb-0"><i class="bi bi-shop me-1.5"></i>Overall Branches</h6>
+                <button class="btn btn-primary btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#addBranchModal">
+                    <i class="bi bi-plus-circle me-1"></i>Create Branch
                 </button>
             </div>
 
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
+                <table class="table align-middle table-compact">
+                    <thead>
+                        <tr class="border-bottom">
                             <th>Branch ID / Code</th>
                             <th>Branch Name</th>
                             <th>Location</th>
                             <th>Contact</th>
-                            <th>Invoice Prefix</th>
+                            <th>Prefix</th>
                             <th>Staff Count</th>
-                            <th class="text-center">Actions</th>
+                            <th class="text-center" style="width: 100px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for branch in branches %}
                         <tr id="branch-row-{{ branch.id }}">
-                            <td class="fw-bold text-muted">{{ branch.code|default:branch.id }}</td>
-                            <td class="fw-bold text-primary">{{ branch.name }}</td>
-                            <td>{{ branch.location }}</td>
-                            <td>{{ branch.contact_number|default:"-" }}</td>
-                            <td><span class="badge bg-light text-dark border">{{ branch.invoice_prefix }}</span></td>
-                            <td><span class="badge bg-primary bg-opacity-10 text-primary">{{ branch.active_staff_count }} staff</span></td>
+                            <td class="fw-bold text-muted text-xs">{{ branch.code|default:branch.id }}</td>
+                            <td class="fw-bold text-primary text-xs">{{ branch.name }}</td>
+                            <td class="text-xs">{{ branch.location }}</td>
+                            <td class="text-xs">{{ branch.contact_number|default:"-" }}</td>
+                            <td><span class="badge bg-light text-dark border text-xxs">{{ branch.invoice_prefix }}</span></td>
+                            <td><span class="badge bg-primary bg-opacity-10 text-primary text-xxs">{{ branch.active_staff_count }} staff</span></td>
                             <td class="text-center hover-actions">
-                                <button class="btn btn-outline-primary btn-sm rounded-circle me-1 px-2 py-1" 
+                                <button class="btn btn-outline-primary btn-xs rounded-circle me-1 p-1" 
                                         onclick="openEditBranchModal('{{ branch.id }}', '{{ branch.name }}', '{{ branch.location }}', '{{ branch.contact_number }}', '{{ branch.invoice_prefix }}')" 
-                                        title="Edit Branch">
-                                    <i class="bi bi-pencil"></i>
+                                        title="Edit Branch" style="width: 24px; height: 24px; line-height: 1;">
+                                    <i class="bi bi-pencil" style="font-size: 10px; display: block;"></i>
                                 </button>
-                                <button class="btn btn-outline-danger btn-sm rounded-circle px-2 py-1" 
+                                <button class="btn btn-outline-danger btn-xs rounded-circle p-1" 
                                         onclick="confirmDelete('{% url 'branch_delete' branch.id %}', 'Branch &quot;{{ branch.name }}&quot;')" 
-                                        title="Delete Branch">
-                                    <i class="bi bi-trash"></i>
+                                        title="Delete Branch" style="width: 24px; height: 24px; line-height: 1;">
+                                    <i class="bi bi-trash" style="font-size: 10px; display: block;"></i>
                                 </button>
                             </td>
                         </tr>
@@ -329,129 +414,131 @@
 
     <!-- 3. STAFF TAB -->
     <div class="tab-pane fade animate-fade-in" id="staff" role="tabpanel" aria-labelledby="staff-tab">
-        <div class="glass-card p-4">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div class="glass-card p-3">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
                 <div class="d-flex align-items-center flex-wrap gap-2">
-                    <h5 class="fw-bold text-primary mb-0 me-3"><i class="bi bi-people-fill me-2"></i>Staff & Assigning</h5>
-                    <div class="input-group input-group-sm" style="max-width: 250px;">
-                        <label class="input-group-text bg-light border-0 rounded-start-pill"><i class="bi bi-filter"></i></label>
-                        <select id="branchFilterSelect" class="form-select border-0 bg-light rounded-end-pill" onchange="filterStaff()" data-no-search>
-                            <option value="all">Show All Branches</option>
+                    <h6 class="fw-bold text-primary mb-0 me-2"><i class="bi bi-people-fill me-1.5"></i>Staff accounts</h6>
+                    <div class="input-group input-group-sm" style="max-width: 200px;">
+                        <span class="input-group-text bg-light border-0 rounded-start-pill text-xxs"><i class="bi bi-filter"></i></span>
+                        <select id="branchFilterSelect" class="form-select border-0 bg-light rounded-end-pill text-xs py-1" onchange="filterStaff()" data-no-search>
+                            <option value="all">All Branches</option>
                             {% for branch in branches %}
                             <option value="branch-{{ branch.id }}">{{ branch.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="input-group input-group-sm" style="max-width: 200px;">
-                        <label class="input-group-text bg-light border-0 rounded-start-pill"><i class="bi bi-person-badge"></i></label>
-                        <select id="roleFilterSelect" class="form-select border-0 bg-light rounded-end-pill" onchange="filterStaff()" data-no-search>
-                            <option value="all">Show All Roles</option>
+                    <div class="input-group input-group-sm" style="max-width: 170px;">
+                        <span class="input-group-text bg-light border-0 rounded-start-pill text-xxs"><i class="bi bi-person-badge"></i></span>
+                        <select id="roleFilterSelect" class="form-select border-0 bg-light rounded-end-pill text-xs py-1" onchange="filterStaff()" data-no-search>
+                            <option value="all">All Roles</option>
                             <option value="owner">Admin</option>
                             <option value="manager">Manager</option>
                             <option value="staff">Staff</option>
                         </select>
                     </div>
                 </div>
-                <button class="btn btn-primary btn-sm rounded-pill px-3 shadow align-self-start align-self-md-auto" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+                <button class="btn btn-primary btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm align-self-start align-self-md-auto" data-bs-toggle="modal" data-bs-target="#addStaffModal">
                     <i class="bi bi-person-plus me-1"></i>Add Staff
                 </button>
             </div>
 
             <div class="table-responsive">
-                <table class="table table-hover align-middle" id="staffTable">
-                    <thead class="table-light">
-                        <tr>
+                <table class="table align-middle table-compact" id="staffTable">
+                    <thead>
+                        <tr class="border-bottom">
                             <th>Employee ID</th>
                             <th>Username</th>
                             <th>Full Name</th>
                             <th>Role</th>
-                            <th>Status</th>
-                            <th class="text-center">Product edit rights</th>
-                            <th>Assigned Branches</th>
-                            <th class="text-center">Actions</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Product Rights</th>
+                            <th>Branches</th>
+                            <th class="text-center" style="width: 100px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for staff in staff_list %}
                         <tr id="staff-row-{{ staff.id }}" class="staff-row" data-branches="{% for b in staff.branches.all %}branch-{{ b.id }} {% endfor %}" data-role="{{ staff.role }}">
-                            <td class="fw-bold text-muted">{{ staff.employee_id|default:"-" }}</td>
-                            <td class="fw-bold text-primary">@{{ staff.username }}</td>
-                            <td>{{ staff.first_name }} {{ staff.last_name }}</td>
+                            <td class="fw-bold text-muted text-xs">{{ staff.employee_id|default:"-" }}</td>
+                            <td class="fw-bold text-primary text-xs">@{{ staff.username }}</td>
+                            <td class="text-xs">{{ staff.first_name }} {{ staff.last_name }}</td>
                              <td>
                                  {% if staff.role == 'owner' %}
-                                 <span class="badge badge-role-admin rounded-pill px-3 py-1 text-uppercase small">Admin</span>
+                                 <span class="badge badge-role-admin rounded-pill px-2.5 py-0.5 text-uppercase text-xxs">Admin</span>
                                  {% elif staff.role == 'manager' %}
-                                 <span class="badge badge-role-manager rounded-pill px-3 py-1 text-uppercase small">Manager</span>
+                                 <span class="badge badge-role-manager rounded-pill px-2.5 py-0.5 text-uppercase text-xxs">Manager</span>
                                  {% else %}
-                                 <span class="badge badge-role-staff rounded-pill px-3 py-1 text-uppercase small">Staff</span>
+                                 <span class="badge badge-role-staff rounded-pill px-2.5 py-0.5 text-uppercase text-xxs">Staff</span>
                                  {% endif %}
                              </td>
                             <td class="text-center">
                                 <div class="form-check form-switch d-inline-block">
-                                    <input class="form-check-input" type="checkbox" id="activeSwitch{{ staff.id }}" {% if staff.is_active %}checked{% endif %} onchange="toggleStaffActive('{{ staff.id }}', this.checked)" {% if staff == request.user %}disabled title="You cannot deactivate your own account"{% endif %}>
+                                    <input class="form-check-input" type="checkbox" id="activeSwitch{{ staff.id }}" {% if staff.is_active %}checked{% endif %} onchange="toggleStaffActive('{{ staff.id }}', this.checked)" {% if staff == request.user %}disabled title="You cannot deactivate your own account"{% endif %} style="transform: scale(0.85);">
                                 </div>
                             </td>
                             <td class="text-center">
                                 {% if staff.role == 'manager' %}
                                 <div class="form-check form-switch d-inline-block">
-                                    <input class="form-check-input" type="checkbox" id="productRightsSwitch{{ staff.id }}" {% if staff.has_product_rights %}checked{% endif %} onchange="toggleProductRights('{{ staff.id }}', this.checked)">
+                                    <input class="form-check-input" type="checkbox" id="productRightsSwitch{{ staff.id }}" {% if staff.has_product_rights %}checked{% endif %} onchange="toggleProductRights('{{ staff.id }}', this.checked)" style="transform: scale(0.85);">
                                 </div>
                                 {% else %}
-                                <span class="text-muted">-</span>
+                                <span class="text-muted text-xxs">-</span>
                                 {% endif %}
                             </td>
                             <td>
-                                {% for b in staff.branches.all %}
-                                <span class="badge bg-light text-dark border rounded-pill px-2 py-1 mb-1 me-1">{{ b.name }}</span>
-                                {% empty %}
-                                <span class="text-muted small">No branch assigned</span>
-                                {% endfor %}
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for b in staff.branches.all %}
+                                    <span class="badge bg-light text-dark border rounded-pill px-2 py-0.5 text-xxs">{{ b.name }}</span>
+                                    {% empty %}
+                                    <span class="text-muted text-xxs">None</span>
+                                    {% endfor %}
+                                </div>
                             </td>
                             <td class="text-center hover-actions">
-                                <button class="btn btn-outline-primary btn-sm rounded-circle me-1 px-2 py-1" 
+                                <button class="btn btn-outline-primary btn-xs rounded-circle me-1 p-1" 
                                         onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}')" 
-                                        title="Edit Staff / Assign Branch">
-                                    <i class="bi bi-pencil-square"></i>
+                                        title="Edit Staff / Assign Branch" style="width: 24px; height: 24px; line-height: 1;">
+                                    <i class="bi bi-pencil-square" style="font-size: 10px; display: block;"></i>
                                 </button>
-                                <button class="btn btn-outline-danger btn-sm rounded-circle px-2 py-1" 
+                                <button class="btn btn-outline-danger btn-xs rounded-circle p-1" 
                                         onclick="confirmDelete('{% url 'staff_delete' staff.id %}', 'Staff account &quot;{{ staff.username }}&quot;')" 
-                                        title="Delete Account">
-                                    <i class="bi bi-trash"></i>
+                                        title="Delete Account" style="width: 24px; height: 24px; line-height: 1;">
+                                    <i class="bi bi-trash" style="font-size: 10px; display: block;"></i>
                                 </button>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="text-center py-4 text-muted">No staff accounts registered yet.</td>
+                            <td colspan="8" class="text-center py-4 text-muted">No staff accounts registered yet.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
             {% if staff_list.has_other_pages %}
-            <nav aria-label="Staff pagination" class="mt-4">
-                <ul class="pagination justify-content-center">
+            <nav aria-label="Staff pagination" class="mt-3">
+                <ul class="pagination pagination-sm justify-content-center">
                     {% if staff_list.has_previous %}
                     <li class="page-item">
-                        <a class="page-link rounded-pill border-0 shadow-sm px-3 mx-1" href="?staff_page={{ staff_list.previous_page_number }}#staff">Previous</a>
+                        <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?staff_page={{ staff_list.previous_page_number }}#staff">Previous</a>
                     </li>
                     {% endif %}
                     
                     {% for i in staff_list.paginator.page_range %}
                         {% if staff_list.number == i %}
                         <li class="page-item active">
-                            <span class="page-link rounded-circle border-0 shadow px-3 mx-1 bg-primary text-white border-0">{{ i }}</span>
+                            <span class="page-link rounded-pill border-0 shadow px-2.5 mx-1 bg-primary text-white">{{ i }}</span>
                         </li>
                         {% elif i > staff_list.number|add:-3 and i < staff_list.number|add:3 %}
                         <li class="page-item">
-                            <a class="page-link rounded-circle border-0 shadow-sm px-3 mx-1" href="?staff_page={{ i }}#staff">{{ i }}</a>
+                            <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?staff_page={{ i }}#staff">{{ i }}</a>
                         </li>
                         {% endif %}
                     {% endfor %}
                     
                     {% if staff_list.has_next %}
                     <li class="page-item">
-                        <a class="page-link rounded-pill border-0 shadow-sm px-3 mx-1" href="?staff_page={{ staff_list.next_page_number }}#staff">Next</a>
+                        <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?staff_page={{ staff_list.next_page_number }}#staff">Next</a>
                     </li>
                     {% endif %}
                 </ul>

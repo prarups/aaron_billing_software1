@@ -49,21 +49,81 @@ class OwnerDashboardView(TemplateView):
         context = super().get_context_data(**kwargs)
         today = timezone.now().date()
         
-        # Overall Stats
-        today_bills = Bill.objects.filter(created_at__date=today)
-        context['total_sales_today'] = today_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-        context['transaction_count_today'] = today_bills.count()
+        # Get from/to dates from request parameters
+        from_date_str = self.request.GET.get('from_date')
+        to_date_str = self.request.GET.get('to_date')
+        
+        is_filtered = False
+        if from_date_str and to_date_str:
+            try:
+                start_date = timezone.datetime.strptime(from_date_str, '%Y-%m-%d').date()
+                end_date = timezone.datetime.strptime(to_date_str, '%Y-%m-%d').date()
+                is_filtered = True
+            except ValueError:
+                start_date = today
+                end_date = today
+        else:
+            start_date = today
+            end_date = today
+            
+        context['start_date'] = start_date.strftime('%Y-%m-%d') if start_date else ''
+        context['end_date'] = end_date.strftime('%Y-%m-%d') if end_date else ''
+        context['is_filtered'] = is_filtered
+
+        # Overall Stats (either today, or for the specified date range)
+        if is_filtered:
+            range_bills = Bill.objects.filter(created_at__date__range=[start_date, end_date])
+            context['total_sales_today'] = range_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            context['transaction_count_today'] = range_bills.count()
+            context['stats_label'] = f"Sales ({start_date.strftime('%d %b')} - {end_date.strftime('%d %b')})"
+            context['trans_label'] = "Transactions (Period)"
+        else:
+            today_bills = Bill.objects.filter(created_at__date=today)
+            context['total_sales_today'] = today_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            context['transaction_count_today'] = today_bills.count()
+            context['stats_label'] = "Total Sales (Today)"
+            context['trans_label'] = "Transactions"
+            
         context['branch_count'] = Branch.objects.count()
         context['total_product_count'] = Product.objects.count()
         
         # Low Stock Alerts
         context['low_stock_count'] = ProductRegistry.objects.filter(stock_quantity__lte=F('low_stock_threshold')).count()
         
-        # Branch performance
+        # Branch performance - optimized with Subqueries to avoid cartesian join duplication
+        from django.db.models import OuterRef, Subquery
+        from django.db.models.functions import Coalesce
+        
+        # Subquery for active staff count
+        staff_subquery = User.objects.filter(
+            branches=OuterRef('pk'),
+            role__in=['manager', 'staff']
+        ).order_by().values('branches').annotate(cnt=Count('id')).values('cnt')
+
+        # Subquery for sales (today or period range)
+        if is_filtered:
+            sales_subquery = Bill.objects.filter(
+                branch=OuterRef('pk'),
+                created_at__date__range=[start_date, end_date]
+            ).order_by().values('branch').annotate(total=Sum('total_amount')).values('total')
+        else:
+            sales_subquery = Bill.objects.filter(
+                branch=OuterRef('pk'),
+                created_at__date=today
+            ).order_by().values('branch').annotate(total=Sum('total_amount')).values('total')
+
         branches = Branch.objects.annotate(
-            today_sales=Sum('bills__total_amount', filter=models.Q(bills__created_at__date=today)),
-            active_staff_count=Count('assigned_users', filter=models.Q(assigned_users__role__in=['manager', 'staff']))
-        )
+            today_sales=Coalesce(
+                Subquery(sales_subquery),
+                0,
+                output_field=models.DecimalField()
+            ),
+            active_staff_count=Coalesce(
+                Subquery(staff_subquery),
+                0,
+                output_field=models.IntegerField()
+            )
+        ).order_by('-today_sales', 'name')
         context['branches'] = branches
         context['recent_bills'] = Bill.objects.order_by('-created_at')[:5]
         
@@ -246,4 +306,59 @@ def toggle_product_rights(request, staff_id):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
     return JsonResponse({'error': 'Invalid request.'}, status=400)
+
+
+@login_required
+def export_dashboard_sales_csv(request):
+    """Exports date-wise and branch-wise total sales amount for the specified date range.
+    Only owners and managers are authorized.
+    """
+    if request.user.role == 'staff':
+        from django.http import HttpResponse
+        return HttpResponse("Unauthorized", status=403)
+        
+    from_date_str = request.GET.get('from_date')
+    to_date_str = request.GET.get('to_date')
+    
+    today = timezone.now().date()
+    try:
+        start_date = timezone.datetime.strptime(from_date_str, '%Y-%m-%d').date() if from_date_str else today
+        end_date = timezone.datetime.strptime(to_date_str, '%Y-%m-%d').date() if to_date_str else today
+    except ValueError:
+        start_date = today
+        end_date = today
+        
+    import csv
+    from django.http import HttpResponse
+    from django.db.models.functions import TruncDate
+    
+    filename = f"branch_sales_report_{start_date}_to_{end_date}.csv"
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Date', 'Branch Code', 'Branch Name', 'Location', 'Total Sales (INR)'])
+    
+    # Query date-wise and branch-wise total sales
+    sales_data = Bill.objects.filter(
+        created_at__date__range=[start_date, end_date]
+    ).annotate(
+        date=TruncDate('created_at')
+    ).values(
+        'date', 'branch__id', 'branch__name', 'branch__code', 'branch__location'
+    ).annotate(
+        total_sales=Sum('total_amount')
+    ).order_by('date', 'branch__name')
+    
+    for row in sales_data:
+        writer.writerow([
+            row['date'].strftime('%Y-%m-%d') if row['date'] else '',
+            row['branch__code'] or '',
+            row['branch__name'] or '',
+            row['branch__location'] or '',
+            int(row['total_sales']) if row['total_sales'] is not None else 0
+        ])
+        
+    return response
 

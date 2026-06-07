@@ -8,6 +8,7 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('dashboard/redirect/', views.dashboard_redirect, name='dashboard_redirect'),
     path('dashboard/owner/', views.OwnerDashboardView.as_view(), name='owner_dashboard'),
+    path('dashboard/owner/export-csv/', views.export_dashboard_sales_csv, name='export_dashboard_sales_csv'),
     path('dashboard/manager/', views.ManagerDashboardView.as_view(), name='manager_dashboard'),
     path('dashboard/staff/', views.StaffDashboardView.as_view(), name='staff_dashboard'),
     # Alias

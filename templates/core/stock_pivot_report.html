@@ -2,107 +2,164 @@
 
 {% block title %}Multi-Branch Stock Report - Aaron Billing{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Premium Compact Typography and Colors */
+    .text-xs {
+        font-size: 0.78rem !important;
+    }
+    .text-xxs {
+        font-size: 0.68rem !important;
+        letter-spacing: 0.05em;
+    }
+    .table-compact {
+        font-size: 0.82rem;
+    }
+    .table-compact th {
+        font-size: 0.72rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        color: #64748b;
+        padding: 8px 10px !important;
+        background-color: #f8fafc;
+        border-bottom: 2px solid #e2e8f0 !important;
+    }
+    .table-compact td {
+        padding: 8px 10px !important;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .table-compact tbody tr:hover td {
+        background-color: rgba(99, 102, 241, 0.01) !important;
+    }
+    
+    .bg-primary-subtle {
+        background-color: rgba(79, 70, 229, 0.04) !important;
+    }
+    
+    /* Rotate chevron on collapse open */
+    [data-bs-toggle="collapse"][aria-expanded="true"] .bi-chevron-down {
+        transform: rotate(180deg);
+        transition: transform 0.2s ease-in-out;
+    }
+    [data-bs-toggle="collapse"] .bi-chevron-down {
+        display: inline-block;
+        transition: transform 0.2s ease-in-out;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 animate-fade-in text-white">
-    <div>
-        <h4 class="fw-bold m-0 text-primary">Multi-Branch Stock Report</h4>
-        <p class="text-muted small mb-0">Pivot view of inventory across all business locations</p>
-    </div>
-    <div class="d-flex gap-2 mt-3 mt-md-0">
-        <a href="{% url 'export_stock_pivot_excel' %}?q={{ request.GET.q|default:'' }}&from_date={{ start_date }}&to_date={{ end_date }}" class="btn btn-outline-success rounded-pill px-4 shadow-sm btn-sm">
-            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Excel
-        </a>
-        <a href="{% url 'product_list' %}" class="btn btn-primary rounded-pill px-4 shadow-sm btn-sm text-white">
-            <i class="bi bi-box-seam me-1"></i> Product Master
-        </a>
+<div class="mb-3 animate-fade-in">
+    <div class="d-flex flex-row justify-content-between align-items-center gap-3">
+        <div>
+            <h5 class="fw-bold m-0 text-primary">Multi-Branch Stock Report</h5>
+            <p class="text-muted text-xxs mb-0">Pivot view of inventory across business locations</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'export_stock_pivot_excel' %}?q={{ request.GET.q|default:'' }}&from_date={{ start_date }}&to_date={{ end_date }}" class="btn btn-outline-success rounded-pill px-3 shadow-sm btn-sm text-xs fw-semibold">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Excel
+            </a>
+            <a href="{% url 'product_list' %}" class="btn btn-primary rounded-pill px-3 shadow-sm btn-sm text-xs fw-semibold text-white">
+                <i class="bi bi-box-seam me-1"></i> Products
+            </a>
+        </div>
     </div>
 </div>
 
-<!-- Search Bar -->
-<div class="card border-0 shadow-sm p-3 mb-4 bg-white animate-fade-in">
-    <form method="GET" class="row g-3" id="filterForm">
-        <div class="col-12 col-md-6">
-            <label class="form-label small fw-bold text-muted">Search Product</label>
-            <div class="input-group">
-                <span class="input-group-text border-0 bg-light rounded-start-pill"><i class="bi bi-search text-muted"></i></span>
-                <input type="text" name="q" class="form-control border-0 bg-light rounded-end-pill" placeholder="Search by Barcode or Product Name..." value="{{ request.GET.q }}">
+<!-- Filters -->
+<div class="card border-0 shadow-sm p-2.5 mb-3 bg-white animate-fade-in">
+    <form method="GET" class="row g-2 align-items-center" id="filterForm">
+        <!-- Search bar -->
+        <div class="col-12 col-md-5">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text border-0 bg-light rounded-pill-start text-muted"><i class="bi bi-search"></i></span>
+                <input type="text" name="q" class="form-control border-0 bg-light text-xs py-1.5" placeholder="Search by name or barcode..." value="{{ request.GET.q }}">
             </div>
         </div>
-        <div class="col-12 col-md-2">
-            <label class="form-label small fw-bold text-muted">From Date</label>
-            <input type="date" name="from_date" class="form-control border-0 bg-light rounded-pill" value="{{ start_date }}">
+        <!-- From date -->
+        <div class="col-6 col-md-2.5">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2">From</span>
+                <input type="date" name="from_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ start_date }}">
+            </div>
         </div>
-        <div class="col-12 col-md-2">
-            <label class="form-label small fw-bold text-muted">To Date</label>
-            <input type="date" name="to_date" class="form-control border-0 bg-light rounded-pill" value="{{ end_date }}">
+        <!-- To date -->
+        <div class="col-6 col-md-2.5">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2">To</span>
+                <input type="date" name="to_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ end_date }}">
+            </div>
         </div>
-        <div class="col-12 col-md-2 d-flex align-items-end">
-            <button class="btn btn-primary rounded-pill w-100 shadow-sm" type="submit">
+        <!-- Submit -->
+        <div class="col-12 col-md-2">
+            <button class="btn btn-primary rounded-pill w-100 btn-sm py-1.5 text-xs fw-semibold" type="submit">
                 Filter
             </button>
         </div>
     </form>
 </div>
 
-<div class="glass-card border-0 shadow-sm overflow-hidden animate-fade-in" style="animation-delay: 0.1s;">
+<div class="card border-0 shadow-sm overflow-hidden bg-white animate-fade-in" style="animation-delay: 0.1s;">
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="bg-light">
-                <tr class="x-small text-uppercase fw-bold text-muted text-center align-middle">
-                    <th class="ps-3 ps-md-4 text-start">Product Details</th>
-                    <th class="text-end pe-3 pe-md-4">Price</th>
-                    <th class="bg-primary-subtle text-primary border-start">Op</th>
-                    <th class="bg-primary-subtle text-primary">In</th>
-                    <th class="bg-primary-subtle text-primary">Out</th>
-                    <th class="bg-primary-subtle text-primary">Dmg</th>
-                    <th class="bg-primary-subtle text-primary border-end">Cl</th>
-                    <th style="width: 40px;"></th>
+        <table class="table align-middle mb-0 table-compact">
+            <thead>
+                <tr class="border-bottom text-center">
+                    <th class="ps-4 text-start" style="width: 35%;">Product Details</th>
+                    <th class="text-end pe-4" style="width: 15%;">Price</th>
+                    <th class="bg-primary-subtle text-primary border-start" style="width: 8%;">Op</th>
+                    <th class="bg-primary-subtle text-primary" style="width: 8%;">In</th>
+                    <th class="bg-primary-subtle text-primary" style="width: 8%;">Out</th>
+                    <th class="bg-primary-subtle text-primary" style="width: 8%;">Dmg</th>
+                    <th class="bg-primary-subtle text-primary border-end" style="width: 10%;">Cl</th>
+                    <th style="width: 8%;"></th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in report_data %}
-                <tr class="text-center" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#branchRow{{ item.product.id }}">
-                    <td class="ps-3 ps-md-4 text-start">
+                <tr class="text-center text-xs" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#branchRow{{ item.product.id }}">
+                    <td class="ps-4 text-start">
                         <div class="fw-bold text-dark">{{ item.product.name }}</div>
-                        <div class="x-small text-muted"><code class="bg-light px-1 rounded">{{ item.product.barcode }}</code></div>
+                        <div class="text-muted text-xxs mt-0.5"><code class="bg-light text-muted px-1.5 py-0.5 rounded-pill font-monospace border border-light">{{ item.product.barcode }}</code></div>
                     </td>
-                    <td class="text-end pe-3 pe-md-4 fw-bold text-primary">
+                    <td class="text-end pe-4 fw-bold text-primary">
                         ₹{{ item.product.price|floatformat:0 }}
                     </td>
-                    <td class="bg-primary-subtle fw-bold border-start">{{ item.total_op }}</td>
-                    <td class="bg-primary-subtle text-success">{{ item.total_in }}</td>
-                    <td class="bg-primary-subtle text-danger">{{ item.total_out }}</td>
+                    <td class="bg-primary-subtle fw-bold border-start text-dark">{{ item.total_op }}</td>
+                    <td class="bg-primary-subtle text-success fw-semibold">{{ item.total_in }}</td>
+                    <td class="bg-primary-subtle text-danger fw-semibold">{{ item.total_out }}</td>
                     <td class="bg-primary-subtle text-danger-emphasis">{{ item.total_dmg }}</td>
                     <td class="bg-primary-subtle fw-bold text-primary border-end">{{ item.total_cl }}</td>
-                    <td><i class="bi bi-chevron-down text-muted"></i></td>
+                    <td><i class="bi bi-chevron-down text-muted text-xxs"></i></td>
                 </tr>
                 
                 <!-- Expanded Row for Branches -->
-                <tr id="branchRow{{ item.product.id }}" class="collapse bg-light border-0">
+                <tr id="branchRow{{ item.product.id }}" class="collapse bg-light-subtle border-0">
                     <td colspan="8" class="p-0 border-0">
-                        <div class="p-3 bg-secondary bg-opacity-10 shadow-inner">
+                        <div class="p-3 bg-light-subtle">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="m-0 small fw-bold text-secondary"><i class="bi bi-diagram-3-fill me-1"></i> Branch Breakdown</h6>
+                                <h6 class="m-0 text-xxs fw-bold text-uppercase tracking-wider text-secondary"><i class="bi bi-diagram-3-fill me-1"></i> Branch Breakdown</h6>
                             </div>
-                            <div class="table-responsive bg-white rounded shadow-sm border">
-                                <table class="table table-sm table-bordered m-0 text-center align-middle">
-                                    <thead class="bg-light x-small text-uppercase text-muted">
-                                        <tr>
-                                            <th class="text-start ps-3 py-2">Location</th>
-                                            {% if show_op %}<th class="py-2">Op</th>{% endif %}
-                                            {% if show_in %}<th class="py-2">In</th>{% endif %}
-                                            {% if show_out %}<th class="py-2">Out</th>{% endif %}
-                                            <th class="py-2">Dmg</th>
-                                            <th class="bg-light fw-bold text-dark py-2">Closing</th>
+                            <div class="table-responsive bg-white rounded-3 border">
+                                <table class="table table-sm table-borderless m-0 text-center align-middle text-xxs">
+                                    <thead>
+                                        <tr class="text-muted border-bottom text-uppercase fw-bold" style="font-size: 10px; background-color: #fafbfc;">
+                                            <th class="text-start ps-3 py-1.5">Location</th>
+                                            {% if show_op %}<th class="py-1.5">Op</th>{% endif %}
+                                            {% if show_in %}<th class="py-1.5">In</th>{% endif %}
+                                            {% if show_out %}<th class="py-1.5">Out</th>{% endif %}
+                                            <th class="py-1.5">Dmg</th>
+                                            <th class="bg-light fw-bold text-dark py-1.5">Closing</th>
                                             {% if request.user.role == 'owner' or request.user.has_product_rights %}
-                                            <th class="py-2 text-center" style="width: 70px;">Correct</th>
+                                            <th class="py-1.5 text-center" style="width: 70px;">Correct</th>
                                             {% endif %}
                                         </tr>
                                     </thead>
-                                    <tbody class="small">
+                                    <tbody>
                                         {% for stock_info in item.branch_stocks %}
-                                        <tr>
-                                            <td class="text-start ps-3 fw-bold text-dark border-end-0">{{ stock_info.branch.name }} ({{ stock_info.branch.code }})</td>
+                                        <tr class="border-bottom border-light">
+                                            <td class="text-start ps-3 fw-semibold text-dark">{{ stock_info.branch.name }}</td>
                                             {% if show_op %}<td class="text-muted">{{ stock_info.op }}</td>{% endif %}
                                             {% if show_in %}<td class="text-success">{{ stock_info.in }}</td>{% endif %}
                                             {% if show_out %}<td class="text-danger">{{ stock_info.out }}</td>{% endif %}
@@ -112,9 +169,9 @@
                                             <td class="text-center align-middle">
                                                 {% if stock_info.reg_id %}
                                                 <a href="{% url 'stock_adjustment' stock_info.reg_id %}"
-                                                   class="btn btn-sm btn-outline-warning py-0 px-2 rounded-pill x-small shadow-sm"
-                                                   style="font-size: 0.7rem;" title="Wrong Entry Correction">
-                                                    <i class="bi bi-tools"></i>
+                                                   class="btn btn-xs btn-outline-warning py-0 px-2 rounded-pill shadow-sm fw-semibold"
+                                                   style="font-size: 9px;" title="Wrong Entry Correction">
+                                                    <i class="bi bi-tools me-0.5"></i>Fix
                                                 </a>
                                                 {% endif %}
                                             </td>
@@ -129,7 +186,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="100%" class="text-center py-5 text-muted">
+                    <td colspan="8" class="text-center py-4 text-muted">
                         No products found in the registry.
                     </td>
                 </tr>
@@ -140,23 +197,23 @@
     
     <!-- Pagination -->
     {% if page_obj.has_other_pages %}
-    <div class="p-3 border-top bg-light bg-opacity-50">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
-            <div class="text-muted small">
+    <div class="p-2 border-top bg-light bg-opacity-50">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
+            <div class="text-muted text-xxs ps-2">
                 Showing <span class="fw-bold text-dark">{{ page_obj.start_index }}-{{ page_obj.end_index }}</span> of <span class="fw-bold text-dark">{{ page_obj.paginator.count }}</span> products
             </div>
             
-            <nav aria-label="Page navigation">
+            <nav aria-label="Page navigation" class="pe-2">
                 <ul class="pagination pagination-sm mb-0">
                     {% if page_obj.has_previous %}
                     <li class="page-item">
-                        <a class="page-link rounded-start-pill px-3 border-0 shadow-sm" href="?page=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="First Page">
-                            <i class="bi bi-chevron-double-left"></i>
+                        <a class="page-link rounded-start-pill px-2.5 border-0 shadow-sm" href="?page=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="First Page">
+                            <i class="bi bi-chevron-double-left text-xxs"></i>
                         </a>
                     </li>
                     <li class="page-item">
-                        <a class="page-link border-0 shadow-sm" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="Previous Page">
-                            <i class="bi bi-chevron-left"></i>
+                        <a class="page-link border-0 shadow-sm px-2.5" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="Previous Page">
+                            <i class="bi bi-chevron-left text-xxs"></i>
                         </a>
                     </li>
                     {% endif %}
@@ -164,22 +221,22 @@
                     {% for num in page_obj.paginator.page_range %}
                         {% if num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                             {% if page_obj.number == num %}
-                            <li class="page-item active"><span class="page-link border-0 shadow-sm fw-bold px-3">{{ num }}</span></li>
+                            <li class="page-item active"><span class="page-link border-0 shadow-sm fw-bold px-2.5">{{ num }}</span></li>
                             {% else %}
-                            <li class="page-item"><a class="page-link border-0 shadow-sm px-3 text-dark" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}">{{ num }}</a></li>
+                            <li class="page-item"><a class="page-link border-0 shadow-sm px-2.5 text-dark" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}">{{ num }}</a></li>
                             {% endif %}
                         {% endif %}
                     {% endfor %}
 
                     {% if page_obj.has_next %}
                     <li class="page-item">
-                        <a class="page-link border-0 shadow-sm" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="Next Page">
-                            <i class="bi bi-chevron-right"></i>
+                        <a class="page-link border-0 shadow-sm px-2.5" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="Next Page">
+                            <i class="bi bi-chevron-right text-xxs"></i>
                         </a>
                     </li>
                     <li class="page-item">
-                        <a class="page-link rounded-end-pill px-3 border-0 shadow-sm" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="Last Page">
-                            <i class="bi bi-chevron-double-right"></i>
+                        <a class="page-link rounded-end-pill px-2.5 border-0 shadow-sm" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="Last Page">
+                            <i class="bi bi-chevron-double-right text-xxs"></i>
                         </a>
                     </li>
                     {% endif %}
@@ -189,76 +246,5 @@
     </div>
     {% endif %}
 </div>
-
-<style>
-    .glass-card {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(10px);
-        border-radius: 1rem;
-    }
-    .bg-primary-subtle {
-        background-color: rgba(79, 70, 229, 0.05) !important;
-    }
-    .text-primary {
-        color: #4f46e5 !important;
-    }
-    .table-hover tbody tr:hover td {
-        background-color: rgba(79, 70, 229, 0.02) !important;
-    }
-    .shadow-inner {
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-    }
-    
-    /* Rotate chevron on collapse open */
-    [data-bs-toggle="collapse"][aria-expanded="true"] .bi-chevron-down {
-        transform: rotate(180deg);
-        transition: transform 0.2s ease-in-out;
-    }
-    [data-bs-toggle="collapse"] .bi-chevron-down {
-        display: inline-block;
-        transition: transform 0.2s ease-in-out;
-    }
-</style>
-
-<script>
-    // Auto-submit form when a toggle or branch is switched
-    document.querySelectorAll('.form-check-input').forEach(input => {
-        // Only auto submit for the toggles (show_op, etc), not every single branch click, 
-        // because they might want to click 3 branches before it reloads
-        if(['showOp', 'showIn', 'showOut'].includes(input.id)) {
-            input.addEventListener('change', () => {
-                document.getElementById('filterForm').submit();
-            });
-        }
-    });
-
-    // Make 'All Branches' checkbox mutually exclusive with specific branches
-    const allBranchesCheck = document.getElementById('branch_all');
-    const specificBranchChecks = document.querySelectorAll('.branch-check:not(#branch_all)');
-
-    allBranchesCheck.addEventListener('change', function() {
-        if(this.checked) {
-            specificBranchChecks.forEach(cb => cb.checked = false);
-        }
-    });
-
-    specificBranchChecks.forEach(cb => {
-        cb.addEventListener('change', function() {
-            if(this.checked) {
-                allBranchesCheck.checked = false;
-            }
-        });
-    });
-
-    function toggleAllBranches(select) {
-        if(select) {
-            allBranchesCheck.checked = true;
-            specificBranchChecks.forEach(cb => cb.checked = false);
-        } else {
-            allBranchesCheck.checked = false;
-            specificBranchChecks.forEach(cb => cb.checked = false);
-        }
-    }
-
-</script>
 {% endblock %}
+

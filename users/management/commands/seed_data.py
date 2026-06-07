@@ -50,7 +50,7 @@ class Command(BaseCommand):
         for p_data in products_data:
             product, _ = Product.objects.get_or_create(barcode=p_data['barcode'], defaults={'name': p_data['name'], 'price': p_data['price']})
             # Add to both branches
-            Inventory.objects.get_or_create(branch=branch1, product=product, defaults={'stock_quantity': 50})
-            Inventory.objects.get_or_create(branch=branch2, product=product, defaults={'stock_quantity': 30})
+            Inventory.objects.get_or_create(branch=branch1, product=product, defaults={'quantity': 50})
+            Inventory.objects.get_or_create(branch=branch2, product=product, defaults={'quantity': 30})
 
         self.stdout.write('Finished seeding products and inventory.')

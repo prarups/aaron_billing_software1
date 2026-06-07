@@ -24,3 +24,4 @@ whitenoise
 dj-database-url
 psycopg2-binary
 openpyxl
+python-dotenv
