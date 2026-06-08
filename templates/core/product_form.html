@@ -39,7 +39,7 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label small fw-bold text-muted">Size</label>
-                    <input type="text" name="size" class="form-control rounded-pill" value="{{ form.size.value|default:'' }}" />
+                    {{ form.size }}
                 </div>
                 
                 <!-- Combo Price Formset -->
@@ -131,11 +131,11 @@
                     <div class="row g-3">
                         <div class="col-6">
                             <label class="form-label x-small fw-bold text-muted">Stock Quantity</label>
-                            <input type="number" name="stock_quantity" class="form-control rounded-pill" value="{{ registration.stock_quantity }}">
+                            <input type="number" name="stock_quantity" class="form-control rounded-pill" value="{{ registration.stock_quantity }}" min="0">
                         </div>
                         <div class="col-6">
                             <label class="form-label x-small fw-bold text-muted">Low Stock Alert</label>
-                            <input type="number" name="low_stock_threshold" class="form-control rounded-pill" value="{{ registration.low_stock_threshold }}">
+                            <input type="number" name="low_stock_threshold" class="form-control rounded-pill" value="{{ registration.low_stock_threshold }}" min="0">
                         </div>
                     </div>
                     {% else %}

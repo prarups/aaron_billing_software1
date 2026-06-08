@@ -100,7 +100,9 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # Database configuration
-if DEBUG:
+use_postgres = os.environ.get('USE_POSTGRES', 'False').lower() in ('true', '1', 'yes')
+
+if DEBUG and not use_postgres:
     # Use SQLite for local development to avoid external DB dependencies
     DATABASES = {
         'default': {

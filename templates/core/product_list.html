@@ -34,18 +34,7 @@
         background-color: rgba(99, 102, 241, 0.01) !important;
     }
     
-    /* Inline edit styling */
-    .inline-edit { 
-        cursor: pointer; 
-        border-bottom: 1px dashed var(--primary); 
-        transition: all 0.2s; 
-        padding: 2px 4px; 
-        border-radius: 4px; 
-        display: inline-block; 
-    }
-    .inline-edit:hover { 
-        background: rgba(99, 102, 241, 0.05); 
-    }
+
 </style>
 {% endblock %}
 
@@ -148,13 +137,7 @@
                     <td class="fw-bold text-dark text-xs">{{ reg.product.name }}</td>
                     <td><code class="bg-light text-muted px-2 py-0.5 rounded-pill text-xxs font-monospace border border-light">{{ reg.product.barcode }}</code></td>
                     <td class="fw-bold text-primary">
-                        {% if request.user.role == 'owner' or request.user.has_product_rights %}
-                        <span class="inline-edit price-edit text-xs" data-id="{{ reg.product.pk }}" data-type="price">
-                            ₹<span class="value">{{ reg.product.price|floatformat:0 }}</span>
-                        </span>
-                        {% else %}
                         <span class="text-xs">₹{{ reg.product.price|floatformat:0 }}</span>
-                        {% endif %}
                     </td>
                     <td>
                         <div class="d-flex flex-wrap gap-1">
@@ -166,13 +149,7 @@
                         </div>
                     </td>
                     <td>
-                        {% if request.user.role == 'owner' or request.user.has_product_rights %}
-                        <span class="inline-edit stock-edit text-xs {% if reg.stock_quantity <= reg.low_stock_threshold %}text-danger fw-bold{% endif %}" data-id="{{ reg.id }}" data-type="stock">
-                            <span class="value">{{ reg.stock_quantity }}</span>
-                        </span>
-                        {% else %}
                         <span class="text-xs {% if reg.stock_quantity <= reg.low_stock_threshold %}text-danger fw-bold{% endif %}">{{ reg.stock_quantity }}</span>
-                        {% endif %}
                     </td>
                     <td class="text-end pe-4">
                         {% if request.user.role == 'owner' or request.user.has_product_rights %}
@@ -259,80 +236,6 @@
 </nav>
 {% endif %}
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.inline-edit').forEach(el => {
-            el.addEventListener('click', function() {
-                if (this.querySelector('input')) return;
-                
-                const type = this.dataset.type;
-                const id = this.dataset.id;
-                const oldValue = this.innerHTML;
-                const valueSpan = this.querySelector('.value');
-                const originalValue = valueSpan.innerText.trim();
-                
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.className = 'form-control form-control-sm rounded-pill d-inline-block shadow-sm border-primary text-xs px-2 py-0.5';
-                input.style.width = '80px';
-                input.value = originalValue;
-                
-                this.innerHTML = '';
-                this.appendChild(input);
-                input.focus();
 
-                const finish = (content) => {
-                    this.innerHTML = content;
-                };
-
-                const save = async () => {
-                    const newValue = input.value;
-                    if (newValue === originalValue) {
-                        finish(oldValue);
-                        return;
-                    }
-
-                    input.disabled = true;
-                    const url = type === 'price' ? 
-                        `{% url 'update_product_price_ajax' 0 %}`.replace('0', id) :
-                        `{% url 'update_product_stock_ajax' 0 %}`.replace('0', id);
-
-                    try {
-                        const response = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': '{{ csrf_token }}'
-                            },
-                            body: JSON.stringify({ [type]: newValue })
-                        });
-
-                        if (response.ok) {
-                            const data = await response.json();
-                            if (type === 'price') {
-                                finish(`₹<span class="value">${data.price}</span>`);
-                            } else {
-                                const isLow = data.stock <= (parseInt('{{ reg.low_stock_threshold|default:10 }}'));
-                                this.classList.toggle('text-danger', isLow);
-                                this.classList.toggle('fw-bold', isLow);
-                                finish(`<span class="value">${data.stock}</span>`);
-                            }
-                        } else {
-                            finish(oldValue);
-                        }
-                    } catch (error) {
-                        finish(oldValue);
-                    }
-                };
-
-                input.onblur = save;
-                input.onkeydown = (e) => {
-                    if (e.key === 'Enter') input.blur();
-                    if (e.key === 'Escape') finish(oldValue);
-                };
-            });
-        });
-    });
-</script>
 {% endblock %}
 

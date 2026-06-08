@@ -11,7 +11,8 @@ class CustomAuthenticationForm(AuthenticationForm):
     )
     role = forms.ChoiceField(
         choices=ROLE_CHOICES,
-        widget=forms.RadioSelect(attrs={'class': 'form-check-input'})
+        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
+        initial='owner'
     )
     branch = forms.ModelChoiceField(
         queryset=Branch.objects.all(),

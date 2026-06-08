@@ -12,6 +12,7 @@ def create_superuser(apps, schema_editor):
             is_staff=True,
             is_superuser=True,
             role='owner',
+            employee_id='AR0001',
             password=make_password('Praveen@123')
         )
         admin_user.save()

@@ -5,7 +5,7 @@ class Branch(models.Model):
     name = models.CharField(max_length=100)
     location = models.CharField(max_length=255)
     contact_number = models.CharField(max_length=20, blank=True)
-    invoice_prefix = models.CharField(max_length=10, default='AG', help_text="Prefix for invoice numbers (e.g., 'AG')")
+    invoice_prefix = models.CharField(max_length=10, default='AG', unique=True, help_text="Prefix for invoice numbers (e.g., 'AG')")
     code = models.PositiveIntegerField(unique=True, editable=False, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

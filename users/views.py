@@ -187,7 +187,8 @@ def branch_create(request):
             branch = form.save()
             messages.success(request, f"Branch '{branch.name}' created successfully.")
         else:
-            messages.error(request, "Failed to create branch. Please check inputs.")
+            errors_str = " ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
+            messages.error(request, f"Failed to create branch. {errors_str}")
     return redirect(reverse('owner_dashboard') + '#branches')
 
 @login_required
@@ -201,7 +202,8 @@ def branch_edit(request, pk):
             form.save()
             messages.success(request, f"Branch '{branch.name}' updated successfully.")
         else:
-            messages.error(request, "Failed to update branch. Please check inputs.")
+            errors_str = " ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
+            messages.error(request, f"Failed to update branch. {errors_str}")
     return redirect(reverse('owner_dashboard') + '#branches')
 
 @login_required

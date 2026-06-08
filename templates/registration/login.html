@@ -74,7 +74,7 @@
                     <label class="form-label small fw-semibold d-block">Log in as</label>
                     <div class="btn-group w-100" role="group">
                         {% for radio in form.role %}
-                        <input type="radio" class="btn-check" name="role" id="{{ radio.id_for_label }}" value="{{ radio.data.value }}" onchange="toggleBranch()">
+                        <input type="radio" class="btn-check" name="role" id="{{ radio.id_for_label }}" value="{{ radio.data.value }}" {% if radio.data.selected %}checked{% endif %} onchange="toggleBranch()">
                         <label class="btn btn-outline-primary fw-semibold" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
                         {% endfor %}
                     </div>
@@ -98,7 +98,8 @@
             
 <script>
     function toggleBranch() {
-        const role = document.querySelector('input[name="role"]:checked').value;
+        const roleRadio = document.querySelector('input[name="role"]:checked');
+        const role = roleRadio ? roleRadio.value : 'owner';
         const branchContainer = document.getElementById('branch_container');
         const branchSelect = document.getElementById('id_branch');
         if (role === 'owner') {

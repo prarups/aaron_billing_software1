@@ -60,7 +60,7 @@ class User(AbstractUser):
         return self.branches.all()
 
     def save(self, *args, **kwargs):
-        if not self.employee_id and self.role in ['manager', 'staff']:
+        if not self.employee_id:
             self.employee_id = generate_employee_id_for_user(self)
         super().save(*args, **kwargs)
 
@@ -68,7 +68,7 @@ class User(AbstractUser):
 @receiver(m2m_changed, sender=User.branches.through)
 def user_branches_changed(sender, instance, action, **kwargs):
     if action == "post_add":
-        if instance.role in ['manager', 'staff'] and not instance.employee_id:
+        if not instance.employee_id:
             instance.employee_id = generate_employee_id_for_user(instance)
             instance.save(update_fields=['employee_id'])
 

@@ -31,14 +31,16 @@ class ProductForm(forms.ModelForm):
     initial_stock = forms.IntegerField(
         required=False,
         initial=0,
+        min_value=0,
         label="Initial Stock Quantity",
-        widget=forms.NumberInput(attrs={'class': 'form-control rounded-pill'})
+        widget=forms.NumberInput(attrs={'class': 'form-control rounded-pill', 'min': '0'})
     )
     low_stock_threshold = forms.IntegerField(
         required=False,
         initial=10,
+        min_value=0,
         label="Low Stock Alert Level",
-        widget=forms.NumberInput(attrs={'class': 'form-control rounded-pill'})
+        widget=forms.NumberInput(attrs={'class': 'form-control rounded-pill', 'min': '0'})
     )
     class Meta:
         model = Product
@@ -54,6 +56,12 @@ class ProductForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Ensure branch dropdown shows the branch name
         self.fields['initial_branch'].label_from_instance = lambda obj: obj.name
+        
+        # If editing an existing product, make master details (name, barcode, size) read-only
+        if self.instance and self.instance.pk:
+            self.fields['name'].disabled = True
+            self.fields['barcode'].disabled = True
+            self.fields['size'].disabled = True
 
     def clean_price(self):
         price = self.cleaned_data.get('price')

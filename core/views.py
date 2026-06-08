@@ -165,8 +165,8 @@ def product_create(request):
                 existing_product = Product.objects.filter(barcode=barcode).first()
                 if existing_product:
                     initial_branch_id = request.POST.get('initial_branch')
-                    initial_stock = int(request.POST.get('initial_stock') or 0)
-                    low_threshold = int(request.POST.get('low_stock_threshold') or 10)
+                    initial_stock = max(0, int(request.POST.get('initial_stock') or 0))
+                    low_threshold = max(0, int(request.POST.get('low_stock_threshold') or 10))
                     
                     if initial_branch_id:
                         branch = get_object_or_404(Branch, id=initial_branch_id)
@@ -247,8 +247,28 @@ def product_update(request, pk):
             if registration:
                 old_stock = registration.stock_quantity
                 new_stock = int(request.POST.get('stock_quantity', registration.stock_quantity))
+                new_low = int(request.POST.get('low_stock_threshold', registration.low_stock_threshold))
+                
+                if new_stock < 0 or new_low < 0:
+                    from django.contrib import messages
+                    messages.error(request, "Stock quantity and low stock threshold cannot be negative.")
+                    initial_data = {
+                        'initial_branch': registration.branch,
+                        'initial_stock': registration.stock_quantity,
+                        'low_stock_threshold': registration.low_stock_threshold
+                    }
+                    form = ProductForm(instance=product, initial=initial_data)
+                    from .forms import ComboPriceFormSet
+                    combo_formset = ComboPriceFormSet(instance=product)
+                    return render(request, 'core/product_form.html', {
+                        'form': form, 
+                        'combo_formset': combo_formset,
+                        'action': 'Edit', 
+                        'registration': registration
+                    })
+                
                 registration.stock_quantity = new_stock
-                registration.low_stock_threshold = request.POST.get('low_stock_threshold', registration.low_stock_threshold)
+                registration.low_stock_threshold = new_low
                 registration.save()
             
             return redirect('product_list')
@@ -282,6 +302,8 @@ def update_product_stock_ajax(request, pk):
             data = json.loads(request.body)
             new_stock = data.get('stock')
             if new_stock is not None:
+                if int(new_stock) < 0:
+                    return JsonResponse({'error': 'Stock cannot be negative.'}, status=400)
                 reg = get_object_or_404(ProductRegistry, pk=pk)
                 old_stock = reg.stock_quantity
                 reg.stock_quantity = int(new_stock)
@@ -409,18 +431,20 @@ def bulk_insert(request):
                     
                     # Create registry entry if branch is provided
                     if branch:
+                        parsed_stock = max(0, int(stock) if stock else 0)
+                        parsed_low_stock = max(0, int(low_stock) if low_stock else 10)
                         reg, reg_created = ProductRegistry.objects.get_or_create(
                             branch=branch,
                             product=product,
                             defaults={
-                                'stock_quantity': int(stock) if stock else 0,
-                                'low_stock_threshold': int(low_stock) if low_stock else 10
+                                'stock_quantity': parsed_stock,
+                                'low_stock_threshold': parsed_low_stock
                             }
                         )
                         if not reg_created:
                             old_stock = reg.stock_quantity
-                            reg.stock_quantity = int(stock) if stock else reg.stock_quantity
-                            reg.low_stock_threshold = int(low_stock) if low_stock else reg.low_stock_threshold
+                            reg.stock_quantity = parsed_stock
+                            reg.low_stock_threshold = parsed_low_stock
                             reg.save()
                             
                             if reg.stock_quantity != old_stock:
