@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .models import Product, Branch, ProductRegistry, StockTransaction
 from django import forms
 from .forms import ProductForm
@@ -121,7 +122,6 @@ def export_products_csv(request):
 @login_required
 def product_create(request):
     if not (request.user.role == 'owner' or request.user.has_product_rights):
-        from django.contrib import messages
         messages.error(request, "Permission denied. You do not have product edit rights.")
         return redirect('product_list')
 
@@ -179,7 +179,6 @@ def product_create(request):
                             }
                         )
                         
-                        from django.contrib import messages
                         if created:
                             if initial_stock > 0:
                                 StockTransaction.objects.create(
@@ -222,7 +221,6 @@ def product_create(request):
 @login_required
 def product_update(request, pk):
     if not (request.user.role == 'owner' or request.user.has_product_rights):
-        from django.contrib import messages
         messages.error(request, "Permission denied. You do not have product edit rights.")
         return redirect('product_list')
 
@@ -250,7 +248,6 @@ def product_update(request, pk):
                 new_low = int(request.POST.get('low_stock_threshold', registration.low_stock_threshold))
                 
                 if new_stock < 0 or new_low < 0:
-                    from django.contrib import messages
                     messages.error(request, "Stock quantity and low stock threshold cannot be negative.")
                     initial_data = {
                         'initial_branch': registration.branch,
@@ -350,12 +347,9 @@ def update_product_price_ajax(request, pk):
 
 import csv
 import io
-from django.contrib import messages
-
 @login_required
 def bulk_insert(request):
     if not (request.user.role == 'owner' or request.user.has_product_rights):
-        from django.contrib import messages
         messages.error(request, "Permission denied. You do not have product edit rights.")
         return redirect('product_list')
 
@@ -792,7 +786,6 @@ def stock_adjustment(request, reg_id):
     from .models import StockAdjustment
 
     if not (request.user.role == 'owner' or request.user.has_product_rights):
-        from django.contrib import messages
         messages.error(request, "Permission denied. You do not have product edit rights.")
         return redirect('product_list')
 
