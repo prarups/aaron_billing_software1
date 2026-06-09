@@ -419,7 +419,7 @@ def bulk_insert(request):
                         )
                         if not reg_created:
                             old_stock = reg.stock_quantity
-                            reg.stock_quantity = int(stock) if stock else reg.stock_quantity
+                            reg.stock_quantity = old_stock + (int(stock) if stock else 0)
                             reg.low_stock_threshold = int(low_stock) if low_stock else reg.low_stock_threshold
                             reg.save()
                             

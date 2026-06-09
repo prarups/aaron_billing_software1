@@ -565,6 +565,70 @@ class StockPivotReportTestCase(TestCase):
         self.assertRedirects(response, reverse('stock_pivot_report'))
 
 
+class BulkInsertTestCase(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.branch = Branch.objects.create(name="Nellore Branch", code="10001", invoice_prefix="AN")
+        self.user = User.objects.create_user(
+            username="testowner", 
+            password="password123", 
+            role="owner",
+            active_branch=self.branch
+        )
+        self.user.branches.add(self.branch)
+        self.user.save()
+        self.client.login(username="testowner", password="password123")
+
+    def test_bulk_insert_accumulates_stock_on_repeat(self):
+        # 1. First bulk insert of product
+        import csv
+        import io
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        csv_content = (
+            "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
+            "T-Shirt,TSHIRT01,250.00,M,10001,15,5\n"
+        )
+        csv_file = SimpleUploadedFile("bulk.csv", csv_content.encode("utf-8"), content_type="text/csv")
+        
+        response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
+        self.assertEqual(response.status_code, 200)
+
+        # Check product registry is created with 15 stock
+        product = Product.objects.get(barcode="TSHIRT01")
+        reg = ProductRegistry.objects.get(product=product, branch=self.branch)
+        self.assertEqual(reg.stock_quantity, 15)
+        
+        # Verify IN transaction created
+        tx = StockTransaction.objects.get(product=product, branch=self.branch, transaction_type='IN', reference='Bulk Insert')
+        self.assertEqual(tx.quantity, 15)
+
+        # 2. Second bulk insert of the same product with 10 more stock
+        csv_content_second = (
+            "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
+            "T-Shirt,TSHIRT01,250.00,M,10001,10,5\n"
+        )
+        csv_file_second = SimpleUploadedFile("bulk_second.csv", csv_content_second.encode("utf-8"), content_type="text/csv")
+        
+        response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file_second})
+        self.assertEqual(response.status_code, 200)
+
+        # Re-fetch registry and check if stock is 25 (15 + 10)
+        reg.refresh_from_db()
+        self.assertEqual(reg.stock_quantity, 25)
+
+        # Verify a new StockTransaction with type 'IN' and quantity 10 is created
+        tx_update = StockTransaction.objects.filter(
+            product=product,
+            branch=self.branch,
+            transaction_type='IN',
+            reference='Bulk Update'
+        ).first()
+        self.assertIsNotNone(tx_update)
+        self.assertEqual(tx_update.quantity, 10)
+
+
+
 
 
 
