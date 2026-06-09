@@ -22,11 +22,14 @@
                     </div>
                     <div class="col-6 text-end">
                         <div class="d-flex justify-content-end align-items-center mb-1">
-                            <span class="small text-muted me-2">Customer</span>
-                            <button class="btn btn-sm btn-light p-1 custom-edit-btn" data-bs-toggle="modal"
-                                data-bs-target="#editCustomerModal" title="Edit Customer">
+                            {% if allow_edit %}
+                            <span class="small text-muted me-2">Edit Bill</span>
+                            <a href="{% url 'edit_bill_back' bill.id %}" onclick="return confirm('Are you sure you want to edit this bill? This will load its items back to the checkout.');" class="btn btn-sm btn-light p-1 custom-edit-btn" title="Edit entire bill">
                                 <i class="bi bi-pencil-square text-primary"></i>
-                            </button>
+                            </a>
+                            {% else %}
+                            <span class="small text-muted me-2">Customer</span>
+                            {% endif %}
                         </div>
                         <p class="small mb-1"><strong>{{ bill.customer_name|default:"Walk-in" }}</strong></p>
                         {% if bill.customer_phone %}
@@ -71,14 +74,19 @@
                 <!-- Grand Total -->
                 <div class="bg-vibrant glass-card p-4 mx-n2 mb-4">
                     {% if bill.total_savings > 0 %}
-                    <div
-                        class="d-flex justify-content-between align-items-center border-bottom border-white border-opacity-25 mb-2 pb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-white opacity-75 small">Subtotal (Original)</span>
-                        <span class="text-white small">₹{{ bill.total_amount|add:bill.total_savings|floatformat:0 }}</span>
+                        <span class="text-white small">₹{{ bill.original_subtotal|floatformat:0 }}</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
                         <span class="text-white opacity-75 small">Total Savings</span>
                         <span class="text-white fw-bold">- ₹{{ bill.total_savings|floatformat:0 }}</span>
+                    </div>
+                    {% endif %}
+                    {% if bill.retail_price > 0 %}
+                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
+                        <span class="text-white opacity-75 small">Retail Price</span>
+                        <span class="text-white fw-bold">+ ₹{{ bill.retail_price|floatformat:0 }}</span>
                     </div>
                     {% endif %}
                     <div class="d-flex justify-content-between align-items-center">

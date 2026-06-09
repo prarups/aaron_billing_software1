@@ -10,9 +10,13 @@ class BranchAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if request.user.is_superuser:
+        if request.user.is_superuser or getattr(request.user, 'role', '') == 'owner':
             return qs
-        return qs.filter(id=request.user.active_branch_id)
+        accessible_branches = request.user.get_accessible_branches()
+        return qs.filter(id__in=accessible_branches)
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
 
     def has_add_permission(self, request):
         return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
@@ -28,11 +32,15 @@ class ProductRegistryInline(admin.TabularInline):
     model = ProductRegistry
     extra = 1
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "branch" and not (request.user.is_superuser or getattr(request.user, 'role', '') == 'owner'):
+            kwargs["queryset"] = request.user.get_accessible_branches()
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
 class ComboPriceInline(admin.TabularInline):
     model = ComboPrice
     extra = 0
-
-
 
 
 @admin.register(Product)
@@ -44,13 +52,31 @@ class ProductAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if request.user.is_superuser:
+        if request.user.is_superuser or getattr(request.user, 'role', '') == 'owner':
             return qs
-        # Show products registered to their active branch, or products with no registrations yet
+        accessible_branches = request.user.get_accessible_branches()
         return qs.filter(
-            Q(productregistry__branch_id=request.user.active_branch_id) |
+            Q(productregistry__branch__in=accessible_branches) |
             Q(productregistry__isnull=True)
         ).distinct()
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser or getattr(request.user, 'role', '') == 'owner' or (
+            getattr(request.user, 'role', '') == 'manager' and getattr(request.user, 'has_product_rights', False)
+        )
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser or getattr(request.user, 'role', '') == 'owner' or (
+            getattr(request.user, 'role', '') == 'manager' and getattr(request.user, 'has_product_rights', False)
+        )
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser or getattr(request.user, 'role', '') == 'owner' or (
+            getattr(request.user, 'role', '') == 'manager' and getattr(request.user, 'has_product_rights', False)
+        )
 
 
 @admin.register(ProductRegistry)
@@ -61,14 +87,27 @@ class ProductRegistryAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if request.user.is_superuser:
+        if request.user.is_superuser or getattr(request.user, 'role', '') == 'owner':
             return qs
-        return qs.filter(branch_id=request.user.active_branch_id)
+        accessible_branches = request.user.get_accessible_branches()
+        return qs.filter(branch__in=accessible_branches)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == "branch" and not request.user.is_superuser:
-            kwargs["queryset"] = Branch.objects.filter(id=request.user.active_branch_id)
+        if db_field.name == "branch" and not (request.user.is_superuser or getattr(request.user, 'role', '') == 'owner'):
+            kwargs["queryset"] = request.user.get_accessible_branches()
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
 
 
 @admin.register(StockTransaction)
@@ -80,9 +119,22 @@ class StockTransactionAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if request.user.is_superuser:
+        if request.user.is_superuser or getattr(request.user, 'role', '') == 'owner':
             return qs
-        return qs.filter(branch_id=request.user.active_branch_id)
+        accessible_branches = request.user.get_accessible_branches()
+        return qs.filter(branch__in=accessible_branches)
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
 
 
 @admin.register(StockAdjustment)
@@ -94,7 +146,19 @@ class StockAdjustmentAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if request.user.is_superuser:
+        if request.user.is_superuser or getattr(request.user, 'role', '') == 'owner':
             return qs
-        return qs.filter(branch_id=request.user.active_branch_id)
+        accessible_branches = request.user.get_accessible_branches()
+        return qs.filter(branch__in=accessible_branches)
 
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']

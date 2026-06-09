@@ -81,6 +81,11 @@ class StockTransaction(models.Model):
     user = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
+    def save(self, *args, **kwargs):
+        if self.reference:
+            self.reference = str(self.reference)[:100]
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.transaction_type} of {self.quantity} for {self.product.name} at {self.branch.name}"
 
@@ -104,6 +109,11 @@ class StockAdjustment(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if self.reason:
+            self.reason = str(self.reason)[:255]
+        super().save(*args, **kwargs)
 
     def __str__(self):
         sign = '+' if self.correction_amount >= 0 else ''

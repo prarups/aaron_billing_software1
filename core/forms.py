@@ -14,6 +14,26 @@ class BranchForm(forms.ModelForm):
             'invoice_prefix': forms.TextInput(attrs={'class': 'form-control rounded-pill'}),
         }
 
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if name:
+            qs = Branch.objects.filter(name__iexact=name)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError("A branch with this name already exists.")
+        return name
+
+    def clean_invoice_prefix(self):
+        prefix = self.cleaned_data.get('invoice_prefix')
+        if prefix:
+            qs = Branch.objects.filter(invoice_prefix__iexact=prefix)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError("A branch with this invoice prefix already exists.")
+        return prefix
+
 # Existing ProductForm (preserve previous definition). If the file already exists, this will overwrite; ensure to keep original content.
 
 class ProductForm(forms.ModelForm):
@@ -66,6 +86,8 @@ class ProductForm(forms.ModelForm):
     def clean_price(self):
         price = self.cleaned_data.get('price')
         if price is not None:
+            if price < 0:
+                raise forms.ValidationError("Price cannot be negative.")
             # Convert to integer value (remove decimals)
             return int(price)
         return price
@@ -76,9 +98,21 @@ class ComboPriceForm(forms.ModelForm):
         model = ComboPrice
         fields = ['quantity', 'price']
         widgets = {
-            'quantity': forms.NumberInput(attrs={'class': 'form-control rounded-pill'}),
-            'price': forms.NumberInput(attrs={'class': 'form-control rounded-pill', 'step': '1'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control rounded-pill', 'min': '1'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control rounded-pill', 'step': '1', 'min': '0'}),
         }
+
+    def clean_quantity(self):
+        qty = self.cleaned_data.get('quantity')
+        if qty is not None and qty < 1:
+            raise forms.ValidationError("Quantity must be at least 1.")
+        return qty
+
+    def clean_price(self):
+        price = self.cleaned_data.get('price')
+        if price is not None and price < 0:
+            raise forms.ValidationError("Price cannot be negative.")
+        return price
 
 ComboPriceFormSet = inlineformset_factory(
     Product,

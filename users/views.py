@@ -186,7 +186,12 @@ def branch_create(request):
         if form.is_valid():
             branch = form.save()
             messages.success(request, f"Branch '{branch.name}' created successfully.")
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
+                return JsonResponse({'success': True})
         else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
+                errors = {field: [err['message'] for err in errs] for field, errs in form.errors.get_json_data().items()}
+                return JsonResponse({'success': False, 'errors': errors})
             errors_str = " ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
             messages.error(request, f"Failed to create branch. {errors_str}")
     return redirect(reverse('owner_dashboard') + '#branches')
@@ -201,7 +206,12 @@ def branch_edit(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, f"Branch '{branch.name}' updated successfully.")
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
+                return JsonResponse({'success': True})
         else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
+                errors = {field: [err['message'] for err in errs] for field, errs in form.errors.get_json_data().items()}
+                return JsonResponse({'success': False, 'errors': errors})
             errors_str = " ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
             messages.error(request, f"Failed to update branch. {errors_str}")
     return redirect(reverse('owner_dashboard') + '#branches')
@@ -229,7 +239,12 @@ def staff_create(request):
         if form.is_valid():
             user = form.save()
             messages.success(request, f"Staff account '{user.username}' created successfully.")
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
+                return JsonResponse({'success': True})
         else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
+                errors = {field: [err['message'] for err in errs] for field, errs in form.errors.get_json_data().items()}
+                return JsonResponse({'success': False, 'errors': errors})
             errors_str = " ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
             messages.error(request, f"Failed to create staff. {errors_str}")
     return redirect(reverse('owner_dashboard') + '#staff')
@@ -247,7 +262,12 @@ def staff_edit(request, pk):
                 from django.contrib.auth import update_session_auth_hash
                 update_session_auth_hash(request, saved_user)
             messages.success(request, f"Staff account '{user.username}' updated successfully.")
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
+                return JsonResponse({'success': True})
         else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
+                errors = {field: [err['message'] for err in errs] for field, errs in form.errors.get_json_data().items()}
+                return JsonResponse({'success': False, 'errors': errors})
             errors_str = " ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
             messages.error(request, f"Failed to update staff. {errors_str}")
     return redirect(reverse('owner_dashboard') + '#staff')

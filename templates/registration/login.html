@@ -4,122 +4,207 @@
 
 {% block extra_css %}
 <style>
-    /* Clean Tom Select for login branch dropdown */
-    #branch_container .ts-wrapper .ts-control {
-        background: #fff !important;
-        border: 1px solid #dee2e6 !important;
-        border-radius: 0.5rem !important;
+    /* Fullscreen Wrapper covering base.html defaults */
+    .login-wrapper {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #0b0f19;
+        background-image: url("{% static 'images/backgroudlogin.png' %}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999; /* Higher than navbars to ensure clean full screen layout */
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .login-wrapper::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, rgba(11, 15, 25, 0.4) 0%, rgba(11, 15, 25, 0.75) 100%);
+        z-index: 1;
+    }
+    
+    .login-container-inner {
+        position: relative;
+        z-index: 2;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .login-card {
+        background: rgba(255, 255, 255, 0.03) !important;
+        backdrop-filter: blur(16px) saturate(120%);
+        -webkit-backdrop-filter: blur(16px) saturate(120%);
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 1.5rem !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+        padding: 2.5rem !important;
+        width: 100%;
+        max-width: 420px;
+    }
+    
+    .login-title {
+        color: #f8fafc !important;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+    }
+    
+    .login-subtitle {
+        color: #94a3b8 !important;
+        font-size: 0.85rem;
+    }
+    
+    .form-label {
+        color: #cbd5e1 !important;
+        font-weight: 500;
+        font-size: 0.8rem;
+        letter-spacing: 0.01em;
+    }
+    
+    /* Input Group & Controls Styling */
+    .input-group-text {
+        background: rgba(255, 255, 255, 0.04) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        color: #64748b !important;
+        transition: border-color 0.2s ease, color 0.2s ease;
+    }
+    
+    .form-control {
+        background: rgba(255, 255, 255, 0.04) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        color: #f8fafc !important;
+        font-size: 0.88rem !important;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+    
+    .form-control::placeholder {
+        color: #475569 !important;
+    }
+    
+    .form-control:focus {
+        background: rgba(255, 255, 255, 0.07) !important;
+        color: #ffffff !important;
         box-shadow: none !important;
-        padding: 0.5rem 0.75rem;
     }
-    #branch_container .ts-wrapper .ts-control input::placeholder {
-        color: #6c757d;
+    
+    .btn-toggle-password {
+        background: rgba(255, 255, 255, 0.04) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        color: #64748b !important;
+        transition: border-color 0.2s ease, color 0.2s ease;
     }
-    #branch_container .ts-wrapper.focus .ts-control {
-        border-color: #6366f1 !important;
-        box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.15) !important;
+    
+    .btn-toggle-password:hover {
+        color: #cbd5e1 !important;
+        background: rgba(255, 255, 255, 0.06) !important;
     }
-    /* Selected value - plain text, no background */
-    #branch_container .ts-wrapper .ts-control .item {
-        background: none !important;
+    
+    /* Focus State Sync */
+    .input-group:focus-within .input-group-text,
+    .input-group:focus-within .form-control,
+    .input-group:focus-within .btn {
+        border-color: rgba(99, 102, 241, 0.5) !important;
+    }
+    
+    .input-group:focus-within .input-group-text {
+        color: #818cf8 !important;
+    }
+    
+    /* Submit Button styling */
+    .login-btn {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
         border: none !important;
-        box-shadow: none !important;
-        color: #212529 !important;
-        padding: 0 !important;
+        border-radius: 0.75rem !important;
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+        padding: 0.75rem !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3) !important;
     }
-    /* Dropdown container */
-    #branch_container .ts-dropdown {
-        border: 1px solid #dee2e6;
-        border-radius: 0.5rem;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        background: #fff !important;
+    
+    .login-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4) !important;
+        filter: brightness(110%);
     }
-    /* Dropdown options - no background */
-    #branch_container .ts-dropdown .option {
-        background: none !important;
-        color: #212529 !important;
-        padding: 8px 12px;
-    }
-    #branch_container .ts-dropdown .option:hover,
-    #branch_container .ts-dropdown .option.active {
-        background: #f0f0f0 !important;
-        color: #212529 !important;
-    }
-    /* No option message */
-    #branch_container .ts-dropdown .no-results {
-        background: none !important;
+    
+    .login-btn:active {
+        transform: translateY(1px);
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
-    <div class="col-md-4">
-        <div class="card p-4 shadow-sm">
+<div class="login-wrapper">
+    <div class="login-container-inner px-3">
+        <div class="card login-card">
             <div class="text-center mb-4">
-                    <img src="{% static 'images/aronlogo.png' %}" alt="Aaron Billing" class="mb-3" style="max-width:150px;"/>
-                <h3 class="mt-2 fw-bold">Login</h3>
-                <p class="text-muted small">Enter your credentials to access the system</p>
+                <img src="{% static 'images/aronlogonow.png' %}" alt="Aaron Billing" class="mb-3 animate-fade-in" style="max-width: 120px; height: auto;"/>
+                <h4 class="login-title mb-1">Welcome Back</h4>
+                <p class="login-subtitle">Sign in to your account to continue</p>
             </div>
             
             <form method="post" action="{% url 'login' %}">
                 {% csrf_token %}
                 {% if form.non_field_errors %}
-                <div class="alert alert-danger p-2 small mb-3">
-                    {{ form.non_field_errors.0 }}
+                <div class="alert alert-danger p-2.5 small mb-4 rounded-3 text-center" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #fca5a5;">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ form.non_field_errors.0 }}
                 </div>
                 {% endif %}
                 
-                <div class="mb-3 text-center">
-                    <label class="form-label small fw-semibold d-block">Log in as</label>
-                    <div class="btn-group w-100" role="group">
-                        {% for radio in form.role %}
-                        <input type="radio" class="btn-check" name="role" id="{{ radio.id_for_label }}" value="{{ radio.data.value }}" {% if radio.data.selected %}checked{% endif %} onchange="toggleBranch()">
-                        <label class="btn btn-outline-primary fw-semibold" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
-                        {% endfor %}
+                <!-- Username or Employee ID -->
+                <div class="mb-3">
+                    <label for="id_username" class="form-label mb-2">Username or Employee ID</label>
+                    <div class="input-group">
+                        <span class="input-group-text border-end-0 rounded-start-3"><i class="bi bi-person"></i></span>
+                        <input type="text" name="username" class="form-control border-start-0 rounded-end-3 py-2.5" id="id_username" placeholder="Enter username or Employee ID" required>
                     </div>
                 </div>
-
-                <div class="mb-3" id="branch_container" style="display:none;">
-                    <label for="id_branch" class="form-label small fw-semibold">Unique Branch</label>
-                    {{ form.branch }}
-                </div>
-
-                <div class="mb-3">
-                    <label for="id_username" class="form-label small fw-semibold">Username</label>
-                    <input type="text" name="username" class="form-control rounded-3" id="id_username" placeholder="Enter username" required>
-                </div>
+                
+                <!-- Password -->
                 <div class="mb-4">
-                    <label for="id_password" class="form-label small fw-semibold">Password</label>
-                    <input type="password" name="password" class="form-control rounded-3" id="id_password" placeholder="Enter password" required>
+                    <label for="id_password" class="form-label mb-2">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text border-end-0 rounded-start-3"><i class="bi bi-lock"></i></span>
+                        <input type="password" name="password" class="form-control border-start-0 border-end-0 py-2.5" id="id_password" placeholder="Enter password" required>
+                        <button class="btn btn-toggle-password border-start-0 rounded-end-3" type="button" id="togglePassword">
+                            <i class="bi bi-eye" id="passwordEyeIcon"></i>
+                        </button>
+                    </div>
                 </div>
-                <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold">Sign In</button>
+                
+                <button type="submit" class="btn btn-primary w-100 login-btn py-2.5 mt-2">Sign In</button>
             </form>
-            
-<script>
-    function toggleBranch() {
-        const roleRadio = document.querySelector('input[name="role"]:checked');
-        const role = roleRadio ? roleRadio.value : 'owner';
-        const branchContainer = document.getElementById('branch_container');
-        const branchSelect = document.getElementById('id_branch');
-        if (role === 'owner') {
-            branchContainer.style.display = 'none';
-            branchSelect.required = false;
-        } else {
-            branchContainer.style.display = 'block';
-            branchSelect.required = true;
-        }
-    }
-    toggleBranch();
-</script>
-            
-            <div class="mt-4 text-center">
-
-            </div>
-        </div>
-        <div class="text-center mt-3 text-muted x-small">
-
         </div>
     </div>
 </div>
+
+<script>
+    document.getElementById('togglePassword').addEventListener('click', function() {
+        const passwordInput = document.getElementById('id_password');
+        const eyeIcon = document.getElementById('passwordEyeIcon');
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            eyeIcon.classList.remove('bi-eye');
+            eyeIcon.classList.add('bi-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            eyeIcon.classList.remove('bi-eye-slash');
+            eyeIcon.classList.add('bi-eye');
+        }
+    });
+</script>
 {% endblock %}

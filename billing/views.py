@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from .forms import ReturnCreateForm
 from django.http import JsonResponse, HttpResponse
@@ -24,7 +24,14 @@ def pos_index(request):
     registrations = ProductRegistry.objects.filter(
         branch=request.user.active_branch
     ).select_related('product').prefetch_related('product__combos')
-    return render(request, 'pos/index.html', {'registrations': registrations})
+    
+    # Check for edit cart data in session
+    edit_cart_data = request.session.pop('pos_edit_cart', None)
+    
+    return render(request, 'pos/index.html', {
+        'registrations': registrations,
+        'edit_cart_data_json': json.dumps(edit_cart_data) if edit_cart_data else 'null'
+    })
 
 @login_required
 def get_product_by_barcode(request):
@@ -115,30 +122,59 @@ def process_bill(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
+            editing_bill_id = data.get('editing_bill_id')
             items = data.get('items', [])
             customer_name = data.get('customer_name', '')
             customer_phone = data.get('customer_phone', '')
             payment_method = data.get('payment_method', 'cash')
             cash_amount = data.get('cash_amount', 0)
             online_amount = data.get('online_amount', 0)
-            discount_amount = data.get('discount_amount', 0)
+            retail_price = data.get('retail_price', data.get('discount_amount', 0))
             
             if not items:
                 return JsonResponse({'error': 'Cart is empty'}, status=400)
             
             with transaction.atomic():
-                # Create Bill
-                bill = Bill.objects.create(
-                    branch=request.user.active_branch,
-                    staff=request.user,
-                    customer_name=customer_name,
-                    customer_phone=customer_phone,
-                    total_amount=0,  # Will update after items
-                    payment_method=payment_method,
-                    cash_amount=cash_amount,
-                    online_amount=online_amount,
-                    discount_amount=discount_amount
-                )
+                if editing_bill_id:
+                    # Retrieve existing bill for modification
+                    bill = get_object_or_404(Bill, id=editing_bill_id)
+                    # Revert stock quantities of old items
+                    for old_item in bill.items.all():
+                        try:
+                            reg = ProductRegistry.objects.get(product=old_item.product, branch=bill.branch)
+                            reg.stock_quantity += old_item.quantity
+                            reg.save()
+                        except ProductRegistry.DoesNotExist:
+                            pass
+                    # Delete old stock transactions
+                    StockTransaction.objects.filter(
+                        branch=bill.branch,
+                        reference=f"Bill {bill.invoice_number}"
+                    ).delete()
+                    # Delete old bill items
+                    bill.items.all().delete()
+                    
+                    # Update bill properties
+                    bill.staff = request.user
+                    bill.customer_name = customer_name
+                    bill.customer_phone = customer_phone
+                    bill.payment_method = payment_method
+                    bill.cash_amount = cash_amount
+                    bill.online_amount = online_amount
+                    bill.retail_price = retail_price
+                else:
+                    # Create a new Bill
+                    bill = Bill.objects.create(
+                        branch=request.user.active_branch,
+                        staff=request.user,
+                        customer_name=customer_name,
+                        customer_phone=customer_phone,
+                        total_amount=0,  # Will update after items
+                        payment_method=payment_method,
+                        cash_amount=cash_amount,
+                        online_amount=online_amount,
+                        retail_price=retail_price
+                    )
                 
                 subtotal_amount = 0
                 for item in items:
@@ -172,7 +208,7 @@ def process_bill(request):
                         product=product,
                         quantity=quantity,
                         unit_price=effective_unit_price,
-                        subtotal=subtotal
+                        subtotal=subtotal,
                     )
                     
                     # Log Stock Transaction
@@ -187,7 +223,7 @@ def process_bill(request):
                     
                     subtotal_amount += bill_item.subtotal
                 
-                total_amount = float(subtotal_amount) - float(discount_amount)
+                total_amount = float(subtotal_amount) + float(retail_price)
                 if total_amount < 0:
                     total_amount = 0
                     
@@ -206,6 +242,8 @@ def process_bill(request):
                 
                 bill.save()
                 
+            request.session['newly_created_bill_id'] = bill.id
+            request.session.pop('exchange_customer', None)  # Clear exchange info after successful billing
             return JsonResponse({'success': True, 'bill_id': bill.id})
             
         except Exception as e:
@@ -229,6 +267,53 @@ def update_customer_details(request, bill_id):
     return JsonResponse({'error': 'Invalid request'}, status=405)
 
 @login_required
+def edit_bill_back(request, bill_id):
+    bill = get_object_or_404(Bill, id=bill_id)
+    # Check permissions
+    if not request.user.is_superuser and bill.branch != request.user.active_branch:
+        return HttpResponse("Unauthorized to edit this bill.", status=403)
+        
+    # Check if editing is allowed (only allowed if it was the last generated bill)
+    if request.session.get('newly_created_bill_id') != bill.id:
+        return HttpResponse("Editing is only allowed immediately after generating the bill.", status=403)
+        
+    items_data = []
+    for item in bill.items.all():
+        # Get current registry stock
+        current_stock = 0
+        try:
+            current_stock = ProductRegistry.objects.get(product=item.product, branch=bill.branch).stock_quantity
+        except ProductRegistry.DoesNotExist:
+            pass
+
+        # Fetch combos
+        combos_list = [{'quantity': c.quantity, 'price': float(c.price)} for c in item.product.combos.all().order_by('-quantity')]
+
+        items_data.append({
+            'id': str(item.product.id),
+            'name': item.product.name,
+            'price': float(item.product.price),
+            'quantity': item.quantity,
+            'stock': current_stock + item.quantity, # virtual stock including this bill's items
+            'combos': combos_list,
+        })
+        
+    # Store in session
+    request.session['pos_edit_cart'] = {
+        'editing_bill_id': bill.id,
+        'invoice_number': bill.invoice_number or f"#{bill.id}",
+        'items': items_data,
+        'customer_name': bill.customer_name or '',
+        'customer_phone': bill.customer_phone or '',
+        'payment_method': bill.payment_method,
+        'retail_price': float(bill.retail_price),
+        'cash_amount': float(bill.cash_amount),
+        'online_amount': float(bill.online_amount),
+    }
+    
+    return redirect('pos_index')
+
+@login_required
 def bill_detail(request, bill_id):
     """Show a web-based bill receipt with download & WhatsApp buttons."""
     # Ensure user can only see bills from their active branch
@@ -245,11 +330,17 @@ def bill_detail(request, bill_id):
     wa_text = "%0A".join(wa_lines)
     wa_link = f"https://wa.me/{bill.customer_phone}?text={wa_text}" if bill.customer_phone else None
     
+    # Check if this bill was just created in the current session and redirected from POS
+    from_pos = request.GET.get('from_pos') == 'true'
+    newly_created_id = request.session.get('newly_created_bill_id')
+    allow_edit = from_pos and (newly_created_id == bill.id)
+    
     return render(request, 'billing/bill_detail.html', {
         'bill': bill,
         'items': items,
         'wa_link': wa_link,
-        'public_url': public_url
+        'public_url': public_url,
+        'allow_edit': allow_edit
     })
 
 def public_bill_detail(request, share_id):
@@ -263,6 +354,7 @@ def public_bill_detail(request, share_id):
 
 @login_required
 def staff_activity(request):
+    request.session.pop('newly_created_bill_id', None)
     date_str = request.GET.get('date', timezone.now().date().isoformat())
     try:
         target_date = timezone.datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -299,6 +391,7 @@ def staff_activity(request):
 @login_required
 def owner_bill_list(request):
     """A comprehensive list of all bills for Owners and Managers."""
+    request.session.pop('newly_created_bill_id', None)
     if request.user.role == 'staff':
         return HttpResponse("Unauthorized", status=403)
     
@@ -404,7 +497,7 @@ def export_sales_csv(request):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     
     writer = csv.writer(response)
-    writer.writerow(['Invoice Number', 'Branch Name', 'Branch Code', 'Staff', 'Customer', 'Phone', 'Total Amount', 'Discount', 'Cash', 'Online', 'Payment Method', 'Purchased Items', 'Return Amount', 'Return Reason', 'Returned Items', 'Date & Time'])
+    writer.writerow(['Invoice Number', 'Branch Name', 'Branch Code', 'Staff', 'Customer', 'Phone', 'Total Amount', 'Retail Price', 'Cash', 'Online', 'Payment Method', 'Purchased Items', 'Return Amount', 'Return Reason', 'Returned Items', 'Date & Time'])
     
     # Build base queryset
     accessible_branches = request.user.get_accessible_branches()
@@ -458,7 +551,7 @@ def export_sales_csv(request):
             bill.customer_name or 'Guest',
             bill.customer_phone or '',
             bill.total_amount,
-            bill.discount_amount,
+            bill.retail_price,
             bill.cash_amount,
             bill.online_amount,
             bill.get_payment_method_display(),
@@ -470,3 +563,9 @@ def export_sales_csv(request):
         ])
         
     return response
+
+@login_required
+def clear_exchange_session(request):
+    """AJAX endpoint to clear the exchange_customer session state."""
+    request.session.pop('exchange_customer', None)
+    return JsonResponse({'success': True})

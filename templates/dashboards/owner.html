@@ -560,7 +560,7 @@
                 <h5 class="modal-title fw-bold" id="addBranchModalLabel"><i class="bi bi-shop text-primary me-2"></i>Create New Branch</h5>
                 <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{% url 'branch_create' %}" method="post">
+            <form id="addBranchForm" action="{% url 'branch_create' %}" method="post">
                 {% csrf_token %}
                 <div class="modal-body p-4">
                     <div class="mb-3">
@@ -635,7 +635,7 @@
                 <h5 class="modal-title fw-bold" id="addStaffModalLabel"><i class="bi bi-person-plus text-primary me-2"></i>Add Staff Account</h5>
                 <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{% url 'staff_create' %}" method="post">
+            <form id="addStaffForm" action="{% url 'staff_create' %}" method="post">
                 {% csrf_token %}
                 
                 <div class="modal-body p-4">
@@ -660,7 +660,12 @@
                                         </div>
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Password</label>
-                                            {{ staff_form.password }}
+                                            <div class="position-relative">
+                                                {{ staff_form.password }}
+                                                <button type="button" class="btn btn-link position-absolute top-50 end-0 translate-middle-y text-muted pe-3 shadow-none border-0" onclick="togglePasswordVisibility('addStaffPassword', this)" tabindex="-1">
+                                                    <i class="bi bi-eye-slash-fill"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Employee ID</label>
@@ -740,7 +745,12 @@
                                         </div>
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">New Password (Leave blank to keep current)</label>
-                                            <input type="password" name="password" id="editStaffPassword" class="form-control rounded-pill shadow-sm border-0 bg-light px-3">
+                                            <div class="position-relative">
+                                                <input type="password" name="password" id="editStaffPassword" class="form-control rounded-pill shadow-sm border-0 bg-light px-3">
+                                                <button type="button" class="btn btn-link position-absolute top-50 end-0 translate-middle-y text-muted pe-3 shadow-none border-0" onclick="togglePasswordVisibility('editStaffPassword', this)" tabindex="-1">
+                                                    <i class="bi bi-eye-slash-fill"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                         <div class="col-6 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Role</label>
@@ -813,6 +823,23 @@
 
 {% block extra_js %}
 <script>
+    // Toggle password visibility helper
+    function togglePasswordVisibility(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const icon = btn.querySelector('i');
+        if (input && icon) {
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('bi-eye-slash-fill');
+                icon.classList.add('bi-eye-fill');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('bi-eye-fill');
+                icon.classList.add('bi-eye-slash-fill');
+            }
+        }
+    }
+
     // JS functions to open modals and inject dynamic data
     
     function openEditBranchModal(id, name, location, contact, prefix) {
@@ -979,8 +1006,8 @@
         }
     }
 
-    // Persist active tab across page refreshes via URL hash
-    document.addEventListener("DOMContentLoaded", function() {
+    // Persist active tab and handle AJAX forms
+    function initOwnerDashboard() {
         const hash = window.location.hash;
         if (hash) {
             const tabEl = document.querySelector(`button[data-bs-target="${hash}"]`);
@@ -996,7 +1023,83 @@
                 window.location.hash = e.target.getAttribute('data-bs-target');
             });
         });
-    });
+
+        // AJAX submit for forms to show field-level errors
+        function handleAjaxFormSubmit(formId) {
+            const form = document.getElementById(formId);
+            if (!form) return;
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Clear prior error messages
+                form.querySelectorAll('.error-message').forEach(el => el.remove());
+                form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+                
+                const formData = new FormData(form);
+                formData.append('ajax', 'true');
+                
+                fetch(form.action || window.location.href, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        // Display validation errors near the fields in red color
+                        for (const [field, errorList] of Object.entries(data.errors)) {
+                            const input = form.querySelector(`[name="${field}"]`);
+                            if (input) {
+                                input.classList.add('is-invalid');
+                                const errDiv = document.createElement('div');
+                                errDiv.className = 'text-danger x-small mt-1 error-message fw-bold';
+                                errDiv.textContent = errorList.join(' ');
+                                
+                                const parent = input.parentElement;
+                                if (parent.classList.contains('position-relative') || parent.classList.contains('input-group')) {
+                                    parent.after(errDiv);
+                                } else if (input.type === 'checkbox' && input.name === 'branches') {
+                                    const picker = form.querySelector('.branch-picker');
+                                    if (picker) {
+                                        picker.after(errDiv);
+                                    } else {
+                                        input.after(errDiv);
+                                    }
+                                } else {
+                                    input.after(errDiv);
+                                }
+                            } else if (field === '__all__') {
+                                const errorAlert = document.createElement('div');
+                                errorAlert.className = 'alert alert-danger x-small py-2 mt-2 error-message fw-bold';
+                                errorAlert.textContent = errorList.join(' ');
+                                form.querySelector('.modal-body').prepend(errorAlert);
+                            }
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error('AJAX form submission error:', err);
+                    alert('An unexpected error occurred. Please try again.');
+                });
+            });
+        }
+        
+        handleAjaxFormSubmit('addStaffForm');
+        handleAjaxFormSubmit('editStaffForm');
+        handleAjaxFormSubmit('addBranchForm');
+        handleAjaxFormSubmit('editBranchForm');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initOwnerDashboard);
+    } else {
+        initOwnerDashboard();
+    }
 </script>
 
 {% endblock %}

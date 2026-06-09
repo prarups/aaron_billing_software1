@@ -202,6 +202,32 @@
                     </div>
                 </div>
                 <div class="card-footer bg-transparent p-4 border-0">
+                    <!-- Editing Bill Banner -->
+                    <div id="editing-bill-banner" class="alert alert-warning py-2 px-3 mb-3 small d-none animate-fade-in border-0 rounded-pill-sm d-flex justify-content-between align-items-center shadow-sm">
+                        <span><i class="bi bi-pencil-fill me-2"></i>Editing Bill: <strong id="editing-bill-no"></strong></span>
+                        <button type="button" class="btn btn-sm btn-link text-warning p-0 border-0 shadow-none" onclick="cancelEditingBill()" title="Cancel editing">
+                            <i class="bi bi-x-circle-fill fs-5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Exchange Customer Banner -->
+                    {% if request.session.exchange_customer %}
+                    <div id="exchange-customer-banner" class="alert alert-info py-2.5 px-3 mb-3 small border-0 rounded-3 shadow-sm position-relative animate-fade-in" style="font-size: 0.76rem;">
+                        <div class="fw-bold text-info-emphasis mb-1"><i class="bi bi-arrow-left-right me-1"></i> Exchange Customer Loaded</div>
+                        <div>Name: <strong>{{ request.session.exchange_customer.name|default:"Guest" }}</strong></div>
+                        {% if request.session.exchange_customer.phone %}
+                        <div>Phone: <strong>{{ request.session.exchange_customer.phone }}</strong></div>
+                        {% endif %}
+                        <div class="text-muted mt-1">Returned: <strong>{{ request.session.exchange_customer.returned_items }}</strong></div>
+                        {% if request.session.exchange_customer.reason %}
+                        <div class="text-muted">Reason: <em>{{ request.session.exchange_customer.reason }}</em></div>
+                        {% endif %}
+                        <button type="button" class="btn-close position-absolute top-50 end-0 translate-middle-y me-2 shadow-none" 
+                                style="font-size: 0.65rem;" 
+                                onclick="clearExchangeCustomer()" title="Clear exchange info"></button>
+                    </div>
+                    {% endif %}
+
                     <div class="glass-card p-3 mb-3 bg-light bg-opacity-50 border-0">
                         <div class="row g-2">
                             <div class="col-12">
@@ -253,10 +279,10 @@
                     </div>
                     
                     <div class="glass-card p-3 mb-3 bg-light bg-opacity-50 border-0 animate-fade-in">
-                        <label class="form-label x-small text-muted text-uppercase fw-bold mb-2">Discount Amount</label>
+                        <label class="form-label x-small text-muted text-uppercase fw-bold mb-2">Retail Price</label>
                         <div class="input-group input-group-sm">
                             <span class="input-group-text bg-white border-0 small">₹</span>
-                            <input type="number" id="discount-amount" class="form-control form-control-sm border-0 px-2" placeholder="0" oninput="renderCart()">
+                            <input type="number" id="retail-price" class="form-control form-control-sm border-0 px-2" placeholder="0" oninput="renderCart()">
                         </div>
                     </div>
                     
@@ -296,6 +322,7 @@
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script>
     let cart = [];
+    let editingBillId = null;
     const html5QrCode = new Html5Qrcode("reader");
     let isScannerOpen = false;
     let scanCooldown = false;
@@ -379,6 +406,27 @@
         }
     }
 
+    function getCartSubtotal() {
+        let subtotalAmt = 0;
+        cart.forEach(item => {
+            let qtyRemaining = item.quantity;
+            let subtotal = 0;
+            let combos = item.combos || [];
+            let sortedCombos = [...combos].sort((a, b) => b.quantity - a.quantity);
+            
+            for (let c of sortedCombos) {
+                if (qtyRemaining >= c.quantity && c.quantity > 0) {
+                    let numCombos = Math.floor(qtyRemaining / c.quantity);
+                    subtotal += numCombos * c.price;
+                    qtyRemaining %= c.quantity;
+                }
+            }
+            subtotal += qtyRemaining * item.price;
+            subtotalAmt += subtotal;
+        });
+        return subtotalAmt;
+    }
+
     function renderCart() {
         const container = document.getElementById('cart-container');
         const totalEl = document.getElementById('cart-total');
@@ -426,7 +474,7 @@
                         <span class="fw-bold small">${item.name}</span>
                         <span class="fw-bold text-primary">₹${Math.round(subtotal)}</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="d-flex align-items-center bg-light rounded-pill px-2 py-1">
                             <button class="btn btn-sm btn-link text-muted p-0" onclick="updateQty('${item.id}', -1)"><i class="bi bi-dash-circle-fill"></i></button>
                             <span class="mx-3 fw-bold small">${item.quantity}</span>
@@ -441,21 +489,15 @@
             container.insertAdjacentHTML('beforeend', itemHtml);
         });
 
-        const discount = parseFloat(document.getElementById('discount-amount')?.value) || 0;
-        let total = Math.max(0, subtotalAmt - discount);
+        const retailPrice = parseFloat(document.getElementById('retail-price')?.value) || 0;
+        let total = Math.max(0, subtotalAmt + retailPrice);
 
         totalEl.innerText = `₹${Math.round(total)}`;
         
         const savingsRow = document.getElementById('savings-row');
         const savingsEl = document.getElementById('cart-savings');
-        if (discount > 0) {
-            savingsRow.classList.remove('d-none');
-            savingsRow.classList.add('d-flex');
-            savingsEl.innerText = `₹${Math.round(discount)}`;
-        } else {
-            savingsRow.classList.remove('d-flex');
-            savingsRow.classList.add('d-none');
-        }
+        savingsRow.classList.remove('d-flex');
+        savingsRow.classList.add('d-none');
 
         countEl.innerText = `${count} Items`;
         if (badgeEl) badgeEl.innerText = count;
@@ -527,9 +569,9 @@
             const splitInputs = document.getElementById('split-inputs');
             if (e.target.value === 'split') {
                 splitInputs.classList.remove('d-none');
-                const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                const discount = parseFloat(document.getElementById('discount-amount').value) || 0;
-                const total = Math.max(0, Math.round(subtotal - discount));
+                const subtotal = getCartSubtotal();
+                const retailPrice = parseFloat(document.getElementById('retail-price').value) || 0;
+                const total = Math.max(0, Math.round(subtotal + retailPrice));
                 document.getElementById('split-cash').value = total;
                 document.getElementById('split-online').value = 0;
             } else {
@@ -540,10 +582,10 @@
 
     function calculateSplit(source) {
         if (document.getElementById('pay-split') && !document.getElementById('pay-split').checked) return;
-        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const discount = parseFloat(document.getElementById('discount-amount').value) || 0;
+        const subtotal = getCartSubtotal();
+        const retailPrice = parseFloat(document.getElementById('retail-price').value) || 0;
         // Compute total as integer (rounded)
-        const rawTotal = Math.max(0, subtotal - discount);
+        const rawTotal = Math.max(0, subtotal + retailPrice);
         const total = Math.round(rawTotal);
         const cashInput = document.getElementById('split-cash');
         const onlineInput = document.getElementById('split-online');
@@ -585,10 +627,10 @@
         
         let cash_amount = 0;
         let online_amount = 0;
-        const discount_amount = parseFloat(document.getElementById('discount-amount').value) || 0;
-        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const retailPrice = parseFloat(document.getElementById('retail-price').value) || 0;
+        const subtotal = getCartSubtotal();
         // Use precise total with two decimals
-        const rawTotal = Math.max(0, subtotal - discount_amount);
+        const rawTotal = Math.max(0, subtotal + retailPrice);
         const total = Math.round(rawTotal);
         
         if (paymentMethod === 'cash') {
@@ -620,13 +662,14 @@
                 payment_method: paymentMethod,
                 cash_amount: cash_amount,
                 online_amount: online_amount,
-                discount_amount: discount_amount
+                retail_price: retailPrice,
+                editing_bill_id: editingBillId
             })
         })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                window.location.href = `/billing/bill/${data.bill_id}/`;
+                window.location.href = `/billing/bill/${data.bill_id}/?from_pos=true`;
             } else {
                 alert("Error: " + data.error);
                 btn.disabled = false;
@@ -643,6 +686,90 @@
     // Initial State Check
     if (window.innerWidth < 992) {
         switchTab('catalog');
+    }
+
+    function cancelEditingBill() {
+        if (confirm("Are you sure you want to cancel editing this bill? Your current cart changes will be cleared, and the original bill will remain unchanged.")) {
+            editingBillId = null;
+            document.getElementById('editing-bill-banner').classList.add('d-none');
+            cart = [];
+            document.getElementById('customer-name').value = '';
+            document.getElementById('customer-phone').value = '';
+            document.getElementById('retail-price').value = '0';
+            renderCart();
+            showScanToast('Editing cancelled', 'success');
+        }
+    }
+
+    // Clear exchange customer session and hide banner
+    function clearExchangeCustomer() {
+        fetch('/billing/clear-exchange-session/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('Network response was not ok');
+            return res.json();
+        })
+        .then(data => {
+            // Remove the banner from DOM
+            const banner = document.getElementById('exchange-customer-banner');
+            if (banner) {
+                banner.remove();
+            }
+            // Optionally show a toast
+            showScanToast('Exchange info cleared', 'success');
+        })
+        .catch(err => {
+            console.error('Error clearing exchange session:', err);
+            showScanToast('Failed to clear exchange', 'error');
+        });
+    }
+
+    // Load Cart from session (for editing)
+    const editCartData = {{ edit_cart_data_json|safe }};
+    if (editCartData) {
+        cart = editCartData.items;
+        editingBillId = editCartData.editing_bill_id;
+        
+        // Show editing bill banner
+        const banner = document.getElementById('editing-bill-banner');
+        const billNoEl = document.getElementById('editing-bill-no');
+        if (banner && billNoEl && editCartData.invoice_number) {
+            billNoEl.textContent = editCartData.invoice_number;
+            banner.classList.remove('d-none');
+        }
+        
+        // Load customer details
+        document.getElementById('customer-name').value = editCartData.customer_name;
+        document.getElementById('customer-phone').value = editCartData.customer_phone;
+        
+        // Load retail price
+        document.getElementById('retail-price').value = editCartData.retail_price;
+        
+        // Load payment method
+        const paymentRadio = document.querySelector(`input[name="payment_method"][value="${editCartData.payment_method}"]`);
+        if (paymentRadio) {
+            paymentRadio.checked = true;
+        }
+        
+        // Show split inputs if payment method is split
+        const splitInputs = document.getElementById('split-inputs');
+        if (editCartData.payment_method === 'split') {
+            splitInputs.classList.remove('d-none');
+            document.getElementById('split-cash').value = editCartData.cash_amount;
+            document.getElementById('split-online').value = editCartData.online_amount;
+        } else {
+            splitInputs.classList.add('d-none');
+        }
+        
+        // Call renderCart to display it
+        renderCart();
+        
+        // Show notification
+        showScanToast('✅ Bill loaded to cart', 'success');
     }
 </script>
 {% endblock %}

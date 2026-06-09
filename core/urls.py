@@ -11,6 +11,7 @@ urlpatterns = [
     path('products/bulk-insert/', views.bulk_insert, name='bulk_insert'),
     path('products/bulk-template/', views.download_bulk_template, name='download_bulk_template'),
     path('products/adjust-stock/<int:reg_id>/', views.stock_adjustment, name='stock_adjustment'),
+    path('products/adjust-stock/<int:reg_id>/history/', views.view_stock_adjustments, name='view_stock_adjustments'),
     path('reports/stock-pivot/', views.stock_pivot_report, name='stock_pivot_report'),
     path('reports/stock-pivot/export/', views.export_stock_pivot_excel, name='export_stock_pivot_excel'),
     path('pos/', views.pos_view, name='pos_view'),

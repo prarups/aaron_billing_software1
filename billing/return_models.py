@@ -17,6 +17,7 @@ class ReturnRequest(models.Model):
     ACTION_CHOICES = (
         ('REFUND', 'Refund'),
         ('EXCHANGE', 'Exchange'),
+        ('EXCH_SAME', 'Exchange with same item (Another one)'),
     )
 
     invoice = models.ForeignKey('billing.Bill', on_delete=models.CASCADE, related_name='return_requests')

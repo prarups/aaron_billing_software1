@@ -98,15 +98,15 @@ class ComboPricingTestCase(TestCase):
         self.assertEqual(bill.item_savings, Decimal('700'))
         self.assertEqual(bill.total_savings, Decimal('700'))
 
-    def test_bill_item_savings_with_manual_discount(self):
-        # Quantity 3 (₹1300) + ₹100 manual discount
+    def test_bill_item_savings_with_retail_price(self):
+        # Quantity 3 (₹1300) + ₹100 retail price adjustment
         bill = Bill.objects.create(
             branch=self.branch,
             staff=self.user,
             customer_name='John Doe',
             payment_method='cash',
-            total_amount=1200,
-            discount_amount=100
+            total_amount=1400,
+            retail_price=100
         )
         item = BillItem.objects.create(
             bill=bill,
@@ -118,5 +118,17 @@ class ComboPricingTestCase(TestCase):
         self.assertEqual(item.regular_total, Decimal('1500'))
         self.assertEqual(item.savings, Decimal('200'))
         self.assertEqual(bill.item_savings, Decimal('200'))
-        # Total savings = item savings (200) + manual discount (100) = 300
-        self.assertEqual(bill.total_savings, Decimal('300'))
+        # Total savings = item savings (200) only, retail price is addition
+        self.assertEqual(bill.total_savings, Decimal('200'))
+
+    def test_bill_item_exchange_from_model(self):
+        # Create a bill
+        bill = Bill.objects.create(
+            branch=self.branch,
+            staff=self.user,
+            customer_name='John Doe',
+            payment_method='cash',
+            total_amount=500
+        )
+
+

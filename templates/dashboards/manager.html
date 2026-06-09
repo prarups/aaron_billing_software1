@@ -12,7 +12,6 @@
         <div class="glass-card p-4 h-100 bg-vibrant stats-card">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="text-white-50 small mb-0">Branch Sales (Today)</h6>
-                <a href="{% url 'export_sales_csv' %}" class="btn btn-sm btn-light rounded-pill x-small py-0 opacity-75">Export CSV</a>
             </div>
             <div class="d-flex justify-content-between align-items-center">
                 <h2 class="mb-0 fw-bold">₹{{ branch_sales_today|default:"0"|floatformat:0 }}</h2>

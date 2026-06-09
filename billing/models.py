@@ -15,7 +15,7 @@ class Bill(models.Model):
     customer_name = models.CharField(max_length=100, blank=True, null=True)
     customer_phone = models.CharField(max_length=15, blank=True, null=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=0, default=0)
-    discount_amount = models.DecimalField(max_digits=12, decimal_places=0, default=0)
+    retail_price = models.DecimalField(max_digits=12, decimal_places=0, default=0)
     cash_amount = models.DecimalField(max_digits=12, decimal_places=0, default=0)
     online_amount = models.DecimalField(max_digits=12, decimal_places=0, default=0)
     payment_method = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default='cash')
@@ -32,7 +32,16 @@ class Bill(models.Model):
     @property
     def total_savings(self):
         from decimal import Decimal
-        return Decimal(str(self.item_savings)) + Decimal(str(self.discount_amount))
+        return Decimal(str(self.item_savings))
+
+    @property
+    def subtotal_amount(self):
+        from decimal import Decimal
+        return Decimal(str(self.total_amount)) - Decimal(str(self.retail_price))
+
+    @property
+    def original_subtotal(self):
+        return self.subtotal_amount + self.total_savings
 
     def save(self, *args, **kwargs):
         if not self.invoice_number:
@@ -52,6 +61,7 @@ class BillItem(models.Model):
     quantity = models.PositiveIntegerField(default=1)
     unit_price = models.DecimalField(max_digits=10, decimal_places=0)
     subtotal = models.DecimalField(max_digits=12, decimal_places=0)
+    exchange_from = models.CharField(max_length=150, blank=True, null=True)
 
     @property
     def regular_total(self):

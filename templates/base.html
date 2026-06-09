@@ -113,13 +113,31 @@
             transform: scale(0.98);
         }
     </style>
+    <!-- PWA Manifest & Icons -->
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="{% static 'images/icon-192.png' %}">
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker Registered successfully!', reg.scope))
+                    .catch(err => console.warn('Service Worker registration failed:', err));
+            });
+        }
+    </script>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <nav class="navbar navbar-expand-lg sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center" href="/">
-                <img src="{% static 'images/aronlogo.png' %}" alt="Aaron Billing" style="height:24px; width:auto;" class="align-self-center me-2"/>
+                <img src="{% static 'images/aronlogonow.png' %}" alt="Aaron Billing" style="height:24px; width:auto;" class="align-self-center me-2"/>
                 <span class="fw-bold tracking-tight">Aaron<span class="text-secondary">Billing</span></span>
             </a>
             <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -172,6 +190,9 @@
                             {% endif %}
                         {% endif %}
                         <div class="d-flex align-items-center justify-content-between w-100 w-lg-auto gap-3">
+                            <button id="pwaInstallBtn" class="btn btn-primary btn-sm rounded-pill px-3 d-none">
+                                <i class="bi bi-download me-1"></i> Install App
+                            </button>
                             <span class="text-muted small text-nowrap">
                                 <i class="bi bi-person-circle me-1"></i>{{ user.username }}
                             </span>
@@ -270,6 +291,48 @@
             });
 
             observer.observe(document.body, { childList: true, subtree: true });
+        });
+    </script>
+
+    <!-- PWA Install Prompt Script -->
+    <script>
+        let deferredPrompt;
+        const installBtn = document.getElementById('pwaInstallBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later.
+            deferredPrompt = e;
+            // Update UI to notify the user they can install the PWA
+            if (installBtn) {
+                installBtn.classList.remove('d-none');
+            }
+        });
+
+        if (installBtn) {
+            installBtn.addEventListener('click', () => {
+                if (!deferredPrompt) return;
+                // Show the prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    } else {
+                        console.log('User dismissed the install prompt');
+                    }
+                    deferredPrompt = null;
+                    installBtn.classList.add('d-none');
+                });
+            });
+        }
+
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('App was successfully installed');
+            if (installBtn) {
+                installBtn.classList.add('d-none');
+            }
         });
     </script>
     {% block extra_js %}{% endblock %}

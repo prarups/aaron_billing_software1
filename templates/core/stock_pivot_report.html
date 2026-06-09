@@ -52,16 +52,16 @@
 
 {% block content %}
 <div class="mb-3 animate-fade-in">
-    <div class="d-flex flex-row justify-content-between align-items-center gap-3">
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
         <div>
             <h5 class="fw-bold m-0 text-primary">Multi-Branch Stock Report</h5>
             <p class="text-muted text-xxs mb-0">Pivot view of inventory across business locations</p>
         </div>
-        <div class="d-flex gap-2">
-            <a href="{% url 'export_stock_pivot_excel' %}?q={{ request.GET.q|default:'' }}&from_date={{ start_date }}&to_date={{ end_date }}" class="btn btn-outline-success rounded-pill px-3 shadow-sm btn-sm text-xs fw-semibold">
+        <div class="d-flex gap-2 w-100 w-sm-auto justify-content-start justify-content-sm-end">
+            <a href="{% url 'export_stock_pivot_excel' %}?q={{ request.GET.q|default:'' }}&from_date={{ start_date }}&to_date={{ end_date }}" class="btn btn-outline-success rounded-2 px-2.5 py-1.5 shadow-sm btn-sm text-xs fw-semibold">
                 <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Excel
             </a>
-            <a href="{% url 'product_list' %}" class="btn btn-primary rounded-pill px-3 shadow-sm btn-sm text-xs fw-semibold text-white">
+            <a href="{% url 'product_list' %}" class="btn btn-primary rounded-2 px-2.5 py-1.5 shadow-sm btn-sm text-xs fw-semibold text-white">
                 <i class="bi bi-box-seam me-1"></i> Products
             </a>
         </div>
@@ -72,21 +72,21 @@
 <div class="card border-0 shadow-sm p-2.5 mb-3 bg-white animate-fade-in">
     <form method="GET" class="row g-2 align-items-center" id="filterForm">
         <!-- Search bar -->
-        <div class="col-12 col-md-5">
+        <div class="col-12 col-md-4">
             <div class="input-group input-group-sm">
-                <span class="input-group-text border-0 bg-light rounded-pill-start text-muted"><i class="bi bi-search"></i></span>
-                <input type="text" name="q" class="form-control border-0 bg-light text-xs py-1.5" placeholder="Search by name or barcode..." value="{{ request.GET.q }}">
+                <input type="text" name="q" class="form-control border-0 bg-light text-xs rounded-pill-start py-1.5" placeholder="Search by name or barcode..." value="{{ request.GET.q }}">
+                <button type="submit" class="btn border-0 bg-light rounded-pill-end text-primary py-1.5"><i class="bi bi-search"></i></button>
             </div>
         </div>
         <!-- From date -->
-        <div class="col-6 col-md-2.5">
+        <div class="col-6 col-md-2">
             <div class="input-group input-group-sm">
                 <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2">From</span>
                 <input type="date" name="from_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ start_date }}">
             </div>
         </div>
         <!-- To date -->
-        <div class="col-6 col-md-2.5">
+        <div class="col-6 col-md-2">
             <div class="input-group input-group-sm">
                 <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2">To</span>
                 <input type="date" name="to_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ end_date }}">
@@ -106,14 +106,17 @@
         <table class="table align-middle mb-0 table-compact">
             <thead>
                 <tr class="border-bottom text-center">
-                    <th class="ps-4 text-start" style="width: 35%;">Product Details</th>
-                    <th class="text-end pe-4" style="width: 15%;">Price</th>
-                    <th class="bg-primary-subtle text-primary border-start" style="width: 8%;">Op</th>
-                    <th class="bg-primary-subtle text-primary" style="width: 8%;">In</th>
-                    <th class="bg-primary-subtle text-primary" style="width: 8%;">Out</th>
-                    <th class="bg-primary-subtle text-primary" style="width: 8%;">Dmg</th>
-                    <th class="bg-primary-subtle text-primary border-end" style="width: 10%;">Cl</th>
-                    <th style="width: 8%;"></th>
+                    <th class="ps-4 text-start" style="width: 24%;">Product Details</th>
+                    <th class="text-end pe-4" style="width: 10%;">Price</th>
+                    <th class="bg-primary-subtle text-primary border-start" style="width: 6%;">Op</th>
+                    <th class="bg-primary-subtle text-primary" style="width: 6%;">In</th>
+                    <th class="bg-primary-subtle text-primary" style="width: 6%;">Out</th>
+                    <th class="bg-primary-subtle text-primary" style="width: 6%;">Dmg</th>
+                    <th class="bg-primary-subtle text-primary border-end" style="width: 8%;">Cl</th>
+                    <th class="bg-success-subtle text-success-emphasis fw-bold border-start" style="width: 8%;" title="Total Received (All-Time)">Rec (All)</th>
+                    <th class="bg-danger-subtle text-danger-emphasis fw-bold" style="width: 8%;" title="Total Sold (All-Time)">Sold (All)</th>
+                    <th class="bg-warning-subtle text-warning-emphasis fw-bold border-end" style="width: 8%;" title="Total Damaged (All-Time)">Dmg (All)</th>
+                    <th style="width: 6%;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -131,12 +134,15 @@
                     <td class="bg-primary-subtle text-danger fw-semibold">{{ item.total_out }}</td>
                     <td class="bg-primary-subtle text-danger-emphasis">{{ item.total_dmg }}</td>
                     <td class="bg-primary-subtle fw-bold text-primary border-end">{{ item.total_cl }}</td>
+                    <td class="bg-success-subtle text-success fw-bold border-start">{{ item.total_rec }}</td>
+                    <td class="bg-danger-subtle text-danger fw-bold">{{ item.total_all_time_out }}</td>
+                    <td class="bg-warning-subtle text-warning-emphasis fw-bold border-end">{{ item.total_all_time_dmg }}</td>
                     <td><i class="bi bi-chevron-down text-muted text-xxs"></i></td>
                 </tr>
                 
                 <!-- Expanded Row for Branches -->
                 <tr id="branchRow{{ item.product.id }}" class="collapse bg-light-subtle border-0">
-                    <td colspan="8" class="p-0 border-0">
+                    <td colspan="11" class="p-0 border-0">
                         <div class="p-3 bg-light-subtle">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h6 class="m-0 text-xxs fw-bold text-uppercase tracking-wider text-secondary"><i class="bi bi-diagram-3-fill me-1"></i> Branch Breakdown</h6>
@@ -151,9 +157,10 @@
                                             {% if show_out %}<th class="py-1.5">Out</th>{% endif %}
                                             <th class="py-1.5">Dmg</th>
                                             <th class="bg-light fw-bold text-dark py-1.5">Closing</th>
-                                            {% if request.user.role == 'owner' or request.user.has_product_rights %}
-                                            <th class="py-1.5 text-center" style="width: 70px;">Correct</th>
-                                            {% endif %}
+                                            <th class="py-1.5 text-success fw-bold border-start" title="Total Received (All-Time)">Received (All)</th>
+                                            <th class="py-1.5 text-danger fw-bold" title="Total Sold (All-Time)">Sold (All)</th>
+                                            <th class="py-1.5 text-warning fw-bold" title="Total Damaged (All-Time)">Dmg (All)</th>
+                                            <th class="py-1.5 text-center border-start">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -165,17 +172,18 @@
                                             {% if show_out %}<td class="text-danger">{{ stock_info.out }}</td>{% endif %}
                                             <td class="text-danger-emphasis">{{ stock_info.dmg }}</td>
                                             <td class="bg-light fw-bold text-primary" id="cl-stock-{{ stock_info.reg_id }}">{{ stock_info.cl }}</td>
-                                            {% if request.user.role == 'owner' or request.user.has_product_rights %}
-                                            <td class="text-center align-middle">
+                                            <td class="text-success fw-bold border-start">{{ stock_info.rec }}</td>
+                                            <td class="text-danger fw-bold">{{ stock_info.all_time_out }}</td>
+                                            <td class="text-warning-emphasis fw-bold">{{ stock_info.all_time_dmg }}</td>
+                                            <td class="text-center border-start py-1">
                                                 {% if stock_info.reg_id %}
-                                                <a href="{% url 'stock_adjustment' stock_info.reg_id %}"
-                                                   class="btn btn-xs btn-outline-warning py-0 px-2 rounded-pill shadow-sm fw-semibold"
-                                                   style="font-size: 9px;" title="Wrong Entry Correction">
-                                                    <i class="bi bi-tools me-0.5"></i>Fix
+                                                <a href="{% url 'view_stock_adjustments' stock_info.reg_id %}" class="btn btn-outline-primary rounded-pill px-2.5 py-0.5 fw-semibold text-decoration-none" style="font-size: 9px; line-height: 1.2;">
+                                                    <i class="bi bi-history me-0.5"></i> View Corrected Details
                                                 </a>
+                                                {% else %}
+                                                <span class="text-muted">-</span>
                                                 {% endif %}
                                             </td>
-                                            {% endif %}
                                         </tr>
                                         {% endfor %}
                                     </tbody>
@@ -186,7 +194,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="text-center py-4 text-muted">
+                    <td colspan="11" class="text-center py-4 text-muted">
                         No products found in the registry.
                     </td>
                 </tr>

@@ -4,32 +4,14 @@ from core.models import Branch
 from .models import User
 
 class CustomAuthenticationForm(AuthenticationForm):
-    ROLE_CHOICES = (
-        ('owner', 'Admin'),
-        ('manager', 'Manager'),
-        ('staff', 'Staff'),
-    )
-    role = forms.ChoiceField(
-        choices=ROLE_CHOICES,
-        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
-        initial='owner'
-    )
-    branch = forms.ModelChoiceField(
-        queryset=Branch.objects.all(),
-        required=False,
-        empty_label="Select Unique Branch",
-        widget=forms.Select(attrs={'class': 'form-select rounded-3'})
-    )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Auto-select branch if only one exists
-        branches = Branch.objects.all()
-        if branches.count() == 1:
-            self.initial['branch'] = branches.first()
-            self.fields['branch'].initial = branches.first()
-
     def clean(self):
+        username_input = self.cleaned_data.get('username')
+        if username_input:
+            # Check if the input username matches an employee_id (case-insensitive)
+            user_by_emp = User.objects.filter(employee_id__iexact=username_input).first()
+            if user_by_emp:
+                self.cleaned_data['username'] = user_by_emp.username
+
         cleaned_data = super().clean()
         user = self.get_user()
         
@@ -37,26 +19,19 @@ class CustomAuthenticationForm(AuthenticationForm):
             # Check if account is active
             if not user.is_active:
                 raise forms.ValidationError("Your account is inactive. Please contact admin team.")
-            role_selected = cleaned_data.get('role')
-            branch_selected = cleaned_data.get('branch')
-
-            # Ensure the user has the selected role
-            if user.role != role_selected:
-                raise forms.ValidationError("You do not have the required permissions for this role.")
-
-            # Owner does not need to select a branch.
-            if user.is_owner():
-                pass  # Owner can log in without selecting a branch
-            elif not branch_selected:
-                raise forms.ValidationError("Please select a branch to login.")
-            else:
-                # Verify user is assigned to this branch
-                if not user.branches.filter(id=branch_selected.id).exists():
-                    raise forms.ValidationError(f"You are not assigned to the {branch_selected.name} branch.")
-
-                # Update user's active branch
-                user.active_branch = branch_selected
-                user.save()
+            
+            # Auto-assign active branch for manager and staff roles
+            if not user.is_owner():
+                accessible_branches = user.get_accessible_branches()
+                if accessible_branches.exists():
+                    # Default active_branch to the first branch they are assigned to if not set or valid
+                    if not user.active_branch or user.active_branch not in accessible_branches:
+                        user.active_branch = accessible_branches.first()
+                        user.save(update_fields=['active_branch'])
+                else:
+                    if user.active_branch:
+                        user.active_branch = None
+                        user.save(update_fields=['active_branch'])
         return cleaned_data
 
 
@@ -70,9 +45,33 @@ class BranchForm(forms.ModelForm):
             'contact_number': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Contact Number'}),
             'invoice_prefix': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Invoice Prefix (e.g. AG)'}),
         }
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if name:
+            qs = Branch.objects.filter(name__iexact=name)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError("A branch with this name already exists.")
+        return name
+
+    def clean_invoice_prefix(self):
+        prefix = self.cleaned_data.get('invoice_prefix')
+        if prefix:
+            qs = Branch.objects.filter(invoice_prefix__iexact=prefix)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError("A branch with this invoice prefix already exists.")
+        return prefix
 class StaffForm(forms.ModelForm):
     password = forms.CharField(
-        widget=forms.PasswordInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Password'}),
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3',
+            'placeholder': 'Password',
+            'id': 'addStaffPassword'
+        }),
         required=False,
         help_text="Leave blank to keep existing password when editing."
     )

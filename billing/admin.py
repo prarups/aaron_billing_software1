@@ -18,9 +18,12 @@ class BillAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if request.user.is_superuser:
+        if request.user.is_superuser or getattr(request.user, 'role', '') == 'owner':
             return qs
         return qs.filter(branch=request.user.active_branch)
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
 
     @admin.action(description="Export Selected to CSV")
     def export_as_csv(self, request, queryset):

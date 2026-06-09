@@ -38,7 +38,10 @@ class ReturnCreateForm(forms.Form):
     )
     action_type = forms.ChoiceField(
         label='Return Action',
-        choices=ReturnRequest.ACTION_CHOICES,
+        choices=[
+            ('EXCH_SAME', 'Exchange with same item (Another one)')
+        ],
+        initial='EXCH_SAME',
         widget=forms.Select(attrs={
             'class': 'form-select rounded-pill border-0 bg-light',
         })
@@ -108,7 +111,7 @@ class ReturnCreateForm(forms.Form):
                     'id': item.id,
                     'quantity': qty,
                     'condition': cleaned.get('condition', 'GOOD'),
-                    'action_type': cleaned.get('action_type', 'REFUND')
+                    'action_type': cleaned.get('action_type', 'EXCH_SAME')
                 }]
             else:
                 raise forms.ValidationError('Please add at least one product to the return list.')
@@ -151,7 +154,7 @@ class ReturnCreateForm(forms.Form):
                 'bill_item': item,
                 'quantity': qty,
                 'condition': ri.get('condition', 'GOOD'),
-                'action_type': ri.get('action_type', 'REFUND')
+                'action_type': ri.get('action_type', 'EXCH_SAME')
             })
 
         cleaned['validated_return_items'] = validated_items

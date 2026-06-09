@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import Product, Branch, ProductRegistry, StockTransaction
+from .models import Product, Branch, ProductRegistry, StockTransaction, StockAdjustment
 from django import forms
 from .forms import ProductForm
 
@@ -244,11 +244,309 @@ def product_update(request, pk):
             # If we are editing stock for a specific registration
             if registration:
                 old_stock = registration.stock_quantity
-                new_stock = int(request.POST.get('stock_quantity', registration.stock_quantity))
                 new_low = int(request.POST.get('low_stock_threshold', registration.low_stock_threshold))
+                update_type = request.POST.get('stock_update_type', 'none')
+                update_qty_str = request.POST.get('stock_update_qty', '').strip()
+                update_reason = request.POST.get('stock_update_reason', '').strip()
                 
-                if new_stock < 0 or new_low < 0:
-                    messages.error(request, "Stock quantity and low stock threshold cannot be negative.")
+                has_error = False
+                if new_low < 0:
+                    messages.error(request, "Low stock threshold cannot be negative.")
+                    has_error = True
+                
+                update_qty = 0
+                if update_type != 'none':
+                    try:
+                        update_qty = int(update_qty_str) if update_qty_str else 0
+                    except ValueError:
+                        messages.error(request, "Stock update quantity must be a whole number.")
+                        has_error = True
+                    
+                    if not has_error and update_qty < 0:
+                        messages.error(request, "Stock update quantity cannot be negative.")
+                        has_error = True
+                
+                new_stock = old_stock
+                if not has_error:
+                    if update_type == 'add':
+                        if update_qty > 0:
+                            new_stock = old_stock + update_qty
+                            StockTransaction.objects.create(
+                                product=product,
+                                branch=registration.branch,
+                                transaction_type='IN',
+                                quantity=update_qty,
+                                reference=f"Stock Added: {update_reason}" if update_reason else "Stock Added",
+                                user=request.user
+                            )
+                            messages.success(request, f"Added {update_qty} items to stock.")
+                    elif update_type == 'damage':
+                        if update_qty > 0:
+                            new_stock = old_stock - update_qty
+                            if new_stock < 0:
+                                messages.error(request, f"Cannot log {update_qty} damaged items. Current stock is only {old_stock}.")
+                                has_error = True
+                            else:
+                                StockTransaction.objects.create(
+                                    product=product,
+                                    branch=registration.branch,
+                                    transaction_type='DMG',
+                                    quantity=update_qty,
+                                    reference=f"Damage Logged: {update_reason}" if update_reason else "Damage Logged",
+                                    user=request.user
+                                )
+                                
+                                from core.models import StockAdjustment
+                                from django.db.models import Sum
+                                txns = StockTransaction.objects.filter(product=product, branch=registration.branch)
+                                period_in = txns.filter(transaction_type__in=['IN', 'ADJ']).aggregate(t=Sum('quantity'))['t'] or 0
+                                period_out = txns.filter(transaction_type='OUT').aggregate(t=Sum('quantity'))['t'] or 0
+                                opening_balance = old_stock - period_in + period_out
+                                
+                                StockAdjustment.objects.create(
+                                    product=product,
+                                    branch=registration.branch,
+                                    opening_balance=opening_balance,
+                                    stock_in=period_in,
+                                    stock_out=period_out,
+                                    correction_amount=-update_qty,
+                                    closing_stock=new_stock,
+                                    is_in_stock=(new_stock > 0),
+                                    reason=f"Damage Logged: {update_reason}" if update_reason else "Damage Logged",
+                                    user=request.user
+                                )
+                                messages.success(request, f"Logged {update_qty} damaged items.")
+                    elif update_type == 'correction':
+                        if update_qty_str:
+                            new_stock = update_qty
+                            if new_stock < 0:
+                                messages.error(request, "Correction closing stock cannot be negative.")
+                                has_error = True
+                            else:
+                                diff = new_stock - old_stock
+                                if diff != 0:
+                                    import datetime
+                                    from django.utils import timezone
+                                    
+                                    # Find if there is an IN transaction today for this product/branch
+                                    today = timezone.now().date()
+                                    start_datetime = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+                                    end_datetime = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+                                    today_in_txn = StockTransaction.objects.filter(
+                                        product=product,
+                                        branch=registration.branch,
+                                        transaction_type='IN',
+                                        created_at__gte=start_datetime,
+                                        created_at__lte=end_datetime
+                                    ).first()
+                                    
+                                    if diff > 0:
+                                        # Positive correction: check today's DMG txn first (to reverse wrong damage entries)
+                                        today_dmg_txn = StockTransaction.objects.filter(
+                                            product=product,
+                                            branch=registration.branch,
+                                            transaction_type='DMG',
+                                            created_at__gte=start_datetime,
+                                            created_at__lte=end_datetime
+                                        ).first()
+                                        
+                                        remainder_diff = diff
+                                        if today_dmg_txn:
+                                            if today_dmg_txn.quantity >= remainder_diff:
+                                                today_dmg_txn.quantity -= remainder_diff
+                                                if today_dmg_txn.quantity == 0:
+                                                    today_dmg_txn.delete()
+                                                else:
+                                                    today_dmg_txn.reference = f"{today_dmg_txn.reference} - Corrected: {update_reason}" if update_reason else f"{today_dmg_txn.reference} - Corrected (-{remainder_diff})"
+                                                    today_dmg_txn.save()
+                                                remainder_diff = 0
+                                            else:
+                                                remainder_diff -= today_dmg_txn.quantity
+                                                today_dmg_txn.delete()
+                                                
+                                        if remainder_diff > 0:
+                                            # Positive correction: add to today's IN txn if present, else create new IN txn
+                                            if today_in_txn:
+                                                today_in_txn.quantity += remainder_diff
+                                                today_in_txn.reference = f"{today_in_txn.reference} + Correction: {update_reason}" if update_reason else f"{today_in_txn.reference} + Correction (+{remainder_diff})"
+                                                today_in_txn.save()
+                                            else:
+                                                StockTransaction.objects.create(
+                                                    product=product,
+                                                    branch=registration.branch,
+                                                    transaction_type='IN',
+                                                    quantity=remainder_diff,
+                                                    reference=f"Correction: {update_reason}" if update_reason else f"Correction (+{remainder_diff})",
+                                                    user=request.user
+                                                )
+                                    else:
+                                        # Negative correction: reduce from today's IN txn if present, else create negative ADJ txn
+                                        abs_diff = abs(diff)
+                                        if today_in_txn:
+                                            if today_in_txn.quantity >= abs_diff:
+                                                # Can fully absorb in today's IN txn
+                                                today_in_txn.quantity -= abs_diff
+                                                if today_in_txn.quantity == 0:
+                                                    today_in_txn.delete()
+                                                else:
+                                                    today_in_txn.reference = f"{today_in_txn.reference} - Correction: {update_reason}" if update_reason else f"{today_in_txn.reference} - Correction (-{abs_diff})"
+                                                    today_in_txn.save()
+                                            else:
+                                                # Part is absorbed, remainder is ADJ
+                                                remaining = abs_diff - today_in_txn.quantity
+                                                today_in_txn.delete()
+                                                StockTransaction.objects.create(
+                                                    product=product,
+                                                    branch=registration.branch,
+                                                    transaction_type='ADJ',
+                                                    quantity=-remaining,
+                                                    reference=f"Correction: {update_reason}" if update_reason else f"Correction (-{remaining})",
+                                                    user=request.user
+                                                )
+                                        else:
+                                            # No IN txn today, create negative ADJ txn
+                                            StockTransaction.objects.create(
+                                                product=product,
+                                                branch=registration.branch,
+                                                transaction_type='ADJ',
+                                                quantity=diff,
+                                                reference=f"Correction ({diff}): {update_reason}" if update_reason else f"Correction ({diff})",
+                                                user=request.user
+                                            )
+                                    
+                                    from core.models import StockAdjustment
+                                    from django.db.models import Sum
+                                    txns = StockTransaction.objects.filter(product=product, branch=registration.branch)
+                                    period_in = txns.filter(transaction_type__in=['IN', 'ADJ']).aggregate(t=Sum('quantity'))['t'] or 0
+                                    period_out = txns.filter(transaction_type='OUT').aggregate(t=Sum('quantity'))['t'] or 0
+                                    opening_balance = old_stock - period_in + period_out
+                                    
+                                    StockAdjustment.objects.create(
+                                        product=product,
+                                        branch=registration.branch,
+                                        opening_balance=opening_balance,
+                                        stock_in=period_in,
+                                        stock_out=period_out,
+                                        correction_amount=diff,
+                                        closing_stock=new_stock,
+                                        is_in_stock=(new_stock > 0),
+                                        reason=f"Correction: {update_reason}" if update_reason else "Wrong Entry Correction",
+                                        user=request.user
+                                    )
+                                    messages.success(request, f"Corrected stock to {new_stock} (Adjustment: {'+' if diff >= 0 else ''}{diff}).")
+                    elif update_type == 'correct_damage':
+                        if update_qty_str:
+                            new_damaged_total = update_qty
+                            if new_damaged_total < 0:
+                                messages.error(request, "Total damaged stock cannot be negative.")
+                                has_error = True
+                            else:
+                                from django.db.models import Sum
+                                old_damaged_total = StockTransaction.objects.filter(
+                                    product=product,
+                                    branch=registration.branch,
+                                    transaction_type='DMG'
+                                ).aggregate(t=Sum('quantity'))['t'] or 0
+                                
+                                diff = new_damaged_total - old_damaged_total
+                                if diff != 0:
+                                    new_stock = old_stock - diff
+                                    if new_stock < 0:
+                                        messages.error(request, f"Correction would result in negative sellable stock ({new_stock}). Please enter a valid correction.")
+                                        has_error = True
+                                    else:
+                                        import datetime
+                                        from django.utils import timezone
+                                        
+                                        # Find if there is a DMG transaction today for this product/branch
+                                        today = timezone.now().date()
+                                        start_datetime = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+                                        end_datetime = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+                                        today_dmg_txn = StockTransaction.objects.filter(
+                                            product=product,
+                                            branch=registration.branch,
+                                            transaction_type='DMG',
+                                            created_at__gte=start_datetime,
+                                            created_at__lte=end_datetime
+                                        ).first()
+                                        
+                                        if diff < 0:
+                                            # We are reducing damage (diff is negative).
+                                            # We check today's DMG txn first.
+                                            abs_diff = abs(diff)
+                                            if today_dmg_txn:
+                                                if today_dmg_txn.quantity >= abs_diff:
+                                                    today_dmg_txn.quantity -= abs_diff
+                                                    if today_dmg_txn.quantity == 0:
+                                                        today_dmg_txn.delete()
+                                                    else:
+                                                        today_dmg_txn.reference = f"{today_dmg_txn.reference} - Corrected: {update_reason}" if update_reason else f"{today_dmg_txn.reference} - Corrected (-{abs_diff})"
+                                                        today_dmg_txn.save()
+                                                else:
+                                                    remaining = abs_diff - today_dmg_txn.quantity
+                                                    today_dmg_txn.delete()
+                                                    StockTransaction.objects.create(
+                                                        product=product,
+                                                        branch=registration.branch,
+                                                        transaction_type='DMG',
+                                                        quantity=-remaining,
+                                                        reference=f"Damage Correction: {update_reason}" if update_reason else f"Damage Correction (-{remaining})",
+                                                        user=request.user
+                                                    )
+                                            else:
+                                                # No today's DMG transaction, log a negative DMG transaction
+                                                StockTransaction.objects.create(
+                                                    product=product,
+                                                    branch=registration.branch,
+                                                    transaction_type='DMG',
+                                                    quantity=diff,
+                                                    reference=f"Damage Correction ({diff}): {update_reason}" if update_reason else f"Damage Correction ({diff})",
+                                                    user=request.user
+                                                )
+                                        else:
+                                            # We are increasing damage (diff is positive).
+                                            # We check today's DMG txn first.
+                                            if today_dmg_txn:
+                                                today_dmg_txn.quantity += diff
+                                                today_dmg_txn.reference = f"{today_dmg_txn.reference} + Correction: {update_reason}" if update_reason else f"{today_dmg_txn.reference} + Correction (+{diff})"
+                                                today_dmg_txn.save()
+                                            else:
+                                                StockTransaction.objects.create(
+                                                    product=product,
+                                                    branch=registration.branch,
+                                                    transaction_type='DMG',
+                                                    quantity=diff,
+                                                    reference=f"Damage Correction (+{diff}): {update_reason}" if update_reason else f"Damage Correction (+{diff})",
+                                                    user=request.user
+                                                )
+                                        
+                                        # Log StockAdjustment audit record
+                                        from core.models import StockAdjustment
+                                        txns = StockTransaction.objects.filter(product=product, branch=registration.branch)
+                                        period_in = txns.filter(transaction_type__in=['IN', 'ADJ']).aggregate(t=Sum('quantity'))['t'] or 0
+                                        period_out = txns.filter(transaction_type='OUT').aggregate(t=Sum('quantity'))['t'] or 0
+                                        # StockAdjustment represents sellable stock correction, which is -diff
+                                        opening_balance = old_stock - period_in + period_out
+                                        
+                                        StockAdjustment.objects.create(
+                                            product=product,
+                                            branch=registration.branch,
+                                            opening_balance=opening_balance,
+                                            stock_in=period_in,
+                                            stock_out=period_out,
+                                            correction_amount=-diff,
+                                            closing_stock=new_stock,
+                                            is_in_stock=(new_stock > 0),
+                                            reason=f"Damage Correction: {update_reason}" if update_reason else "Damage Correction",
+                                            user=request.user
+                                        )
+                                        
+                                        # Set new stock and damaged_qty
+                                        new_stock = new_stock
+                                        registration.damaged_qty = new_damaged_total
+                                        messages.success(request, f"Corrected total damaged stock to {new_damaged_total} (Stock adjusted to {new_stock}).")
+
+                if has_error:
                     initial_data = {
                         'initial_branch': registration.branch,
                         'initial_stock': registration.stock_quantity,
@@ -257,11 +555,18 @@ def product_update(request, pk):
                     form = ProductForm(instance=product, initial=initial_data)
                     from .forms import ComboPriceFormSet
                     combo_formset = ComboPriceFormSet(instance=product)
+                    from django.db.models import Sum
+                    current_damaged_qty = StockTransaction.objects.filter(
+                        product=product,
+                        branch=registration.branch,
+                        transaction_type='DMG'
+                    ).aggregate(t=Sum('quantity'))['t'] or 0
                     return render(request, 'core/product_form.html', {
                         'form': form, 
                         'combo_formset': combo_formset,
                         'action': 'Edit', 
-                        'registration': registration
+                        'registration': registration,
+                        'current_damaged_qty': current_damaged_qty
                     })
                 
                 registration.stock_quantity = new_stock
@@ -271,12 +576,19 @@ def product_update(request, pk):
             return redirect('product_list')
     else:
         initial_data = {}
+        current_damaged_qty = 0
         if registration:
             initial_data = {
                 'initial_branch': registration.branch,
                 'initial_stock': registration.stock_quantity,
                 'low_stock_threshold': registration.low_stock_threshold
             }
+            from django.db.models import Sum
+            current_damaged_qty = StockTransaction.objects.filter(
+                product=product,
+                branch=registration.branch,
+                transaction_type='DMG'
+            ).aggregate(t=Sum('quantity'))['t'] or 0
         form = ProductForm(instance=product, initial=initial_data)
         from .forms import ComboPriceFormSet
         combo_formset = ComboPriceFormSet(instance=product)
@@ -285,7 +597,8 @@ def product_update(request, pk):
         'form': form, 
         'combo_formset': combo_formset,
         'action': 'Edit', 
-        'registration': registration
+        'registration': registration,
+        'current_damaged_qty': current_damaged_qty
     })
 
 @login_required
@@ -563,6 +876,16 @@ def stock_pivot_report(request):
     for t in txns:
         key = (t['product_id'], t['branch_id'], t['transaction_type'])
         txn_map[key] = t['total_qty']
+
+    # Fetch all-time OUT, DMG, and ADJ transactions for received till now calculation
+    all_time_txns = StockTransaction.objects.filter(
+        transaction_type__in=['OUT', 'DMG', 'ADJ'],
+        branch__in=branches
+    ).values('product_id', 'branch_id', 'transaction_type').annotate(total_qty=Sum('quantity'))
+    all_time_map = {}
+    for t in all_time_txns:
+        key = (t['product_id'], t['branch_id'], t['transaction_type'])
+        all_time_map[key] = t['total_qty']
         
     future_txns_map = {}
     if end_date < today:
@@ -582,44 +905,69 @@ def stock_pivot_report(request):
             'total_op': 0,
             'total_in': 0,
             'total_out': 0,
+            'total_adj_plus': 0,
+            'total_adj_minus': 0,
             'total_dmg': 0,
             'total_cl': 0,
+            'total_rec': 0,
+            'total_all_time_out': 0,
+            'total_all_time_dmg': 0,
             'branch_stocks': []
         }
         
         for b in active_branches:
             curr_stock = stock_map.get((p.id, b.id), 0)
             
-            period_in = txn_map.get((p.id, b.id, 'IN'), 0) + txn_map.get((p.id, b.id, 'ADJ'), 0)
+            period_in = txn_map.get((p.id, b.id, 'IN'), 0)
+            period_adj = txn_map.get((p.id, b.id, 'ADJ'), 0)
             period_out = txn_map.get((p.id, b.id, 'OUT'), 0)
             period_dmg = txn_map.get((p.id, b.id, 'DMG'), 0)
             
-            future_in = future_txns_map.get((p.id, b.id, 'IN'), 0) + future_txns_map.get((p.id, b.id, 'ADJ'), 0)
+            period_adj_plus = period_adj if period_adj > 0 else 0
+            period_adj_minus = abs(period_adj) if period_adj < 0 else 0
+            
+            # Cumulative received till now = current closing stock + all-time sales + all-time damaged - all-time adjustments
+            all_time_out = all_time_map.get((p.id, b.id, 'OUT'), 0)
+            all_time_dmg = all_time_map.get((p.id, b.id, 'DMG'), 0)
+            all_time_adj = all_time_map.get((p.id, b.id, 'ADJ'), 0)
+            total_rec = curr_stock + all_time_out + all_time_dmg - all_time_adj
+            
+            future_in = future_txns_map.get((p.id, b.id, 'IN'), 0)
+            future_adj = future_txns_map.get((p.id, b.id, 'ADJ'), 0)
             future_out = future_txns_map.get((p.id, b.id, 'OUT'), 0)
             future_dmg = future_txns_map.get((p.id, b.id, 'DMG'), 0)
             
             # Compute opening stock based on current stock and period transactions
-            # Correct formula: opening = current_stock - period_in + period_out + period_dmg
-            opening_stock = curr_stock - period_in + period_out + period_dmg
+            opening_stock = curr_stock - period_in + period_out + period_dmg - period_adj
             # Closing stock after applying period transactions
-            closing_stock = opening_stock + period_in - period_out - period_dmg
+            closing_stock = opening_stock + period_in - period_out - period_dmg + period_adj
             
-            if opening_stock == 0 and period_in == 0 and period_out == 0 and period_dmg == 0 and closing_stock == 0 and (p.id, b.id) not in stock_map:
+            if opening_stock == 0 and period_in == 0 and period_out == 0 and period_dmg == 0 and period_adj == 0 and closing_stock == 0 and (p.id, b.id) not in stock_map:
                 continue
             
             item['total_op'] += opening_stock
             item['total_in'] += period_in
             item['total_out'] += period_out
+            item['total_adj_plus'] += period_adj_plus
+            item['total_adj_minus'] += period_adj_minus
             item['total_dmg'] += period_dmg
             item['total_cl'] += closing_stock
+            item['total_rec'] += total_rec
+            item['total_all_time_out'] += all_time_out
+            item['total_all_time_dmg'] += all_time_dmg
             
             item['branch_stocks'].append({
                 'branch': b,
                 'op': opening_stock,
                 'in': period_in,
                 'out': period_out,
+                'adj_plus': period_adj_plus,
+                'adj_minus': period_adj_minus,
                 'dmg': period_dmg,
                 'cl': closing_stock,
+                'rec': total_rec,
+                'all_time_out': all_time_out,
+                'all_time_dmg': all_time_dmg,
                 'reg_id': reg_id_map.get((p.id, b.id)),
             })
             
@@ -684,6 +1032,13 @@ def export_stock_pivot_excel(request):
     txns = StockTransaction.objects.filter(created_at__gte=start_datetime, branch__in=branches).values('product_id', 'branch_id', 'transaction_type').annotate(total_qty=Sum('quantity'))
     txn_map = {(t['product_id'], t['branch_id'], t['transaction_type']): t['total_qty'] for t in txns}
     
+    # Fetch all-time OUT, DMG, and ADJ transactions for received till now calculation in Excel
+    all_time_txns = StockTransaction.objects.filter(
+        transaction_type__in=['OUT', 'DMG', 'ADJ'],
+        branch__in=branches
+    ).values('product_id', 'branch_id', 'transaction_type').annotate(total_qty=Sum('quantity'))
+    all_time_map = {(t['product_id'], t['branch_id'], t['transaction_type']): t['total_qty'] for t in all_time_txns}
+    
     future_txns_map = {}
     if end_date < today:
         future_txns = StockTransaction.objects.filter(created_at__gt=end_datetime, branch__in=branches).values('product_id', 'branch_id', 'transaction_type').annotate(total_qty=Sum('quantity'))
@@ -698,50 +1053,70 @@ def export_stock_pivot_excel(request):
     # Sheet 1: Consolidated Totals
     ws1 = wb.active
     ws1.title = "Consolidated Totals"
-    header1 = ['Product Name', 'Barcode', 'Price', 'Total Op. Qty', 'Total In Qty', 'Total Out Qty', 'Total Damaged Qty', 'Total Cl. Qty']
+    header1 = ['Product Name', 'Barcode', 'Price', 'Total Op. Qty', 'Total In Qty', 'Total Out Qty', 'Total + Adj Qty', 'Total - Adj Qty', 'Total Damaged Qty', 'Total Cl. Qty', 'Total Received Qty', 'Total Sold (All-Time)', 'Total Damaged (All-Time)']
     ws1.append(header1)
     
     # Sheet 2: Individual Branch Data
     ws2 = wb.create_sheet(title="Branch Details")
-    header2 = ['Product', 'Barcode', 'Branch Name', 'Branch Code', 'Op Qty', 'In Qty', 'Out Qty', 'Damaged Qty', 'Cl Qty']
+    header2 = ['Product', 'Barcode', 'Branch Name', 'Branch Code', 'Op Qty', 'In Qty', 'Out Qty', '+ Adj Qty', '- Adj Qty', 'Damaged Qty', 'Cl Qty', 'Total Received Qty', 'Total Sold (All-Time)', 'Total Damaged (All-Time)']
     ws2.append(header2)
 
     for p in products:
         total_op = 0
         total_in = 0
         total_out = 0
+        total_adj_plus = 0
+        total_adj_minus = 0
         total_dmg = 0
         total_cl = 0
+        total_rec_sum = 0
+        total_all_time_out_sum = 0
+        total_all_time_dmg_sum = 0
         
         for b in active_branches:
             curr_stock = stock_map.get((p.id, b.id), 0)
-            period_in = txn_map.get((p.id, b.id, 'IN'), 0) + txn_map.get((p.id, b.id, 'ADJ'), 0)
+            period_in = txn_map.get((p.id, b.id, 'IN'), 0)
+            period_adj = txn_map.get((p.id, b.id, 'ADJ'), 0)
             period_out = txn_map.get((p.id, b.id, 'OUT'), 0)
             period_dmg = txn_map.get((p.id, b.id, 'DMG'), 0)
             
-            future_in = future_txns_map.get((p.id, b.id, 'IN'), 0) + future_txns_map.get((p.id, b.id, 'ADJ'), 0)
+            period_adj_plus = period_adj if period_adj > 0 else 0
+            period_adj_minus = abs(period_adj) if period_adj < 0 else 0
+            
+            # Cumulative received till now = current closing stock + all-time sales + all-time damaged - all-time adjustments
+            all_time_out = all_time_map.get((p.id, b.id, 'OUT'), 0)
+            all_time_dmg = all_time_map.get((p.id, b.id, 'DMG'), 0)
+            all_time_adj = all_time_map.get((p.id, b.id, 'ADJ'), 0)
+            total_rec = curr_stock + all_time_out + all_time_dmg - all_time_adj
+            
+            future_in = future_txns_map.get((p.id, b.id, 'IN'), 0)
+            future_adj = future_txns_map.get((p.id, b.id, 'ADJ'), 0)
             future_out = future_txns_map.get((p.id, b.id, 'OUT'), 0)
             future_dmg = future_txns_map.get((p.id, b.id, 'DMG'), 0)
             
             # Compute opening stock based on current stock and period transactions
-            # Correct formula: opening = current_stock - period_in + period_out + period_dmg
-            opening_stock = curr_stock - period_in + period_out + period_dmg
+            opening_stock = curr_stock - period_in + period_out + period_dmg - period_adj
             # Closing stock after applying period transactions
-            closing_stock = opening_stock + period_in - period_out - period_dmg
+            closing_stock = opening_stock + period_in - period_out - period_dmg + period_adj
             
-            if opening_stock == 0 and period_in == 0 and period_out == 0 and period_dmg == 0 and closing_stock == 0 and (p.id, b.id) not in stock_map:
+            if opening_stock == 0 and period_in == 0 and period_out == 0 and period_dmg == 0 and period_adj == 0 and closing_stock == 0 and (p.id, b.id) not in stock_map:
                 continue
             
             total_op += opening_stock
             total_in += period_in
             total_out += period_out
+            total_adj_plus += period_adj_plus
+            total_adj_minus += period_adj_minus
             total_dmg += period_dmg
             total_cl += closing_stock
+            total_rec_sum += total_rec
+            total_all_time_out_sum += all_time_out
+            total_all_time_dmg_sum += all_time_dmg
             
-            row2 = [p.name, p.barcode, b.name, b.code or '', opening_stock, period_in, period_out, period_dmg, closing_stock]
+            row2 = [p.name, p.barcode, b.name, b.code or '', opening_stock, period_in, period_out, period_adj_plus, period_adj_minus, period_dmg, closing_stock, total_rec, all_time_out, all_time_dmg]
             ws2.append(row2)
             
-        row1 = [p.name, p.barcode, str(int(p.price)), total_op, total_in, total_out, total_dmg, total_cl]
+        row1 = [p.name, p.barcode, str(int(p.price)), total_op, total_in, total_out, total_adj_plus, total_adj_minus, total_dmg, total_cl, total_rec_sum, total_all_time_out_sum, total_all_time_dmg_sum]
         ws1.append(row1)
 
     # Sheet 3: Detailed Ledger
@@ -868,7 +1243,7 @@ def stock_adjustment(request, reg_id):
                         product=product,
                         branch=branch,
                         transaction_type=txn_type,
-                        quantity=abs(correction_amount),
+                        quantity=correction_amount if txn_type == 'ADJ' else abs(correction_amount),
                         reference=txn_ref,
                         user=request.user,
                     )
@@ -901,6 +1276,35 @@ def stock_adjustment(request, reg_id):
         )[:10],
     }
     return render(request, 'core/stock_adjustment.html', context)
+
+@login_required
+def view_stock_adjustments(request, reg_id):
+    """
+    Read-only view showing the history of all stock adjustments/corrections
+    for a given product registry (product + branch).
+    """
+    if request.user.role == 'staff':
+        return redirect('dashboard')
+        
+    registry = get_object_or_404(ProductRegistry, pk=reg_id)
+    
+    # Branch-level authorization check
+    if not request.user.get_accessible_branches().filter(id=registry.branch.id).exists():
+        messages.error(request, "Permission denied. You do not have access to this branch.")
+        return redirect('stock_pivot_report')
+
+    adjustments = StockAdjustment.objects.filter(
+        product=registry.product,
+        branch=registry.branch
+    ).select_related('user').order_by('-created_at')
+
+    context = {
+        'registry': registry,
+        'product': registry.product,
+        'branch': registry.branch,
+        'adjustments': adjustments,
+    }
+    return render(request, 'core/view_stock_adjustments.html', context)
 
 @login_required
 def pos_view(request):

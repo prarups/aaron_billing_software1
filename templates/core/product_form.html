@@ -128,15 +128,46 @@
                     </div>
                     <input type="hidden" name="reg_id" value="{{ registration.id }}">
                     
-                    <div class="row g-3">
+                    <div class="mb-3">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="d-flex justify-content-between align-items-center bg-white p-2 rounded-3 border">
+                                    <span class="small fw-bold text-muted">Current Stock:</span>
+                                    <span class="badge bg-primary rounded-pill px-3 py-1.5 fw-bold" style="font-size: 11px;">{{ registration.stock_quantity }}</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex justify-content-between align-items-center bg-white p-2 rounded-3 border">
+                                    <span class="small fw-bold text-muted">Current Damaged:</span>
+                                    <span class="badge bg-danger rounded-pill px-3 py-1.5 fw-bold" style="font-size: 11px;">{{ current_damaged_qty|default:0 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-3">
                         <div class="col-6">
-                            <label class="form-label x-small fw-bold text-muted">Stock Quantity</label>
-                            <input type="number" name="stock_quantity" class="form-control rounded-pill" value="{{ registration.stock_quantity }}" min="0">
+                            <label class="form-label x-small fw-bold text-muted">Stock Update Type</label>
+                            <select name="stock_update_type" id="stock_update_type" class="form-select rounded-pill text-xs">
+                                <option value="none">-- No Change --</option>
+                                <option value="add">Add New Stock (+)</option>
+                                <option value="damage">Log Damage (-)</option>
+                                <option value="correction">Correction (Set New Total Stock)</option>
+                                <option value="correct_damage">Correction (Set New Total Damage)</option>
+                            </select>
                         </div>
                         <div class="col-6">
-                            <label class="form-label x-small fw-bold text-muted">Low Stock Alert</label>
-                            <input type="number" name="low_stock_threshold" class="form-control rounded-pill" value="{{ registration.low_stock_threshold }}" min="0">
+                            <label class="form-label x-small fw-bold text-muted" id="stock_qty_label">Quantity</label>
+                            <input type="number" name="stock_update_qty" id="stock_update_qty" class="form-control rounded-pill text-xs" placeholder="Enter amount..." min="0">
+                            <div id="stock_update_help" class="form-text x-small text-muted mt-1"></div>
                         </div>
+                    </div>
+                    <div class="mb-3 d-none" id="stock_reason_container">
+                        <label class="form-label x-small fw-bold text-muted">Update Reason / Note</label>
+                        <input type="text" name="stock_update_reason" id="stock_update_reason" class="form-control rounded-pill text-xs" placeholder="e.g., Damaged during transit, Correction...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small fw-bold text-muted">Low Stock Alert Threshold</label>
+                        <input type="number" name="low_stock_threshold" class="form-control rounded-pill text-xs" value="{{ registration.low_stock_threshold }}" min="0">
                     </div>
                     {% else %}
                     <!-- Creating or no active registration selected -->
@@ -253,6 +284,99 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>`;
             container.appendChild(newRow);
             updateTotalForms(1);
+        });
+    }
+
+    // Stock Update Type interactive toggles
+    const updateTypeSelect = document.getElementById('stock_update_type');
+    const updateQtyInput = document.getElementById('stock_update_qty');
+    const qtyLabel = document.getElementById('stock_qty_label');
+    const reasonContainer = document.getElementById('stock_reason_container');
+    const updateHelp = document.getElementById('stock_update_help');
+
+    if (updateTypeSelect) {
+        function handleUpdateTypeChange() {
+            const val = updateTypeSelect.value;
+            if (val === 'none') {
+                qtyLabel.textContent = 'Quantity';
+                updateQtyInput.setAttribute('disabled', 'disabled');
+                updateQtyInput.value = '';
+                updateQtyInput.removeAttribute('required');
+                reasonContainer.classList.add('d-none');
+                if (updateHelp) updateHelp.textContent = '';
+            } else {
+                updateQtyInput.removeAttribute('disabled');
+                updateQtyInput.setAttribute('required', 'required');
+                reasonContainer.classList.remove('d-none');
+                if (val === 'add') {
+                    qtyLabel.textContent = 'Quantity to Add';
+                    updateQtyInput.placeholder = 'e.g., 10';
+                    if (updateHelp) updateHelp.textContent = 'This will increase the current sellable stock by this amount.';
+                } else if (val === 'damage') {
+                    qtyLabel.textContent = 'Quantity Damaged';
+                    updateQtyInput.placeholder = 'e.g., 5';
+                    if (updateHelp) updateHelp.textContent = 'This will log new damaged items, reducing sellable stock.';
+                } else if (val === 'correction') {
+                    qtyLabel.textContent = 'Correct Total Stock';
+                    updateQtyInput.placeholder = 'e.g., 88';
+                    if (updateHelp) updateHelp.textContent = 'Correct/set the actual sellable stock count. This will adjust the stock history.';
+                } else if (val === 'correct_damage') {
+                    qtyLabel.textContent = 'Correct Total Damaged';
+                    updateQtyInput.placeholder = 'e.g., 3';
+                    if (updateHelp) updateHelp.textContent = 'Correct/set the actual damaged stock count (for correcting mistakes). Adjusts sellable stock in opposite direction.';
+                }
+            }
+        }
+        updateTypeSelect.addEventListener('change', handleUpdateTypeChange);
+        handleUpdateTypeChange(); // Run initially
+    }
+
+    // Instant validation for negative numbers
+    const numericInputs = [
+        document.getElementById('stock_update_qty'),
+        document.getElementById('id_initial_stock'),
+        document.getElementById('id_low_stock_threshold'),
+        document.querySelector('input[name="low_stock_threshold"]')
+    ];
+
+    numericInputs.forEach(input => {
+        if (input) {
+            // Validate on input typing
+            input.addEventListener('input', function() {
+                const val = parseFloat(input.value);
+                if (val < 0) {
+                    alert('Negative numbers are not allowed!');
+                    input.value = '';
+                    input.focus();
+                }
+            });
+            // Validate on change
+            input.addEventListener('change', function() {
+                const val = parseFloat(input.value);
+                if (val < 0) {
+                    input.value = '';
+                }
+            });
+        }
+    });
+
+    const editForm = document.querySelector('form');
+    if (editForm) {
+        editForm.addEventListener('submit', function(e) {
+            let hasNegative = false;
+            numericInputs.forEach(input => {
+                if (input && !input.disabled) {
+                    const val = parseFloat(input.value);
+                    if (val < 0) {
+                        hasNegative = true;
+                        input.classList.add('is-invalid');
+                    }
+                }
+            });
+            if (hasNegative) {
+                e.preventDefault();
+                alert('Negative numbers are not allowed! Please enter a positive number or zero.');
+            }
         });
     }
 });

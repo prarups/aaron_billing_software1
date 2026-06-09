@@ -68,7 +68,7 @@
                 <!-- Product Selection -->
                 <div class="mb-3">
                     <label class="form-label small fw-bold text-muted">Product to Return</label>
-                    <select name="bill_item" id="id_bill_item" class="form-select rounded-pill border-0 bg-light" required>
+                    <select name="bill_item" id="id_bill_item" class="form-select rounded-pill border-0 bg-light">
                         <option value="">-- Load bill first --</option>
                     </select>
                     {% if form.bill_item.errors %}
@@ -89,10 +89,6 @@
                 </div>
                 <!-- Hidden field for return items JSON -->
                 {{ form.return_items }}
-                <!-- Add to Return List button -->
-                <button type="button" id="addReturnBtn" class="btn btn-outline-primary w-100 rounded-pill mt-2 mb-3">
-                    <i class="bi bi-plus-circle me-1"></i> Add Item to Return List
-                </button>
 
                 <!-- Condition & Action (side by side) -->
                 <div class="row g-3 mb-3">
@@ -119,6 +115,11 @@
                         <span id="conditionText"></span>
                     </div>
                 </div>
+
+                <!-- Add to Return List button -->
+                <button type="button" id="addReturnBtn" class="btn btn-outline-primary w-100 rounded-pill mt-2 mb-3">
+                    <i class="bi bi-plus-circle me-1"></i> Add Item to Return List
+                </button>
 
                 <!-- Pending Return List -->
                 <div id="returnListContainer" class="card bg-light border-0 rounded-4 mb-4" style="display:none;">
@@ -198,6 +199,12 @@
     const returnListContainer = document.getElementById('returnListContainer');
     const addReturnBtn = document.getElementById('addReturnBtn');
     const returnItemsField = document.getElementById('id_return_items');
+
+    let isInitialLoad = true;
+    const prevSelectedBillItem = "{{ selected_bill_item|default:'' }}";
+    const prevSelectedQuantity = "{{ selected_quantity|default:'' }}";
+    const prevSelectedCondition = "{{ selected_condition|default:'' }}";
+    const prevSelectedActionType = "{{ selected_action_type|default:'' }}";
 
     // Restore returnList from returnItemsField value on load (e.g., after validation error)
     if (returnItemsField && returnItemsField.value) {
@@ -328,6 +335,25 @@
             });
         });
         
+        // Restore previously selected values (e.g. after validation error) if this is the initial load
+        if (isInitialLoad) {
+            if (prevSelectedBillItem) {
+                itemSelect.value = prevSelectedBillItem;
+                itemSelect.dispatchEvent(new Event('change'));
+            }
+            if (prevSelectedQuantity) {
+                qtyInput.value = prevSelectedQuantity;
+            }
+            if (prevSelectedCondition) {
+                conditionSelect.value = prevSelectedCondition;
+            }
+            if (prevSelectedActionType) {
+                actionSelect.value = prevSelectedActionType;
+            }
+            updateConditionInfo();
+            isInitialLoad = false;
+        }
+
         // Refresh UI to show restored items
         refreshReturnListUI();
     }
@@ -368,14 +394,10 @@
             conditionAlert.className = 'alert border-0 rounded-4 mb-0 py-2 px-3 small bg-danger bg-opacity-10 text-danger';
             conditionIcon.className = 'bi bi-exclamation-triangle-fill me-1';
             conditionText.textContent = 'Damaged product will NOT be added to sellable stock. A damage adjustment (Op/In/Out/Cl) will be recorded.';
-        } else if (cond === 'GOOD' && action === 'REFUND') {
-            conditionAlert.className = 'alert border-0 rounded-4 mb-0 py-2 px-3 small bg-success bg-opacity-10 text-success';
-            conditionIcon.className = 'bi bi-box-seam me-1';
-            conditionText.textContent = 'Good condition product will be added back to stock. Credit note issued for refund.';
-        } else if (cond === 'GOOD' && action === 'EXCHANGE') {
+        } else if (cond === 'GOOD' && action === 'EXCH_SAME') {
             conditionAlert.className = 'alert border-0 rounded-4 mb-0 py-2 px-3 small bg-primary bg-opacity-10 text-primary';
             conditionIcon.className = 'bi bi-arrow-left-right me-1';
-            conditionText.textContent = 'Good condition product will be added back to stock. Customer can exchange for another product.';
+            conditionText.textContent = 'Good condition product: Net-neutral exchange (replaced by the same product). Stock remains unchanged.';
         } else {
             conditionInfo.style.display = 'none';
         }
