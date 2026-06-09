@@ -43,7 +43,7 @@
                     {% endfor %}
                 </td>
                 <td class="text-center hover-actions">
-                    <button class="btn btn-outline-primary btn-sm rounded-circle me-1 px-2 py-1" onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}')" title="Edit Staff / Assign Branch">
+                    <button class="btn btn-outline-primary btn-sm rounded-circle me-1 px-2 py-1" onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}')" title="Edit Staff / Assign Branch">
                         <i class="bi bi-pencil-square"></i>
                     </button>
                     <button class="btn btn-outline-danger btn-sm rounded-circle px-2 py-1" onclick="confirmDelete('{% url 'staff_delete' staff.id %}', 'Staff account \"{{ staff.username }}\"')" title="Delete Account">
@@ -64,13 +64,15 @@
 {% block extra_js %}
 <script>
 {{ block.super }}
-function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId) {
+function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId, mobileNumber, address) {
     document.getElementById('editStaffForm').action = `/users/staff/edit/${id}/`;
     document.getElementById('editStaffUsername').value = username;
     document.getElementById('editStaffFirstName').value = firstName;
     document.getElementById('editStaffLastName').value = lastName;
     document.getElementById('editStaffPassword').value = '';
     document.getElementById('editStaffEmployeeId').value = employeeId === 'None' ? '' : employeeId;
+    document.getElementById('editStaffMobileNumber').value = (mobileNumber === 'None' || !mobileNumber) ? '' : mobileNumber;
+    document.getElementById('editStaffAddress').value = (address === 'None' || !address) ? '' : address;
     const roleSelect = document.getElementById('editStaffRole');
     for (let i = 0; i < roleSelect.options.length; i++) {
         roleSelect.options[i].selected = (roleSelect.options[i].value === role);

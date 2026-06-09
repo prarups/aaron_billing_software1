@@ -496,7 +496,7 @@
                             </td>
                             <td class="text-center hover-actions">
                                 <button class="btn btn-outline-primary btn-xs rounded-circle me-1 p-1" 
-                                        onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}')" 
+                                        onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}')" 
                                         title="Edit Staff / Assign Branch" style="width: 24px; height: 24px; line-height: 1;">
                                     <i class="bi bi-pencil-square" style="font-size: 10px; display: block;"></i>
                                 </button>
@@ -672,6 +672,14 @@
                                             {{ staff_form.employee_id }}
                                             <div class="form-text small">Auto-generated based on branch if left blank.</div>
                                         </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Mobile Number</label>
+                                            {{ staff_form.mobile_number }}
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Address</label>
+                                            {{ staff_form.address }}
+                                        </div>
                                         <div class="col-6 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Role</label>
                                             {{ staff_form.role }}
@@ -751,6 +759,14 @@
                                                     <i class="bi bi-eye-slash-fill"></i>
                                                 </button>
                                             </div>
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Mobile Number</label>
+                                            <input type="text" name="mobile_number" id="editStaffMobileNumber" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Mobile Number" required>
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Address</label>
+                                            <textarea name="address" id="editStaffAddress" class="form-control rounded-3 shadow-sm border-0 bg-light px-3" rows="2" placeholder="Address"></textarea>
                                         </div>
                                         <div class="col-6 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Role</label>
@@ -866,13 +882,15 @@
         modal.show();
     }
 
-    function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId) {
+    function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId, mobileNumber, address) {
         document.getElementById('editStaffForm').action = `/users/staff/edit/${id}/`;
         document.getElementById('editStaffUsername').value = username;
         document.getElementById('editStaffFirstName').value = firstName;
         document.getElementById('editStaffLastName').value = lastName;
         document.getElementById('editStaffPassword').value = '';
         document.getElementById('editStaffEmployeeId').value = (employeeId === 'None' || !employeeId) ? '' : employeeId;
+        document.getElementById('editStaffMobileNumber').value = (mobileNumber === 'None' || !mobileNumber) ? '' : mobileNumber;
+        document.getElementById('editStaffAddress').value = (address === 'None' || !address) ? '' : address;
 
         // Set role via Tom Select API if available, otherwise fallback to native
         const roleEl = document.getElementById('editStaffRole');

@@ -256,3 +256,40 @@ class LoginAuthenticationTestCase(TestCase):
         # Check active branch is auto-assigned
         self.assertEqual(form.get_user().active_branch, self.branch1)
 
+
+class StaffFormTestCase(TestCase):
+    def setUp(self):
+        self.branch1 = Branch.objects.create(name="Nellore", code="10001", invoice_prefix="NL")
+
+    def test_staff_form_missing_mobile_number(self):
+        from users.forms import StaffForm
+        form = StaffForm(data={
+            'username': 'newstaff',
+            'first_name': 'New',
+            'last_name': 'Staff',
+            'password': 'password123',
+            'role': 'staff',
+            'branches': [self.branch1.id],
+            'is_active': True
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('mobile_number', form.errors)
+
+    def test_staff_form_valid(self):
+        from users.forms import StaffForm
+        form = StaffForm(data={
+            'username': 'newstaff',
+            'first_name': 'New',
+            'last_name': 'Staff',
+            'password': 'password123',
+            'role': 'staff',
+            'branches': [self.branch1.id],
+            'mobile_number': '1234567890',
+            'address': '123 Street Name',
+            'is_active': True
+        })
+        self.assertTrue(form.is_valid())
+        user = form.save()
+        self.assertEqual(user.mobile_number, '1234567890')
+        self.assertEqual(user.address, '123 Street Name')
+
