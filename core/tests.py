@@ -726,6 +726,70 @@ class BulkInsertTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
 
+    def test_bulk_insert_excel_success(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        import openpyxl
+        import io
+        
+        # Create an in-memory workbook
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["Name", "Barcode", "Price", "Size", "Branch Code", "Initial Stock", "Low Stock Alert"])
+        # Use floating point numbers in Excel (e.g. 10001.0, 25.0) to test safety of conversions
+        ws.append(["T-Shirt Excel", "EXCELTSHIRT01", 350.00, "M", 10001, 25, 5])
+        ws.append(["Jeans Excel", "EXCELJEANS01", 600.00, "L", 10001.0, 30.0, 10.0])
+        
+        excel_io = io.BytesIO()
+        wb.save(excel_io)
+        excel_io.seek(0)
+        
+        excel_file = SimpleUploadedFile(
+            "bulk.xlsx",
+            excel_io.read(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        
+        response = self.client.post(reverse('bulk_insert'), {'csv_file': excel_file})
+        self.assertEqual(response.status_code, 200)
+        
+        # Check product registry is created
+        product = Product.objects.get(barcode="EXCELTSHIRT01")
+        reg = ProductRegistry.objects.get(product=product, branch=self.branch)
+        self.assertEqual(reg.stock_quantity, 25)
+        self.assertEqual(product.price, 350.00)
+        
+        product2 = Product.objects.get(barcode="EXCELJEANS01")
+        reg2 = ProductRegistry.objects.get(product=product2, branch=self.branch)
+        self.assertEqual(reg2.stock_quantity, 30)
+        self.assertEqual(product2.price, 600.00)
+
+    def test_bulk_insert_excel_validation_error(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        import openpyxl
+        import io
+        
+        # Missing Product Name on row 2
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["Name", "Barcode", "Price", "Size", "Branch Code", "Initial Stock", "Low Stock Alert"])
+        ws.append(["", "EXCELTSHIRT02", 350.00, "M", 10001, 25, 5])
+        
+        excel_io = io.BytesIO()
+        wb.save(excel_io)
+        excel_io.seek(0)
+        
+        excel_file = SimpleUploadedFile(
+            "bulk_invalid.xlsx",
+            excel_io.read(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        
+        response = self.client.post(reverse('bulk_insert'), {'csv_file': excel_file})
+        self.assertEqual(response.status_code, 200)
+        
+        # Ensure it was rolled back and product wasn't created
+        self.assertFalse(Product.objects.filter(barcode="EXCELTSHIRT02").exists())
+
 
 
 

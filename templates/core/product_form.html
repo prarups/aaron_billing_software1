@@ -157,7 +157,7 @@
                         </div>
                         <div class="col-6">
                             <label class="form-label x-small fw-bold text-muted" id="stock_qty_label">Quantity</label>
-                            <input type="number" name="stock_update_qty" id="stock_update_qty" class="form-control rounded-pill text-xs" placeholder="Enter amount..." min="0">
+                            <input type="number" name="stock_update_qty" id="stock_update_qty" class="form-control rounded-pill text-xs" placeholder="Enter amount..." min="0" disabled>
                             <div id="stock_update_help" class="form-text x-small text-muted mt-1"></div>
                         </div>
                     </div>
@@ -299,14 +299,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const val = updateTypeSelect.value;
             if (val === 'none') {
                 qtyLabel.textContent = 'Quantity';
-                updateQtyInput.setAttribute('disabled', 'disabled');
+                updateQtyInput.disabled = true;
                 updateQtyInput.value = '';
-                updateQtyInput.removeAttribute('required');
                 reasonContainer.classList.add('d-none');
                 if (updateHelp) updateHelp.textContent = '';
             } else {
-                updateQtyInput.removeAttribute('disabled');
-                updateQtyInput.setAttribute('required', 'required');
+                updateQtyInput.disabled = false;
                 reasonContainer.classList.remove('d-none');
                 if (val === 'add') {
                     qtyLabel.textContent = 'Quantity to Add';
@@ -363,6 +361,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const editForm = document.querySelector('form');
     if (editForm) {
         editForm.addEventListener('submit', function(e) {
+            // Validate stock update quantity if a type is selected
+            if (updateTypeSelect && updateQtyInput && !updateQtyInput.disabled) {
+                const val = updateTypeSelect.value;
+                if (val !== 'none' && val !== '' && !updateQtyInput.value.trim()) {
+                    e.preventDefault();
+                    alert('Please enter a quantity for the stock update.');
+                    updateQtyInput.focus();
+                    return;
+                }
+            }
+
             let hasNegative = false;
             numericInputs.forEach(input => {
                 if (input && !input.disabled) {

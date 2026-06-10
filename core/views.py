@@ -232,6 +232,15 @@ def product_update(request, pk):
     if reg_id:
         registration = get_object_or_404(ProductRegistry, id=reg_id, product=product)
 
+    current_damaged_qty = 0
+    if registration:
+        from django.db.models import Sum
+        current_damaged_qty = StockTransaction.objects.filter(
+            product=product,
+            branch=registration.branch,
+            transaction_type='DMG'
+        ).aggregate(t=Sum('quantity'))['t'] or 0
+
     if request.method == 'POST':
         form = ProductForm(request.POST, instance=product)
         from .forms import ComboPriceFormSet
@@ -256,15 +265,17 @@ def product_update(request, pk):
                 
                 update_qty = 0
                 if update_type != 'none':
-                    try:
-                        update_qty = int(update_qty_str) if update_qty_str else 0
-                    except ValueError:
-                        messages.error(request, "Stock update quantity must be a whole number.")
+                    if not update_qty_str:
+                        messages.error(request, "Please enter a quantity for the stock update.")
                         has_error = True
-                    
-                    if not has_error and update_qty < 0:
-                        messages.error(request, "Stock update quantity cannot be negative.")
-                        has_error = True
+                    else:
+                        try:
+                            update_qty = int(float(update_qty_str))
+                            if update_qty < 0:
+                                raise ValueError()
+                        except ValueError:
+                            messages.error(request, "Stock update quantity must be a non-negative whole number.")
+                            has_error = True
                 
                 new_stock = old_stock
                 if not has_error:
@@ -547,20 +558,7 @@ def product_update(request, pk):
                                         messages.success(request, f"Corrected total damaged stock to {new_damaged_total} (Stock adjusted to {new_stock}).")
 
                 if has_error:
-                    initial_data = {
-                        'initial_branch': registration.branch,
-                        'initial_stock': registration.stock_quantity,
-                        'low_stock_threshold': registration.low_stock_threshold
-                    }
-                    form = ProductForm(instance=product, initial=initial_data)
-                    from .forms import ComboPriceFormSet
-                    combo_formset = ComboPriceFormSet(instance=product)
-                    from django.db.models import Sum
-                    current_damaged_qty = StockTransaction.objects.filter(
-                        product=product,
-                        branch=registration.branch,
-                        transaction_type='DMG'
-                    ).aggregate(t=Sum('quantity'))['t'] or 0
+                    # Keep the bound form and formset containing user inputs and errors
                     return render(request, 'core/product_form.html', {
                         'form': form, 
                         'combo_formset': combo_formset,
@@ -576,19 +574,12 @@ def product_update(request, pk):
             return redirect('product_list')
     else:
         initial_data = {}
-        current_damaged_qty = 0
         if registration:
             initial_data = {
                 'initial_branch': registration.branch,
                 'initial_stock': registration.stock_quantity,
                 'low_stock_threshold': registration.low_stock_threshold
             }
-            from django.db.models import Sum
-            current_damaged_qty = StockTransaction.objects.filter(
-                product=product,
-                branch=registration.branch,
-                transaction_type='DMG'
-            ).aggregate(t=Sum('quantity'))['t'] or 0
         form = ProductForm(instance=product, initial=initial_data)
         from .forms import ComboPriceFormSet
         combo_formset = ComboPriceFormSet(instance=product)
@@ -674,16 +665,51 @@ def bulk_insert(request):
     if request.method == 'POST':
         csv_file = request.FILES.get('csv_file')
         if not csv_file:
-            messages.error(request, 'Please upload a CSV file.')
+            messages.error(request, 'Please upload a CSV or Excel file.')
             return render(request, 'core/bulk_insert.html', {'branches': branches})
         
-        if not csv_file.name.endswith('.csv'):
-            messages.error(request, 'File must be a .csv file.')
+        file_name = csv_file.name.lower()
+        if not (file_name.endswith('.csv') or file_name.endswith('.xlsx')):
+            messages.error(request, 'File must be a .csv or .xlsx file.')
             return render(request, 'core/bulk_insert.html', {'branches': branches})
         
         try:
-            decoded_file = csv_file.read().decode('utf-8')
-            reader = csv.DictReader(io.StringIO(decoded_file))
+            reader_data = []
+            if file_name.endswith('.xlsx'):
+                from openpyxl import load_workbook
+                wb = load_workbook(filename=io.BytesIO(csv_file.read()), data_only=True)
+                sheet = wb.active
+                rows = list(sheet.iter_rows(values_only=True))
+                if not rows:
+                    raise ValidationError("The Excel file is empty.")
+                
+                headers = [str(cell).strip() if cell is not None else '' for cell in rows[0]]
+                
+                for row in rows[1:]:
+                    # Skip completely empty rows
+                    if all(cell is None or str(cell).strip() == '' for cell in row):
+                        continue
+                    
+                    row_dict = {}
+                    for i, header in enumerate(headers):
+                        if header:
+                            val = row[i] if i < len(row) else None
+                            if val is not None:
+                                if isinstance(val, float) and val.is_integer():
+                                    val_str = str(int(val))
+                                else:
+                                    val_str = str(val).strip()
+                            else:
+                                val_str = ''
+                            row_dict[header] = val_str
+                    reader_data.append(row_dict)
+                
+                if not reader_data:
+                    raise ValidationError("The Excel file has no data rows.")
+            else:
+                decoded_file = csv_file.read().decode('utf-8')
+                reader = csv.DictReader(io.StringIO(decoded_file))
+                reader_data = list(reader)
             
             success_count = 0
             error_count = 0
@@ -692,7 +718,7 @@ def bulk_insert(request):
             seen_names = set()
             
             with transaction.atomic():
-                for row_num, row in enumerate(reader, start=2):
+                for row_num, row in enumerate(reader_data, start=2):
                     try:
                         # Support both template formats:
                         # New template: Name, Barcode, Price, Size, Branch Code, Initial Stock, Low Stock Alert
@@ -729,7 +755,7 @@ def bulk_insert(request):
                         branch = None
                         if branch_code:
                             try:
-                                branch = Branch.objects.get(code=int(branch_code))
+                                branch = Branch.objects.get(code=int(float(branch_code)))
                             except (Branch.DoesNotExist, ValueError):
                                 raise ValidationError(f"Row {row_num}: Branch with code '{branch_code}' not found.")
                         elif branch_name:
@@ -737,7 +763,7 @@ def bulk_insert(request):
                         
                         branch_id = branch.id if branch else None
                         
-                        # 2. Check for Duplicates in the uploaded CSV
+                        # 2. Check for Duplicates in the uploaded file
                         barcode_key = (branch_id, barcode.lower())
                         if barcode_key in seen_barcodes:
                             raise ValidationError(f"Row {row_num}: Duplicate barcode '{barcode}' found for branch '{branch.name if branch else ''}' in the file.")
@@ -783,13 +809,16 @@ def bulk_insert(request):
                         # Create registry entry if branch is provided
                         if branch:
                             try:
-                                parsed_stock = int(stock)
+                                parsed_stock = int(float(stock))
                                 if parsed_stock < 0:
                                     raise ValueError()
                             except ValueError:
                                 raise ValidationError(f"Row {row_num}: Initial Stock must be a non-negative integer.")
                             
-                            parsed_low_stock = max(0, int(low_stock) if low_stock else 10)
+                            try:
+                                parsed_low_stock = max(0, int(float(low_stock)) if low_stock else 10)
+                            except ValueError:
+                                raise ValidationError(f"Row {row_num}: Low Stock Alert must be an integer.")
                             
                             reg = ProductRegistry.objects.create(
                                 branch=branch,
