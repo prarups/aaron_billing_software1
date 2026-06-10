@@ -40,7 +40,7 @@ def get_product_by_barcode(request):
         return JsonResponse({'error': 'No barcode provided'}, status=400)
     
     try:
-        product = Product.objects.get(barcode=barcode)
+        product = Product.objects.get(barcode=barcode, branch=request.user.active_branch)
         try:
             registry = ProductRegistry.objects.get(product=product, branch=request.user.active_branch)
             stock = registry.stock_quantity

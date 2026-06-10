@@ -76,12 +76,6 @@ class ProductForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Ensure branch dropdown shows the branch name
         self.fields['initial_branch'].label_from_instance = lambda obj: obj.name
-        
-        # If editing an existing product, make master details (name, barcode, size) read-only
-        if self.instance and self.instance.pk:
-            self.fields['name'].disabled = True
-            self.fields['barcode'].disabled = True
-            self.fields['size'].disabled = True
 
     def clean_price(self):
         price = self.cleaned_data.get('price')

@@ -16,7 +16,7 @@ class ComboPricingTestCase(TestCase):
         self.user.save()
 
         # Create product
-        self.product = Product.objects.create(name='Test Apple', barcode='112233', price=500)
+        self.product = Product.objects.create(name='Test Apple', barcode='112233', price=500, branch=self.branch)
         
         # Register product to branch
         self.registry = ProductRegistry.objects.create(

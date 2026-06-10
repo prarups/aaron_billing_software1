@@ -134,16 +134,24 @@ def product_create(request):
             request.user.save()
 
     if request.method == 'POST':
-        form = ProductForm(request.POST)
+        # Determine branch first to scope the product's uniqueness check
+        initial_branch_id = request.POST.get('initial_branch')
+        if initial_branch_id:
+            try:
+                branch = Branch.objects.get(id=initial_branch_id)
+            except Branch.DoesNotExist:
+                branch = request.user.active_branch
+        else:
+            branch = request.user.active_branch
+
+        product_instance = Product(branch=branch)
+        form = ProductForm(request.POST, instance=product_instance)
         from .forms import ComboPriceFormSet
         combo_formset = ComboPriceFormSet(request.POST)
         
         if form.is_valid() and combo_formset.is_valid():
             product = form.save()
             combo_formset.instance = product
-            
-            initial_branch = form.cleaned_data.get('initial_branch')
-            branch = initial_branch or request.user.active_branch
             
             combos = combo_formset.save(commit=False)
             for combo in combos:
@@ -152,12 +160,9 @@ def product_create(request):
             for obj in combo_formset.deleted_objects:
                 obj.delete()
             
-            initial_branch = form.cleaned_data.get('initial_branch')
             initial_stock = form.cleaned_data.get('initial_stock') or 0
             low_threshold = form.cleaned_data.get('low_stock_threshold') or 10
             
-            # Determine branch for registration (fallback to active_branch)
-            branch = initial_branch or request.user.active_branch
             if branch:
                 ProductRegistry.objects.create(
                     branch=branch,
@@ -168,55 +173,7 @@ def product_create(request):
                 # Manual stock input maps to opening stock; no StockTransaction is recorded for this initial quantity.
                 return redirect('product_list')
         else:
-            # Check if form is invalid specifically because the product already exists
-            barcode = request.POST.get('barcode', '').strip()
-            if barcode:
-                existing_product = Product.objects.filter(barcode=barcode).first()
-                if existing_product:
-                    initial_branch_id = request.POST.get('initial_branch')
-                    initial_stock = max(0, int(request.POST.get('initial_stock') or 0))
-                    low_threshold = max(0, int(request.POST.get('low_stock_threshold') or 10))
-                    
-                    if initial_branch_id:
-                        branch = get_object_or_404(Branch, id=initial_branch_id)
-                        reg, created = ProductRegistry.objects.get_or_create(
-                            branch=branch,
-                            product=existing_product,
-                            defaults={
-                                'stock_quantity': initial_stock,
-                                'low_stock_threshold': low_threshold
-                            }
-                        )
-                        
-                        if created:
-                            if initial_stock > 0:
-                                StockTransaction.objects.create(
-                                    product=existing_product,
-                                    branch=branch,
-                                    transaction_type='IN',
-                                    quantity=initial_stock,
-                                    reference='Initial Stock',
-                                    user=request.user
-                                )
-                            messages.success(request, f'Product "{existing_product.name}" already exists and has been successfully registered to {branch.name}!')
-                        else:
-                            # Update stock if it was 0 or just warn
-                            if reg.stock_quantity == 0 and initial_stock > 0:
-                                reg.stock_quantity = initial_stock
-                                reg.save()
-                                StockTransaction.objects.create(
-                                    product=existing_product,
-                                    branch=branch,
-                                    transaction_type='IN',
-                                    quantity=initial_stock,
-                                    reference='Stock Update',
-                                    user=request.user
-                                )
-                                messages.success(request, f'Stock updated for "{existing_product.name}" at {branch.name}!')
-                            else:
-                                messages.warning(request, f'Product "{existing_product.name}" is already registered to {branch.name}.')
-                        
-                        return redirect('product_list')
+            pass
     else:
         form = ProductForm(initial={
             'initial_branch': request.user.active_branch,
@@ -803,36 +760,22 @@ def bulk_insert(request):
                             raise ValidationError(f"Row {row_num}: Duplicate product name '{product_name}' found for branch '{branch.name if branch else ''}' in the file.")
                         seen_names.add(name_key)
                         
-                        # 3. Check for Duplicates in the Database
-                        existing_product = Product.objects.filter(barcode__iexact=barcode).first()
+                        # 3. Check for Duplicates in the Database for this branch
+                        existing_product = Product.objects.filter(branch=branch, barcode__iexact=barcode).first()
                         if existing_product:
-                            if branch and ProductRegistry.objects.filter(branch=branch, product=existing_product).exists():
-                                raise ValidationError(f"Row {row_num}: Product with barcode '{barcode}' already exists for branch '{branch.name}' in the database.")
-                            if existing_product.name.lower() != product_name_lower:
-                                raise ValidationError(f"Row {row_num}: Barcode '{barcode}' is already registered with a different name '{existing_product.name}' in the database.")
-                            
-                            # Update existing product if price or size changed
-                            updated = False
-                            if existing_product.price != parsed_price:
-                                existing_product.price = parsed_price
-                                updated = True
-                            if size and existing_product.size != size:
-                                existing_product.size = size
-                                updated = True
-                            if updated:
-                                existing_product.save()
-                            product = existing_product
-                        else:
-                            if branch and ProductRegistry.objects.filter(branch=branch, product__name__iexact=product_name).exists():
-                                raise ValidationError(f"Row {row_num}: Product with name '{product_name}' already exists for branch '{branch.name}' in the database.")
-                            
-                            # Create product since it doesn't exist globally
-                            product = Product.objects.create(
-                                barcode=barcode,
-                                name=product_name,
-                                price=parsed_price,
-                                size=size if size else ''
-                            )
+                            raise ValidationError(f"Row {row_num}: Product with barcode '{barcode}' already exists for branch '{branch.name}' in the database.")
+                        
+                        if branch and ProductRegistry.objects.filter(branch=branch, product__name__iexact=product_name).exists():
+                            raise ValidationError(f"Row {row_num}: Product with name '{product_name}' already exists for branch '{branch.name}' in the database.")
+                        
+                        # Create product scoped to this branch
+                        product = Product.objects.create(
+                            barcode=barcode,
+                            name=product_name,
+                            price=parsed_price,
+                            size=size if size else '',
+                            branch=branch
+                        )
                         
                         # Create registry entry if branch is provided
                         if branch:

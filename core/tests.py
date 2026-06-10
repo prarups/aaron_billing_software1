@@ -19,7 +19,7 @@ class StockPivotReportTestCase(TestCase):
         self.user.save()
         self.client.login(username="testowner", password="password123")
 
-        self.product = Product.objects.create(name="jeans", barcode="610016", price=500)
+        self.product = Product.objects.create(name="jeans", barcode="610016", price=500, branch=self.branch)
         self.registry = ProductRegistry.objects.create(
             branch=self.branch,
             product=self.product,
@@ -650,7 +650,7 @@ class BulkInsertTestCase(TestCase):
     def test_bulk_insert_duplicate_barcode_in_database(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         # Pre-create a product and register it for the branch
-        product = Product.objects.create(name="T-Shirt", barcode="TSHIRT01", price=250)
+        product = Product.objects.create(name="T-Shirt", barcode="TSHIRT01", price=250, branch=self.branch)
         ProductRegistry.objects.create(branch=self.branch, product=product, stock_quantity=10)
         
         csv_content = (
@@ -669,7 +669,7 @@ class BulkInsertTestCase(TestCase):
     def test_bulk_insert_duplicate_name_in_database(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         # Pre-create a product with same name but different barcode and register it for the branch
-        product = Product.objects.create(name="T-Shirt", barcode="TSHIRT02", price=250)
+        product = Product.objects.create(name="T-Shirt", barcode="TSHIRT02", price=250, branch=self.branch)
         ProductRegistry.objects.create(branch=self.branch, product=product, stock_quantity=10)
         
         csv_content = (
@@ -688,7 +688,7 @@ class BulkInsertTestCase(TestCase):
         self.user.branches.add(other_branch)
         
         # Pre-create product and register for first branch (Nellore)
-        product = Product.objects.create(name="T-Shirt", barcode="TSHIRT01", price=250)
+        product = Product.objects.create(name="T-Shirt", barcode="TSHIRT01", price=250, branch=self.branch)
         ProductRegistry.objects.create(branch=self.branch, product=product, stock_quantity=10)
         
         # Uploading same barcode and name for the second branch (Tirupati) should succeed
@@ -700,8 +700,9 @@ class BulkInsertTestCase(TestCase):
         response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
         self.assertEqual(response.status_code, 200)
         
-        # Verify it was successfully linked to the second branch
-        reg_other = ProductRegistry.objects.get(product=product, branch=other_branch)
+        # Verify it created a new product and registry for the other branch
+        new_prod = Product.objects.get(barcode="TSHIRT01", branch=other_branch)
+        reg_other = ProductRegistry.objects.get(product=new_prod, branch=other_branch)
         self.assertEqual(reg_other.stock_quantity, 15)
 
     def test_bulk_insert_missing_price(self):
@@ -806,22 +807,23 @@ class BranchScopedComboPriceTestCase(TestCase):
         self.user.save()
         self.client.login(username="testowner", password="password123")
 
-        self.product = Product.objects.create(name="Combo Shirt", barcode="777888", price=400)
+        self.product_a = Product.objects.create(name="Combo Shirt", barcode="777888", price=400, branch=self.branch_a)
+        self.product_b = Product.objects.create(name="Combo Shirt", barcode="777888", price=400, branch=self.branch_b)
         self.registry_a = ProductRegistry.objects.create(
             branch=self.branch_a,
-            product=self.product,
+            product=self.product_a,
             stock_quantity=50
         )
         self.registry_b = ProductRegistry.objects.create(
             branch=self.branch_b,
-            product=self.product,
+            product=self.product_b,
             stock_quantity=50
         )
 
     def test_combos_are_branch_scoped(self):
         from core.models import ComboPrice
         combo_a = ComboPrice.objects.create(
-            product=self.product,
+            product=self.product_a,
             branch=self.branch_a,
             quantity=10,
             price=3000
@@ -831,7 +833,7 @@ class BranchScopedComboPriceTestCase(TestCase):
         self.assertNotIn(combo_a, self.registry_b.combos)
 
         combo_b = ComboPrice.objects.create(
-            product=self.product,
+            product=self.product_b,
             branch=self.branch_b,
             quantity=10,
             price=3500
@@ -845,14 +847,14 @@ class BranchScopedComboPriceTestCase(TestCase):
 
         from core.models import ComboPrice
         ComboPrice.objects.create(
-            product=self.product,
+            product=self.product_a,
             branch=self.branch_a,
             quantity=5,
             price=1500
         )
 
         ComboPrice.objects.create(
-            product=self.product,
+            product=self.product_b,
             branch=self.branch_b,
             quantity=5,
             price=1800
@@ -876,7 +878,7 @@ class BranchScopedComboPriceTestCase(TestCase):
     def test_edit_product_combos_does_not_affect_other_branch(self):
         from core.models import ComboPrice
         combo_b = ComboPrice.objects.create(
-            product=self.product,
+            product=self.product_b,
             branch=self.branch_b,
             quantity=10,
             price=3500
@@ -885,7 +887,7 @@ class BranchScopedComboPriceTestCase(TestCase):
         self.user.active_branch = self.branch_a
         self.user.save()
 
-        url = reverse('product_update', args=[self.product.pk]) + f"?reg_id={self.registry_a.pk}"
+        url = reverse('product_update', args=[self.product_a.pk]) + f"?reg_id={self.registry_a.pk}"
         
         post_data = {
             'name': 'Combo Shirt',
@@ -904,7 +906,7 @@ class BranchScopedComboPriceTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
 
         self.assertTrue(ComboPrice.objects.filter(pk=combo_b.pk).exists())
-        self.assertEqual(ComboPrice.objects.filter(product=self.product, branch=self.branch_b).count(), 1)
+        self.assertEqual(ComboPrice.objects.filter(product=self.product_b, branch=self.branch_b).count(), 1)
 
         post_data_add = {
             'name': 'Combo Shirt',
@@ -925,12 +927,42 @@ class BranchScopedComboPriceTestCase(TestCase):
         response = self.client.post(url, post_data_add)
         self.assertEqual(response.status_code, 302)
 
-        self.assertEqual(ComboPrice.objects.filter(product=self.product, branch=self.branch_a).count(), 1)
-        self.assertEqual(ComboPrice.objects.filter(product=self.product, branch=self.branch_b).count(), 1)
+        self.assertEqual(ComboPrice.objects.filter(product=self.product_a, branch=self.branch_a).count(), 1)
+        self.assertEqual(ComboPrice.objects.filter(product=self.product_b, branch=self.branch_b).count(), 1)
 
-        combo_a = ComboPrice.objects.get(product=self.product, branch=self.branch_a)
+        combo_a = ComboPrice.objects.get(product=self.product_a, branch=self.branch_a)
         self.assertEqual(combo_a.quantity, 5)
         self.assertEqual(combo_a.price, 1800)
+
+    def test_barcode_and_name_can_be_edited_independently_per_branch(self):
+        self.user.active_branch = self.branch_a
+        self.user.save()
+        
+        url = reverse('product_update', args=[self.product_a.pk]) + f"?reg_id={self.registry_a.pk}"
+        
+        post_data = {
+            'name': 'New Combo Shirt A',
+            'barcode': '777888-A',
+            'price': '450',
+            'low_stock_threshold': '10',
+            'stock_update_type': 'none',
+            'stock_update_qty': '',
+            'stock_update_reason': '',
+            'combos-TOTAL_FORMS': '0',
+            'combos-INITIAL_FORMS': '0',
+            'combos-MIN_NUM_FORMS': '0',
+            'combos-MAX_NUM_FORMS': '1000',
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 302)
+        
+        self.product_a.refresh_from_db()
+        self.assertEqual(self.product_a.name, 'New Combo Shirt A')
+        self.assertEqual(self.product_a.barcode, '777888-A')
+        
+        self.product_b.refresh_from_db()
+        self.assertEqual(self.product_b.name, 'Combo Shirt')
+        self.assertEqual(self.product_b.barcode, '777888')
 
 
 

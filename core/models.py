@@ -27,14 +27,18 @@ class Branch(models.Model):
 
 
 class Product(models.Model):
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='branch_products', null=True, blank=True)
     name = models.CharField(max_length=200)
-    barcode = models.CharField(max_length=50, unique=True, db_index=True)
+    barcode = models.CharField(max_length=50, db_index=True)
     price = models.DecimalField(max_digits=10, decimal_places=0)
 
     size = models.CharField(max_length=50, blank=True, null=True)
     branches = models.ManyToManyField(Branch, through='ProductRegistry', related_name='products')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('branch', 'barcode')
 
     def __str__(self):
         return f"{self.name} - {self.barcode}"
