@@ -964,6 +964,27 @@ class BranchScopedComboPriceTestCase(TestCase):
         self.assertEqual(self.product_b.name, 'Combo Shirt')
         self.assertEqual(self.product_b.barcode, '777888')
 
+    def test_add_product_duplicate_barcode_same_branch_validation_error(self):
+        url = reverse('product_create')
+        post_data = {
+            'name': 'Duplicate Product A',
+            'barcode': '777888',
+            'price': '300',
+            'low_stock_threshold': '10',
+            'initial_branch': self.branch_a.pk,
+            'initial_stock': '0',
+            'stock_update_type': 'none',
+            'stock_update_qty': '',
+            'stock_update_reason': '',
+            'combos-TOTAL_FORMS': '0',
+            'combos-INITIAL_FORMS': '0',
+            'combos-MIN_NUM_FORMS': '0',
+            'combos-MAX_NUM_FORMS': '1000',
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(response.context['form'], 'barcode', "Product with barcode '777888' already exists for this branch.")
+
 
 
 

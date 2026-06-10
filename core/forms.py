@@ -77,6 +77,19 @@ class ProductForm(forms.ModelForm):
         # Ensure branch dropdown shows the branch name
         self.fields['initial_branch'].label_from_instance = lambda obj: obj.name
 
+    def clean(self):
+        cleaned_data = super().clean()
+        barcode = cleaned_data.get('barcode')
+        branch = getattr(self.instance, 'branch', None)
+        
+        if barcode and branch:
+            qs = Product.objects.filter(branch=branch, barcode__iexact=barcode)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                self.add_error('barcode', f"Product with barcode '{barcode}' already exists for this branch.")
+        return cleaned_data
+
     def clean_price(self):
         price = self.cleaned_data.get('price')
         if price is not None:
