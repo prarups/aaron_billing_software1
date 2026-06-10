@@ -50,6 +50,7 @@ def get_product_by_barcode(request):
         return JsonResponse({
             'id': product.id,
             'name': product.name,
+            'barcode': product.barcode,
             'price': float(product.price),
             'stock': stock,
             'combos': [{'quantity': c.quantity, 'price': float(c.price)} for c in product.combos.all().order_by('-quantity')]
@@ -292,6 +293,7 @@ def edit_bill_back(request, bill_id):
         items_data.append({
             'id': str(item.product.id),
             'name': item.product.name,
+            'barcode': item.product.barcode,
             'price': float(item.product.price),
             'quantity': item.quantity,
             'stock': current_stock + item.quantity, # virtual stock including this bill's items
