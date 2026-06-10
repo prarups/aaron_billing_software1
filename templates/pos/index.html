@@ -470,18 +470,18 @@
             subtotalAmt += subtotal;
             count += item.quantity;
             const itemHtml = `
-                <div class="cart-item glass-card p-2 py-1.5 mb-1.5 bg-white border-0 shadow-none">
-                    <div class="d-flex justify-content-between mb-1.5">
-                        <span class="fw-semibold text-xs text-dark">${item.name}</span>
-                        <span class="fw-bold text-primary text-xs">₹${Math.round(subtotal)}</span>
+                <div class="cart-item d-flex align-items-center justify-content-between py-1 mb-1 border-bottom" style="border-bottom: 1px solid #f1f5f9 !important;">
+                    <div class="text-truncate me-2 flex-grow-1" style="max-width: 45%;" title="${item.name}">
+                        <span class="fw-semibold text-xs text-dark" style="font-size: 0.8rem;">${item.name}</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mb-0.5">
-                        <div class="d-flex align-items-center bg-light rounded-pill px-2 py-0.5" style="transform: scale(0.9); transform-origin: left center;">
+                    <div class="d-flex align-items-center justify-content-end gap-2">
+                        <div class="d-flex align-items-center bg-light rounded-pill px-1.5 py-0.5" style="transform: scale(0.85); transform-origin: right center;">
                             <button class="btn btn-sm btn-link text-muted p-0" onclick="updateQty('${item.id}', -1)"><i class="bi bi-dash-circle-fill"></i></button>
-                            <span class="mx-2 fw-bold text-xs">${item.quantity}</span>
+                            <span class="mx-1.5 fw-bold text-xs" style="min-width: 14px; text-align: center;">${item.quantity}</span>
                             <button class="btn btn-sm btn-link text-primary p-0" onclick="updateQty('${item.id}', 1)"><i class="bi bi-plus-circle-fill"></i></button>
                         </div>
-                        <button class="btn btn-link text-danger p-0" onclick="removeFromCart('${item.id}')" style="transform: scale(0.9);">
+                        <span class="fw-bold text-primary text-xs" style="min-width: 55px; text-align: right; font-size: 0.8rem;">₹${Math.round(subtotal)}</span>
+                        <button class="btn btn-link text-danger p-0" onclick="removeFromCart('${item.id}')" style="transform: scale(0.85); line-height: 1;">
                             <i class="bi bi-x-circle"></i>
                         </button>
                     </div>
