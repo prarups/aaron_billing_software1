@@ -1,6 +1,5 @@
-const CACHE_NAME = 'aaron-billing-v1';
+const CACHE_NAME = 'aaron-billing-v2';
 const ASSETS = [
-  '/',
   '/static/css/style.css',
   '/static/images/aronlogonow.png',
   '/static/images/icon-192.png',
@@ -34,8 +33,17 @@ self.addEventListener('activate', event => {
 
 // Fetch Event - network first with cache fallback
 self.addEventListener('fetch', event => {
-  // Only handle GET requests and skip django admin / post requests
-  if (event.request.method !== 'GET' || event.request.url.includes('/admin/')) return;
+  // Only handle GET requests
+  if (event.request.method !== 'GET') return;
+
+  // Do not intercept or cache admin, authentication/login/logout routes, or the root URL
+  const url = new URL(event.request.url);
+  const authPaths = ['/admin/', '/users/login/', '/users/logout/', '/login/', '/logout/'];
+  const isAuthOrAdmin = authPaths.some(path => url.pathname.startsWith(path)) || url.pathname === '/';
+
+  if (isAuthOrAdmin) {
+    return; // Let browser handle normally without SW intervention
+  }
 
   event.respondWith(
     fetch(event.request)

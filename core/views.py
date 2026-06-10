@@ -655,10 +655,11 @@ def update_product_price_ajax(request, pk):
                 return JsonResponse({'success': True, 'price': float(product.price)})
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
-            
     return JsonResponse({'error': 'Invalid request'}, status=405)
 
 import csv
+from django.db import transaction
+from django.core.exceptions import ValidationError
 import io
 @login_required
 def bulk_insert(request):
@@ -687,84 +688,116 @@ def bulk_insert(request):
             success_count = 0
             error_count = 0
             errors = []
+            seen_barcodes = set()
+            seen_names = set()
             
-            for row_num, row in enumerate(reader, start=2):
-                try:
-                    # Support both template formats:
-                    # New template: Name, Barcode, Price, Size, Branch Code, Initial Stock, Low Stock Alert
-                    # Old template: Branch, Product Name, Barcode, Size, Price, Stock, Low Stock Level
-                    product_name = (row.get('Name') or row.get('Product Name') or '').strip()
-                    barcode = (row.get('Barcode') or '').strip()
-                    size = (row.get('Size') or '').strip()
-                    price = (row.get('Price') or '0').strip()
-                    stock = (row.get('Initial Stock') or row.get('Stock') or '0').strip()
-                    low_stock = (row.get('Low Stock Alert') or row.get('Low Stock Level') or '10').strip()
-                    branch_code = (row.get('Branch Code') or '').strip()
-                    branch_name = (row.get('Branch') or '').strip()
-                    
-                    if not product_name or not barcode:
-                        errors.append(f"Row {row_num}: Missing product name or barcode.")
-                        error_count += 1
-                        continue
-                    
-                    # Find or create branch (by code first, then by name)
-                    branch = None
-                    if branch_code:
+            with transaction.atomic():
+                for row_num, row in enumerate(reader, start=2):
+                    try:
+                        # Support both template formats:
+                        # New template: Name, Barcode, Price, Size, Branch Code, Initial Stock, Low Stock Alert
+                        # Old template: Branch, Product Name, Barcode, Size, Price, Stock, Low Stock Level
+                        product_name = (row.get('Name') or row.get('Product Name') or '').strip()
+                        barcode = (row.get('Barcode') or '').strip()
+                        size = (row.get('Size') or '').strip()
+                        price = (row.get('Price') or '').strip()
+                        stock = (row.get('Initial Stock') or row.get('Stock') or '').strip()
+                        low_stock = (row.get('Low Stock Alert') or row.get('Low Stock Level') or '10').strip()
+                        branch_code = (row.get('Branch Code') or '').strip()
+                        branch_name = (row.get('Branch') or '').strip()
+                        
+                        # 1. Enforce Mandatory Fields
+                        if not product_name:
+                            raise ValidationError(f"Row {row_num}: Product Name is a mandatory field and cannot be empty.")
+                        if not barcode:
+                            raise ValidationError(f"Row {row_num}: Barcode is a mandatory field and cannot be empty.")
+                        if not branch_code and not branch_name:
+                            raise ValidationError(f"Row {row_num}: Branch Code / Branch is a mandatory field and cannot be empty.")
+                        if not stock:
+                            raise ValidationError(f"Row {row_num}: Initial Stock / Stock is a mandatory field and cannot be empty.")
+                        if not price:
+                            raise ValidationError(f"Row {row_num}: Price is a mandatory field and cannot be empty.")
+                        
                         try:
-                            branch = Branch.objects.get(code=int(branch_code))
-                        except (Branch.DoesNotExist, ValueError):
-                            errors.append(f"Row {row_num}: Branch with code '{branch_code}' not found.")
-                            error_count += 1
-                            continue
-                    elif branch_name:
-                        branch, _ = Branch.objects.get_or_create(name=branch_name)
-                    
-                    # Find or create product
-                    product, created = Product.objects.get_or_create(
-                        barcode=barcode,
-                        defaults={
-                            'name': product_name,
-                            'price': float(price) if price else 0,
-                            'size': size if size else ''
-                        }
-                    )
-                    
-                    if not created:
-                        # Update existing product price/name/size
-                        product.name = product_name
-                        product.price = float(price) if price else product.price
-                        product.size = size if size else product.size
-                        product.save()
-                    
-                    # Create registry entry if branch is provided
-                    if branch:
-                        parsed_stock = max(0, int(stock) if stock else 0)
-                        parsed_low_stock = max(0, int(low_stock) if low_stock else 10)
-                        reg, reg_created = ProductRegistry.objects.get_or_create(
-                            branch=branch,
-                            product=product,
-                            defaults={
-                                'stock_quantity': parsed_stock,
-                                'low_stock_threshold': parsed_low_stock
-                            }
-                        )
-                        if not reg_created:
-                            old_stock = reg.stock_quantity
-                            reg.stock_quantity = old_stock + parsed_stock
-                            reg.low_stock_threshold = parsed_low_stock
-                            reg.save()
+                            parsed_price = float(price)
+                            if parsed_price < 0:
+                                raise ValueError()
+                        except ValueError:
+                            raise ValidationError(f"Row {row_num}: Price must be a non-negative number.")
+                        
+                        # Find or create branch (by code first, then by name)
+                        branch = None
+                        if branch_code:
+                            try:
+                                branch = Branch.objects.get(code=int(branch_code))
+                            except (Branch.DoesNotExist, ValueError):
+                                raise ValidationError(f"Row {row_num}: Branch with code '{branch_code}' not found.")
+                        elif branch_name:
+                            branch, _ = Branch.objects.get_or_create(name=branch_name)
+                        
+                        branch_id = branch.id if branch else None
+                        
+                        # 2. Check for Duplicates in the uploaded CSV
+                        barcode_key = (branch_id, barcode.lower())
+                        if barcode_key in seen_barcodes:
+                            raise ValidationError(f"Row {row_num}: Duplicate barcode '{barcode}' found for branch '{branch.name if branch else ''}' in the file.")
+                        seen_barcodes.add(barcode_key)
+                        
+                        product_name_lower = product_name.lower()
+                        name_key = (branch_id, product_name_lower)
+                        if name_key in seen_names:
+                            raise ValidationError(f"Row {row_num}: Duplicate product name '{product_name}' found for branch '{branch.name if branch else ''}' in the file.")
+                        seen_names.add(name_key)
+                        
+                        # 3. Check for Duplicates in the Database
+                        existing_product = Product.objects.filter(barcode__iexact=barcode).first()
+                        if existing_product:
+                            if branch and ProductRegistry.objects.filter(branch=branch, product=existing_product).exists():
+                                raise ValidationError(f"Row {row_num}: Product with barcode '{barcode}' already exists for branch '{branch.name}' in the database.")
+                            if existing_product.name.lower() != product_name_lower:
+                                raise ValidationError(f"Row {row_num}: Barcode '{barcode}' is already registered with a different name '{existing_product.name}' in the database.")
                             
-                            if reg.stock_quantity != old_stock:
-                                diff = reg.stock_quantity - old_stock
-                                StockTransaction.objects.create(
-                                    product=product,
-                                    branch=branch,
-                                    transaction_type='IN' if diff > 0 else 'OUT',
-                                    quantity=abs(diff),
-                                    reference='Bulk Update',
-                                    user=request.user
-                                )
+                            # Update existing product if price or size changed
+                            updated = False
+                            if existing_product.price != parsed_price:
+                                existing_product.price = parsed_price
+                                updated = True
+                            if size and existing_product.size != size:
+                                existing_product.size = size
+                                updated = True
+                            if updated:
+                                existing_product.save()
+                            product = existing_product
                         else:
+                            if branch and ProductRegistry.objects.filter(branch=branch, product__name__iexact=product_name).exists():
+                                raise ValidationError(f"Row {row_num}: Product with name '{product_name}' already exists for branch '{branch.name}' in the database.")
+                            
+                            # Create product since it doesn't exist globally
+                            product = Product.objects.create(
+                                barcode=barcode,
+                                name=product_name,
+                                price=parsed_price,
+                                size=size if size else ''
+                            )
+                        
+                        # Create registry entry if branch is provided
+                        if branch:
+                            try:
+                                parsed_stock = int(stock)
+                                if parsed_stock < 0:
+                                    raise ValueError()
+                            except ValueError:
+                                raise ValidationError(f"Row {row_num}: Initial Stock must be a non-negative integer.")
+                            
+                            parsed_low_stock = max(0, int(low_stock) if low_stock else 10)
+                            
+                            reg = ProductRegistry.objects.create(
+                                branch=branch,
+                                product=product,
+                                stock_quantity=parsed_stock,
+                                low_stock_threshold=parsed_low_stock
+                            )
+                            
                             if reg.stock_quantity > 0:
                                 StockTransaction.objects.create(
                                     product=product,
@@ -774,19 +807,27 @@ def bulk_insert(request):
                                     reference='Bulk Insert',
                                     user=request.user
                                 )
-                    
-                    success_count += 1
-                    
-                except Exception as e:
-                    errors.append(f"Row {row_num}: {str(e)}")
-                    error_count += 1
-            
+                        
+                        success_count += 1
+                        
+                    except ValidationError as ve:
+                        errors.append(str(ve))
+                        error_count += 1
+                    except Exception as e:
+                        errors.append(f"Row {row_num}: {str(e)}")
+                        error_count += 1
+                
+                if error_count > 0:
+                    # Raise to trigger transaction rollback and show detailed errors
+                    raise ValidationError(f"Bulk insert failed with {error_count} error(s). Details: {', '.join(errors)}")
             results = {
                 'success_count': success_count,
                 'error_count': error_count,
                 'errors': errors
             }
             
+        except ValidationError as ve:
+            messages.error(request, str(ve))
         except Exception as e:
             messages.error(request, f'Error processing file: {str(e)}')
     

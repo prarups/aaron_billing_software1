@@ -25,15 +25,16 @@ This document defines the page-based and role-based requirements for the Aaron B
 
 ### 1. Login Page
 #### Requirements:
-- Users must select their correct role (Admin, Manager, Staff).
-- Managers and Staff must select a branch from the dropdown. Owners (Admins) do not need to select a branch.
+- Users log in using only their **Username** (or **Employee ID**) and **Password**.
+- The role and branch assignment are determined automatically based on the user account configuration.
 - Deactivated accounts must be blocked with an warning message.
+- Fullscreen glassmorphic design layout.
 
 #### Test Steps:
-1. Try to log in with `username: admin`, `password: admin123` selecting **Admin** role (leave branch empty).
-   * *Expected Result*: Success. Redirects to Admin Dashboard.
-2. Log out. Try to log in with `admin` but select **Manager** or **Staff**.
-   * *Expected Result*: Fails with validation error: *"You do not have the required permissions for this role."*
+1. Log in with `username: admin` and `password: admin123`.
+   * *Expected Result*: Success. Redirects to Owner Dashboard.
+2. Log out. Log in using the **Employee ID** of an active staff member (e.g. `AN0001`) and their password.
+   * *Expected Result*: Success. Redirects to Staff Dashboard (POS) and automatically selects their active branch.
 3. Log in as a deactivated account.
    * *Expected Result*: Fails with error: *"Your account is inactive. Please contact admin team."*
 
@@ -60,12 +61,19 @@ This document defines the page-based and role-based requirements for the Aaron B
   - Toggle status to deactivate/activate staff accounts.
   - Owners cannot deactivate themselves.
   - Toggle product rights to grant/revoke edit permissions for managers.
+  - **Mobile Number** (mandatory) and **Address** (optional) fields are required when adding or editing staff.
 - **Test Steps**:
-  1. **Add Staff**: Click "Add Staff". Input details. Leave Employee ID blank. Assign multiple branches. Save. Verify that Employee ID auto-generates starting with the branch prefix (e.g., `NY0001` or fallback `AR0001`).
-  2. **Edit Staff**: Click edit icon, change password. Save. Log out and verify you can log in with the new password. Ensure the account remains Active.
-  3. **Filter Staff**: Select a branch from the dropdown. Select "Manager" role. Verify only matching staff are shown.
-  4. **Self-Deactivation Check**: Locate your own row in the table. Verify the Status toggle switch is **disabled** with tooltip: *"You cannot deactivate your own account"*.
-  5. **Product Rights Check**: Toggle "Product edit rights" ON/OFF for a manager user. Verify state is saved. Verify that Staff and Admins show `-` in this column.
+  - **Add Staff**: 
+    1. Click "Add Staff". Leave the "Mobile Number" field empty and click save.
+       * *Expected Result*: Browser form validation prevents submission, showing a warning that Mobile Number is required.
+    2. Input a valid Mobile Number (e.g. `9876543210`), fill in other details, leave Employee ID blank, leave Address blank, and save.
+       * *Expected Result*: Success. Employee ID is auto-generated and account is created without an address.
+    3. Click "Add Staff" again, fill all fields including an Address (e.g. `123 Main St`), and save.
+       * *Expected Result*: Success. Account is created with the specified address.
+  - **Edit Staff**: Click the edit pencil icon for a staff member. Verify that their existing Mobile Number and Address are pre-populated in the modal. Change the values and save. Verify that the updated values are correctly stored and shown when reopening the modal.
+  - **Filter Staff**: Select a branch from the dropdown. Select "Manager" role. Verify only matching staff are shown.
+  - **Self-Deactivation Check**: Locate your own row in the table. Verify the Status toggle switch is **disabled** with tooltip: *"You cannot deactivate your own account"*.
+  - **Product Rights Check**: Toggle "Product edit rights" ON/OFF for a manager user. Verify state is saved. Verify that Staff and Admins show `-` in this column.
 
 ---
 
@@ -81,7 +89,11 @@ This document defines the page-based and role-based requirements for the Aaron B
    - Go to `/core/products/`. Verify the "Add New" and "Bulk Insert" buttons are visible.
    - Click "Add New", enter details (combo price, barcode). Save.
    - Click a product's price or stock in the table. Enter a new number. Verify it saves dynamically without page reload.
-   - Click "Bulk Insert", download the CSV template, fill in products, upload, and verify bulk creation.
+   - Click "Bulk Insert", download the CSV template.
+   - Fill in one row with a test product, e.g., product name: `T-Shirt`, barcode: `TSHIRT99`, price: `150`, initial stock: `20`, branch code: `10001` (or matching active branch code). Save and upload this CSV.
+   - Go back to `/core/products/` and verify that the product has been created with stock = 20.
+   - Prepare another CSV (or modify the same CSV) with the exact same barcode `TSHIRT99` but set the initial stock to `15`. Upload the file again.
+   - Verify that the total stock for this product is now **35** (20 + 15), meaning the stock accumulated rather than being overwritten. Check the Multi-Branch Stock Report to confirm a `Bulk Update` transaction of type `IN` with quantity `15` has been recorded.
 2. **Logged in as Manager WITHOUT Product Rights**:
    - Go to `/core/products/`. Verify "Add New" and "Bulk Insert" buttons are **hidden**.
    - Verify that clicking on prices/stock in the table does **not** trigger editing mode (read-only).
@@ -134,3 +146,25 @@ This document defines the page-based and role-based requirements for the Aaron B
 3. Apply a discount of 10%. Verify total updates.
 4. Select payment method: **Split**. Enter Cash portion (e.g., 100) and Online portion (e.g., remaining).
 5. Click "Submit Bill". Verify success and that invoice print preview opens.
+
+---
+
+### 7. PWA Installation (Install App Button)
+#### Requirements:
+- The dashboard navbar displays an "Install App" button on supported browsers when the PWA is installable.
+- The button is hidden if the app is already installed or if the browser does not support PWA installation.
+- Clicking the button prompts the native browser install dialog.
+- The button disappears automatically once installation completes.
+
+#### Test Steps:
+1. Access the web application using a modern browser (e.g., Google Chrome or Microsoft Edge) that doesn't already have the PWA installed.
+2. Log in and open any dashboard (Owner, Manager, or Staff).
+3. Observe the top navigation bar next to your profile.
+   * *Expected Result*: An **Install App** button with a download icon appears.
+4. Click the **Install App** button.
+   * *Expected Result*: The browser's native app installation confirmation dialog displays.
+5. Accept the installation.
+   * *Expected Result*: The application installs, opens in its own standalone window, and the "Install App" button disappears.
+6. Open the app in a browser where it is already installed.
+   * *Expected Result*: The "Install App" button is hidden.
+

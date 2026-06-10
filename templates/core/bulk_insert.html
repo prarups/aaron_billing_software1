@@ -2,6 +2,8 @@
 
 {% block title %}Bulk Insert Products - Aaron Billing{% endblock %}
 
+{% block messages %}{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center animate-fade-in">
     <div class="col-12 col-lg-8">
@@ -107,34 +109,34 @@
                     </thead>
                     <tbody class="small">
                         <tr>
-                            <td class="fw-bold">Branch</td>
-                            <td><span class="badge bg-warning-subtle text-warning rounded-pill">Optional</span></td>
-                            <td><code>Main Store</code></td>
-                            <td>Branch name. Creates new branch if not found.</td>
+                            <td class="fw-bold">Branch / Branch Code</td>
+                            <td><span class="badge bg-danger-subtle text-danger rounded-pill">Required</span></td>
+                            <td><code>10001</code> / <code>Nellore Branch</code></td>
+                            <td>Branch code or Branch name. Must specify an existing branch.</td>
                         </tr>
                         <tr>
                             <td class="fw-bold">Product Name</td>
                             <td><span class="badge bg-danger-subtle text-danger rounded-pill">Required</span></td>
                             <td><code>Blue Jeans</code></td>
-                            <td>Name of the product</td>
+                            <td>Name of the product. Must be unique.</td>
                         </tr>
                         <tr>
                             <td class="fw-bold">Barcode</td>
                             <td><span class="badge bg-danger-subtle text-danger rounded-pill">Required</span></td>
                             <td><code>BJ001</code></td>
-                            <td>Unique barcode for POS scanning</td>
+                            <td>Unique barcode for POS scanning. Must be unique.</td>
                         </tr>
                         <tr>
                             <td class="fw-bold">Price</td>
-                            <td><span class="badge bg-warning-subtle text-warning rounded-pill">Optional</span></td>
+                            <td><span class="badge bg-danger-subtle text-danger rounded-pill">Required</span></td>
                             <td><code>1299</code></td>
-                            <td>Unit price (defaults to 0)</td>
+                            <td>Unit price. Must be a non-negative number.</td>
                         </tr>
                         <tr>
-                            <td class="fw-bold">Stock</td>
-                            <td><span class="badge bg-warning-subtle text-warning rounded-pill">Optional</span></td>
+                            <td class="fw-bold">Initial Stock / Stock</td>
+                            <td><span class="badge bg-danger-subtle text-danger rounded-pill">Required</span></td>
                             <td><code>50</code></td>
-                            <td>Stock quantity (defaults to 0)</td>
+                            <td>Initial stock quantity. Cannot be empty.</td>
                         </tr>
                         <tr>
                             <td class="fw-bold">Low Stock Level</td>
@@ -145,9 +147,9 @@
                     </tbody>
                 </table>
             </div>
-            <div class="alert alert-info border-0 py-2 small mb-0 rounded-3">
-                <i class="bi bi-lightbulb me-1"></i>
-                <strong>Tip:</strong> If a product with the same barcode already exists, its name and price will be updated. If the branch entry already exists, the stock levels will be updated.
+            <div class="alert alert-warning border-0 py-2 small mb-0 rounded-3">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                <strong>Important:</strong> All-or-nothing upload. If any row contains a duplicate barcode or product name (in the CSV file or already in the database), or misses any required fields, the entire upload is rejected.
             </div>
         </div>
     </div>

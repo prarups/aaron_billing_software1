@@ -210,6 +210,7 @@
     </nav>
 
     <main class="container-fluid main-content py-4">
+        {% block messages %}
         {% if messages %}
             {% for message in messages %}
                 <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-4 rounded-3" role="alert">
@@ -218,6 +219,7 @@
                 </div>
             {% endfor %}
         {% endif %}
+        {% endblock %}
 
         {% block content %}{% endblock %}
     </main>
@@ -294,10 +296,54 @@
         });
     </script>
 
+    <!-- iOS Install Instructions Modal -->
+    <div class="modal fade" id="iosInstallModal" tabindex="-1" aria-labelledby="iosInstallModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-primary" id="iosInstallModalLabel">
+                        <i class="bi bi-apple me-2"></i>Install on iOS
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <p class="text-muted">Follow these simple steps to add **Aaron Billing** to your home screen:</p>
+                    <ol class="list-group list-group-numbered list-group-flush mb-0">
+                        <li class="list-group-item d-flex justify-content-between align-items-start border-0 px-0">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">Tap the Share button</div>
+                                Tap the <strong class="text-primary"><i class="bi bi-box-arrow-up mx-1"></i> Share</strong> icon in Safari's toolbar at the bottom of the screen.
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-start border-0 px-0">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">Select Add to Home Screen</div>
+                                Scroll down and tap the <strong class="text-primary"><i class="bi bi-plus-square mx-1"></i> Add to Home Screen</strong> option.
+                            </div>
+                        </li>
+                    </ol>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-primary rounded-pill w-100 py-2 shadow-sm" data-bs-dismiss="modal">Got It</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- PWA Install Prompt Script -->
     <script>
         let deferredPrompt;
         const installBtn = document.getElementById('pwaInstallBtn');
+
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
+        // Show install button on iOS if not standalone (native event beforeinstallprompt won't fire on iOS)
+        if (isIOS && !isStandalone) {
+            if (installBtn) {
+                installBtn.classList.remove('d-none');
+            }
+        }
 
         window.addEventListener('beforeinstallprompt', (e) => {
             // Prevent Chrome 67 and earlier from automatically showing the prompt
@@ -312,6 +358,11 @@
 
         if (installBtn) {
             installBtn.addEventListener('click', () => {
+                if (isIOS) {
+                    const iosModal = new bootstrap.Modal(document.getElementById('iosInstallModal'));
+                    iosModal.show();
+                    return;
+                }
                 if (!deferredPrompt) return;
                 // Show the prompt
                 deferredPrompt.prompt();

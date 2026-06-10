@@ -579,53 +579,152 @@ class BulkInsertTestCase(TestCase):
         self.user.save()
         self.client.login(username="testowner", password="password123")
 
-    def test_bulk_insert_accumulates_stock_on_repeat(self):
-        # 1. First bulk insert of product
-        import csv
-        import io
+    def test_bulk_insert_success(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
+        csv_content = (
+            "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
+            "T-Shirt,TSHIRT01,250.00,M,10001,15,5\n"
+            "Jeans,JEANS01,500.00,L,10001,20,10\n"
+        )
+        csv_file = SimpleUploadedFile("bulk.csv", csv_content.encode("utf-8"), content_type="text/csv")
+        response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
+        self.assertEqual(response.status_code, 200)
 
+        # Check product registry is created
+        product = Product.objects.get(barcode="TSHIRT01")
+        reg = ProductRegistry.objects.get(product=product, branch=self.branch)
+        self.assertEqual(reg.stock_quantity, 15)
+
+        product2 = Product.objects.get(barcode="JEANS01")
+        reg2 = ProductRegistry.objects.get(product=product2, branch=self.branch)
+        self.assertEqual(reg2.stock_quantity, 20)
+
+    def test_bulk_insert_missing_mandatory_fields(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        
+        # Missing Product Name
+        csv_content1 = (
+            "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
+            ",TSHIRT01,250.00,M,10001,15,5\n"
+        )
+        csv_file1 = SimpleUploadedFile("bulk1.csv", csv_content1.encode("utf-8"), content_type="text/csv")
+        response1 = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file1})
+        self.assertEqual(response1.status_code, 200)
+        self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
+
+        # Missing Initial Stock
+        csv_content2 = (
+            "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
+            "T-Shirt,TSHIRT01,250.00,M,10001,,5\n"
+        )
+        csv_file2 = SimpleUploadedFile("bulk2.csv", csv_content2.encode("utf-8"), content_type="text/csv")
+        response2 = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file2})
+        self.assertEqual(response2.status_code, 200)
+        self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
+
+    def test_bulk_insert_duplicate_barcode_in_file(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        csv_content = (
+            "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
+            "T-Shirt,TSHIRT01,250.00,M,10001,15,5\n"
+            "Another T-Shirt,TSHIRT01,300.00,L,10001,10,5\n"
+        )
+        csv_file = SimpleUploadedFile("bulk.csv", csv_content.encode("utf-8"), content_type="text/csv")
+        response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
+
+    def test_bulk_insert_duplicate_name_in_file(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        csv_content = (
+            "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
+            "T-Shirt,TSHIRT01,250.00,M,10001,15,5\n"
+            "T-Shirt,TSHIRT02,300.00,L,10001,10,5\n"
+        )
+        csv_file = SimpleUploadedFile("bulk.csv", csv_content.encode("utf-8"), content_type="text/csv")
+        response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
+        self.assertFalse(Product.objects.filter(barcode="TSHIRT02").exists())
+
+    def test_bulk_insert_duplicate_barcode_in_database(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        # Pre-create a product and register it for the branch
+        product = Product.objects.create(name="T-Shirt", barcode="TSHIRT01", price=250)
+        ProductRegistry.objects.create(branch=self.branch, product=product, stock_quantity=10)
+        
         csv_content = (
             "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
             "T-Shirt,TSHIRT01,250.00,M,10001,15,5\n"
         )
         csv_file = SimpleUploadedFile("bulk.csv", csv_content.encode("utf-8"), content_type="text/csv")
-        
         response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
         self.assertEqual(response.status_code, 200)
-
-        # Check product registry is created with 15 stock
-        product = Product.objects.get(barcode="TSHIRT01")
+        
+        # Verify it wasn't modified or stock added, and the error was raised
+        product.refresh_from_db()
         reg = ProductRegistry.objects.get(product=product, branch=self.branch)
-        self.assertEqual(reg.stock_quantity, 15)
-        
-        # Verify IN transaction created
-        tx = StockTransaction.objects.get(product=product, branch=self.branch, transaction_type='IN', reference='Bulk Insert')
-        self.assertEqual(tx.quantity, 15)
+        self.assertEqual(reg.stock_quantity, 10) # Unchanged
 
-        # 2. Second bulk insert of the same product with 10 more stock
-        csv_content_second = (
+    def test_bulk_insert_duplicate_name_in_database(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        # Pre-create a product with same name but different barcode and register it for the branch
+        product = Product.objects.create(name="T-Shirt", barcode="TSHIRT02", price=250)
+        ProductRegistry.objects.create(branch=self.branch, product=product, stock_quantity=10)
+        
+        csv_content = (
             "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
-            "T-Shirt,TSHIRT01,250.00,M,10001,10,5\n"
+            "T-Shirt,TSHIRT01,250.00,M,10001,15,5\n"
         )
-        csv_file_second = SimpleUploadedFile("bulk_second.csv", csv_content_second.encode("utf-8"), content_type="text/csv")
-        
-        response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file_second})
+        csv_file = SimpleUploadedFile("bulk.csv", csv_content.encode("utf-8"), content_type="text/csv")
+        response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
         self.assertEqual(response.status_code, 200)
+        self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
 
-        # Re-fetch registry and check if stock is 25 (15 + 10)
-        reg.refresh_from_db()
-        self.assertEqual(reg.stock_quantity, 25)
+    def test_bulk_insert_same_barcode_different_branch_allowed(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        # Create second branch
+        other_branch = Branch.objects.create(name="Tirupati Branch", code="10002", invoice_prefix="TP")
+        self.user.branches.add(other_branch)
+        
+        # Pre-create product and register for first branch (Nellore)
+        product = Product.objects.create(name="T-Shirt", barcode="TSHIRT01", price=250)
+        ProductRegistry.objects.create(branch=self.branch, product=product, stock_quantity=10)
+        
+        # Uploading same barcode and name for the second branch (Tirupati) should succeed
+        csv_content = (
+            "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
+            "T-Shirt,TSHIRT01,250.00,M,10002,15,5\n"
+        )
+        csv_file = SimpleUploadedFile("bulk.csv", csv_content.encode("utf-8"), content_type="text/csv")
+        response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
+        self.assertEqual(response.status_code, 200)
+        
+        # Verify it was successfully linked to the second branch
+        reg_other = ProductRegistry.objects.get(product=product, branch=other_branch)
+        self.assertEqual(reg_other.stock_quantity, 15)
 
-        # Verify a new StockTransaction with type 'IN' and quantity 10 is created
-        tx_update = StockTransaction.objects.filter(
-            product=product,
-            branch=self.branch,
-            transaction_type='IN',
-            reference='Bulk Update'
-        ).first()
-        self.assertIsNotNone(tx_update)
-        self.assertEqual(tx_update.quantity, 10)
+    def test_bulk_insert_missing_price(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        csv_content = (
+            "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
+            "T-Shirt,TSHIRT01,,M,10001,15,5\n"
+        )
+        csv_file = SimpleUploadedFile("bulk.csv", csv_content.encode("utf-8"), content_type="text/csv")
+        response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
+
+    def test_bulk_insert_negative_price(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        csv_content = (
+            "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
+            "T-Shirt,TSHIRT01,-15.50,M,10001,15,5\n"
+        )
+        csv_file = SimpleUploadedFile("bulk.csv", csv_content.encode("utf-8"), content_type="text/csv")
+        response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
 
 
 
