@@ -264,7 +264,7 @@ def product_update(request, pk):
                     has_error = True
                 
                 update_qty = 0
-                if update_type != 'none':
+                if update_type in ['add', 'damage', 'correction', 'correct_damage']:
                     if not update_qty_str:
                         messages.error(request, "Please enter a quantity for the stock update.")
                         has_error = True

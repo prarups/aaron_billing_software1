@@ -147,7 +147,7 @@
                     <div class="row g-3 mb-3">
                         <div class="col-6">
                             <label class="form-label x-small fw-bold text-muted">Stock Update Type</label>
-                            <select name="stock_update_type" id="stock_update_type" class="form-select rounded-pill text-xs">
+                            <select name="stock_update_type" id="stock_update_type" class="form-select rounded-pill text-xs" data-no-search>
                                 <option value="none">-- No Change --</option>
                                 <option value="add">Add New Stock (+)</option>
                                 <option value="damage">Log Damage (-)</option>
@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Validate stock update quantity if a type is selected
             if (updateTypeSelect && updateQtyInput && !updateQtyInput.disabled) {
                 const val = updateTypeSelect.value;
-                if (val !== 'none' && val !== '' && !updateQtyInput.value.trim()) {
+                if (['add', 'damage', 'correction', 'correct_damage'].includes(val) && !updateQtyInput.value.trim()) {
                     e.preventDefault();
                     alert('Please enter a quantity for the stock update.');
                     updateQtyInput.focus();
