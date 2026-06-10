@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import Product, Branch, ProductRegistry, StockTransaction, StockAdjustment
+from .models import Product, Branch, ProductRegistry, StockTransaction, StockAdjustment, ComboPrice
 from django import forms
 from .forms import ProductForm
 
@@ -102,7 +102,7 @@ def export_products_csv(request):
 
     for reg in registrations:
         date_str = reg.created_at.strftime("%Y-%m-%d %H:%M")
-        combos = reg.product.combos.all()
+        combos = reg.product.combos.filter(branch=reg.branch)
         combo_str = ' | '.join([f"Qty:{int(c.quantity)} @ ₹{int(c.price)}" for c in combos]) if combos else '-'
         writer.writerow([
             reg.branch.name, 
@@ -141,7 +141,16 @@ def product_create(request):
         if form.is_valid() and combo_formset.is_valid():
             product = form.save()
             combo_formset.instance = product
-            combo_formset.save()
+            
+            initial_branch = form.cleaned_data.get('initial_branch')
+            branch = initial_branch or request.user.active_branch
+            
+            combos = combo_formset.save(commit=False)
+            for combo in combos:
+                combo.branch = branch
+                combo.save()
+            for obj in combo_formset.deleted_objects:
+                obj.delete()
             
             initial_branch = form.cleaned_data.get('initial_branch')
             initial_stock = form.cleaned_data.get('initial_stock') or 0
@@ -244,11 +253,23 @@ def product_update(request, pk):
     if request.method == 'POST':
         form = ProductForm(request.POST, instance=product)
         from .forms import ComboPriceFormSet
-        combo_formset = ComboPriceFormSet(request.POST, instance=product)
+        
+        branch = registration.branch if registration else request.user.active_branch
+        combo_formset = ComboPriceFormSet(
+            request.POST, 
+            instance=product, 
+            queryset=ComboPrice.objects.filter(product=product, branch=branch)
+        )
         
         if form.is_valid() and combo_formset.is_valid():
             product = form.save()
-            combo_formset.save()
+            
+            combos = combo_formset.save(commit=False)
+            for combo in combos:
+                combo.branch = branch
+                combo.save()
+            for obj in combo_formset.deleted_objects:
+                obj.delete()
             
             # If we are editing stock for a specific registration
             if registration:
@@ -584,7 +605,12 @@ def product_update(request, pk):
             }
         form = ProductForm(instance=product, initial=initial_data)
         from .forms import ComboPriceFormSet
-        combo_formset = ComboPriceFormSet(instance=product)
+        
+        branch = registration.branch if registration else request.user.active_branch
+        combo_formset = ComboPriceFormSet(
+            instance=product,
+            queryset=ComboPrice.objects.filter(product=product, branch=branch)
+        )
         
     return render(request, 'core/product_form.html', {
         'form': form, 

@@ -169,7 +169,7 @@
                     <div class="col-4 col-sm-3 col-md-2">
                         <div class="pos-item-card glass-card p-2 text-center h-100 border-0 bg-white" 
                              id="product-{{ reg.product.id }}"
-                             data-combos='[{% for c in reg.product.combos.all %}{"quantity": {{ c.quantity }}, "price": {{ c.price|floatformat:0 }}}{% if not forloop.last %},{% endif %}{% endfor %}]'
+                             data-combos='[{% for c in reg.combos %}{"quantity": {{ c.quantity }}, "price": {{ c.price|floatformat:0 }}}{% if not forloop.last %},{% endif %}{% endfor %}]'
                              onclick="addToCart('{{ reg.product.id }}', '{{ reg.product.name|escapejs }}', '{{ reg.product.price|floatformat:0 }}', '{{ reg.stock_quantity }}', this.getAttribute('data-combos'), '{{ reg.product.barcode }}')">
                             <div class="stock-badge {% if reg.stock_quantity <= reg.low_stock_threshold %}bg-danger{% else %}bg-success{% endif %}">
                                 S: {{ reg.stock_quantity }}

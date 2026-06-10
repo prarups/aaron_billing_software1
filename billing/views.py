@@ -53,7 +53,7 @@ def get_product_by_barcode(request):
             'barcode': product.barcode,
             'price': float(product.price),
             'stock': stock,
-            'combos': [{'quantity': c.quantity, 'price': float(c.price)} for c in product.combos.all().order_by('-quantity')]
+            'combos': [{'quantity': c.quantity, 'price': float(c.price)} for c in product.combos.filter(branch=request.user.active_branch).order_by('-quantity')]
         })
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'}, status=404)
@@ -194,7 +194,7 @@ def process_bill(request):
                     # Calculate subtotal with combos
                     qty_remaining = quantity
                     subtotal = 0
-                    combos = product.combos.all().order_by('-quantity')
+                    combos = product.combos.filter(branch=bill.branch).order_by('-quantity')
                     for combo in combos:
                         if qty_remaining >= combo.quantity and combo.quantity > 0:
                             num_combos = qty_remaining // combo.quantity
@@ -288,7 +288,7 @@ def edit_bill_back(request, bill_id):
             pass
 
         # Fetch combos
-        combos_list = [{'quantity': c.quantity, 'price': float(c.price)} for c in item.product.combos.all().order_by('-quantity')]
+        combos_list = [{'quantity': c.quantity, 'price': float(c.price)} for c in item.product.combos.filter(branch=bill.branch).order_by('-quantity')]
 
         items_data.append({
             'id': str(item.product.id),

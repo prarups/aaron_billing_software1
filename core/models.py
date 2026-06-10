@@ -40,13 +40,15 @@ class Product(models.Model):
         return f"{self.name} - {self.barcode}"
 class ComboPrice(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='combos')
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='combos', null=True, blank=True)
     quantity = models.PositiveIntegerField(help_text='Number of units in this combo')
     price = models.DecimalField(max_digits=10, decimal_places=0, help_text='Total price for the quantity')
     class Meta:
-        unique_together = ('product', 'quantity')
+        unique_together = ('product', 'branch', 'quantity')
         ordering = ['quantity']
     def __str__(self):
-        return f"{self.quantity} pcs → ₹{self.price}"
+        branch_str = f" @ {self.branch.name}" if self.branch else ""
+        return f"{self.quantity} pcs → ₹{self.price}{branch_str}"
 
 
 class ProductRegistry(models.Model):
@@ -55,6 +57,10 @@ class ProductRegistry(models.Model):
     stock_quantity = models.IntegerField(default=0)
     damaged_qty = models.PositiveIntegerField(default=0)
     low_stock_threshold = models.IntegerField(default=10)  # New field for low stock alert level
+
+    @property
+    def combos(self):
+        return self.product.combos.filter(branch=self.branch).order_by('quantity')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

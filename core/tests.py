@@ -791,6 +791,149 @@ class BulkInsertTestCase(TestCase):
         self.assertFalse(Product.objects.filter(barcode="EXCELTSHIRT02").exists())
 
 
+class BranchScopedComboPriceTestCase(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.branch_a = Branch.objects.create(name="Branch A", code="10001", invoice_prefix="BA")
+        self.branch_b = Branch.objects.create(name="Branch B", code="10002", invoice_prefix="BB")
+        self.user = User.objects.create_user(
+            username="testowner", 
+            password="password123", 
+            role="owner",
+            active_branch=self.branch_a
+        )
+        self.user.branches.add(self.branch_a, self.branch_b)
+        self.user.save()
+        self.client.login(username="testowner", password="password123")
+
+        self.product = Product.objects.create(name="Combo Shirt", barcode="777888", price=400)
+        self.registry_a = ProductRegistry.objects.create(
+            branch=self.branch_a,
+            product=self.product,
+            stock_quantity=50
+        )
+        self.registry_b = ProductRegistry.objects.create(
+            branch=self.branch_b,
+            product=self.product,
+            stock_quantity=50
+        )
+
+    def test_combos_are_branch_scoped(self):
+        from core.models import ComboPrice
+        combo_a = ComboPrice.objects.create(
+            product=self.product,
+            branch=self.branch_a,
+            quantity=10,
+            price=3000
+        )
+
+        self.assertIn(combo_a, self.registry_a.combos)
+        self.assertNotIn(combo_a, self.registry_b.combos)
+
+        combo_b = ComboPrice.objects.create(
+            product=self.product,
+            branch=self.branch_b,
+            quantity=10,
+            price=3500
+        )
+        self.assertIn(combo_b, self.registry_b.combos)
+        self.assertNotIn(combo_b, self.registry_a.combos)
+
+    def test_pos_view_uses_branch_scoped_combos(self):
+        self.user.active_branch = self.branch_a
+        self.user.save()
+
+        from core.models import ComboPrice
+        ComboPrice.objects.create(
+            product=self.product,
+            branch=self.branch_a,
+            quantity=5,
+            price=1500
+        )
+
+        ComboPrice.objects.create(
+            product=self.product,
+            branch=self.branch_b,
+            quantity=5,
+            price=1800
+        )
+
+        url = reverse('get_product_by_barcode') + "?barcode=777888"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data['combos']), 1)
+        self.assertEqual(data['combos'][0]['price'], 1500.0)
+
+        self.user.active_branch = self.branch_b
+        self.user.save()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data['combos']), 1)
+        self.assertEqual(data['combos'][0]['price'], 1800.0)
+
+    def test_edit_product_combos_does_not_affect_other_branch(self):
+        from core.models import ComboPrice
+        combo_b = ComboPrice.objects.create(
+            product=self.product,
+            branch=self.branch_b,
+            quantity=10,
+            price=3500
+        )
+
+        self.user.active_branch = self.branch_a
+        self.user.save()
+
+        url = reverse('product_update', args=[self.product.pk]) + f"?reg_id={self.registry_a.pk}"
+        
+        post_data = {
+            'name': 'Combo Shirt',
+            'barcode': '777888',
+            'price': '400',
+            'low_stock_threshold': '10',
+            'stock_update_type': 'none',
+            'stock_update_qty': '',
+            'stock_update_reason': '',
+            'combos-TOTAL_FORMS': '0',
+            'combos-INITIAL_FORMS': '0',
+            'combos-MIN_NUM_FORMS': '0',
+            'combos-MAX_NUM_FORMS': '1000',
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 302)
+
+        self.assertTrue(ComboPrice.objects.filter(pk=combo_b.pk).exists())
+        self.assertEqual(ComboPrice.objects.filter(product=self.product, branch=self.branch_b).count(), 1)
+
+        post_data_add = {
+            'name': 'Combo Shirt',
+            'barcode': '777888',
+            'price': '400',
+            'low_stock_threshold': '10',
+            'stock_update_type': 'none',
+            'stock_update_qty': '',
+            'stock_update_reason': '',
+            'combos-TOTAL_FORMS': '1',
+            'combos-INITIAL_FORMS': '0',
+            'combos-MIN_NUM_FORMS': '0',
+            'combos-MAX_NUM_FORMS': '1000',
+            'combos-0-quantity': '5',
+            'combos-0-price': '1800',
+            'combos-0-id': '',
+        }
+        response = self.client.post(url, post_data_add)
+        self.assertEqual(response.status_code, 302)
+
+        self.assertEqual(ComboPrice.objects.filter(product=self.product, branch=self.branch_a).count(), 1)
+        self.assertEqual(ComboPrice.objects.filter(product=self.product, branch=self.branch_b).count(), 1)
+
+        combo_a = ComboPrice.objects.get(product=self.product, branch=self.branch_a)
+        self.assertEqual(combo_a.quantity, 5)
+        self.assertEqual(combo_a.price, 1800)
+
+
+
 
 
 
