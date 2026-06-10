@@ -259,6 +259,7 @@ def product_update(request, pk):
                 update_reason = request.POST.get('stock_update_reason', '').strip()
                 
                 has_error = False
+                stock_update_error = None
                 if new_low < 0:
                     messages.error(request, "Low stock threshold cannot be negative.")
                     has_error = True
@@ -266,7 +267,7 @@ def product_update(request, pk):
                 update_qty = 0
                 if update_type in ['add', 'damage', 'correction', 'correct_damage']:
                     if not update_qty_str:
-                        messages.error(request, "Please enter a quantity for the stock update.")
+                        stock_update_error = "Please enter a quantity for the stock update."
                         has_error = True
                     else:
                         try:
@@ -274,7 +275,7 @@ def product_update(request, pk):
                             if update_qty < 0:
                                 raise ValueError()
                         except ValueError:
-                            messages.error(request, "Stock update quantity must be a non-negative whole number.")
+                            stock_update_error = "Stock update quantity must be a non-negative whole number."
                             has_error = True
                 
                 new_stock = old_stock
@@ -564,7 +565,8 @@ def product_update(request, pk):
                         'combo_formset': combo_formset,
                         'action': 'Edit', 
                         'registration': registration,
-                        'current_damaged_qty': current_damaged_qty
+                        'current_damaged_qty': current_damaged_qty,
+                        'stock_update_error': stock_update_error
                     })
                 
                 registration.stock_quantity = new_stock

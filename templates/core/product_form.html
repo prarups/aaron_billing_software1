@@ -148,22 +148,25 @@
                         <div class="col-6">
                             <label class="form-label x-small fw-bold text-muted">Stock Update Type</label>
                             <select name="stock_update_type" id="stock_update_type" class="form-select rounded-pill text-xs" data-no-search>
-                                <option value="none">-- No Change --</option>
-                                <option value="add">Add New Stock (+)</option>
-                                <option value="damage">Log Damage (-)</option>
-                                <option value="correction">Correction (Set New Total Stock)</option>
-                                <option value="correct_damage">Correction (Set New Total Damage)</option>
+                                <option value="none" {% if request.POST.stock_update_type == 'none' or not request.POST.stock_update_type %}selected{% endif %}>-- No Change --</option>
+                                <option value="add" {% if request.POST.stock_update_type == 'add' %}selected{% endif %}>Add New Stock (+)</option>
+                                <option value="damage" {% if request.POST.stock_update_type == 'damage' %}selected{% endif %}>Log Damage (-)</option>
+                                <option value="correction" {% if request.POST.stock_update_type == 'correction' %}selected{% endif %}>Correction (Set New Total Stock)</option>
+                                <option value="correct_damage" {% if request.POST.stock_update_type == 'correct_damage' %}selected{% endif %}>Correction (Set New Total Damage)</option>
                             </select>
                         </div>
                         <div class="col-6">
                             <label class="form-label x-small fw-bold text-muted" id="stock_qty_label">Quantity</label>
-                            <input type="number" name="stock_update_qty" id="stock_update_qty" class="form-control rounded-pill text-xs" placeholder="Enter amount..." min="0" disabled>
+                            <input type="number" name="stock_update_qty" id="stock_update_qty" class="form-control rounded-pill text-xs{% if stock_update_error %} is-invalid{% endif %}" placeholder="Enter amount..." min="0" value="{{ request.POST.stock_update_qty }}" {% if not request.POST.stock_update_type or request.POST.stock_update_type == 'none' %}disabled{% endif %}>
                             <div id="stock_update_help" class="form-text x-small text-muted mt-1"></div>
+                            {% if stock_update_error %}
+                            <div class="text-danger x-small mt-1 error-message fw-bold">{{ stock_update_error }}</div>
+                            {% endif %}
                         </div>
                     </div>
-                    <div class="mb-3 d-none" id="stock_reason_container">
+                    <div class="mb-3 {% if not request.POST.stock_update_type or request.POST.stock_update_type == 'none' %}d-none{% endif %}" id="stock_reason_container">
                         <label class="form-label x-small fw-bold text-muted">Update Reason / Note</label>
-                        <input type="text" name="stock_update_reason" id="stock_update_reason" class="form-control rounded-pill text-xs" placeholder="e.g., Damaged during transit, Correction...">
+                        <input type="text" name="stock_update_reason" id="stock_update_reason" class="form-control rounded-pill text-xs" placeholder="e.g., Damaged during transit, Correction..." value="{{ request.POST.stock_update_reason }}">
                     </div>
                     <div class="mb-3">
                         <label class="form-label x-small fw-bold text-muted">Low Stock Alert Threshold</label>
@@ -361,12 +364,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const editForm = document.querySelector('form');
     if (editForm) {
         editForm.addEventListener('submit', function(e) {
+            // Clear prior error messages
+            editForm.querySelectorAll('.error-message').forEach(el => el.remove());
+            editForm.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+
             // Validate stock update quantity if a type is selected
             if (updateTypeSelect && updateQtyInput && !updateQtyInput.disabled) {
                 const val = updateTypeSelect.value;
                 if (['add', 'damage', 'correction', 'correct_damage'].includes(val) && !updateQtyInput.value.trim()) {
                     e.preventDefault();
-                    alert('Please enter a quantity for the stock update.');
+                    
+                    updateQtyInput.classList.add('is-invalid');
+                    const errDiv = document.createElement('div');
+                    errDiv.className = 'text-danger x-small mt-1 error-message fw-bold';
+                    errDiv.textContent = 'Please enter a quantity for the stock update.';
+                    
+                    if (updateHelp) {
+                        updateHelp.after(errDiv);
+                    } else {
+                        updateQtyInput.after(errDiv);
+                    }
+                    
                     updateQtyInput.focus();
                     return;
                 }
@@ -385,6 +403,31 @@ document.addEventListener('DOMContentLoaded', function() {
             if (hasNegative) {
                 e.preventDefault();
                 alert('Negative numbers are not allowed! Please enter a positive number or zero.');
+            }
+        });
+    }
+
+    // Dynamic clearing of errors as user types or changes options
+    if (updateQtyInput) {
+        updateQtyInput.addEventListener('input', function() {
+            updateQtyInput.classList.remove('is-invalid');
+            const parent = updateQtyInput.parentElement;
+            if (parent) {
+                const existingErr = parent.querySelector('.error-message');
+                if (existingErr) existingErr.remove();
+            }
+        });
+    }
+
+    if (updateTypeSelect) {
+        updateTypeSelect.addEventListener('change', function() {
+            if (updateQtyInput) {
+                updateQtyInput.classList.remove('is-invalid');
+                const parent = updateQtyInput.parentElement;
+                if (parent) {
+                    const existingErr = parent.querySelector('.error-message');
+                    if (existingErr) existingErr.remove();
+                }
             }
         });
     }
