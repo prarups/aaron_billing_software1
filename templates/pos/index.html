@@ -175,6 +175,7 @@
                                 S: {{ reg.stock_quantity }}
                             </div>
                             <div class="fw-bold x-small text-truncate text-dark mb-1" title="{{ reg.product.name }}">{{ reg.product.name }}</div>
+                            <div class="text-muted font-monospace mb-1" style="font-size: 10px;">{{ reg.product.barcode }}</div>
                             <div class="text-primary fw-bold small">₹{{ reg.product.price|floatformat:0 }}</div>
                         </div>
                     </div>
@@ -471,10 +472,7 @@
             const itemHtml = `
                 <div class="cart-item glass-card p-3 mb-2 bg-white border-0 shadow-none">
                     <div class="d-flex justify-content-between mb-2">
-                        <div>
-                            <span class="fw-bold small d-block">${item.name}</span>
-                            <span class="text-muted font-monospace" style="font-size: 0.7rem;"><code class="bg-light text-muted px-1.5 py-0.5 rounded-pill border border-light">${item.barcode || '—'}</code></span>
-                        </div>
+                        <span class="fw-bold small">${item.name}</span>
                         <span class="fw-bold text-primary">₹${Math.round(subtotal)}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2">
