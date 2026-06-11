@@ -684,6 +684,16 @@ class BulkInsertTestCase(TestCase):
         self.assertEqual(response2.status_code, 200)
         self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
 
+        # Missing Size
+        csv_content3 = (
+            "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
+            "T-Shirt,TSHIRT01,250.00,,10001,15,5\n"
+        )
+        csv_file3 = SimpleUploadedFile("bulk3.csv", csv_content3.encode("utf-8"), content_type="text/csv")
+        response3 = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file3})
+        self.assertEqual(response3.status_code, 200)
+        self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
+
     def test_bulk_insert_duplicate_barcode_in_file(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         csv_content = (
@@ -1046,6 +1056,74 @@ class BranchScopedComboPriceTestCase(TestCase):
         response = self.client.post(url, post_data)
         self.assertEqual(response.status_code, 200)
         self.assertFormError(response.context['form'], 'barcode', "Product with barcode '777888' already exists for this branch.")
+
+
+class ComboBadgeTestCase(TestCase):
+    def setUp(self):
+        from core.models import ComboGroup
+        self.client = Client()
+        self.branch_a = Branch.objects.create(name="Nellore Branch", code="10001", invoice_prefix="AN")
+        self.branch_b = Branch.objects.create(name="Guntur Branch", code="10002", invoice_prefix="AG")
+        self.user = User.objects.create_user(
+            username="testowner", 
+            password="password123", 
+            role="owner",
+            active_branch=self.branch_a
+        )
+        self.user.branches.add(self.branch_a, self.branch_b)
+        self.user.save()
+        self.client.login(username="testowner", password="password123")
+
+        self.product_a = Product.objects.create(name="Product A", barcode="111111", price=500, branch=self.branch_a)
+        self.registry_a = ProductRegistry.objects.create(
+            branch=self.branch_a,
+            product=self.product_a,
+            stock_quantity=10
+        )
+        
+        self.product_b = Product.objects.create(name="Product B", barcode="222222", price=600, branch=self.branch_b)
+        self.registry_b = ProductRegistry.objects.create(
+            branch=self.branch_b,
+            product=self.product_b,
+            stock_quantity=5
+        )
+
+        self.combo_group = ComboGroup.objects.create(name="Summer Mix & Match", is_active=True)
+        self.combo_group.branches.add(self.branch_a)
+        self.combo_group.products.add(self.product_a)
+
+    def test_is_in_active_combo(self):
+        # registry_a has product_a, which is in the active combo group for branch_a
+        self.assertTrue(self.registry_a.is_in_active_combo)
+
+        # registry_b has product_b, which is NOT in any combo group
+        self.assertFalse(self.registry_b.is_in_active_combo)
+
+        # If we deactivate the combo group, registry_a should be False
+        self.combo_group.is_active = False
+        self.combo_group.save()
+        self.assertFalse(self.registry_a.is_in_active_combo)
+
+    def test_product_list_shows_combo_badge(self):
+        url = reverse('product_list') + f"?branch={self.branch_a.pk}"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<span class="badge bg-info-subtle text-info rounded-pill px-2 py-0.5 text-xxs fw-semibold"><i class="bi bi-gift-fill me-0.5"></i>Combo</span>')
+
+    def test_product_list_combos_filter(self):
+        # Product A is in an active combo group, Product B is not.
+        # Request with filter=combos and branch_a should show Product A.
+        url = reverse('product_list') + f"?branch={self.branch_a.pk}&filter=combos"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Product A')
+
+        # Request with filter=combos and branch_b (which only has Product B, not in combo) should not show Product B.
+        url_b = reverse('product_list') + f"?branch={self.branch_b.pk}&filter=combos"
+        response_b = self.client.get(url_b)
+        self.assertEqual(response_b.status_code, 200)
+        self.assertNotContains(response_b, 'Product B')
+
 
 
 

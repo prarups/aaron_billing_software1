@@ -27,7 +27,11 @@ def product_list(request):
     
     # Base query
     accessible_branches = request.user.get_accessible_branches()
-    registrations = ProductRegistry.objects.select_related('product', 'branch').prefetch_related('product__combos').filter(branch__in=accessible_branches)
+    registrations = ProductRegistry.objects.select_related('product', 'branch').prefetch_related(
+        'product__combos',
+        'product__combo_groups',
+        'product__combo_groups__branches'
+    ).filter(branch__in=accessible_branches)
 
     if q:
         registrations = registrations.filter(
@@ -41,6 +45,11 @@ def product_list(request):
         registrations = registrations.filter(stock_quantity__lte=F('low_stock_threshold'))
     elif active_filter == 'zero_stock':
         registrations = registrations.filter(stock_quantity=0)
+    elif active_filter == 'combos':
+        registrations = registrations.filter(
+            product__combo_groups__is_active=True,
+            product__combo_groups__branches=F('branch')
+        ).distinct()
         
     registrations = registrations.order_by('product__name')
 
@@ -81,7 +90,10 @@ def export_products_csv(request):
     selected_branch = request.GET.get('branch', '')
     
     accessible_branches = request.user.get_accessible_branches()
-    registrations = ProductRegistry.objects.select_related('product', 'branch').prefetch_related('product__combos').filter(branch__in=accessible_branches)
+    registrations = ProductRegistry.objects.select_related('product', 'branch').prefetch_related(
+        'product__combo_groups',
+        'product__combo_groups__branches'
+    ).filter(branch__in=accessible_branches)
 
     if q:
         from django.db.models import Q
@@ -98,12 +110,11 @@ def export_products_csv(request):
     response['Content-Disposition'] = 'attachment; filename="products.csv"'
 
     writer = csv.writer(response)
-    writer.writerow(['Branch Name', 'Branch Code', 'Product Name', 'Barcode', 'Price', 'Combo Prices', 'Stock', 'Low Stock Level', 'Registered On'])
+    writer.writerow(['Branch Name', 'Branch Code', 'Product Name', 'Barcode', 'Price', 'Combo', 'Stock', 'Low Stock Level', 'Registered On'])
 
     for reg in registrations:
         date_str = reg.created_at.strftime("%Y-%m-%d %H:%M")
-        combos = reg.product.combos.filter(branch=reg.branch)
-        combo_str = ' | '.join([f"Qty:{int(c.quantity)} @ ₹{int(c.price)}" for c in combos]) if combos else '-'
+        combo_str = 'Yes' if reg.is_in_active_combo else '-'
         writer.writerow([
             reg.branch.name, 
             reg.branch.code or '',
@@ -741,6 +752,8 @@ def bulk_insert(request):
                             raise ValidationError(f"Row {row_num}: Product Name is a mandatory field and cannot be empty.")
                         if not barcode:
                             raise ValidationError(f"Row {row_num}: Barcode is a mandatory field and cannot be empty.")
+                        if not size:
+                            raise ValidationError(f"Row {row_num}: Size is a mandatory field and cannot be empty.")
                         if not branch_code and not branch_name:
                             raise ValidationError(f"Row {row_num}: Branch Code / Branch is a mandatory field and cannot be empty.")
                         if not stock:

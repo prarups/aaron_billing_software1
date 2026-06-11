@@ -91,6 +91,15 @@ class ProductRegistry(models.Model):
     def combos(self):
         return self.product.combos.filter(branch=self.branch).order_by('quantity')
 
+    @property
+    def is_in_active_combo(self):
+        try:
+            # Try evaluating using prefetch cache
+            groups = self.product.combo_groups.all()
+            return any(g.is_active and self.branch in g.branches.all() for g in groups)
+        except (AttributeError, ValueError):
+            return self.product.combo_groups.filter(branches=self.branch, is_active=True).exists()
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

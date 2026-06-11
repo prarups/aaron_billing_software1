@@ -200,3 +200,45 @@ class MultiProductComboTestCase(TestCase):
         bill = Bill.objects.get(id=data['bill_id'])
         self.assertEqual(bill.total_amount, Decimal('500'))
         self.assertEqual(bill.total_savings, Decimal('250'))
+
+
+class BillDetailNavigationTestCase(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(name='Test Branch', location='Test Location', invoice_prefix='TB')
+        self.staff_user = User.objects.create_user(username='teststaff', password='password123', role='staff', active_branch=self.branch)
+        self.staff_user.branches.add(self.branch)
+        self.staff_user.save()
+
+        self.owner_user = User.objects.create_user(username='testowner', password='password123', role='owner', active_branch=self.branch)
+        self.owner_user.branches.add(self.branch)
+        self.owner_user.save()
+
+        self.bill = Bill.objects.create(
+            branch=self.branch,
+            staff=self.owner_user,
+            customer_name='John Doe',
+            payment_method='cash',
+            total_amount=500
+        )
+
+    def test_bill_detail_close_button_as_owner(self):
+        self.client.force_login(self.owner_user)
+        from django.urls import reverse
+        url = reverse('bill_detail', args=[self.bill.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        # Verify close X button falls back to owner_bill_list for owners
+        self.assertContains(response, 'href="/billing/all-bills/"')
+        # Verify Back to Sales Report button is present for owners
+        self.assertContains(response, 'Back to Sales Report')
+
+    def test_bill_detail_close_button_as_staff(self):
+        self.client.force_login(self.staff_user)
+        from django.urls import reverse
+        url = reverse('bill_detail', args=[self.bill.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        # Verify close X button falls back to pos_index for staff
+        self.assertContains(response, 'href="/billing/"')
+        # Verify Back to Sales Report button is NOT present for staff
+        self.assertNotContains(response, 'Back to Sales Report')

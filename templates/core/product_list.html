@@ -114,9 +114,10 @@
         <!-- Stock status filter -->
         <div class="col-12 col-md-4">
             <select name="filter" class="form-select form-select-sm rounded-pill border-0 bg-light text-xs px-3 py-1.5" onchange="this.form.submit()" data-no-search>
-                <option value="">All Stock Status</option>
+                <option value="">All Products</option>
                 <option value="low_stock" {% if active_filter == 'low_stock' %}selected{% endif %}>Low Stock</option>
                 <option value="zero_stock" {% if active_filter == 'zero_stock' %}selected{% endif %}>Zero Stock</option>
+                <option value="combos" {% if active_filter == 'combos' %}selected{% endif %}>Combos</option>
             </select>
         </div>
     </form>
@@ -154,11 +155,11 @@
                     </td>
                     <td>
                         <div class="d-flex flex-wrap gap-1">
-                             {% for combo in reg.combos %}
-                             <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-0.5 text-xxs" style="font-size:0.65rem;">{{ combo.quantity }}pcs → ₹{{ combo.price|floatformat:0 }}</span>
-                             {% empty %}
+                             {% if reg.is_in_active_combo %}
+                             <span class="badge bg-info-subtle text-info rounded-pill px-2 py-0.5 text-xxs fw-semibold" style="font-size:0.65rem;"><i class="bi bi-gift-fill me-0.5"></i>Combo</span>
+                             {% else %}
                              <span class="text-muted text-xxs">—</span>
-                             {% endfor %}
+                             {% endif %}
                         </div>
                     </td>
                     <td>
@@ -196,11 +197,9 @@
                 <div class="fw-bold text-dark text-xs mb-1">{{ reg.product.name }}</div>
                 <div class="text-muted text-xxs"><i class="bi bi-upc-scan me-1"></i>Barcode: <code class="text-muted font-monospace">{{ reg.product.barcode }}</code></div>
                 <div class="text-muted text-xxs mt-1"><i class="bi bi-archive me-1"></i>Stock: <span class="{% if reg.stock_quantity <= reg.low_stock_threshold %}text-danger fw-bold{% endif %}">{{ reg.stock_quantity }}</span></div>
-                {% if reg.combos %}
+                {% if reg.is_in_active_combo %}
                 <div class="mt-2 d-flex flex-wrap gap-1">
-                    {% for combo in reg.combos %}
-                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-0.5 text-xxs">{{ combo.quantity }}pcs → ₹{{ combo.price|floatformat:0 }}</span>
-                    {% endfor %}
+                    <span class="badge bg-info-subtle text-info rounded-pill px-2 py-0.5 text-xxs fw-semibold"><i class="bi bi-gift-fill me-0.5"></i>Combo</span>
                 </div>
                 {% endif %}
             </div>
