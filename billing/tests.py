@@ -242,3 +242,23 @@ class BillDetailNavigationTestCase(TestCase):
         self.assertContains(response, 'href="/billing/"')
         # Verify Back to Sales Report button is NOT present for staff
         self.assertNotContains(response, 'Back to Sales Report')
+
+    def test_bill_detail_whatsapp_link_with_instagram(self):
+        self.bill.customer_phone = '9876543210'
+        self.bill.save()
+        self.client.force_login(self.owner_user)
+        from django.urls import reverse
+        url = reverse('bill_detail', args=[self.bill.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        wa_link = response.context['wa_link']
+        self.assertIsNotNone(wa_link)
+        self.assertIn("https://wa.me/9876543210", wa_link)
+        self.assertIn("Follow us on Instagram: https://www.instagram.com/aaron_garments?igsh=YWpkdWE0emkyZjNv", wa_link)
+
+    def test_public_bill_detail_whatsapp_group_link(self):
+        from django.urls import reverse
+        url = reverse('public_bill_detail', args=[self.bill.share_id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'https://chat.whatsapp.com/CjsuRAf3g1EHUbzMVU4VpE')

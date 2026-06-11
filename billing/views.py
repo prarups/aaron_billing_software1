@@ -435,8 +435,11 @@ def bill_detail(request, bill_id):
     
     # Build WhatsApp message text
     public_url = request.build_absolute_uri(f"/billing/share/{bill.share_id}/")
-    wa_lines = [f"*Bill {bill.invoice_number or bill.id} - {bill.branch.name}*"]
-    wa_lines.append(f"View/Download Bill: {public_url}")
+    wa_lines = [
+        f"*Bill {bill.invoice_number or bill.id} - {bill.branch.name}*",
+        f"View/Download Bill: {public_url}",
+        "Follow us on Instagram: https://www.instagram.com/aaron_garments?igsh=YWpkdWE0emkyZjNv"
+    ]
     wa_text = "%0A".join(wa_lines)
     wa_link = f"https://wa.me/{bill.customer_phone}?text={wa_text}" if bill.customer_phone else None
     

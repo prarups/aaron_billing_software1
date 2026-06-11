@@ -28,7 +28,7 @@ class Branch(models.Model):
 
 class Product(models.Model):
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='branch_products', null=True, blank=True)
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, blank=True, default='')
     barcode = models.CharField(max_length=50, db_index=True)
     price = models.DecimalField(max_digits=10, decimal_places=0)
 

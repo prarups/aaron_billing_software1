@@ -374,9 +374,13 @@
                         <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-bold font-monospace" style="font-size: 0.65rem;">CODE: {{ b.code }}</span>
                     </div>
                     <h6 class="fw-bold text-dark text-xs mb-1">{{ b.name }}</h6>
-                    <p class="text-muted text-xxs mb-3">
+                    <p class="text-muted text-xxs mb-2">
                         <i class="bi bi-geo-alt me-1 text-danger"></i> {{ b.location|default:"No location specified" }}
                     </p>
+                    <div class="mb-3 d-flex align-items-center gap-1.5 text-xxs text-secondary fw-semibold">
+                        <i class="bi bi-box-seam text-primary"></i>
+                        <span>Products: {{ b.product_count|default:"0" }}</span>
+                    </div>
                 </div>
                 <a href="?branch={{ b.id }}" class="btn btn-primary rounded-2 w-100 py-1.5 text-xxs fw-semibold text-white d-flex align-items-center justify-content-center gap-1.5">
                     <span>View Stock Report</span>

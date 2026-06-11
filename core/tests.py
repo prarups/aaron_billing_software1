@@ -626,6 +626,18 @@ class StockPivotReportTestCase(TestCase):
         self.assertEqual(len(rows), 2) # Header + 1 data row
         self.assertEqual(rows[1][2], "Nellore Branch 2") # Branch Name column is index 2
 
+    def test_stock_pivot_report_displays_branch_product_count(self):
+        # The user has access to one branch (self.branch) with 1 product registered
+        response = self.client.get(reverse('stock_pivot_report'))
+        self.assertEqual(response.status_code, 200)
+        
+        # Verify the context contains accessible_branches with annotated product_count
+        accessible_branches = response.context['accessible_branches']
+        self.assertTrue(any(b.id == self.branch.id and b.product_count == 1 for b in accessible_branches))
+        
+        # Verify the HTML contains the correct label and value
+        self.assertContains(response, "Products: 1")
+
 
 class BulkInsertTestCase(TestCase):
     def setUp(self):
@@ -664,17 +676,17 @@ class BulkInsertTestCase(TestCase):
     def test_bulk_insert_missing_mandatory_fields(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         
-        # Missing Product Name
+        # Missing Barcode (mandatory)
         csv_content1 = (
             "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
-            ",TSHIRT01,250.00,M,10001,15,5\n"
+            "T-Shirt,,250.00,M,10001,15,5\n"
         )
         csv_file1 = SimpleUploadedFile("bulk1.csv", csv_content1.encode("utf-8"), content_type="text/csv")
         response1 = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file1})
         self.assertEqual(response1.status_code, 200)
-        self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
+        self.assertFalse(Product.objects.filter(name="T-Shirt").exists())
 
-        # Missing Initial Stock
+        # Missing Initial Stock (mandatory)
         csv_content2 = (
             "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
             "T-Shirt,TSHIRT01,250.00,M,10001,,5\n"
@@ -684,15 +696,23 @@ class BulkInsertTestCase(TestCase):
         self.assertEqual(response2.status_code, 200)
         self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
 
-        # Missing Size
-        csv_content3 = (
+    def test_bulk_insert_optional_name_and_size(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        
+        # Name and Size are optional
+        csv_content = (
             "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
-            "T-Shirt,TSHIRT01,250.00,,10001,15,5\n"
+            ",TSHIRT_NO_NAME,250.00,,10001,15,5\n"
         )
-        csv_file3 = SimpleUploadedFile("bulk3.csv", csv_content3.encode("utf-8"), content_type="text/csv")
-        response3 = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file3})
-        self.assertEqual(response3.status_code, 200)
-        self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
+        csv_file = SimpleUploadedFile("bulk_opt.csv", csv_content.encode("utf-8"), content_type="text/csv")
+        response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
+        self.assertEqual(response.status_code, 200)
+        
+        # Product should be successfully created with empty name and size
+        self.assertTrue(Product.objects.filter(barcode="TSHIRT_NO_NAME").exists())
+        product = Product.objects.get(barcode="TSHIRT_NO_NAME")
+        self.assertEqual(product.name, "")
+        self.assertEqual(product.size, "")
 
     def test_bulk_insert_duplicate_barcode_in_file(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -716,8 +736,8 @@ class BulkInsertTestCase(TestCase):
         csv_file = SimpleUploadedFile("bulk.csv", csv_content.encode("utf-8"), content_type="text/csv")
         response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
-        self.assertFalse(Product.objects.filter(barcode="TSHIRT02").exists())
+        self.assertTrue(Product.objects.filter(barcode="TSHIRT01").exists())
+        self.assertTrue(Product.objects.filter(barcode="TSHIRT02").exists())
 
     def test_bulk_insert_duplicate_barcode_in_database(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -751,7 +771,7 @@ class BulkInsertTestCase(TestCase):
         csv_file = SimpleUploadedFile("bulk.csv", csv_content.encode("utf-8"), content_type="text/csv")
         response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(Product.objects.filter(barcode="TSHIRT01").exists())
+        self.assertTrue(Product.objects.filter(barcode="TSHIRT01").exists())
 
     def test_bulk_insert_same_barcode_different_branch_allowed(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -841,11 +861,11 @@ class BulkInsertTestCase(TestCase):
         import openpyxl
         import io
         
-        # Missing Product Name on row 2
+        # Missing Barcode on row 2
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.append(["Name", "Barcode", "Price", "Size", "Branch Code", "Initial Stock", "Low Stock Alert"])
-        ws.append(["", "EXCELTSHIRT02", 350.00, "M", 10001, 25, 5])
+        ws.append(["Excel T-Shirt", "", 350.00, "M", 10001, 25, 5])
         
         excel_io = io.BytesIO()
         wb.save(excel_io)
@@ -861,7 +881,7 @@ class BulkInsertTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         
         # Ensure it was rolled back and product wasn't created
-        self.assertFalse(Product.objects.filter(barcode="EXCELTSHIRT02").exists())
+        self.assertFalse(Product.objects.filter(name="Excel T-Shirt").exists())
 
 
 class BranchScopedComboPriceTestCase(TestCase):
@@ -1123,6 +1143,20 @@ class ComboBadgeTestCase(TestCase):
         response_b = self.client.get(url_b)
         self.assertEqual(response_b.status_code, 200)
         self.assertNotContains(response_b, 'Product B')
+
+    def test_product_create_preselects_branch(self):
+        url = reverse('product_create') + f"?branch={self.branch_b.pk}"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        form = response.context['form']
+        self.assertEqual(form.initial.get('initial_branch'), self.branch_b)
+
+    def test_product_list_displays_branch_product_count(self):
+        url = reverse('product_list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        # Verify Nellore Branch (1 product) and Guntur Branch (1 product) show their product count
+        self.assertContains(response, 'Products: 1')
 
 
 

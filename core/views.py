@@ -67,7 +67,7 @@ def product_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    branches = accessible_branches
+    branches = accessible_branches.annotate(product_count=Count('productregistry'))
 
     return render(request, 'core/product_list.html', {
         'page_obj': page_obj,
@@ -187,8 +187,15 @@ def product_create(request):
         else:
             pass
     else:
+        initial_branch = request.user.active_branch
+        branch_id = request.GET.get('branch')
+        if branch_id:
+            try:
+                initial_branch = Branch.objects.get(id=branch_id)
+            except Branch.DoesNotExist:
+                pass
         form = ProductForm(initial={
-            'initial_branch': request.user.active_branch,
+            'initial_branch': initial_branch,
             'initial_stock': 0,
             'low_stock_threshold': 10
         })
@@ -748,12 +755,8 @@ def bulk_insert(request):
                         branch_name = (row.get('Branch') or '').strip()
                         
                         # 1. Enforce Mandatory Fields
-                        if not product_name:
-                            raise ValidationError(f"Row {row_num}: Product Name is a mandatory field and cannot be empty.")
                         if not barcode:
                             raise ValidationError(f"Row {row_num}: Barcode is a mandatory field and cannot be empty.")
-                        if not size:
-                            raise ValidationError(f"Row {row_num}: Size is a mandatory field and cannot be empty.")
                         if not branch_code and not branch_name:
                             raise ValidationError(f"Row {row_num}: Branch Code / Branch is a mandatory field and cannot be empty.")
                         if not stock:
@@ -786,19 +789,10 @@ def bulk_insert(request):
                             raise ValidationError(f"Row {row_num}: Duplicate barcode '{barcode}' found for branch '{branch.name if branch else ''}' in the file.")
                         seen_barcodes.add(barcode_key)
                         
-                        product_name_lower = product_name.lower()
-                        name_key = (branch_id, product_name_lower)
-                        if name_key in seen_names:
-                            raise ValidationError(f"Row {row_num}: Duplicate product name '{product_name}' found for branch '{branch.name if branch else ''}' in the file.")
-                        seen_names.add(name_key)
-                        
                         # 3. Check for Duplicates in the Database for this branch
                         existing_product = Product.objects.filter(branch=branch, barcode__iexact=barcode).first()
                         if existing_product:
                             raise ValidationError(f"Row {row_num}: Product with barcode '{barcode}' already exists for branch '{branch.name}' in the database.")
-                        
-                        if branch and ProductRegistry.objects.filter(branch=branch, product__name__iexact=product_name).exists():
-                            raise ValidationError(f"Row {row_num}: Product with name '{product_name}' already exists for branch '{branch.name}' in the database.")
                         
                         # Create product scoped to this branch
                         product = Product.objects.create(
@@ -891,7 +885,7 @@ def stock_pivot_report(request):
     if request.user.role == 'staff':
         return redirect('dashboard')
     
-    from django.db.models import Sum, Q, F
+    from django.db.models import Sum, Q, F, Count
     import datetime
     from django.utils import timezone
     from django.core.paginator import Paginator
@@ -916,7 +910,7 @@ def stock_pivot_report(request):
         except ValueError:
             pass
         
-    accessible_branches = request.user.get_accessible_branches().order_by('name')
+    accessible_branches = request.user.get_accessible_branches().annotate(product_count=Count('productregistry')).order_by('name')
     branch_id = request.GET.get('branch', '').strip()
     
     selected_branch = None
