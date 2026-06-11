@@ -1,0 +1,730 @@
+{% extends 'base.html' %}
+
+{% block title %}Combo Offers - Aaron Billing{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Clean Layout Tokens ── */
+    .text-xs { font-size: 0.8rem !important; }
+    .text-xxs { font-size: 0.7rem !important; }
+
+    /* ── Page Header Card ── */
+    .combo-header {
+        background: #fff;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    /* ── Branch Selector — simple clean dropdown ── */
+    .branch-select-wrap {
+        position: relative;
+        display: inline-block;
+        min-width: 220px;
+    }
+    .branch-select-wrap select {
+        appearance: none;
+        -webkit-appearance: none;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-radius: 0.6rem;
+        padding: 0.5rem 2.2rem 0.5rem 0.85rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #1e293b;
+        width: 100%;
+        cursor: pointer;
+        outline: none;
+        transition: border-color 0.15s ease;
+    }
+    .branch-select-wrap select:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+    .branch-select-wrap::after {
+        content: '\f282';
+        font-family: 'bootstrap-icons';
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.7rem;
+        color: #64748b;
+        pointer-events: none;
+    }
+
+    /* ── Product Card — clean, minimal ── */
+    .product-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.85rem;
+        padding: 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    }
+    .product-card:hover {
+        border-color: #a5b4fc;
+        box-shadow: 0 4px 16px rgba(99,102,241,0.08);
+        transform: translateY(-2px);
+    }
+    .product-card:active {
+        transform: scale(0.97);
+    }
+    .product-card .product-name {
+        font-weight: 700;
+        font-size: 0.82rem;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 0.15rem;
+    }
+    .product-card .product-barcode {
+        font-size: 0.68rem;
+        color: #94a3b8;
+        font-family: 'SF Mono', 'Cascadia Code', monospace;
+        margin-bottom: 0.35rem;
+    }
+    .product-card .product-price {
+        font-weight: 800;
+        font-size: 1.05rem;
+        color: #1e293b;
+    }
+    .product-card .product-stock {
+        display: inline-block;
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: #16a34a;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 1rem;
+        padding: 0.1rem 0.5rem;
+        margin-top: 0.3rem;
+    }
+    .product-card .add-btn {
+        display: block;
+        width: 100%;
+        margin-top: 0.55rem;
+        border: 1px solid #c7d2fe;
+        background: #eef2ff;
+        color: #4338ca;
+        font-size: 0.72rem;
+        font-weight: 700;
+        border-radius: 0.5rem;
+        padding: 0.35rem 0;
+        transition: background 0.15s ease;
+    }
+    .product-card .add-btn:hover {
+        background: #c7d2fe;
+    }
+
+    /* ── Basket Panel ── */
+    .basket-panel {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+    }
+    .cart-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.55rem 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .cart-item:last-child {
+        border-bottom: none;
+    }
+    .cart-item .item-info {
+        flex: 1;
+        min-width: 0;
+        margin-right: 0.5rem;
+    }
+    .cart-item .item-name {
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .cart-item .item-unit-price {
+        font-size: 0.68rem;
+        color: #94a3b8;
+    }
+    .cart-item .item-subtotal {
+        font-weight: 700;
+        font-size: 0.82rem;
+        color: #1e293b;
+        min-width: 55px;
+        text-align: right;
+    }
+
+    /* ── Qty Stepper ── */
+    .qty-stepper {
+        display: inline-flex;
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+    .qty-stepper button {
+        background: none;
+        border: none;
+        padding: 0.2rem 0.5rem;
+        cursor: pointer;
+        color: #64748b;
+        font-size: 0.9rem;
+        line-height: 1;
+    }
+    .qty-stepper button:hover {
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+    .qty-stepper .qty-value {
+        min-width: 22px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 0.78rem;
+        color: #1e293b;
+        padding: 0 0.15rem;
+    }
+
+    /* ── Progress Tracker ── */
+    .progress-track {
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+    }
+    .progress-milestone-bar {
+        position: relative;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
+        overflow: visible;
+    }
+    .progress-bar-inner {
+        height: 100%;
+        background: linear-gradient(90deg, #6366f1, #8b5cf6);
+        border-radius: 3px;
+        transition: width 0.4s ease;
+    }
+    .ms-dot {
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #cbd5e1;
+        border: 2px solid #fff;
+        transition: all 0.3s ease;
+    }
+    .ms-dot.active {
+        background: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+    }
+    .ms-label {
+        position: absolute;
+        top: 14px;
+        transform: translateX(-50%);
+        font-size: 0.6rem;
+        font-weight: 700;
+        color: #94a3b8;
+        white-space: nowrap;
+    }
+    .ms-dot.active + .ms-label,
+    .ms-label.active {
+        color: #6366f1;
+    }
+
+    /* ── Savings Badge ── */
+    .savings-badge {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 0.5rem;
+        padding: 0.3rem 0.6rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #16a34a;
+    }
+
+    /* ── Delete button ── */
+    .remove-item-btn {
+        background: none;
+        border: none;
+        color: #cbd5e1;
+        cursor: pointer;
+        padding: 0.2rem;
+        font-size: 1rem;
+        transition: color 0.15s ease;
+    }
+    .remove-item-btn:hover {
+        color: #ef4444;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid animate-fade-in">
+    <!-- ═══════ Header & Branch Selector ═══════ -->
+    <div class="combo-header p-3 px-4 mb-4 shadow-sm">
+        <div class="row align-items-center g-2">
+            <div class="col-md-7">
+                <h5 class="fw-bold m-0" style="color: #1e293b;">
+                    <i class="bi bi-gift-fill me-2" style="color: #6366f1;"></i>Combo Offers
+                </h5>
+                <p class="text-muted text-xs mb-0 mt-1">Select a branch, pick your items, and unlock tiered combo discounts.</p>
+            </div>
+            <div class="col-md-5 d-flex justify-content-md-end align-items-center gap-2">
+                <label class="text-xs fw-bold text-muted mb-0 text-nowrap">
+                    <i class="bi bi-shop me-1"></i>Branch:
+                </label>
+                <form method="GET" action="" class="d-inline">
+                    <div class="branch-select-wrap">
+                        <select name="branch_id" data-no-search onchange="this.form.submit()">
+                            {% for b in branches %}
+                            <option value="{{ b.id }}" {% if selected_branch and selected_branch.id == b.id %}selected{% endif %}>{{ b.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% if selected_branch %}
+    <div class="row g-3">
+        <!-- ═══════ Products Grid ═══════ -->
+        <div class="col-lg-8">
+            <div class="basket-panel p-3 px-4 shadow-sm mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold m-0" style="color: #1e293b;">
+                        <i class="bi bi-grid-3x3-gap-fill me-2" style="color: #6366f1;"></i>Eligible Products
+                    </h6>
+                    <span class="text-xxs fw-bold px-2 py-1 rounded-pill" style="background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe;" id="branch-indicator">
+                        {{ selected_branch.name }}
+                    </span>
+                </div>
+
+                <div class="row g-2" id="products-grid">
+                    <div class="col-12 text-center py-5 text-muted">
+                        <span class="spinner-border spinner-border-sm me-2"></span>Loading products...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════ Basket Panel ═══════ -->
+        <div class="col-lg-4">
+            <div class="basket-panel p-3 px-4 shadow-sm d-flex flex-column" style="min-height: 520px;">
+                <!-- Basket Header -->
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2" style="border-bottom: 2px solid #f1f5f9;">
+                    <h6 class="fw-bold m-0" style="color: #1e293b;">
+                        <i class="bi bi-basket3-fill me-2" style="color: #6366f1;"></i>Basket
+                    </h6>
+                    <span class="text-xxs fw-bold px-2 py-1 rounded-pill" style="background: #f1f5f9; color: #64748b;" id="basket-count">
+                        0 items
+                    </span>
+                </div>
+
+                <!-- Progress Tracker -->
+                <div class="progress-track mb-3 d-none" id="tracker-container">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-lightning-charge-fill me-1" style="color: #eab308; font-size: 0.85rem;"></i>
+                        <span class="text-xs fw-bold" style="color: #334155;" id="tracker-message">Add items to unlock combo pricing!</span>
+                    </div>
+                    <div class="progress-milestone-bar mt-2 mb-4 mx-1" id="milestones-bar">
+                        <div class="progress-bar-inner" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- Basket Items -->
+                <div class="flex-grow-1 overflow-auto mb-3" id="basket-items" style="max-height: 300px;">
+                    <div class="text-center py-5 text-muted" id="empty-basket-msg">
+                        <i class="bi bi-cart-x d-block mb-2" style="font-size: 2rem; opacity: 0.15;"></i>
+                        <p class="text-xs mb-0">Your basket is empty.</p>
+                    </div>
+                </div>
+
+                <!-- Checkout / Totals -->
+                <div class="mt-auto pt-3" style="border-top: 2px solid #f1f5f9;">
+                    {% if user.is_authenticated %}
+                    <div class="mb-3 p-2 rounded-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                        <label class="text-xxs text-muted text-uppercase fw-bold mb-2 d-block">Customer Details (Optional)</label>
+                        <input type="text" id="customer-name" class="form-control form-control-sm border rounded-3 px-3 text-xs mb-2 shadow-none bg-white" placeholder="Customer Name">
+                        <input type="text" id="customer-phone" class="form-control form-control-sm border rounded-3 px-3 text-xs shadow-none bg-white" placeholder="Phone Number">
+                        <label class="text-xxs text-muted text-uppercase fw-bold mb-1 mt-2 d-block">Payment Method</label>
+                        <div class="btn-group w-100 shadow-none" role="group">
+                            <input type="radio" class="btn-check" name="payment_method" id="pay-cash" value="cash" checked autocomplete="off">
+                            <label class="btn btn-outline-secondary btn-sm border py-1 rounded-start-3 text-xxs" for="pay-cash">CASH</label>
+                            <input type="radio" class="btn-check" name="payment_method" id="pay-online" value="online" autocomplete="off">
+                            <label class="btn btn-outline-secondary btn-sm border py-1 rounded-end-3 text-xxs" for="pay-online">ONLINE</label>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Savings -->
+                    <div id="savings-row" class="d-none justify-content-between align-items-center mb-2">
+                        <span class="savings-badge"><i class="bi bi-tag-fill me-1"></i>YOU SAVE</span>
+                        <span class="savings-badge" id="basket-savings">₹0</span>
+                    </div>
+
+                    <!-- Total -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-xs fw-bold text-muted text-uppercase">Total</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted text-xs text-decoration-line-through d-none" id="basket-original-total">₹0</span>
+                            <span class="fw-bold" style="font-size: 1.35rem; color: #1e293b;" id="basket-discounted-total">₹0</span>
+                        </div>
+                    </div>
+
+                    {% if user.is_authenticated %}
+                    <button class="btn w-100 rounded-3 py-2 fw-bold text-xs text-white" id="checkout-btn" disabled onclick="processComboBilling()" style="background: #4338ca;">
+                        <i class="bi bi-check-all me-1"></i> COMPLETE BILLING
+                    </button>
+                    {% else %}
+                    <div class="text-center text-xxs text-muted p-2 rounded-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                        Login as staff to checkout directly.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const branchId = "{{ selected_branch.id|default:'' }}";
+    let comboGroups = [];
+    let branchProducts = [];
+    let basket = [];
+
+    // ── DP Optimal Price Calculation ──
+    function calculateOptimalPrice(items, tiers) {
+        if (items.length === 0) return 0;
+        let prices = [...items].sort((a, b) => b - a);
+        let n = prices.length;
+        let memo = {};
+        let sortedTiers = [...tiers].sort((a, b) => b.quantity - a.quantity);
+
+        function solve(index) {
+            if (index >= n) return 0;
+            if (memo[index] !== undefined) return memo[index];
+            let best = prices[index] + solve(index + 1);
+            for (let tier of sortedTiers) {
+                if (tier.quantity <= n - index) {
+                    let cost = tier.price + solve(index + tier.quantity);
+                    if (cost < best) best = cost;
+                }
+            }
+            memo[index] = best;
+            return best;
+        }
+        return solve(0);
+    }
+
+    // ── Load combo data from backend ──
+    function loadComboData() {
+        if (!branchId) return;
+        fetch(`/core/combos/ajax-data/?branch_id=${branchId}`)
+            .then(res => res.json())
+            .then(data => {
+                comboGroups = data.combos || [];
+                branchProducts = data.products || [];
+                renderProductsGrid();
+                updateBasket();
+            })
+            .catch(err => {
+                console.error("Error loading combo data", err);
+                document.getElementById('products-grid').innerHTML = `
+                    <div class="col-12 text-center py-5 text-muted">
+                        <i class="bi bi-exclamation-triangle d-block mb-2" style="font-size: 1.5rem; opacity: 0.3;"></i>
+                        Failed to load products. Please refresh.
+                    </div>`;
+            });
+    }
+
+    // ── Render product cards ──
+    function renderProductsGrid() {
+        const grid = document.getElementById('products-grid');
+        if (branchProducts.length === 0) {
+            grid.innerHTML = `
+                <div class="col-12 text-center py-5 text-muted">
+                    <i class="bi bi-inbox d-block mb-2" style="font-size: 2rem; opacity: 0.15;"></i>
+                    No combo products available for this branch.
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = '';
+        branchProducts.forEach(prod => {
+            const card = document.createElement('div');
+            card.className = 'col-6 col-sm-4 col-md-3';
+            card.innerHTML = `
+                <div class="product-card" onclick="addToBasket(${prod.id})">
+                    <div class="product-name" title="${prod.name}">${prod.name}</div>
+                    <div class="product-barcode">${prod.barcode}</div>
+                    <div class="product-price">₹${prod.price}</div>
+                    <div class="product-stock">Stock: ${prod.stock}</div>
+                    <button class="add-btn" type="button">
+                        <i class="bi bi-plus me-1"></i>Add
+                    </button>
+                </div>`;
+            grid.appendChild(card);
+        });
+    }
+
+    // ── Basket operations ──
+    function addToBasket(productId) {
+        const prod = branchProducts.find(p => p.id === productId);
+        if (!prod) return;
+        const existing = basket.find(item => item.id === productId);
+        if (existing) {
+            if (existing.quantity >= prod.stock) {
+                alert(`Only ${prod.stock} items available in stock!`);
+                return;
+            }
+            existing.quantity++;
+        } else {
+            basket.push({ ...prod, quantity: 1 });
+        }
+        updateBasket();
+    }
+
+    function updateQty(productId, delta) {
+        const item = basket.find(i => i.id === productId);
+        if (item) {
+            item.quantity += delta;
+            if (item.quantity <= 0) {
+                basket = basket.filter(i => i.id !== productId);
+            } else {
+                const prod = branchProducts.find(p => p.id === productId);
+                if (item.quantity > prod.stock) {
+                    alert(`Only ${prod.stock} items available in stock!`);
+                    item.quantity = prod.stock;
+                }
+            }
+            updateBasket();
+        }
+    }
+
+    function removeFromBasket(productId) {
+        basket = basket.filter(i => i.id !== productId);
+        updateBasket();
+    }
+
+    // ── Update basket UI + calculations ──
+    function updateBasket() {
+        const container = document.getElementById('basket-items');
+        const countEl = document.getElementById('basket-count');
+        const originalTotalEl = document.getElementById('basket-original-total');
+        const discountedTotalEl = document.getElementById('basket-discounted-total');
+        const savingsRow = document.getElementById('savings-row');
+        const savingsEl = document.getElementById('basket-savings');
+        const checkoutBtn = document.getElementById('checkout-btn');
+
+        if (basket.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5 text-muted" id="empty-basket-msg">
+                    <i class="bi bi-cart-x d-block mb-2" style="font-size: 2rem; opacity: 0.15;"></i>
+                    <p class="text-xs mb-0">Your basket is empty.</p>
+                </div>`;
+            countEl.textContent = '0 items';
+            originalTotalEl.textContent = '₹0';
+            originalTotalEl.classList.add('d-none');
+            discountedTotalEl.textContent = '₹0';
+            savingsRow.classList.add('d-none');
+            if (checkoutBtn) checkoutBtn.disabled = true;
+            document.getElementById('tracker-container').classList.add('d-none');
+            return;
+        }
+
+        if (checkoutBtn) checkoutBtn.disabled = false;
+        container.innerHTML = '';
+        let totalQty = 0;
+        let originalTotal = 0;
+        let discountedTotal = 0;
+
+        let processedItemIds = new Set();
+        let mainGroup = null;
+        let groupComboQty = 0;
+
+        comboGroups.forEach(group => {
+            let groupItems = basket.filter(item => group.product_ids.includes(item.id));
+            if (groupItems.length > 0) {
+                mainGroup = group;
+                let groupPrices = [];
+                groupItems.forEach(item => {
+                    originalTotal += item.price * item.quantity;
+                    totalQty += item.quantity;
+                    groupComboQty += item.quantity;
+                    for (let i = 0; i < item.quantity; i++) {
+                        groupPrices.push(item.price);
+                    }
+                    processedItemIds.add(item.id);
+                });
+                discountedTotal += calculateOptimalPrice(groupPrices, group.tiers);
+            }
+        });
+
+        basket.forEach(item => {
+            if (!processedItemIds.has(item.id)) {
+                originalTotal += item.price * item.quantity;
+                totalQty += item.quantity;
+                discountedTotal += item.price * item.quantity;
+            }
+        });
+
+        // Render basket items
+        basket.forEach(item => {
+            let sub = item.price * item.quantity;
+            container.insertAdjacentHTML('beforeend', `
+                <div class="cart-item">
+                    <div class="item-info">
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-unit-price">₹${item.price} / pc</div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="qty-stepper">
+                            <button type="button" onclick="updateQty(${item.id}, -1)">−</button>
+                            <span class="qty-value">${item.quantity}</span>
+                            <button type="button" onclick="updateQty(${item.id}, 1)">+</button>
+                        </div>
+                        <span class="item-subtotal">₹${sub}</span>
+                        <button class="remove-item-btn" type="button" onclick="removeFromBasket(${item.id})">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>`);
+        });
+
+        countEl.textContent = `${totalQty} item${totalQty !== 1 ? 's' : ''}`;
+
+        let savings = originalTotal - discountedTotal;
+        discountedTotalEl.textContent = `₹${Math.round(discountedTotal)}`;
+
+        if (savings > 0) {
+            originalTotalEl.textContent = `₹${Math.round(originalTotal)}`;
+            originalTotalEl.classList.remove('d-none');
+            savingsRow.classList.remove('d-none');
+            savingsRow.classList.add('d-flex');
+            savingsEl.textContent = `₹${Math.round(savings)}`;
+        } else {
+            originalTotalEl.classList.add('d-none');
+            savingsRow.classList.add('d-none');
+        }
+
+        renderProgressTracker(mainGroup, groupComboQty);
+    }
+
+    // ── Progress Tracker ──
+    function renderProgressTracker(group, qty) {
+        const trackerContainer = document.getElementById('tracker-container');
+        const trackerMsg = document.getElementById('tracker-message');
+        const milestonesBar = document.getElementById('milestones-bar');
+
+        if (!group || !group.tiers || group.tiers.length === 0) {
+            trackerContainer.classList.add('d-none');
+            return;
+        }
+
+        trackerContainer.classList.remove('d-none');
+        let sortedTiers = [...group.tiers].sort((a, b) => a.quantity - b.quantity);
+        let maxQty = sortedTiers[sortedTiers.length - 1].quantity;
+        let progressPercent = Math.min(100, (qty / maxQty) * 100);
+
+        let currentUnlocked = null;
+        let nextLocked = null;
+
+        sortedTiers.forEach(tier => {
+            if (qty >= tier.quantity) {
+                currentUnlocked = tier;
+            } else if (!nextLocked) {
+                nextLocked = tier;
+            }
+        });
+
+        let msg = '';
+        if (!currentUnlocked) {
+            let diff = nextLocked.quantity - qty;
+            msg = `Add ${diff} more item${diff > 1 ? 's' : ''} to unlock ${nextLocked.quantity}-Item Combo!`;
+        } else if (nextLocked) {
+            let diff = nextLocked.quantity - qty;
+            msg = `🎉 ${currentUnlocked.quantity}-Combo unlocked! Add ${diff} more for ${nextLocked.quantity}-Combo!`;
+        } else {
+            msg = `🔥 Best combo unlocked — ${currentUnlocked.quantity}-Item price applied!`;
+        }
+
+        trackerMsg.textContent = msg;
+
+        let html = `<div class="progress-bar-inner" style="width: ${progressPercent}%;"></div>`;
+        sortedTiers.forEach(tier => {
+            let pos = (tier.quantity / maxQty) * 100;
+            let isActive = qty >= tier.quantity;
+            html += `
+                <div class="ms-dot ${isActive ? 'active' : ''}" style="left: ${pos}%;"></div>
+                <div class="ms-label ${isActive ? 'active' : ''}" style="left: ${pos}%;">${tier.quantity}-pc</div>`;
+        });
+
+        milestonesBar.innerHTML = html;
+    }
+
+    // ── Checkout / Billing ──
+    function processComboBilling() {
+        const checkoutBtn = document.getElementById('checkout-btn');
+        checkoutBtn.disabled = true;
+        checkoutBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+
+        const customerName = document.getElementById('customer-name') ? document.getElementById('customer-name').value : '';
+        const customerPhone = document.getElementById('customer-phone') ? document.getElementById('customer-phone').value : '';
+        const paymentMethod = document.querySelector('input[name="payment_method"]:checked') ? document.querySelector('input[name="payment_method"]:checked').value : 'cash';
+
+        const itemsPayload = basket.map(item => ({
+            id: item.id,
+            quantity: item.quantity
+        }));
+
+        fetch('/billing/process-bill/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                items: itemsPayload,
+                customer_name: customerName,
+                customer_phone: customerPhone,
+                payment_method: paymentMethod,
+                cash_amount: 0,
+                online_amount: 0,
+                retail_price: 0
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = `/billing/bill/${data.bill_id}/?from_pos=true`;
+            } else {
+                alert("Error processing bill: " + data.error);
+                checkoutBtn.disabled = false;
+                checkoutBtn.innerHTML = '<i class="bi bi-check-all me-1"></i> COMPLETE BILLING';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Network error. Please try again.");
+            checkoutBtn.disabled = false;
+            checkoutBtn.innerHTML = '<i class="bi bi-check-all me-1"></i> COMPLETE BILLING';
+        });
+    }
+
+    // ── Init ──
+    document.addEventListener('DOMContentLoaded', loadComboData);
+</script>
+{% endblock %}

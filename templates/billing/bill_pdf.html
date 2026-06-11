@@ -129,13 +129,10 @@
                 <td>{{ forloop.counter }}</td>
                 <td>
                     <strong>{{ item.product.name }}</strong>
-                    {% if item.savings > 0 %}
-                    <br><span style="font-size: 9px; color: #28a745;">Combo Saved: &#8377;{{ item.savings|floatformat:0 }} (Original: &#8377;{{ item.product.price|floatformat:0 }} each)</span>
-                    {% endif %}
                 </td>
-                <td class="right">&#8377;{{ item.unit_price|floatformat:0 }}</td>
+                <td class="right">&#8377;{{ item.product.price|floatformat:0 }}</td>
                 <td class="right">{{ item.quantity }}</td>
-                <td class="right">&#8377;{{ item.subtotal|floatformat:0 }}</td>
+                <td class="right">&#8377;{{ item.regular_total|floatformat:0 }}</td>
             </tr>
             {% endfor %}
         </tbody>

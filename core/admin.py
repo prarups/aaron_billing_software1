@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.db.models import Q
-from .models import Branch, Product, ProductRegistry, StockTransaction, StockAdjustment, ComboPrice
+from .models import Branch, Product, ProductRegistry, StockTransaction, StockAdjustment, ComboPrice, ComboGroup, ComboTier
 
 @admin.register(Branch)
 class BranchAdmin(admin.ModelAdmin):
@@ -162,3 +162,17 @@ class StockAdjustmentAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager']
+
+
+class ComboTierInline(admin.TabularInline):
+    model = ComboTier
+    extra = 0
+
+
+@admin.register(ComboGroup)
+class ComboGroupAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'created_at')
+    list_filter = ('is_active',)
+    search_fields = ('name',)
+    filter_horizontal = ('branches', 'products')
+    inlines = [ComboTierInline]

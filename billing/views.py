@@ -28,9 +28,28 @@ def pos_index(request):
     # Check for edit cart data in session
     edit_cart_data = request.session.pop('pos_edit_cart', None)
     
+    # Fetch active combo groups for this branch so the POS can apply live combo pricing
+    from core.models import ComboGroup
+    combo_groups_data = []
+    if request.user.active_branch:
+        active_groups = ComboGroup.objects.filter(
+            is_active=True, branches=request.user.active_branch
+        ).prefetch_related('products', 'tiers')
+        for grp in active_groups:
+            tiers = [{'quantity': t.quantity, 'price': float(t.price)} for t in grp.tiers.all()]
+            if not tiers:
+                continue
+            combo_groups_data.append({
+                'id': grp.id,
+                'name': grp.name,
+                'tiers': tiers,
+                'product_ids': [str(p.id) for p in grp.products.all()],
+            })
+    
     return render(request, 'pos/index.html', {
         'registrations': registrations,
-        'edit_cart_data_json': json.dumps(edit_cart_data) if edit_cart_data else 'null'
+        'edit_cart_data_json': json.dumps(edit_cart_data) if edit_cart_data else 'null',
+        'combo_groups_json': json.dumps(combo_groups_data),
     })
 
 @login_required
@@ -47,13 +66,15 @@ def get_product_by_barcode(request):
         except ProductRegistry.DoesNotExist:
             stock = 0
             
+        combos_qs = product.combos.filter(branch=request.user.active_branch).order_by('-quantity')
+
         return JsonResponse({
             'id': product.id,
             'name': product.name,
             'barcode': product.barcode,
             'price': float(product.price),
             'stock': stock,
-            'combos': [{'quantity': c.quantity, 'price': float(c.price)} for c in product.combos.filter(branch=request.user.active_branch).order_by('-quantity')]
+            'combos': [{'quantity': c.quantity, 'price': float(c.price)} for c in combos_qs],
         })
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'}, status=404)
@@ -178,6 +199,7 @@ def process_bill(request):
                     )
                 
                 subtotal_amount = 0
+                resolved_items = []
                 for item in items:
                     product = get_object_or_404(Product, id=item['id'])
                     quantity = int(item['quantity'])
@@ -191,19 +213,104 @@ def process_bill(request):
                     registry.stock_quantity -= quantity
                     registry.save()
                     
-                    # Calculate subtotal with combos
-                    qty_remaining = quantity
+                    resolved_items.append({
+                        'product': product,
+                        'quantity': quantity,
+                    })
+
+                # Now calculate subtotals and unit prices using multi-product combo groups first, then fallback to individual combos
+                from core.combo_views import calculate_optimal_combo_price, ComboGroup
+                from decimal import Decimal
+                
+                # Fetch active combo groups for this branch
+                active_combo_groups = ComboGroup.objects.filter(is_active=True, branches=bill.branch).prefetch_related('products', 'tiers')
+                processed_items = set()
+                
+                for group in active_combo_groups:
+                    group_tiers = [(t.quantity, t.price) for t in group.tiers.all()]
+                    if not group_tiers:
+                        continue
+                    
+                    # Find resolved items belonging to this combo group that haven't been processed
+                    group_cart_items = []
+                    for r_item in resolved_items:
+                        p = r_item['product']
+                        if p.id not in processed_items and group.products.filter(id=p.id).exists():
+                            group_cart_items.append(r_item)
+                            
+                    if not group_cart_items:
+                        continue
+                        
+                    # Expand items to get individual base prices
+                    expanded_prices = []
+                    for r_item in group_cart_items:
+                        p = r_item['product']
+                        qty = r_item['quantity']
+                        for _ in range(qty):
+                            expanded_prices.append(float(p.price))
+                            
+                    if not expanded_prices:
+                        continue
+                        
+                    # Calculate optimal combo price
+                    optimal_price = calculate_optimal_combo_price(expanded_prices, group_tiers)
+                    
+                    # Distribute the optimal price proportionally
+                    regular_total = sum(expanded_prices)
+                    discount_ratio = float(optimal_price) / regular_total if regular_total > 0 else 1.0
+                    
+                    allocated_subtotals = []
+                    sum_allocated = 0
+                    
+                    for r_item in group_cart_items:
+                        qty = r_item['quantity']
+                        p = r_item['product']
+                        item_regular_subtotal = float(p.price * qty)
+                        item_allocated_subtotal = round(item_regular_subtotal * discount_ratio)
+                        allocated_subtotals.append(item_allocated_subtotal)
+                        sum_allocated += item_allocated_subtotal
+                        
+                    # Adjust rounding difference on the first item
+                    diff = round(float(optimal_price)) - sum_allocated
+                    if diff != 0 and len(allocated_subtotals) > 0:
+                        allocated_subtotals[0] += diff
+                        
+                    # Save the results in resolved_items dict
+                    for idx, r_item in enumerate(group_cart_items):
+                        sub = allocated_subtotals[idx]
+                        qty = r_item['quantity']
+                        r_item['subtotal'] = Decimal(str(sub))
+                        r_item['unit_price'] = float(sub / qty) if qty > 0 else 0
+                        processed_items.add(r_item['product'].id)
+                
+                # Fallback for remaining items
+                for r_item in resolved_items:
+                    p = r_item['product']
+                    if p.id in processed_items:
+                        continue
+                        
+                    qty = r_item['quantity']
+                    qty_remaining = qty
                     subtotal = 0
-                    combos = product.combos.filter(branch=bill.branch).order_by('-quantity')
+                    combos = p.combos.filter(branch=bill.branch).order_by('-quantity')
                     for combo in combos:
                         if qty_remaining >= combo.quantity and combo.quantity > 0:
                             num_combos = qty_remaining // combo.quantity
                             subtotal += num_combos * combo.price
                             qty_remaining %= combo.quantity
-                    subtotal += qty_remaining * product.price
+                    subtotal += qty_remaining * p.price
+                    
+                    r_item['subtotal'] = subtotal
+                    r_item['unit_price'] = float(subtotal / qty) if qty > 0 else 0
 
-                    effective_unit_price = subtotal / quantity if quantity > 0 else 0
 
+                # Phase 3: Create BillItems, log StockTransactions, and sum subtotals
+                for r_item in resolved_items:
+                    product = r_item['product']
+                    quantity = r_item['quantity']
+                    subtotal = r_item['subtotal']
+                    effective_unit_price = r_item['unit_price']
+                    
                     bill_item = BillItem.objects.create(
                         bill=bill,
                         product=product,
@@ -288,7 +395,8 @@ def edit_bill_back(request, bill_id):
             pass
 
         # Fetch combos
-        combos_list = [{'quantity': c.quantity, 'price': float(c.price)} for c in item.product.combos.filter(branch=bill.branch).order_by('-quantity')]
+        combos_qs = item.product.combos.filter(branch=bill.branch).order_by('-quantity')
+        combos_list = [{'quantity': c.quantity, 'price': float(c.price)} for c in combos_qs]
 
         items_data.append({
             'id': str(item.product.id),

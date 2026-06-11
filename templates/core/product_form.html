@@ -7,7 +7,7 @@
     <div class="col-12 col-md-8 col-lg-6">
         <div class="card border-0 shadow-sm p-4 h-100 bg-white">
             <h5 class="fw-bold mb-4 text-primary">{{ action }} Product</h5>
-            {% if form.errors %}
+            {% if form.errors and is_admin %}
             <div class="alert alert-danger border-0 rounded-4 shadow-sm mb-4">
                 <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-2"></i>Please correct the following:</div>
                 <ul class="mb-0 ps-3 small">
@@ -24,6 +24,9 @@
             {% endif %}
             <form method="post">
                 {% csrf_token %}
+
+                {% if is_admin %}
+                <!-- Admin: Full product editing -->
                 <div class="mb-3">
                     <label class="form-label small fw-bold text-muted">Product Name</label>
                     {{ form.name }}
@@ -42,77 +45,43 @@
                     {{ form.size }}
                 </div>
                 
-                <!-- Combo Price Formset -->
-                <div class="bg-white p-3 rounded-4 mb-4 border border-light shadow-sm">
-                    <h6 class="fw-bold mb-3 text-primary d-flex align-items-center">
-                        <i class="bi bi-tags-fill me-2"></i> Combo Prices
+
+                {% else %}
+                <!-- Non-admin: Read-only product info card -->
+                <div class="bg-light p-3 rounded-4 mb-4 border border-light shadow-sm">
+                    <h6 class="fw-bold mb-3 text-secondary d-flex align-items-center">
+                        <i class="bi bi-box-seam me-2"></i> Product Information <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-2 text-xxs">Read Only</span>
                     </h6>
-                    
-                    {% if combo_formset.non_form_errors %}
-                    <div class="alert alert-danger py-2 px-3 small border-0 mb-3 rounded-3 shadow-sm">
-                        {% for error in combo_formset.non_form_errors %}
-                            <div class="d-flex align-items-center"><i class="bi bi-exclamation-circle-fill me-2"></i>{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                    
-                    {% for form in combo_formset %}
-                        {% if form.errors %}
-                        <div class="alert alert-danger py-2 px-3 small border-0 mb-3 rounded-3 shadow-sm">
-                            <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-2"></i>Combo Price Row #{{ forloop.counter }} Errors:</div>
-                            <ul class="mb-0 ps-3">
-                                {% for field in form %}
-                                    {% for error in field.errors %}
-                                        <li><strong>{{ field.label }}:</strong> {{ error }}</li>
-                                    {% endfor %}
-                                {% endfor %}
-                                {% for error in form.non_field_errors %}
-                                    <li>{{ error }}</li>
-                                {% endfor %}
-                            </ul>
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center bg-white p-2 rounded-3 border mb-2">
+                                <span class="small fw-bold text-muted">Product Name:</span>
+                                <span class="fw-bold text-dark">{{ form.instance.name }}</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex justify-content-between align-items-center bg-white p-2 rounded-3 border">
+                                <span class="small fw-bold text-muted">Barcode:</span>
+                                <code class="text-muted font-monospace">{{ form.instance.barcode }}</code>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex justify-content-between align-items-center bg-white p-2 rounded-3 border">
+                                <span class="small fw-bold text-muted">Price:</span>
+                                <span class="fw-bold text-primary">₹{{ form.instance.price|floatformat:0 }}</span>
+                            </div>
+                        </div>
+                        {% if form.instance.size %}
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center bg-white p-2 rounded-3 border">
+                                <span class="small fw-bold text-muted">Size:</span>
+                                <span class="text-dark">{{ form.instance.size }}</span>
+                            </div>
                         </div>
                         {% endif %}
-                    {% endfor %}
-
-                    {{ combo_formset.management_form }}
-                    
-                    <div id="combo-headers" class="row g-3 mb-2 {% if not combo_formset.forms %}d-none{% endif %}">
-                        <div class="col-5">
-                            <label class="form-label x-small fw-bold text-muted ps-1 mb-1">Quantity</label>
-                        </div>
-                        <div class="col-5">
-                            <label class="form-label x-small fw-bold text-muted ps-1 mb-1">Combo Price (₹)</label>
-                        </div>
-                        <div class="col-2"></div>
                     </div>
-                    
-                    <div id="combo-formset-rows">
-                        {% for form in combo_formset %}
-                        <div class="row g-3 align-items-center mb-2 combo-row">
-                            {{ form.id }}
-                            <div class="col-5">
-                                {{ form.quantity }}
-                            </div>
-                            <div class="col-5">
-                                {{ form.price }}
-                            </div>
-                            <div class="col-2">
-                                <div class="d-none">
-                                    {% if combo_formset.can_delete %}
-                                        {{ form.DELETE }}
-                                    {% endif %}
-                                </div>
-                                <button type="button" class="btn btn-outline-danger w-100 rounded-pill" onclick="removeComboRow(this)">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill mt-2 px-3 fw-bold" id="add-combo">
-                        <i class="bi bi-plus-lg me-1"></i> Add Combo
-                    </button>
                 </div>
+                {% endif %}
 
                 <!-- Branch & Stock Management -->
                 <div class="bg-light p-3 rounded-3 mb-4 border border-light">
@@ -149,9 +118,13 @@
                             <label class="form-label x-small fw-bold text-muted">Stock Update Type</label>
                             <select name="stock_update_type" id="stock_update_type" class="form-select rounded-pill text-xs" data-no-search>
                                 <option value="none" {% if request.POST.stock_update_type == 'none' or not request.POST.stock_update_type %}selected{% endif %}>-- No Change --</option>
+                                {% if is_admin %}
                                 <option value="add" {% if request.POST.stock_update_type == 'add' %}selected{% endif %}>Add New Stock (+)</option>
+                                {% endif %}
                                 <option value="damage" {% if request.POST.stock_update_type == 'damage' %}selected{% endif %}>Log Damage (-)</option>
+                                {% if is_admin %}
                                 <option value="correction" {% if request.POST.stock_update_type == 'correction' %}selected{% endif %}>Correction (Set New Total Stock)</option>
+                                {% endif %}
                                 <option value="correct_damage" {% if request.POST.stock_update_type == 'correct_damage' %}selected{% endif %}>Correction (Set New Total Damage)</option>
                             </select>
                         </div>
@@ -168,10 +141,14 @@
                         <label class="form-label x-small fw-bold text-muted">Update Reason / Note</label>
                         <input type="text" name="stock_update_reason" id="stock_update_reason" class="form-control rounded-pill text-xs" placeholder="e.g., Damaged during transit, Correction..." value="{{ request.POST.stock_update_reason }}">
                     </div>
+                    {% if is_admin %}
                     <div class="mb-3">
                         <label class="form-label x-small fw-bold text-muted">Low Stock Alert Threshold</label>
                         <input type="number" name="low_stock_threshold" class="form-control rounded-pill text-xs" value="{{ registration.low_stock_threshold }}" min="0">
                     </div>
+                    {% else %}
+                    <input type="hidden" name="low_stock_threshold" value="{{ registration.low_stock_threshold }}">
+                    {% endif %}
                     {% else %}
                     <!-- Creating or no active registration selected -->
                     <div class="mb-3">
@@ -203,94 +180,9 @@
     </div>
 </div>
 
+
 <script>
-function removeComboRow(button) {
-    const row = button.closest('.combo-row');
-    const deleteCheckbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
-    
-    // Remove required attributes to prevent browser validation blocks
-    row.querySelectorAll('input').forEach(input => {
-        input.removeAttribute('required');
-    });
-    
-    if (deleteCheckbox) {
-        deleteCheckbox.checked = true;
-        row.style.display = 'none';
-        row.classList.add('d-none');
-    } else {
-        // For new rows, clear input values and hide them so Django ignores them
-        row.querySelectorAll('input').forEach(input => {
-            if (input.type !== 'checkbox' && input.type !== 'hidden') {
-                input.value = '';
-            }
-        });
-        row.style.display = 'none';
-        row.classList.add('d-none');
-    }
-    
-    // Hide headers if no visible rows left
-    const container = document.getElementById('combo-formset-rows');
-    if (container) {
-        const visibleRows = container.querySelectorAll('.combo-row:not(.d-none)');
-        if (visibleRows.length === 0) {
-            const headers = document.getElementById('combo-headers');
-            if (headers) {
-                headers.classList.add('d-none');
-            }
-        }
-    }
-}
-
 document.addEventListener('DOMContentLoaded', function() {
-    const addBtn = document.getElementById('add-combo');
-    const container = document.getElementById('combo-formset-rows');
-    const totalForms = document.querySelector('#id_combos-TOTAL_FORMS');
-    const headers = document.getElementById('combo-headers');
-    
-    function updateTotalForms(delta) {
-        if (totalForms) {
-            const count = parseInt(totalForms.value, 10) + delta;
-            totalForms.value = count;
-        }
-    }
-    
-    // Ensure header visibility is correct on page load
-    if (container && headers) {
-        const visibleRows = container.querySelectorAll('.combo-row:not(.d-none)');
-        if (visibleRows.length > 0) {
-            headers.classList.remove('d-none');
-        } else {
-            headers.classList.add('d-none');
-        }
-    }
-    
-    if (addBtn) {
-        addBtn.addEventListener('click', function() {
-            if (headers) {
-                headers.classList.remove('d-none');
-            }
-            
-            const formIdx = parseInt(totalForms.value, 10);
-            const newRow = document.createElement('div');
-            newRow.className = 'row g-3 align-items-center mb-2 combo-row';
-            newRow.innerHTML = `
-                <div class="col-5">
-                    <input type="number" name="combos-${formIdx}-quantity" class="form-control rounded-pill" id="id_combos-${formIdx}-quantity" placeholder="Quantity" min="1" required />
-                </div>
-                <div class="col-5">
-                    <input type="number" step="1" name="combos-${formIdx}-price" class="form-control rounded-pill" id="id_combos-${formIdx}-price" placeholder="Price (₹)" min="1" required />
-                </div>
-                <div class="col-2">
-                    <button type="button" class="btn btn-outline-danger w-100 rounded-pill" onclick="removeComboRow(this)">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>`;
-            container.appendChild(newRow);
-            updateTotalForms(1);
-        });
-    }
-
-    // Stock Update Type interactive toggles
     const updateTypeSelect = document.getElementById('stock_update_type');
     const updateQtyInput = document.getElementById('stock_update_qty');
     const qtyLabel = document.getElementById('stock_qty_label');

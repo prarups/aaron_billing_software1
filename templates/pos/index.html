@@ -162,14 +162,20 @@
             <div class="glass-card p-4 border-0 shadow-sm mb-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="text-muted small fw-bold m-0">QUICK SELECT</h6>
-                    <span class="text-primary small fw-bold">{{ products.count }} Items</span>
+                    <div class="d-flex align-items-center gap-2">
+                        {% if combo_groups_json != '[]' %}
+                        <span class="badge rounded-pill px-2 py-1" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; font-size:0.65rem;"><i class="bi bi-lightning-charge-fill me-1"></i>Combo pricing active</span>
+                        {% endif %}
+                        <span class="text-primary small fw-bold">{{ registrations.count }} Items</span>
+                    </div>
                 </div>
                 <div class="row g-2 product-grid">
                     {% for reg in registrations %}
                     <div class="col-4 col-sm-3 col-md-2">
                         <div class="pos-item-card glass-card p-2 text-center h-100 border-0 bg-white" 
                              id="product-{{ reg.product.id }}"
-                             data-combos='[{% for c in reg.combos %}{"quantity": {{ c.quantity }}, "price": {{ c.price|floatformat:0 }}}{% if not forloop.last %},{% endif %}{% endfor %}]'
+                             data-product-id="{{ reg.product.id }}"
+                             data-combos='[{% for c in reg.product.combos.all %}{"quantity": {{ c.quantity }}, "price": {{ c.price|floatformat:0 }}}{% if not forloop.last %},{% endif %}{% endfor %}]'
                              onclick="addToCart('{{ reg.product.id }}', '{{ reg.product.name|escapejs }}', '{{ reg.product.price|floatformat:0 }}', '{{ reg.stock_quantity }}', this.getAttribute('data-combos'), '{{ reg.product.barcode }}')">
                             <div class="stock-badge {% if reg.stock_quantity <= reg.low_stock_threshold %}bg-danger{% else %}bg-success{% endif %}">
                                 S: {{ reg.stock_quantity }}
@@ -177,6 +183,8 @@
                             <div class="fw-bold x-small text-truncate text-dark mb-1" title="{{ reg.product.name }}">{{ reg.product.name }}</div>
                             <div class="text-muted font-monospace mb-1" style="font-size: 10px;">{{ reg.product.barcode }}</div>
                             <div class="text-primary fw-bold small">₹{{ reg.product.price|floatformat:0 }}</div>
+                            <!-- Combo tag injected by JS -->
+                            <div class="combo-tag d-none" style="font-size:0.58rem; color:#6366f1; font-weight:700; margin-top:2px;"><i class="bi bi-lightning-charge-fill"></i> Combo</div>
                         </div>
                     </div>
                     {% empty %}
@@ -287,6 +295,17 @@
                         </div>
                     </div>
                     
+                    <!-- Combo Progress Tracker (shown when combo group items are in cart) -->
+                    <div id="combo-tracker" class="d-none mb-3 p-2 px-3 rounded-3 animate-fade-in" style="background:#f0f4ff; border:1px solid #c7d2fe;">
+                        <div class="d-flex align-items-center mb-1">
+                            <i class="bi bi-lightning-charge-fill me-1" style="color:#6366f1; font-size:0.8rem;"></i>
+                            <span class="fw-bold" style="font-size:0.75rem; color:#3730a3;" id="combo-tracker-msg"></span>
+                        </div>
+                        <div style="position:relative; height:5px; background:#e0e7ff; border-radius:3px; margin: 0.4rem 2px 1.2rem;" id="combo-tracker-bar">
+                            <div id="combo-bar-fill" style="height:100%; background:linear-gradient(90deg,#6366f1,#8b5cf6); border-radius:3px; width:0%; transition:width 0.3s ease;"></div>
+                        </div>
+                    </div>
+
                     <div id="savings-row" class="d-none justify-content-between align-items-center mb-1 animate-fade-in">
                         <span class="text-success small fw-bold">YOU SAVE</span>
                         <span class="text-success small fw-bold" id="cart-savings">₹0</span>
@@ -327,6 +346,32 @@
     const html5QrCode = new Html5Qrcode("reader");
     let isScannerOpen = false;
     let scanCooldown = false;
+
+    // Multi-product combo groups from backend
+    const comboGroups = {{ combo_groups_json|safe }};
+
+    // DP optimal combo pricing (same algorithm as backend)
+    function calculateOptimalPrice(prices, tiers) {
+        if (prices.length === 0) return 0;
+        let sorted = [...prices].sort((a, b) => b - a);
+        let n = sorted.length;
+        let memo = {};
+        let sortedTiers = [...tiers].sort((a, b) => b.quantity - a.quantity);
+        function solve(i) {
+            if (i >= n) return 0;
+            if (memo[i] !== undefined) return memo[i];
+            let best = sorted[i] + solve(i + 1);
+            for (let t of sortedTiers) {
+                if (t.quantity <= n - i) {
+                    let c = t.price + solve(i + t.quantity);
+                    if (c < best) best = c;
+                }
+            }
+            memo[i] = best;
+            return best;
+        }
+        return solve(0);
+    }
 
     function showScanToast(message, type) {
         const toast = document.getElementById('scan-toast');
@@ -407,14 +452,34 @@
         }
     }
 
-    function getCartSubtotal() {
-        let subtotalAmt = 0;
+    function getCartTotals() {
+        let originalSubtotal = 0;
+        let discountedSubtotal = 0;
+        let processedIds = new Set();
+
+        // Step 1: apply multi-product combo group pricing (DP)
+        comboGroups.forEach(group => {
+            let groupItems = cart.filter(item => group.product_ids.includes(String(item.id)));
+            if (groupItems.length === 0) return;
+
+            let groupPrices = [];
+            groupItems.forEach(item => {
+                originalSubtotal += item.price * item.quantity;
+                for (let i = 0; i < item.quantity; i++) groupPrices.push(item.price);
+                processedIds.add(item.id);
+            });
+
+            discountedSubtotal += calculateOptimalPrice(groupPrices, group.tiers);
+        });
+
+        // Step 2: remaining items use individual combo pricing
         cart.forEach(item => {
+            if (processedIds.has(item.id)) return;
+            originalSubtotal += item.price * item.quantity;
             let qtyRemaining = item.quantity;
             let subtotal = 0;
             let combos = item.combos || [];
             let sortedCombos = [...combos].sort((a, b) => b.quantity - a.quantity);
-            
             for (let c of sortedCombos) {
                 if (qtyRemaining >= c.quantity && c.quantity > 0) {
                     let numCombos = Math.floor(qtyRemaining / c.quantity);
@@ -423,9 +488,19 @@
                 }
             }
             subtotal += qtyRemaining * item.price;
-            subtotalAmt += subtotal;
+            discountedSubtotal += subtotal;
         });
-        return subtotalAmt;
+
+        let savings = originalSubtotal - discountedSubtotal;
+        return {
+            originalSubtotal: originalSubtotal,
+            discountedSubtotal: discountedSubtotal,
+            savings: savings
+        };
+    }
+
+    function getCartSubtotal() {
+        return getCartTotals().discountedSubtotal;
     }
 
     function renderCart() {
@@ -449,25 +524,10 @@
 
         checkoutBtn.disabled = false;
         container.innerHTML = '';
-        let subtotalAmt = 0;
         let count = 0;
 
         cart.forEach(item => {
-            let qtyRemaining = item.quantity;
-            let subtotal = 0;
-            let combos = item.combos || [];
-            combos.sort((a, b) => b.quantity - a.quantity);
-            
-            for (let c of combos) {
-                if (qtyRemaining >= c.quantity && c.quantity > 0) {
-                    let numCombos = Math.floor(qtyRemaining / c.quantity);
-                    subtotal += numCombos * c.price;
-                    qtyRemaining %= c.quantity;
-                }
-            }
-            subtotal += qtyRemaining * item.price;
-            
-            subtotalAmt += subtotal;
+            let itemOriginalSubtotal = item.price * item.quantity;
             count += item.quantity;
             const itemHtml = `
                 <div class="cart-item d-flex align-items-center justify-content-between py-1 mb-1 border-bottom" style="border-bottom: 1px solid #f1f5f9 !important;">
@@ -480,7 +540,7 @@
                             <span class="mx-1.5 fw-bold text-xs" style="min-width: 14px; text-align: center;">${item.quantity}</span>
                             <button class="btn btn-sm btn-link text-primary p-0" onclick="updateQty('${item.id}', 1)"><i class="bi bi-plus-circle-fill"></i></button>
                         </div>
-                        <span class="fw-bold text-primary text-xs" style="min-width: 55px; text-align: right; font-size: 0.8rem;">₹${Math.round(subtotal)}</span>
+                        <span class="fw-bold text-primary text-xs" style="min-width: 55px; text-align: right; font-size: 0.8rem;">₹${Math.round(itemOriginalSubtotal)}</span>
                         <button class="btn btn-link text-danger p-0" onclick="removeFromCart('${item.id}')" style="transform: scale(0.85); line-height: 1;">
                             <i class="bi bi-x-circle"></i>
                         </button>
@@ -490,19 +550,90 @@
             container.insertAdjacentHTML('beforeend', itemHtml);
         });
 
+        const totals = getCartTotals();
         const retailPrice = parseFloat(document.getElementById('retail-price')?.value) || 0;
-        let total = Math.max(0, subtotalAmt + retailPrice);
+        let total = Math.max(0, totals.discountedSubtotal + retailPrice);
 
         totalEl.innerText = `₹${Math.round(total)}`;
         
         const savingsRow = document.getElementById('savings-row');
         const savingsEl = document.getElementById('cart-savings');
-        savingsRow.classList.remove('d-flex');
-        savingsRow.classList.add('d-none');
+        if (totals.savings > 0) {
+            savingsRow.classList.remove('d-none');
+            savingsRow.classList.add('d-flex');
+            savingsEl.innerText = `₹${Math.round(totals.savings)}`;
+        } else {
+            savingsRow.classList.remove('d-flex');
+            savingsRow.classList.add('d-none');
+        }
 
         countEl.innerText = `${count} Items`;
         if (badgeEl) badgeEl.innerText = count;
         calculateSplit(null); // re-calculate split if it's open
+
+        // Update combo progress tracker
+        renderComboTracker();
+    }
+
+    function renderComboTracker() {
+        const tracker = document.getElementById('combo-tracker');
+        const msg = document.getElementById('combo-tracker-msg');
+        const barFill = document.getElementById('combo-bar-fill');
+
+        // Find the first combo group that has at least one cart item
+        let activeGroup = null;
+        let groupQty = 0;
+        for (let group of comboGroups) {
+            let items = cart.filter(i => group.product_ids.includes(String(i.id)));
+            if (items.length > 0) {
+                activeGroup = group;
+                groupQty = items.reduce((s, i) => s + i.quantity, 0);
+                break;
+            }
+        }
+
+        if (!activeGroup || !activeGroup.tiers || activeGroup.tiers.length === 0) {
+            tracker.classList.add('d-none');
+            return;
+        }
+
+        tracker.classList.remove('d-none');
+        let sortedTiers = [...activeGroup.tiers].sort((a, b) => a.quantity - b.quantity);
+        let maxQty = sortedTiers[sortedTiers.length - 1].quantity;
+        let pct = Math.min(100, (groupQty / maxQty) * 100);
+        barFill.style.width = pct + '%';
+
+        let currentUnlocked = null, nextLocked = null;
+        sortedTiers.forEach(t => {
+            if (groupQty >= t.quantity) currentUnlocked = t;
+            else if (!nextLocked) nextLocked = t;
+        });
+
+        // Render milestone dots
+        let bar = document.getElementById('combo-tracker-bar');
+        // Remove old dots
+        bar.querySelectorAll('.ct-dot').forEach(d => d.remove());
+        sortedTiers.forEach(t => {
+            let pos = (t.quantity / maxQty) * 100;
+            let dot = document.createElement('div');
+            dot.className = 'ct-dot';
+            dot.style.cssText = `position:absolute;top:50%;left:${pos}%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;border:2px solid #fff;background:${groupQty>=t.quantity?'#6366f1':'#c7d2fe'};`;
+            let label = document.createElement('div');
+            label.style.cssText = `position:absolute;top:9px;left:${pos}%;transform:translateX(-50%);font-size:0.58rem;font-weight:700;color:${groupQty>=t.quantity?'#4338ca':'#94a3b8'};white-space:nowrap;`;
+            label.textContent = t.quantity + '-pc';
+            bar.appendChild(dot);
+            bar.appendChild(label);
+        });
+
+        if (!currentUnlocked) {
+            let diff = nextLocked.quantity - groupQty;
+            msg.textContent = `Add ${diff} more item${diff>1?'s':''} → unlock ${nextLocked.quantity}-pc combo!`;
+        } else if (nextLocked) {
+            let diff = nextLocked.quantity - groupQty;
+            msg.textContent = `🎉 ${currentUnlocked.quantity}-pc combo! Add ${diff} more → ${nextLocked.quantity}-pc combo!`;
+        } else {
+            msg.textContent = `🔥 Best combo unlocked — ${currentUnlocked.quantity}-pc price applied!`;
+        }
     }
 
     // Barcode Search
@@ -772,5 +903,19 @@
         // Show notification
         showScanToast('✅ Bill loaded to cart', 'success');
     }
+
+    // Highlight combo-eligible product cards
+    (function highlightComboProducts() {
+        let comboProductIds = new Set();
+        comboGroups.forEach(g => g.product_ids.forEach(id => comboProductIds.add(String(id))));
+        if (comboProductIds.size === 0) return;
+        document.querySelectorAll('[data-product-id]').forEach(card => {
+            if (comboProductIds.has(card.dataset.productId)) {
+                const tag = card.querySelector('.combo-tag');
+                if (tag) tag.classList.remove('d-none');
+                card.style.borderTop = '2px solid #c7d2fe';
+            }
+        });
+    })();
 </script>
 {% endblock %}

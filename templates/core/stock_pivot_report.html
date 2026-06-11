@@ -1,10 +1,9 @@
 {% extends 'base.html' %}
 
-{% block title %}Multi-Branch Stock Report - Aaron Billing{% endblock %}
+{% block title %}Stock Report - Aaron Billing{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* Premium Compact Typography and Colors */
     .text-xs {
         font-size: 0.78rem !important;
     }
@@ -16,36 +15,57 @@
         font-size: 0.82rem;
     }
     .table-compact th {
-        font-size: 0.72rem !important;
+        font-size: 0.70rem !important;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         font-weight: 700;
         color: #64748b;
-        padding: 8px 10px !important;
+        padding: 10px 12px !important;
         background-color: #f8fafc;
         border-bottom: 2px solid #e2e8f0 !important;
+        white-space: nowrap;
     }
     .table-compact td {
-        padding: 8px 10px !important;
+        padding: 10px 12px !important;
         vertical-align: middle;
         border-bottom: 1px solid #f1f5f9;
     }
     .table-compact tbody tr:hover td {
-        background-color: rgba(99, 102, 241, 0.01) !important;
+        background-color: rgba(99, 102, 241, 0.03) !important;
     }
-    
-    .bg-primary-subtle {
-        background-color: rgba(79, 70, 229, 0.04) !important;
-    }
-    
-    /* Rotate chevron on collapse open */
-    [data-bs-toggle="collapse"][aria-expanded="true"] .bi-chevron-down {
-        transform: rotate(180deg);
-        transition: transform 0.2s ease-in-out;
-    }
-    [data-bs-toggle="collapse"] .bi-chevron-down {
+    .stock-num {
         display: inline-block;
-        transition: transform 0.2s ease-in-out;
+        min-width: 32px;
+        text-align: center;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 0.75rem;
+    }
+    .num-received { background: #dcfce7; color: #166534; }
+    .num-sold { background: #fee2e2; color: #991b1b; }
+    .num-damaged { background: #fef3c7; color: #92400e; }
+
+    /* Mobile card view */
+    .stock-card-label {
+        font-size: 0.62rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        color: #94a3b8;
+    }
+    .stock-card-value {
+        font-size: 0.88rem;
+        font-weight: 700;
+    }
+    
+    /* Hover animations */
+    .hover-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08) !important;
     }
 </style>
 {% endblock %}
@@ -54,13 +74,15 @@
 <div class="mb-3 animate-fade-in">
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
         <div>
-            <h5 class="fw-bold m-0 text-primary">Multi-Branch Stock Report</h5>
-            <p class="text-muted text-xxs mb-0">Pivot view of inventory across business locations</p>
+            <h5 class="fw-bold m-0 text-primary">Stock Report</h5>
+            <p class="text-muted text-xxs mb-0">Inventory overview across all branches</p>
         </div>
         <div class="d-flex gap-2 w-100 w-sm-auto justify-content-start justify-content-sm-end">
-            <a href="{% url 'export_stock_pivot_excel' %}?q={{ request.GET.q|default:'' }}&from_date={{ start_date }}&to_date={{ end_date }}" class="btn btn-outline-success rounded-2 px-2.5 py-1.5 shadow-sm btn-sm text-xs fw-semibold">
-                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Excel
+            {% if selected_branch %}
+            <a href="{% url 'export_stock_pivot_excel' %}?q={{ request.GET.q|default:'' }}&branch={{ request.GET.branch|default:'' }}&from_date={{ start_date }}&to_date={{ end_date }}" class="btn btn-outline-success rounded-2 px-2.5 py-1.5 shadow-sm btn-sm text-xs fw-semibold">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export
             </a>
+            {% endif %}
             <a href="{% url 'product_list' %}" class="btn btn-primary rounded-2 px-2.5 py-1.5 shadow-sm btn-sm text-xs fw-semibold text-white">
                 <i class="bi bi-box-seam me-1"></i> Products
             </a>
@@ -68,31 +90,45 @@
     </div>
 </div>
 
+{% if selected_branch %}
+<div class="mb-3 animate-fade-in">
+    <a href="?branch=" class="text-primary text-xs fw-semibold text-decoration-none d-inline-flex align-items-center gap-1">
+        <i class="bi bi-arrow-left"></i> Back to all branches
+    </a>
+</div>
+
 <!-- Filters -->
 <div class="card border-0 shadow-sm p-2.5 mb-3 bg-white animate-fade-in">
     <form method="GET" class="row g-2 align-items-center" id="filterForm">
-        <!-- Search bar -->
+        <input type="hidden" name="branch" value="{{ selected_branch.id }}">
         <div class="col-12 col-md-4">
             <div class="input-group input-group-sm">
-                <input type="text" name="q" class="form-control border-0 bg-light text-xs rounded-pill-start py-1.5" placeholder="Search by name or barcode..." value="{{ request.GET.q }}">
+                <input type="text" name="q" class="form-control border-0 bg-light text-xs rounded-pill-start py-1.5" placeholder="Search product name or barcode..." value="{{ request.GET.q }}">
+                {% if request.GET.q %}
+                <a href="?q=&branch={{ request.GET.branch|default:'' }}&from_date={{ start_date }}&to_date={{ end_date }}" class="btn border-0 bg-light text-muted py-1.5 d-flex align-items-center justify-content-center" title="Clear Search" style="z-index: 4;">
+                    <i class="bi bi-x-lg" style="font-size: 0.75rem;"></i>
+                </a>
+                {% endif %}
                 <button type="submit" class="btn border-0 bg-light rounded-pill-end text-primary py-1.5"><i class="bi bi-search"></i></button>
             </div>
         </div>
-        <!-- From date -->
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-md-3">
             <div class="input-group input-group-sm">
                 <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2">From</span>
                 <input type="date" name="from_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ start_date }}">
             </div>
         </div>
-        <!-- To date -->
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-md-3">
             <div class="input-group input-group-sm">
                 <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2">To</span>
-                <input type="date" name="to_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ end_date }}">
+                <input type="date" name="to_date" class="form-control border-0 bg-light text-xs {% if request.GET.from_date or request.GET.to_date %}rounded-0{% else %}rounded-pill-end{% endif %} py-1.5" value="{{ end_date }}">
+                {% if request.GET.from_date or request.GET.to_date %}
+                <a href="?q={{ request.GET.q|default:'' }}&branch={{ request.GET.branch|default:'' }}&from_date=&to_date=" class="btn border-0 bg-light text-muted py-1.5 d-flex align-items-center justify-content-center rounded-pill-end" title="Clear Dates" style="z-index: 4;">
+                    <i class="bi bi-x-lg" style="font-size: 0.75rem;"></i>
+                </a>
+                {% endif %}
             </div>
         </div>
-        <!-- Submit -->
         <div class="col-12 col-md-2">
             <button class="btn btn-primary rounded-pill w-100 btn-sm py-1.5 text-xs fw-semibold" type="submit">
                 Filter
@@ -101,100 +137,57 @@
     </form>
 </div>
 
-<div class="card border-0 shadow-sm overflow-hidden bg-white animate-fade-in" style="animation-delay: 0.1s;">
+<!-- Desktop Table View -->
+<div class="card border-0 shadow-sm overflow-hidden bg-white animate-fade-in d-none d-md-block" style="animation-delay: 0.1s;">
     <div class="table-responsive">
         <table class="table align-middle mb-0 table-compact">
             <thead>
                 <tr class="border-bottom text-center">
-                    <th class="ps-4 text-start" style="width: 24%;">Product Details</th>
-                    <th class="text-end pe-4" style="width: 10%;">Price</th>
-                    <th class="bg-primary-subtle text-primary border-start" style="width: 6%;">Op</th>
-                    <th class="bg-primary-subtle text-primary" style="width: 6%;">In</th>
-                    <th class="bg-primary-subtle text-primary" style="width: 6%;">Out</th>
-                    <th class="bg-primary-subtle text-primary" style="width: 6%;">Dmg</th>
-                    <th class="bg-primary-subtle text-primary border-end" style="width: 8%;">Cl</th>
-                    <th class="bg-success-subtle text-success-emphasis fw-bold border-start" style="width: 8%;" title="Total Received (All-Time)">Rec (All)</th>
-                    <th class="bg-danger-subtle text-danger-emphasis fw-bold" style="width: 8%;" title="Total Sold (All-Time)">Sold (All)</th>
-                    <th class="bg-warning-subtle text-warning-emphasis fw-bold border-end" style="width: 8%;" title="Total Damaged (All-Time)">Dmg (All)</th>
-                    <th style="width: 6%;"></th>
+                    <th class="ps-3 text-start" style="width: 10%;">Branch</th>
+                    <th class="text-start" style="width: 18%;">Product Name</th>
+                    <th style="width: 8%;">Barcode</th>
+                    <th style="width: 6%;">Price</th>
+                    <th style="width: 5%; background: #f8fafc;">Op</th>
+                    <th style="width: 5%; background: #f8fafc;">In</th>
+                    <th style="width: 5%; background: #f8fafc;">Out</th>
+                    <th style="width: 5%; background: #f8fafc;">Dmg</th>
+                    <th style="width: 5%; background: #f8fafc;">Cl</th>
+                    <th class="border-start" style="width: 9%; background: #f0fdf4 !important; color: #166534 !important;">Rec (All)</th>
+                    <th style="width: 9%; background: #fef2f2 !important; color: #991b1b !important;">Sold (All)</th>
+                    <th style="width: 9%; background: #fffbeb !important; color: #92400e !important;">Dmg (All)</th>
+                    <th style="width: 5%;"></th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in report_data %}
-                <tr class="text-center text-xs" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#branchRow{{ item.product.id }}">
-                    <td class="ps-4 text-start">
-                        <div class="fw-bold text-dark">{{ item.product.name }}</div>
-                        <div class="text-muted text-xxs mt-0.5"><code class="bg-light text-muted px-1.5 py-0.5 rounded-pill font-monospace border border-light">{{ item.product.barcode }}</code></div>
+                {% for stock_info in item.branch_stocks %}
+                <tr class="text-center text-xs">
+                    <td class="ps-3 text-start">
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-semibold">{{ stock_info.branch.name }}</span>
                     </td>
-                    <td class="text-end pe-4 fw-bold text-primary">
-                        ₹{{ item.product.price|floatformat:0 }}
-                    </td>
-                    <td class="bg-primary-subtle fw-bold border-start text-dark">{{ item.total_op }}</td>
-                    <td class="bg-primary-subtle text-success fw-semibold">{{ item.total_in }}</td>
-                    <td class="bg-primary-subtle text-danger fw-semibold">{{ item.total_out }}</td>
-                    <td class="bg-primary-subtle text-danger-emphasis">{{ item.total_dmg }}</td>
-                    <td class="bg-primary-subtle fw-bold text-primary border-end">{{ item.total_cl }}</td>
-                    <td class="bg-success-subtle text-success fw-bold border-start">{{ item.total_rec }}</td>
-                    <td class="bg-danger-subtle text-danger fw-bold">{{ item.total_all_time_out }}</td>
-                    <td class="bg-warning-subtle text-warning-emphasis fw-bold border-end">{{ item.total_all_time_dmg }}</td>
-                    <td><i class="bi bi-chevron-down text-muted text-xxs"></i></td>
-                </tr>
-                
-                <!-- Expanded Row for Branches -->
-                <tr id="branchRow{{ item.product.id }}" class="collapse bg-light-subtle border-0">
-                    <td colspan="11" class="p-0 border-0">
-                        <div class="p-3 bg-light-subtle">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="m-0 text-xxs fw-bold text-uppercase tracking-wider text-secondary"><i class="bi bi-diagram-3-fill me-1"></i> Branch Breakdown</h6>
-                            </div>
-                            <div class="table-responsive bg-white rounded-3 border">
-                                <table class="table table-sm table-borderless m-0 text-center align-middle text-xxs">
-                                    <thead>
-                                        <tr class="text-muted border-bottom text-uppercase fw-bold" style="font-size: 10px; background-color: #fafbfc;">
-                                            <th class="text-start ps-3 py-1.5">Location</th>
-                                            {% if show_op %}<th class="py-1.5">Op</th>{% endif %}
-                                            {% if show_in %}<th class="py-1.5">In</th>{% endif %}
-                                            {% if show_out %}<th class="py-1.5">Out</th>{% endif %}
-                                            <th class="py-1.5">Dmg</th>
-                                            <th class="bg-light fw-bold text-dark py-1.5">Closing</th>
-                                            <th class="py-1.5 text-success fw-bold border-start" title="Total Received (All-Time)">Received (All)</th>
-                                            <th class="py-1.5 text-danger fw-bold" title="Total Sold (All-Time)">Sold (All)</th>
-                                            <th class="py-1.5 text-warning fw-bold" title="Total Damaged (All-Time)">Dmg (All)</th>
-                                            <th class="py-1.5 text-center border-start">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for stock_info in item.branch_stocks %}
-                                        <tr class="border-bottom border-light">
-                                            <td class="text-start ps-3 fw-semibold text-dark">{{ stock_info.branch.name }}</td>
-                                            {% if show_op %}<td class="text-muted">{{ stock_info.op }}</td>{% endif %}
-                                            {% if show_in %}<td class="text-success">{{ stock_info.in }}</td>{% endif %}
-                                            {% if show_out %}<td class="text-danger">{{ stock_info.out }}</td>{% endif %}
-                                            <td class="text-danger-emphasis">{{ stock_info.dmg }}</td>
-                                            <td class="bg-light fw-bold text-primary" id="cl-stock-{{ stock_info.reg_id }}">{{ stock_info.cl }}</td>
-                                            <td class="text-success fw-bold border-start">{{ stock_info.rec }}</td>
-                                            <td class="text-danger fw-bold">{{ stock_info.all_time_out }}</td>
-                                            <td class="text-warning-emphasis fw-bold">{{ stock_info.all_time_dmg }}</td>
-                                            <td class="text-center border-start py-1">
-                                                {% if stock_info.reg_id %}
-                                                <a href="{% url 'view_stock_adjustments' stock_info.reg_id %}" class="btn btn-outline-primary rounded-pill px-2.5 py-0.5 fw-semibold text-decoration-none" style="font-size: 9px; line-height: 1.2;">
-                                                    <i class="bi bi-history me-0.5"></i> View Corrected Details
-                                                </a>
-                                                {% else %}
-                                                <span class="text-muted">-</span>
-                                                {% endif %}
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    <td class="text-start fw-bold text-dark">{{ item.product.name }}</td>
+                    <td><code class="bg-light text-muted px-1.5 py-0.5 rounded-pill font-monospace border border-light text-xxs">{{ item.product.barcode }}</code></td>
+                    <td class="fw-bold text-primary">₹{{ item.product.price|floatformat:0 }}</td>
+                    <td class="bg-light bg-opacity-25">{{ stock_info.op }}</td>
+                    <td class="bg-light bg-opacity-25 fw-semibold text-success">{{ stock_info.in }}</td>
+                    <td class="bg-light bg-opacity-25 fw-semibold text-danger">{{ stock_info.out }}</td>
+                    <td class="bg-light bg-opacity-25 fw-semibold text-warning">{{ stock_info.dmg }}</td>
+                    <td class="bg-light bg-opacity-50 fw-bold">{{ stock_info.cl }}</td>
+                    <td class="border-start"><span class="stock-num num-received">{{ stock_info.rec }}</span></td>
+                    <td><span class="stock-num num-sold">{{ stock_info.all_time_out }}</span></td>
+                    <td><span class="stock-num {% if stock_info.all_time_dmg > 0 %}num-damaged{% endif %}">{{ stock_info.all_time_dmg }}</span></td>
+                    <td>
+                        {% if stock_info.reg_id %}
+                        <a href="{% url 'view_stock_adjustments' stock_info.reg_id %}" class="btn btn-outline-secondary rounded-pill px-2 py-0.5 text-xxs" title="View History">
+                            <i class="bi bi-clock-history"></i>
+                        </a>
+                        {% endif %}
                     </td>
                 </tr>
+                {% endfor %}
                 {% empty %}
                 <tr>
-                    <td colspan="11" class="text-center py-4 text-muted">
+                    <td colspan="9" class="text-center py-4 text-muted">
                         No products found in the registry.
                     </td>
                 </tr>
@@ -202,7 +195,7 @@
             </tbody>
         </table>
     </div>
-    
+
     <!-- Pagination -->
     {% if page_obj.has_other_pages %}
     <div class="p-2 border-top bg-light bg-opacity-50">
@@ -215,12 +208,12 @@
                 <ul class="pagination pagination-sm mb-0">
                     {% if page_obj.has_previous %}
                     <li class="page-item">
-                        <a class="page-link rounded-start-pill px-2.5 border-0 shadow-sm" href="?page=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="First Page">
+                        <a class="page-link rounded-start-pill px-2.5 border-0 shadow-sm" href="?page=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.branch %}&branch={{ request.GET.branch }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="First Page">
                             <i class="bi bi-chevron-double-left text-xxs"></i>
                         </a>
                     </li>
                     <li class="page-item">
-                        <a class="page-link border-0 shadow-sm px-2.5" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="Previous Page">
+                        <a class="page-link border-0 shadow-sm px-2.5" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.branch %}&branch={{ request.GET.branch }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="Previous Page">
                             <i class="bi bi-chevron-left text-xxs"></i>
                         </a>
                     </li>
@@ -231,19 +224,19 @@
                             {% if page_obj.number == num %}
                             <li class="page-item active"><span class="page-link border-0 shadow-sm fw-bold px-2.5">{{ num }}</span></li>
                             {% else %}
-                            <li class="page-item"><a class="page-link border-0 shadow-sm px-2.5 text-dark" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}">{{ num }}</a></li>
+                            <li class="page-item"><a class="page-link border-0 shadow-sm px-2.5 text-dark" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.branch %}&branch={{ request.GET.branch }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}">{{ num }}</a></li>
                             {% endif %}
                         {% endif %}
                     {% endfor %}
 
                     {% if page_obj.has_next %}
                     <li class="page-item">
-                        <a class="page-link border-0 shadow-sm px-2.5" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="Next Page">
+                        <a class="page-link border-0 shadow-sm px-2.5" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.branch %}&branch={{ request.GET.branch }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="Next Page">
                             <i class="bi bi-chevron-right text-xxs"></i>
                         </a>
                     </li>
                     <li class="page-item">
-                        <a class="page-link rounded-end-pill px-2.5 border-0 shadow-sm" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="Last Page">
+                        <a class="page-link rounded-end-pill px-2.5 border-0 shadow-sm" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.branch %}&branch={{ request.GET.branch }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" title="Last Page">
                             <i class="bi bi-chevron-double-right text-xxs"></i>
                         </a>
                     </li>
@@ -254,5 +247,192 @@
     </div>
     {% endif %}
 </div>
-{% endblock %}
 
+<!-- Mobile Card View -->
+<div class="d-md-none">
+    {% for item in report_data %}
+    {% for stock_info in item.branch_stocks %}
+    <div class="card border-0 shadow-sm p-3 mb-2 bg-white rounded-3 animate-fade-in">
+        <div class="d-flex justify-content-between align-items-start mb-2 pb-2 border-bottom border-light">
+            <div>
+                <div class="fw-bold text-dark text-xs">{{ item.product.name }}</div>
+                <div class="text-muted text-xxs mt-0.5"><i class="bi bi-upc-scan me-1"></i><code class="text-muted font-monospace">{{ item.product.barcode }}</code></div>
+            </div>
+            <div class="text-end">
+                <div class="fw-bold text-primary text-xs">₹{{ item.product.price|floatformat:0 }}</div>
+                <span class="badge bg-secondary-subtle text-secondary rounded-pill text-xxs mt-1">{{ stock_info.branch.name }}</span>
+            </div>
+        </div>
+        
+        <!-- Period movement -->
+        <div class="mb-2">
+            <div class="text-muted text-xxs fw-bold text-uppercase mb-1" style="letter-spacing: 0.05em;">Selected Period</div>
+            <div class="row g-1 text-center bg-light rounded-2 py-1.5">
+                <div class="col">
+                    <div class="stock-card-label" style="font-size: 0.55rem;">Op</div>
+                    <div class="fw-bold text-xs">{{ stock_info.op }}</div>
+                </div>
+                <div class="col">
+                    <div class="stock-card-label" style="font-size: 0.55rem;">In</div>
+                    <div class="fw-bold text-success text-xs">{{ stock_info.in }}</div>
+                </div>
+                <div class="col">
+                    <div class="stock-card-label" style="font-size: 0.55rem;">Out</div>
+                    <div class="fw-bold text-danger text-xs">{{ stock_info.out }}</div>
+                </div>
+                <div class="col">
+                    <div class="stock-card-label" style="font-size: 0.55rem;">Dmg</div>
+                    <div class="fw-bold text-warning text-xs">{{ stock_info.dmg }}</div>
+                </div>
+                <div class="col border-start border-light-subtle">
+                    <div class="stock-card-label" style="font-size: 0.55rem;">Cl</div>
+                    <div class="fw-extrabold text-primary text-xs">{{ stock_info.cl }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- All-Time Movement -->
+        <div class="row g-2 text-center mb-2 mt-1">
+            <div class="col-4">
+                <div class="stock-card-label" style="font-size: 0.55rem;">Rec (All)</div>
+                <div class="stock-card-value text-success" style="font-size: 0.8rem;">{{ stock_info.rec }}</div>
+            </div>
+            <div class="col-4">
+                <div class="stock-card-label" style="font-size: 0.55rem;">Sold (All)</div>
+                <div class="stock-card-value text-danger" style="font-size: 0.8rem;">{{ stock_info.all_time_out }}</div>
+            </div>
+            <div class="col-4">
+                <div class="stock-card-label" style="font-size: 0.55rem;">Dmg (All)</div>
+                <div class="stock-card-value {% if stock_info.all_time_dmg > 0 %}text-warning{% else %}text-muted{% endif %}" style="font-size: 0.8rem;">{{ stock_info.all_time_dmg }}</div>
+            </div>
+        </div>
+        
+        <div class="d-flex justify-content-end align-items-center pt-2 border-top border-light">
+            {% if stock_info.reg_id %}
+            <a href="{% url 'view_stock_adjustments' stock_info.reg_id %}" class="btn btn-outline-secondary rounded-pill px-2.5 py-0.5 text-xxs">
+                <i class="bi bi-clock-history me-1"></i> View History
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+    {% empty %}
+    <div class="text-center py-4 text-muted bg-white rounded-3">No products found.</div>
+    {% endfor %}
+
+    <!-- Mobile Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="p-2 mt-2">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="text-muted text-xxs">
+                {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+            </div>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link border-0 shadow-sm px-2.5 rounded-start-pill" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.branch %}&branch={{ request.GET.branch }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}">
+                            <i class="bi bi-chevron-left text-xxs"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="page-item active"><span class="page-link border-0 shadow-sm fw-bold px-2.5">{{ page_obj.number }}</span></li>
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link border-0 shadow-sm px-2.5 rounded-end-pill" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.branch %}&branch={{ request.GET.branch }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}">
+                            <i class="bi bi-chevron-right text-xxs"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<!-- Search Filter for Branches -->
+<div class="mb-3 col-12 col-md-4 mx-auto animate-fade-in" style="animation-delay: 0.1s;">
+    <div class="input-group rounded-pill overflow-hidden bg-white shadow-sm border border-light-subtle">
+        <span class="input-group-text border-0 bg-white ps-3 text-muted py-1.5"><i class="bi bi-search" style="font-size: 0.8rem;"></i></span>
+        <input type="text" id="branchSearchInput" class="form-control border-0 py-1.5 text-xs shadow-none" placeholder="Search branch name or code...">
+    </div>
+</div>
+
+<div class="row g-3 justify-content-center my-2 animate-fade-in" style="animation-delay: 0.2s;">
+    {% for b in accessible_branches %}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 branch-card-wrapper" data-name="{{ b.name }}" data-code="{{ b.code }}">
+        <div class="card border-0 shadow-sm h-100 hover-card overflow-hidden" style="border-radius: 12px;">
+            <!-- Top indicator gradient -->
+            <div style="height: 4px; background: linear-gradient(90deg, #6366f1, #4f46e5);"></div>
+            <div class="card-body p-3 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2.5">
+                        <div class="rounded-3 p-1.5 d-inline-flex align-items-center justify-content-center" style="background-color: rgba(99, 102, 241, 0.1); color: #6366f1;">
+                            <i class="bi bi-shop fs-5"></i>
+                        </div>
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-bold font-monospace" style="font-size: 0.65rem;">CODE: {{ b.code }}</span>
+                    </div>
+                    <h6 class="fw-bold text-dark text-xs mb-1">{{ b.name }}</h6>
+                    <p class="text-muted text-xxs mb-3">
+                        <i class="bi bi-geo-alt me-1 text-danger"></i> {{ b.location|default:"No location specified" }}
+                    </p>
+                </div>
+                <a href="?branch={{ b.id }}" class="btn btn-primary rounded-2 w-100 py-1.5 text-xxs fw-semibold text-white d-flex align-items-center justify-content-center gap-1.5">
+                    <span>View Stock Report</span>
+                    <i class="bi bi-arrow-right" style="font-size: 0.75rem;"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+        <div class="text-muted mb-3"><i class="bi bi-info-circle fs-1"></i></div>
+        <h6 class="fw-bold text-dark">No branches found</h6>
+        <p class="text-muted text-xs">You do not have access to any branches.</p>
+    </div>
+    {% endfor %}
+
+    <!-- No branch search match message -->
+    <div id="noBranchMatchMessage" class="col-12 text-center py-5 d-none">
+        <div class="text-muted mb-2"><i class="bi bi-search fs-2"></i></div>
+        <h6 class="fw-bold text-dark text-xs">No matching branches</h6>
+        <p class="text-muted text-xxs">Try searching for a different branch name or code.</p>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.getElementById("branchSearchInput");
+    if (searchInput) {
+        searchInput.addEventListener("input", function() {
+            const query = this.value.toLowerCase().trim();
+            const cards = document.querySelectorAll(".branch-card-wrapper");
+            let visibleCount = 0;
+            
+            cards.forEach(card => {
+                const name = card.dataset.name.toLowerCase();
+                const code = card.dataset.code.toLowerCase();
+                
+                if (name.includes(query) || code.includes(query)) {
+                    card.style.setProperty('display', '', 'important');
+                    visibleCount++;
+                } else {
+                    card.style.setProperty('display', 'none', 'important');
+                }
+            });
+            
+            const noMatchMsg = document.getElementById("noBranchMatchMessage");
+            if (noMatchMsg) {
+                if (visibleCount === 0) {
+                    noMatchMsg.classList.remove("d-none");
+                } else {
+                    noMatchMsg.classList.add("d-none");
+                }
+            }
+        });
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

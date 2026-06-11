@@ -20,20 +20,40 @@
             --primary-color: #4f46e5;
             --secondary-color: #6366f1;
             --accent-color: #f59e0b;
-            --bg-color: #f9fafb;
-            --sidebar-bg: #ffffff;
+            --bg-color: #f8fafc;
+            --sidebar-bg: rgba(255, 255, 255, 0.85);
             --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --header-height: 64px;
+            --sidebar-width: 250px;
+            --sidebar-active-bg: rgba(79, 70, 229, 0.08);
+            --sidebar-active-color: #4f46e5;
         }
 
         body {
             font-family: 'Inter', sans-serif;
             color: #1f2937;
+            background: linear-gradient(135deg, #e2e8f0 0%, #f1f5f9 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
         }
 
-        .navbar {
-            background-color: #ffffff;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            padding: 0.75rem 1rem;
+        /* Topbar Header styling */
+        .navbar-header {
+            height: var(--header-height);
+            background: linear-gradient(135deg, #ffffff 0%, #f5f7ff 100%);
+            border-bottom: 1px solid rgba(79, 70, 229, 0.12);
+            padding: 0 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 1038;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.05);
+        }
+
+        .dropdown-menu {
+            z-index: 1039 !important;
         }
 
         .navbar-brand {
@@ -41,20 +61,110 @@
             background: linear-gradient(135deg, #4f46e5, #d946ef);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            font-size: 1.5rem;
+            font-size: 1.4rem;
         }
 
-        .nav-link {
-            font-weight: 500;
+        /* Sidebar container styles */
+        .app-sidebar {
+            width: var(--sidebar-width);
+            flex-shrink: 0;
+            height: calc(100vh - var(--header-height));
+            position: sticky;
+            top: var(--header-height);
+            z-index: 1020;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-right: 1px solid rgba(226, 232, 240, 0.8);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-nav {
+            padding: 1.25rem 0.75rem;
+            list-style: none;
+            margin: 0;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .sidebar-footer {
+            background: rgba(248, 250, 252, 0.6);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+
+        .text-xxs {
+            font-size: 0.7rem !important;
+        }
+
+        .sidebar-item {
+            margin-bottom: 0.35rem;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
             color: #4b5563;
+            text-decoration: none;
+            font-weight: 500;
+            border-radius: 0.75rem;
+            transition: all 0.2s ease;
+            font-size: 0.88rem;
         }
 
-        .nav-link:hover {
-            color: #d946ef;
+        .sidebar-link i {
+            font-size: 1.1rem;
+            color: #64748b;
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+
+        .sidebar-link:hover {
+            color: var(--primary-color);
+            background-color: rgba(79, 70, 229, 0.04);
+        }
+
+        .sidebar-link:hover i {
+            transform: scale(1.1);
+            color: var(--primary-color);
+        }
+
+        .sidebar-link.active {
+            color: var(--sidebar-active-color);
+            background-color: var(--sidebar-active-bg);
+            font-weight: 600;
+            border-left: 3px solid var(--primary-color);
+            border-top-left-radius: 0px;
+            border-bottom-left-radius: 0px;
+        }
+
+        .sidebar-link.active i {
+            color: var(--sidebar-active-color);
+        }
+
+        /* Sidebar Toggle classes */
+        .sidebar-collapsed .app-sidebar {
+            width: 0;
+            overflow: hidden;
+            border-right-width: 0;
+        }
+
+        /* Main Wrapper layout */
+        .main-wrapper {
+            flex-grow: 1;
+            min-width: 0;
+            min-height: calc(100vh - var(--header-height));
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-x: hidden;
         }
 
         /* Colorful Headers */
-        h1, h2, h3, h4, h5 {
+        h1, h2, h3, h4, h5, h6 {
             color: #312e81;
             font-weight: 700;
         }
@@ -68,14 +178,14 @@
             background: linear-gradient(135deg, #4f46e5, #d946ef);
             border: none;
             color: white;
-            box-shadow: 0 4px 15px rgba(217, 70, 239, 0.3);
+            box-shadow: 0 4px 15px rgba(217, 70, 239, 0.2);
             transition: all 0.3s ease;
         }
 
         .btn-primary:hover {
             background: linear-gradient(135deg, #4338ca, #c026d3);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(217, 70, 239, 0.4);
+            box-shadow: 0 6px 20px rgba(217, 70, 239, 0.3);
             color: white;
         }
         
@@ -96,13 +206,6 @@
             box-shadow: var(--card-shadow);
         }
 
-        /* Responsive Sidebar for larger screens */
-        @media (min-width: 992px) {
-            .main-content {
-                padding: 2rem;
-            }
-        }
-
         /* Fast POS Feel */
         .pos-item-card {
             transition: transform 0.1s ease;
@@ -111,6 +214,13 @@
 
         .pos-item-card:active {
             transform: scale(0.98);
+        }
+
+        /* Responsive modifications */
+        @media (max-width: 767.98px) {
+            .app-sidebar {
+                display: none !important;
+            }
         }
     </style>
     <!-- PWA Manifest & Icons -->
@@ -134,95 +244,267 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg sticky-top">
-        <div class="container-fluid">
-            <a class="navbar-brand d-flex align-items-center" href="/">
-                <img src="{% static 'images/aronlogonow.png' %}" alt="Aaron Billing" style="height:24px; width:auto;" class="align-self-center me-2"/>
-                <span class="fw-bold tracking-tight">Aaron<span class="text-secondary">Billing</span></span>
-            </a>
-            <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <i class="bi bi-grid-fill text-primary fs-3"></i>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    {% if user.is_authenticated %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
-                        </li>
-                        {% if user.role == 'owner' %}
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'admin:core_branch_changelist' %}">Adminpage</a>
-                            </li>
-                        {% endif %}
-                        {% if user.role != 'staff' %}
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'product_list' %}">Products</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'stock_pivot_report' %}">Stock Report</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'owner_bill_list' %}">Sales Report</a>
-                            </li>
-                        {% endif %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'pos_index' %}">POS Billing</a>
-                        </li>
-                    {% endif %}
-                </ul>
-                <div class="d-flex flex-column flex-lg-row align-items-lg-center mt-3 mt-lg-0">
-                    {% if user.is_authenticated %}
-                        {% if user.get_accessible_branches.count > 1 or user.is_owner %}
-                            {% if request.resolver_match.url_name == 'pos_index' %}
-                            <form method="post" action="{% url 'switch_branch' %}" class="me-lg-3 mb-3 mb-lg-0">
-                                {% csrf_token %}
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text bg-light border-0 rounded-start-pill"><i class="bi bi-shop"></i></span>
-                                    <select name="branch_id" class="form-select border-0 bg-light rounded-end-pill" data-no-search onchange="this.form.submit()">
-                                        {% for b in user.get_accessible_branches %}
-                                        <option value="{{ b.id }}" {% if b == user.active_branch %}selected{% endif %}>
-                                            {{ b.name }}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </form>
-                            {% endif %}
-                        {% endif %}
-                        <div class="d-flex align-items-center justify-content-between w-100 w-lg-auto gap-3">
-                            <button id="pwaInstallBtn" class="btn btn-primary btn-sm rounded-pill px-3 d-none">
-                                <i class="bi bi-download me-1"></i> Install App
-                            </button>
-                            <span class="text-muted small text-nowrap">
-                                <i class="bi bi-person-circle me-1"></i>{{ user.username }}
-                            </span>
-                            <form method="post" action="{% url 'logout' %}" class="d-inline mb-0">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">Logout</button>
-                            </form>
-                        </div>
+    <!-- Header -->
+    <header class="navbar-header d-flex align-items-center justify-content-between">
+        {% if request.resolver_match.url_name == 'pos_index' %}
+            <!-- On POS billing page: show mobile toggle, Brand Logo, and branch switcher/details -->
+            <div class="d-flex align-items-center gap-3 w-100">
+                <!-- Mobile Toggle -->
+                <button class="btn btn-link text-dark p-0 border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+                    <i class="bi bi-list fs-2"></i>
+                </button>
+
+                <!-- Brand Logo -->
+                <a class="navbar-brand d-flex align-items-center m-0 me-2" href="/">
+                    <img src="{% static 'images/aronlogonow.png' %}" alt="Aaron Billing" style="height:24px; width:auto;" class="align-self-center me-2"/>
+                    <span class="fw-bold tracking-tight">Aaron<span class="text-secondary">Billing</span></span>
+                </a>
+                
+                {% if user.is_authenticated %}
+                    {% if user.get_accessible_branches.count > 1 or user.is_owner %}
+                        <form method="post" action="{% url 'switch_branch' %}" class="m-0">
+                            {% csrf_token %}
+                            <div class="input-group input-group-sm" style="max-width: 250px;">
+                                <span class="input-group-text bg-light border-0 rounded-start-pill"><i class="bi bi-shop"></i></span>
+                                <select name="branch_id" class="form-select border-0 bg-light rounded-end-pill" data-no-search onchange="this.form.submit()">
+                                    {% for b in user.get_accessible_branches %}
+                                    <option value="{{ b.id }}" {% if b == user.active_branch %}selected{% endif %}>
+                                        {{ b.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </form>
                     {% else %}
-                        <a href="{% url 'login' %}" class="btn btn-primary rounded-pill px-4">Login</a>
+                        <span class="navbar-text fw-bold text-primary"><i class="bi bi-shop me-1"></i>{{ user.active_branch.name }}</span>
                     {% endif %}
-                </div>
+                {% endif %}
             </div>
-        </div>
-    </nav>
+        {% else %}
+            <!-- On normal pages: show full header controls -->
+            <div class="d-flex align-items-center gap-3">
+                <!-- Mobile Toggle -->
+                <button class="btn btn-link text-dark p-0 border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+                    <i class="bi bi-list fs-2"></i>
+                </button>
 
-    <main class="container-fluid main-content py-4">
-        {% block messages %}
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-4 rounded-3" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            {% endfor %}
+                <!-- Brand Logo -->
+                <a class="navbar-brand d-flex align-items-center m-0 me-2" href="/">
+                    <img src="{% static 'images/aronlogonow.png' %}" alt="Aaron Billing" style="height:24px; width:auto;" class="align-self-center me-2"/>
+                    <span class="fw-bold tracking-tight">Aaron<span class="text-secondary">Billing</span></span>
+                </a>
+
+                <!-- Branch Switcher directly next to Logo on desktop/larger screens -->
+                {% if user.is_authenticated %}
+                    {% if user.get_accessible_branches.count > 1 or user.is_owner %}
+                        <form method="post" action="{% url 'switch_branch' %}" class="m-0">
+                            {% csrf_token %}
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light border-0 rounded-start-pill"><i class="bi bi-shop"></i></span>
+                                <select name="branch_id" class="form-select border-0 bg-light rounded-end-pill" data-no-search onchange="this.form.submit()">
+                                    {% for b in user.get_accessible_branches %}
+                                    <option value="{{ b.id }}" {% if b == user.active_branch %}selected{% endif %}>
+                                        {{ b.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </form>
+                    {% endif %}
+                {% endif %}
+            </div>
+
+            <!-- Right side user menu and login/guest option -->
+            <div class="d-flex align-items-center">
+                {% if not user.is_authenticated %}
+                    <a href="{% url 'login' %}" class="btn btn-primary rounded-pill px-4">Login</a>
+                {% endif %}
+            </div>
         {% endif %}
-        {% endblock %}
+    </header>
 
-        {% block content %}{% endblock %}
-    </main>
+    <!-- Mobile Sidebar (Offcanvas) -->
+    <div class="offcanvas offcanvas-start border-0 shadow" tabindex="-1" id="mobileSidebar" style="width: 280px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);">
+        <div class="offcanvas-header border-bottom py-3">
+            <h5 class="offcanvas-title fw-bold text-primary d-flex align-items-center" id="mobileSidebarLabel">
+                <img src="{% static 'images/aronlogonow.png' %}" alt="Aaron Billing" style="height:24px; width:auto;" class="me-2"/>
+                <span>Aaron<span class="text-secondary">Billing</span></span>
+            </h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-0 d-flex flex-column">
+            <ul class="sidebar-nav">
+                {% if user.is_authenticated %}
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'dashboard' %}">
+                            <i class="bi bi-grid-1x2-fill"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    {% if user.role == 'owner' %}
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'admin:core_branch_changelist' %}">
+                            <i class="bi bi-shield-lock-fill"></i>
+                            <span>Adminpage</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if user.role != 'staff' %}
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'product_list' %}">
+                            <i class="bi bi-box-seam-fill"></i>
+                            <span>Products</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'stock_pivot_report' %}">
+                            <i class="bi bi-clipboard-data-fill"></i>
+                            <span>Stock Ledger</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'owner_bill_list' %}">
+                            <i class="bi bi-receipt"></i>
+                            <span>Sales Report</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'combo_list' %}">
+                            <i class="bi bi-tags-fill"></i>
+                            <span>Manage Combos</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'pos_index' %}">
+                            <i class="bi bi-cpu-fill"></i>
+                            <span>POS Billing</span>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+            {% if user.is_authenticated %}
+            <div class="sidebar-footer p-3 border-top mt-auto">
+                <button class="btn btn-primary btn-sm rounded-pill w-100 mb-2 pwa-install-btn d-none">
+                    <i class="bi bi-download me-1"></i> Install App
+                </button>
+
+                <div class="d-flex align-items-center gap-2 mb-2 overflow-hidden">
+                    <i class="bi bi-person-circle fs-4 text-primary flex-shrink-0"></i>
+                    <div class="lh-sm overflow-hidden">
+                        <div class="fw-semibold text-dark text-truncate small">{{ user.username }}</div>
+                        {% if user.active_branch %}
+                        <div class="text-muted text-xxs text-truncate"><i class="bi bi-shop me-0.5"></i>{{ user.active_branch.name }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <form method="post" action="{% url 'logout' %}" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill w-100 py-1.5 d-flex align-items-center justify-content-center gap-2">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Main Container Layout -->
+    <div class="d-flex flex-grow-1">
+        <!-- Desktop Sidebar -->
+        <aside class="app-sidebar d-none d-md-block">
+            <ul class="sidebar-nav">
+                {% if user.is_authenticated %}
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'dashboard' %}">
+                            <i class="bi bi-grid-1x2-fill"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    {% if user.role == 'owner' %}
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'admin:core_branch_changelist' %}">
+                            <i class="bi bi-shield-lock-fill"></i>
+                            <span>Adminpage</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if user.role != 'staff' %}
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'product_list' %}">
+                            <i class="bi bi-box-seam-fill"></i>
+                            <span>Products</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'stock_pivot_report' %}">
+                            <i class="bi bi-clipboard-data-fill"></i>
+                            <span>Stock Ledger</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'owner_bill_list' %}">
+                            <i class="bi bi-receipt"></i>
+                            <span>Sales Report</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'combo_list' %}">
+                            <i class="bi bi-tags-fill"></i>
+                            <span>Manage Combos</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'pos_index' %}">
+                            <i class="bi bi-cpu-fill"></i>
+                            <span>POS Billing</span>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+            {% if user.is_authenticated %}
+            <div class="sidebar-footer p-3 border-top mt-auto">
+                <button class="btn btn-primary btn-sm rounded-pill w-100 mb-2 pwa-install-btn d-none">
+                    <i class="bi bi-download me-1"></i> Install App
+                </button>
+                <div class="d-flex align-items-center gap-2 mb-2 overflow-hidden">
+                    <i class="bi bi-person-circle fs-4 text-primary flex-shrink-0"></i>
+                    <div class="lh-sm overflow-hidden">
+                        <div class="fw-semibold text-dark text-truncate small">{{ user.username }}</div>
+                        {% if user.active_branch %}
+                        <div class="text-muted text-xxs text-truncate"><i class="bi bi-shop me-0.5"></i>{{ user.active_branch.name }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <form method="post" action="{% url 'logout' %}" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill w-100 py-1.5 d-flex align-items-center justify-content-center gap-2">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </aside>
+
+        <!-- Main Wrapper -->
+        <div class="main-wrapper">
+            <main class="container-fluid py-4">
+                {% block messages %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-4 rounded-3" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                {% endblock %}
+
+                {% block content %}{% endblock %}
+            </main>
 
     <footer class="footer mt-auto py-3 bg-white border-top shadow-sm text-center">
         <div class="container-fluid">
@@ -251,9 +533,9 @@
     onInitialize: function() {
         const wrapper = this.wrapper;
         // Copy essential aesthetic classes from select to the Tom Select wrapper
+        // Note: skip 'pill' classes as they cause layout issues with TomSelect
         el.classList.forEach(cls => {
             if (
-                cls.includes('pill') || 
                 cls.includes('bg-') || 
                 cls.includes('border-') || 
                 cls.includes('form-select') ||
@@ -266,8 +548,9 @@
 };
                         
                         new TomSelect(el, settings);
-            // Ensure no option is pre‑selected so the placeholder is visible
-            if (el.tomselect) { el.tomselect.clear(); }
+            // Only clear if no option is pre-selected (preserve edit form values)
+            const hasPreSelected = Array.from(el.options).some(opt => opt.selected);
+            if (el.tomselect && !hasPreSelected) { el.tomselect.clear(); }
                     } catch (e) {
                         console.error('Error initializing Tom Select:', e);
                     }
@@ -293,6 +576,32 @@
             });
 
             observer.observe(document.body, { childList: true, subtree: true });
+
+            // Desktop Sidebar Toggle
+            const desktopToggleBtn = document.getElementById('desktopSidebarToggle');
+            if (desktopToggleBtn) {
+                desktopToggleBtn.addEventListener('click', function() {
+                    document.body.classList.toggle('sidebar-collapsed');
+                    const collapsed = document.body.classList.contains('sidebar-collapsed');
+                    localStorage.setItem('sidebar-collapsed', collapsed ? 'true' : 'false');
+                });
+            }
+            
+            // Restore sidebar state from localstorage
+            if (localStorage.getItem('sidebar-collapsed') === 'true') {
+                document.body.classList.add('sidebar-collapsed');
+            }
+
+            // Highlight active navigation links
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                const linkPath = new URL(link.href, window.location.origin).pathname;
+                if (link.classList.contains('btn-vibrant')) return;
+                
+                if (currentPath === linkPath || (linkPath !== '/' && currentPath.startsWith(linkPath))) {
+                    link.classList.add('active');
+                }
+            });
         });
     </script>
 
@@ -333,16 +642,23 @@
     <!-- PWA Install Prompt Script -->
     <script>
         let deferredPrompt;
-        const installBtn = document.getElementById('pwaInstallBtn');
+        const installBtns = document.querySelectorAll('.pwa-install-btn');
 
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
 
+        // Helper to show/hide all buttons
+        const showInstallButtons = () => {
+            installBtns.forEach(btn => btn.classList.remove('d-none'));
+        };
+
+        const hideInstallButtons = () => {
+            installBtns.forEach(btn => btn.classList.add('d-none'));
+        };
+
         // Show install button on iOS if not standalone (native event beforeinstallprompt won't fire on iOS)
         if (isIOS && !isStandalone) {
-            if (installBtn) {
-                installBtn.classList.remove('d-none');
-            }
+            showInstallButtons();
         }
 
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -351,13 +667,11 @@
             // Stash the event so it can be triggered later.
             deferredPrompt = e;
             // Update UI to notify the user they can install the PWA
-            if (installBtn) {
-                installBtn.classList.remove('d-none');
-            }
+            showInstallButtons();
         });
 
-        if (installBtn) {
-            installBtn.addEventListener('click', () => {
+        installBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
                 if (isIOS) {
                     const iosModal = new bootstrap.Modal(document.getElementById('iosInstallModal'));
                     iosModal.show();
@@ -374,16 +688,14 @@
                         console.log('User dismissed the install prompt');
                     }
                     deferredPrompt = null;
-                    installBtn.classList.add('d-none');
+                    hideInstallButtons();
                 });
             });
-        }
+        });
 
         window.addEventListener('appinstalled', (evt) => {
             console.log('App was successfully installed');
-            if (installBtn) {
-                installBtn.classList.add('d-none');
-            }
+            hideInstallButtons();
         });
     </script>
     {% block extra_js %}{% endblock %}

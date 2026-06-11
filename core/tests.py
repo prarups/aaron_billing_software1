@@ -501,7 +501,7 @@ class StockPivotReportTestCase(TestCase):
     def test_stock_pivot_report_view_excludes_adjustment_columns(self):
         # Verify that adjustment columns are removed visually from HTML,
         # but the View Corrected Details link exists for the branch breakdown.
-        response = self.client.get(reverse('stock_pivot_report'))
+        response = self.client.get(reverse('stock_pivot_report') + f"?branch={self.branch.id}")
         self.assertEqual(response.status_code, 200)
         html = response.content.decode('utf-8')
         
@@ -509,10 +509,10 @@ class StockPivotReportTestCase(TestCase):
         self.assertNotIn('+ Adj', html)
         self.assertNotIn('- Adj', html)
 
-        # Verify the "View Corrected Details" button links to our new route
+        # Verify the history button links to our new route
         history_url = reverse('view_stock_adjustments', args=[self.registry.pk])
         self.assertIn(history_url, html)
-        self.assertIn('View Corrected Details', html)
+        self.assertIn('bi-clock-history', html)
 
     def test_view_stock_adjustments_history_view_access(self):
         # Create an adjustment
@@ -563,6 +563,68 @@ class StockPivotReportTestCase(TestCase):
         self.client.force_login(other_manager)
         response = self.client.get(history_url)
         self.assertRedirects(response, reverse('stock_pivot_report'))
+
+    def test_stock_pivot_report_view_with_branch_filter(self):
+        # Create a second branch
+        branch2 = Branch.objects.create(name="Nellore Branch 2", code="10002", invoice_prefix="AN2")
+        # Register the product to branch2
+        ProductRegistry.objects.create(
+            branch=branch2,
+            product=self.product,
+            stock_quantity=45
+        )
+
+        # 1. Fetching without filter should return both branches' stocks
+        response = self.client.get(reverse('stock_pivot_report'))
+        self.assertEqual(response.status_code, 200)
+        report_data = response.context['report_data']
+        self.assertEqual(len(report_data), 1)
+        self.assertEqual(len(report_data[0]['branch_stocks']), 2)
+
+        # 2. Filter by first branch (self.branch)
+        response_f1 = self.client.get(reverse('stock_pivot_report') + f"?branch={self.branch.id}")
+        self.assertEqual(response_f1.status_code, 200)
+        report_data_f1 = response_f1.context['report_data']
+        self.assertEqual(len(report_data_f1), 1)
+        self.assertEqual(len(report_data_f1[0]['branch_stocks']), 1)
+        self.assertEqual(report_data_f1[0]['branch_stocks'][0]['branch'], self.branch)
+        self.assertEqual(report_data_f1[0]['branch_stocks'][0]['cl'], 88)
+
+        # 3. Filter by second branch (branch2)
+        response_f2 = self.client.get(reverse('stock_pivot_report') + f"?branch={branch2.id}")
+        self.assertEqual(response_f2.status_code, 200)
+        report_data_f2 = response_f2.context['report_data']
+        self.assertEqual(len(report_data_f2), 1)
+        self.assertEqual(len(report_data_f2[0]['branch_stocks']), 1)
+        self.assertEqual(report_data_f2[0]['branch_stocks'][0]['branch'], branch2)
+        self.assertEqual(report_data_f2[0]['branch_stocks'][0]['cl'], 45)
+
+    def test_export_stock_pivot_excel_with_branch_filter(self):
+        # Create a second branch
+        branch2 = Branch.objects.create(name="Nellore Branch 2", code="10002", invoice_prefix="AN2")
+        ProductRegistry.objects.create(
+            branch=branch2,
+            product=self.product,
+            stock_quantity=45
+        )
+
+        # Export Excel filtered by branch2
+        response = self.client.get(reverse('export_stock_pivot_excel') + f"?branch={branch2.id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+        # Read the excel workbook to verify it only exported details for branch2
+        import openpyxl
+        import io
+        wb = openpyxl.load_workbook(filename=io.BytesIO(response.content))
+        
+        # In Sheet 2 (Branch Details), row 2 should contain "Nellore Branch 2"
+        ws2 = wb['Branch Details']
+        rows = list(ws2.iter_rows(values_only=True))
+        
+        # Header is row 0, data starts at row 1.
+        self.assertEqual(len(rows), 2) # Header + 1 data row
+        self.assertEqual(rows[1][2], "Nellore Branch 2") # Branch Name column is index 2
 
 
 class BulkInsertTestCase(TestCase):

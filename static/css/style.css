@@ -20,7 +20,7 @@
 }
 
 body {
-    background: linear-gradient(135deg, #eef2ff 0%, #fdf4ff 50%, #f0f9ff 100%);
+    background: linear-gradient(135deg, #e2e8f0 0%, #f1f5f9 100%);
     background-attachment: fixed;
     -webkit-font-smoothing: antialiased;
     letter-spacing: -0.01em;

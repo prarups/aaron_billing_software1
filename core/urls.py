@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import combo_views
 
 urlpatterns = [
     path('products/', views.product_list, name='product_list'),
@@ -15,4 +16,11 @@ urlpatterns = [
     path('reports/stock-pivot/', views.stock_pivot_report, name='stock_pivot_report'),
     path('reports/stock-pivot/export/', views.export_stock_pivot_excel, name='export_stock_pivot_excel'),
     path('pos/', views.pos_view, name='pos_view'),
+    
+    # Combo URLs
+    path('combos/', combo_views.combo_list, name='combo_list'),
+    path('combos/add/', combo_views.combo_create, name='combo_create'),
+    path('combos/edit/<int:pk>/', combo_views.combo_edit, name='combo_edit'),
+    path('combos/delete/<int:pk>/', combo_views.combo_delete, name='combo_delete'),
+    path('combos/ajax-data/', combo_views.get_branch_combo_data, name='ajax_combo_data'),
 ]

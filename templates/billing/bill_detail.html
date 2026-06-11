@@ -10,7 +10,14 @@
             <div class="card-body p-4">
                 <div class="text-center mb-4 bg-vibrant p-4 mx-n4 mt-n4">
                     <h3 class="fw-bold text-white mb-1">Aaron Garments</h3>
-                    <p class="text-white opacity-75 small mb-0">{{ bill.branch.name }} (Code: {{ bill.branch.code }}) &bull; Tax Invoice / Official Bill</p>
+                    <p class="text-white opacity-90 small mb-0 fw-semibold">{{ bill.branch.name }} &bull; Code: {{ bill.branch.code }}</p>
+                    {% if bill.branch.location %}
+                    <p class="text-white opacity-75 x-small mb-0 mt-1"><i class="bi bi-geo-alt-fill me-1"></i>{{ bill.branch.location }}</p>
+                    {% endif %}
+                    {% if bill.branch.contact_number %}
+                    <p class="text-white opacity-75 x-small mb-0"><i class="bi bi-telephone-fill me-1"></i>{{ bill.branch.contact_number }}</p>
+                    {% endif %}
+                    <p class="text-white opacity-50 x-small mb-0 mt-1">Tax Invoice / Official Bill</p>
                 </div>
 
                 <!-- Bill Meta -->
@@ -55,17 +62,10 @@
                             <td class="small">{{ forloop.counter }}</td>
                             <td class="fw-semibold">
                                 <div>{{ item.product.name }}</div>
-                                {% if item.savings > 0 %}
-                                <div class="mt-1">
-                                    <span class="badge bg-success-subtle text-success rounded-pill x-small fw-semibold" style="font-size: 0.72rem;">
-                                        <i class="bi bi-tag-fill me-1"></i> Combo Saved: ₹{{ item.savings|floatformat:0 }} (Original: ₹{{ item.product.price|floatformat:0 }} each)
-                                    </span>
-                                </div>
-                                {% endif %}
                             </td>
                             <td class="text-center">{{ item.quantity }}</td>
-                            <td class="text-end small">₹{{ item.unit_price|floatformat:0 }}</td>
-                            <td class="text-end fw-bold">₹{{ item.subtotal|floatformat:0 }}</td>
+                            <td class="text-end small">₹{{ item.product.price|floatformat:0 }}</td>
+                            <td class="text-end fw-bold">₹{{ item.regular_total|floatformat:0 }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -79,7 +79,7 @@
                         <span class="text-white small">₹{{ bill.original_subtotal|floatformat:0 }}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
-                        <span class="text-white opacity-75 small">Total Savings</span>
+                        <span class="text-white opacity-75 small"><i class="bi bi-lightning-charge-fill me-1" style="color:#fbbf24;"></i>Combo Discount</span>
                         <span class="text-white fw-bold">- ₹{{ bill.total_savings|floatformat:0 }}</span>
                     </div>
                     {% endif %}
@@ -96,7 +96,7 @@
                     {% if bill.total_savings > 0 %}
                     <div class="text-center mt-3 pt-3 border-top border-white border-opacity-25">
                         <span class="badge bg-white text-success rounded-pill px-3 py-2 mt-1">
-                            <i class="bi bi-stars me-1"></i> You saved ₹{{ bill.total_savings|floatformat:0 }}!
+                            <i class="bi bi-lightning-charge-fill me-1 text-warning"></i> Combo savings: ₹{{ bill.total_savings|floatformat:0 }} off!
                         </span>
                     </div>
                     {% endif %}

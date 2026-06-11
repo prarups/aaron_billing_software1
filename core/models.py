@@ -55,6 +55,31 @@ class ComboPrice(models.Model):
         return f"{self.quantity} pcs → ₹{self.price}{branch_str}"
 
 
+class ComboGroup(models.Model):
+    name = models.CharField(max_length=200, help_text="e.g. Mix & Match Summer Promo")
+    branches = models.ManyToManyField(Branch, related_name='combo_groups', blank=True)
+    products = models.ManyToManyField(Product, related_name='combo_groups', blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class ComboTier(models.Model):
+    combo_group = models.ForeignKey(ComboGroup, on_delete=models.CASCADE, related_name='tiers')
+    quantity = models.PositiveIntegerField(help_text="Quantity milestone (e.g. 2, 5, 10)")
+    price = models.DecimalField(max_digits=12, decimal_places=0, help_text="Special price for this quantity milestone")
+
+    class Meta:
+        unique_together = ('combo_group', 'quantity')
+        ordering = ['quantity']
+
+    def __str__(self):
+        return f"{self.combo_group.name} - {self.quantity} items for ₹{self.price}"
+
+
 class ProductRegistry(models.Model):
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)

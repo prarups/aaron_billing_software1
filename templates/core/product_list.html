@@ -34,6 +34,14 @@
         background-color: rgba(99, 102, 241, 0.01) !important;
     }
     
+    /* Hover animations */
+    .hover-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08) !important;
+    }
 
 </style>
 {% endblock %}
@@ -46,9 +54,11 @@
             <p class="text-muted text-xxs mb-0">Manage registry and branch inventory</p>
         </div>
         <div class="d-flex gap-2 mt-0 flex-wrap justify-content-end">
+            {% if selected_branch %}
             <a href="{% url 'export_products_csv' %}?q={{ q }}&branch={{ selected_branch }}&filter={{ active_filter }}" class="btn btn-outline-success rounded-pill px-3 shadow-sm btn-sm text-xs fw-semibold">
                 <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export
             </a>
+            {% endif %}
             {% if request.user.role == 'owner' or request.user.has_product_rights %}
             <a href="{% url 'bulk_insert' %}" class="btn btn-outline-primary rounded-pill px-3 shadow-sm btn-sm text-xs">
                 <i class="bi bi-cloud-upload me-1"></i> Bulk Insert
@@ -59,6 +69,13 @@
             {% endif %}
         </div>
     </div>
+</div>
+
+{% if selected_branch %}
+<div class="mb-3 animate-fade-in">
+    <a href="?branch=" class="text-primary text-xs fw-semibold text-decoration-none d-inline-flex align-items-center gap-1">
+        <i class="bi bi-arrow-left"></i> Back to all branches
+    </a>
 </div>
 
 <!-- Stats Summary Bar -->
@@ -81,29 +98,21 @@
 <!-- Filters -->
 <div class="card border-0 shadow-sm p-2.5 mb-3 bg-white animate-fade-in" style="overflow: visible;">
     <form method="GET" class="row g-2 align-items-center">
+        <input type="hidden" name="branch" value="{{ selected_branch }}">
         {% if active_filter == 'zero_stock' %}
         <input type="hidden" name="filter" value="zero_stock">
         {% endif %}
         
         <!-- Search bar -->
-        <div class="col-12 col-md-5">
+        <div class="col-12 col-md-8">
             <div class="input-group input-group-sm">
                 <span class="input-group-text border-0 bg-light rounded-pill-start text-muted"><i class="bi bi-search"></i></span>
                 <input type="text" name="q" class="form-control border-0 bg-light text-xs py-1.5" placeholder="Search product name or barcode..." value="{{ q }}">
                 <button class="btn btn-primary rounded-pill-end shadow-sm px-3 text-xs fw-semibold" type="submit">Search</button>
             </div>
         </div>
-        <!-- Branch filter -->
-        <div class="col-6 col-md-3">
-            <select name="branch" class="form-select form-select-sm rounded-pill border-0 bg-light text-xs px-3 py-1.5" onchange="this.form.submit()" data-no-search>
-                <option value="">All Branches</option>
-                {% for b in branches %}
-                <option value="{{ b.id }}" {% if b.id|stringformat:"s" == selected_branch %}selected{% endif %}>{{ b.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
         <!-- Stock status filter -->
-        <div class="col-6 col-md-4">
+        <div class="col-12 col-md-4">
             <select name="filter" class="form-select form-select-sm rounded-pill border-0 bg-light text-xs px-3 py-1.5" onchange="this.form.submit()" data-no-search>
                 <option value="">All Stock Status</option>
                 <option value="low_stock" {% if active_filter == 'low_stock' %}selected{% endif %}>Low Stock</option>
@@ -156,13 +165,9 @@
                         <span class="text-xs {% if reg.stock_quantity <= reg.low_stock_threshold %}text-danger fw-bold{% endif %}">{{ reg.stock_quantity }}</span>
                     </td>
                     <td class="text-end pe-4">
-                        {% if request.user.role == 'owner' or request.user.has_product_rights %}
                         <a href="{% url 'product_update' reg.product.pk %}?reg_id={{ reg.id }}" class="btn btn-primary btn-sm rounded-pill px-2.5 py-0.5 text-xxs fw-semibold shadow-sm">
                             <i class="bi bi-pencil-square me-0.5"></i> Edit
                         </a>
-                        {% else %}
-                        <span class="text-muted text-xxs">-</span>
-                        {% endif %}
                     </td>
                 </tr>
                 {% empty %}
@@ -199,13 +204,11 @@
                 </div>
                 {% endif %}
             </div>
-            {% if request.user.role == 'owner' or request.user.has_product_rights %}
             <div class="d-flex justify-content-end align-items-center mt-2 pt-2 border-top border-light">
                 <a href="{% url 'product_update' reg.product.pk %}?reg_id={{ reg.id }}" class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1 text-xs fw-semibold">
                     <i class="bi bi-pencil me-1"></i> Edit
                 </a>
             </div>
-            {% endif %}
         </div>
         {% empty %}
         <div class="text-center py-4 text-muted bg-white rounded-3">No products found.</div>
@@ -252,7 +255,90 @@
     </div>
     {% endif %}
 </div>
+{% else %}
+<!-- Search Filter for Branches -->
+<div class="mb-3 col-12 col-md-4 mx-auto animate-fade-in" style="animation-delay: 0.1s;">
+    <div class="input-group rounded-pill overflow-hidden bg-white shadow-sm border border-light-subtle">
+        <span class="input-group-text border-0 bg-white ps-3 text-muted py-1.5"><i class="bi bi-search" style="font-size: 0.8rem;"></i></span>
+        <input type="text" id="branchSearchInput" class="form-control border-0 py-1.5 text-xs shadow-none" placeholder="Search branch name or code...">
+    </div>
+</div>
 
+<div class="row g-3 justify-content-center my-2 animate-fade-in" style="animation-delay: 0.2s;">
+    {% for b in branches %}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 branch-card-wrapper" data-name="{{ b.name }}" data-code="{{ b.code }}">
+        <div class="card border-0 shadow-sm h-100 hover-card overflow-hidden" style="border-radius: 12px;">
+            <!-- Top indicator gradient -->
+            <div style="height: 4px; background: linear-gradient(90deg, #6366f1, #4f46e5);"></div>
+            <div class="card-body p-3 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2.5">
+                        <div class="rounded-3 p-1.5 d-inline-flex align-items-center justify-content-center" style="background-color: rgba(99, 102, 241, 0.1); color: #6366f1;">
+                            <i class="bi bi-shop fs-5"></i>
+                        </div>
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-bold font-monospace" style="font-size: 0.65rem;">CODE: {{ b.code }}</span>
+                    </div>
+                    <h6 class="fw-bold text-dark text-xs mb-1">{{ b.name }}</h6>
+                    <p class="text-muted text-xxs mb-3">
+                        <i class="bi bi-geo-alt me-1 text-danger"></i> {{ b.location|default:"No location specified" }}
+                    </p>
+                </div>
+                <a href="?branch={{ b.id }}" class="btn btn-primary rounded-2 w-100 py-1.5 text-xxs fw-semibold text-white d-flex align-items-center justify-content-center gap-1.5">
+                    <span>View Product Master</span>
+                    <i class="bi bi-arrow-right" style="font-size: 0.75rem;"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+        <div class="text-muted mb-3"><i class="bi bi-info-circle fs-1"></i></div>
+        <h6 class="fw-bold text-dark">No branches found</h6>
+        <p class="text-muted text-xs">You do not have access to any branches.</p>
+    </div>
+    {% endfor %}
 
+    <!-- No branch search match message -->
+    <div id="noBranchMatchMessage" class="col-12 text-center py-5 d-none">
+        <div class="text-muted mb-2"><i class="bi bi-search fs-2"></i></div>
+        <h6 class="fw-bold text-dark text-xs">No matching branches</h6>
+        <p class="text-muted text-xxs">Try searching for a different branch name or code.</p>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.getElementById("branchSearchInput");
+    if (searchInput) {
+        searchInput.addEventListener("input", function() {
+            const query = this.value.toLowerCase().trim();
+            const cards = document.querySelectorAll(".branch-card-wrapper");
+            let visibleCount = 0;
+            
+            cards.forEach(card => {
+                const name = card.dataset.name.toLowerCase();
+                const code = card.dataset.code.toLowerCase();
+                
+                if (name.includes(query) || code.includes(query)) {
+                    card.style.setProperty('display', '', 'important');
+                    visibleCount++;
+                } else {
+                    card.style.setProperty('display', 'none', 'important');
+                }
+            });
+            
+            const noMatchMsg = document.getElementById("noBranchMatchMessage");
+            if (noMatchMsg) {
+                if (visibleCount === 0) {
+                    noMatchMsg.classList.remove("d-none");
+                } else {
+                    noMatchMsg.classList.add("d-none");
+                }
+            }
+        });
+    }
+});
+</script>
+{% endif %}
 {% endblock %}
 
