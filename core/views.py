@@ -149,16 +149,17 @@ def product_create(request):
         from .forms import ComboPriceFormSet
         combo_formset = ComboPriceFormSet(request.POST)
         
-        if form.is_valid() and combo_formset.is_valid():
+        has_combo_formset = 'combos-TOTAL_FORMS' in request.POST
+        if form.is_valid() and (not has_combo_formset or combo_formset.is_valid()):
             product = form.save()
-            combo_formset.instance = product
-            
-            combos = combo_formset.save(commit=False)
-            for combo in combos:
-                combo.branch = branch
-                combo.save()
-            for obj in combo_formset.deleted_objects:
-                obj.delete()
+            if has_combo_formset:
+                combo_formset.instance = product
+                combos = combo_formset.save(commit=False)
+                for combo in combos:
+                    combo.branch = branch
+                    combo.save()
+                for obj in combo_formset.deleted_objects:
+                    obj.delete()
             
             initial_stock = form.cleaned_data.get('initial_stock') or 0
             low_threshold = form.cleaned_data.get('low_stock_threshold') or 10
@@ -216,15 +217,16 @@ def product_update(request, pk):
             queryset=ComboPrice.objects.filter(product=product, branch=branch)
         )
         
-        if is_admin and form.is_valid() and combo_formset.is_valid():
+        has_combo_formset = 'combos-TOTAL_FORMS' in request.POST
+        if is_admin and form.is_valid() and (not has_combo_formset or combo_formset.is_valid()):
             product = form.save()
-            
-            combos = combo_formset.save(commit=False)
-            for combo in combos:
-                combo.branch = branch
-                combo.save()
-            for obj in combo_formset.deleted_objects:
-                obj.delete()
+            if has_combo_formset:
+                combos = combo_formset.save(commit=False)
+                for combo in combos:
+                    combo.branch = branch
+                    combo.save()
+                for obj in combo_formset.deleted_objects:
+                    obj.delete()
         elif not is_admin:
             # Non-admin: skip product/combo changes, just proceed to stock updates
             pass
