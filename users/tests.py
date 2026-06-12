@@ -293,3 +293,42 @@ class StaffFormTestCase(TestCase):
         self.assertEqual(user.mobile_number, '1234567890')
         self.assertEqual(user.address, '123 Street Name')
 
+
+class ToggleBillEditRightsTestCase(TestCase):
+    def setUp(self):
+        self.branch1 = Branch.objects.create(name="Nellore", code="10001", invoice_prefix="NL")
+        self.owner = User.objects.create_user(
+            username="owner_user",
+            password="password123",
+            role="owner",
+            is_staff=True
+        )
+        self.staff_user = User.objects.create_user(
+            username="staff_user",
+            password="password123",
+            role="staff"
+        )
+        self.staff_user.branches.add(self.branch1)
+
+    def test_toggle_bill_edit_rights_success(self):
+        self.client.login(username="owner_user", password="password123")
+        self.assertFalse(self.staff_user.has_bill_edit_rights)
+        
+        response = self.client.post(
+            f"/users/staff/toggle-bill-edit-rights/{self.staff_user.id}/",
+            data='{"has_bill_edit_rights": true}',
+            content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.staff_user.refresh_from_db()
+        self.assertTrue(self.staff_user.has_bill_edit_rights)
+
+    def test_toggle_bill_edit_rights_denied(self):
+        self.client.login(username="staff_user", password="password123")
+        response = self.client.post(
+            f"/users/staff/toggle-bill-edit-rights/{self.staff_user.id}/",
+            data='{"has_bill_edit_rights": true}',
+            content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 403)
+

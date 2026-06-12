@@ -42,6 +42,7 @@ class User(AbstractUser):
     active_branch = models.ForeignKey('core.Branch', on_delete=models.SET_NULL, null=True, blank=True, related_name='active_users')
     employee_id = models.CharField(max_length=50, unique=True, blank=True, null=True)
     has_product_rights = models.BooleanField(default=False)
+    has_bill_edit_rights = models.BooleanField(default=False)
     mobile_number = models.CharField(max_length=15, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
 

@@ -30,20 +30,19 @@
                 <div class="row mb-3 pb-3 border-bottom">
                     <div class="col-6">
                         <p class="small mb-1"><span class="text-muted">Bill No</span><br><strong>{{ bill.invoice_number|default:bill.id }}</strong>
+                            {% if bill.total_savings > 0 %}
+                            <span class="badge bg-purple text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle" style="background: linear-gradient(135deg, #d946ef, #8b5cf6) !important; font-size: 0.6rem; font-weight: normal; vertical-align: middle;">
+                                Combo
+                            </span>
+                            {% endif %}
                         </p>
                         <p class="small mb-0"><span class="text-muted">Date</span><br><strong>{{ bill.created_at|date:"d M Y, h:i A" }}</strong></p>
                     </div>
                     <div class="col-6 text-end">
-                        <div class="d-flex justify-content-end align-items-center mb-1">
-                            {% if allow_edit %}
-                            <span class="small text-muted me-2">Edit Bill</span>
-                            <a href="{% url 'edit_bill_back' bill.id %}" onclick="return confirm('Are you sure you want to edit this bill? This will load its items back to the checkout.');" class="btn btn-sm btn-light p-1 custom-edit-btn" title="Edit entire bill">
-                                <i class="bi bi-pencil-square text-primary"></i>
-                            </a>
-                            {% else %}
-                            <span class="small text-muted me-2">Customer</span>
-                            {% endif %}
-                        </div>
+
+
+
+
                         <p class="small mb-1"><strong>{{ bill.customer_name|default:"Walk-in" }}</strong></p>
                         {% if bill.customer_phone %}
                         <p class="small mb-0"><strong>{{ bill.customer_phone }}</strong></p>
@@ -73,6 +72,13 @@
                             <td class="text-end small">₹{{ item.product.price|floatformat:0 }}</td>
                             <td class="text-end fw-bold">₹{{ item.regular_total|floatformat:0 }}</td>
                         </tr>
+                        <tr class="barcode-row">
+                            <td colspan="5" class="barcode-cell">
+                                <div class="barcode-container">
+                                    <span class="barcode">{{ item.barcode_display }}</span>
+                                </div>
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -99,6 +105,9 @@
                         <span class="text-white opacity-75 fw-bold">FINAL TOTAL</span>
                         <h2 class="fw-bold text-white mb-0">₹{{ bill.total_amount|floatformat:0 }}</h2>
                     </div>
+                    
+
+
                     {% if bill.total_savings > 0 %}
                     <div class="text-center mt-3 pt-3 border-top border-white border-opacity-25">
                         <span class="badge bg-white text-success rounded-pill px-3 py-2 mt-1">

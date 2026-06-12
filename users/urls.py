@@ -26,5 +26,6 @@ urlpatterns = [
     path('staff/delete/<int:pk>/', views.staff_delete, name='staff_delete'),
     path('staff/toggle/<int:staff_id>/', views.toggle_staff_active, name='staff_toggle'),
     path('staff/toggle-product-rights/<int:staff_id>/', views.toggle_product_rights, name='toggle_product_rights'),
+    path('staff/toggle-bill-edit-rights/<int:staff_id>/', views.toggle_bill_edit_rights, name='toggle_bill_edit_rights'),
 ]
 

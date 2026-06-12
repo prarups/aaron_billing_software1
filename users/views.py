@@ -331,6 +331,28 @@ def toggle_product_rights(request, staff_id):
 
 
 @login_required
+def toggle_bill_edit_rights(request, staff_id):
+    """AJAX endpoint to toggle a staff member's bill edit rights.
+    Expects a POST request with a JSON payload containing `has_bill_edit_rights` boolean.
+    Only owners can perform this action.
+    """
+    if not request.user.is_owner():
+        return JsonResponse({'error': 'Permission denied.'}, status=403)
+    staff = get_object_or_404(User, pk=staff_id)
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            has_bill_edit_rights = data.get('has_bill_edit_rights')
+            if isinstance(has_bill_edit_rights, bool):
+                staff.has_bill_edit_rights = has_bill_edit_rights
+                staff.save()
+                return JsonResponse({'status': 'success', 'has_bill_edit_rights': staff.has_bill_edit_rights})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'error': 'Invalid request.'}, status=400)
+
+
+@login_required
 def export_dashboard_sales_csv(request):
     """Exports date-wise and branch-wise total sales amount for the specified date range.
     Only owners and managers are authorized.

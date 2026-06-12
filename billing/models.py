@@ -2,7 +2,6 @@ from django.db import models
 from django.conf import settings
 import uuid
 # Import additional models defined in separate file
-from .return_models import ReturnRequest, CreditNote
 
 class Bill(models.Model):
     PAYMENT_CHOICES = (
@@ -23,6 +22,7 @@ class Bill(models.Model):
     sequence_number = models.PositiveIntegerField(null=True, blank=True, db_index=True)
     invoice_number = models.CharField(max_length=50, unique=True, null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
 
     @property
     def item_savings(self):

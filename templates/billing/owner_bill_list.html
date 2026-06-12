@@ -16,46 +16,51 @@
         font-size: 0.82rem;
     }
     .table-compact th {
-        font-size: 0.72rem !important;
+        font-size: 0.74rem !important;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         font-weight: 700;
-        color: #64748b;
-        padding: 8px 10px !important;
+        color: #475569;
+        padding: 12px 14px !important;
         background-color: #f8fafc;
         border-bottom: 2px solid #e2e8f0 !important;
     }
     .table-compact td {
-        padding: 8px 10px !important;
+        padding: 12px 14px !important;
         vertical-align: middle;
         border-bottom: 1px solid #f1f5f9;
     }
+    .table-compact tbody tr {
+        transition: all 0.2s ease-in-out;
+    }
     .table-compact tbody tr:hover {
-        background-color: rgba(99, 102, 241, 0.01) !important;
+        background-color: rgba(79, 70, 229, 0.02) !important;
+        transform: scale(1.002);
     }
     
-    /* Badges */
-    .badge-pill-compact {
-        padding: 4px 8px;
-        font-weight: 600;
-        font-size: 0.7rem;
-        border-radius: 30px;
+    /* Invoice Link Badge style */
+    .invoice-badge {
+        background: rgba(79, 70, 229, 0.08);
+        color: #4f46e5;
+        border-radius: 6px;
+        padding: 3px 8px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        font-size: 0.76rem;
+        display: inline-block;
+        text-decoration: none;
+        transition: all 0.2s ease-in-out;
     }
-    
-    /* Collapsible Details Row styling */
-    .collapse-row {
-        background-color: #fcfdfe !important;
+    .invoice-badge:hover {
+        background: #4f46e5;
+        color: #ffffff !important;
+        transform: scale(1.03);
+        box-shadow: 0 4px 6px rgba(79, 70, 229, 0.15);
     }
-    .collapse-card {
-        border: 1px solid #e2e8f0;
-        border-radius: 0.75rem;
-        background-color: #ffffff;
-        box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.01);
-    }
-    
-    /* Item List Scrollbar */
+
+    /* Scrollable item list styling */
     .item-scroll-list {
-        max-height: 85px;
+        max-height: 95px;
         overflow-y: auto;
         padding-right: 4px;
     }
@@ -69,22 +74,107 @@
         background: #cbd5e1;
         border-radius: 10px;
     }
+    .scrollable-item-row {
+        padding: 4px 8px;
+        border-radius: 6px;
+        margin-bottom: 3px;
+        background-color: #f8fafc;
+        border: 1px solid transparent;
+        transition: all 0.15s ease-in-out;
+    }
+    .scrollable-item-row:hover {
+        background-color: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+
+    /* Premium Custom Badges */
+    .badge-cash {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 0.68rem;
+        border-radius: 30px;
+        padding: 3px 8px;
+        letter-spacing: 0.02em;
+        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
+        display: inline-block;
+    }
+    .badge-online {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 0.68rem;
+        border-radius: 30px;
+        padding: 3px 8px;
+        letter-spacing: 0.02em;
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+        display: inline-block;
+    }
+    .badge-split {
+        background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 0.68rem;
+        border-radius: 30px;
+        padding: 3px 8px;
+        letter-spacing: 0.02em;
+        box-shadow: 0 2px 4px rgba(139, 92, 246, 0.1);
+        display: inline-block;
+    }
     
-    /* Stats Card compact styling */
-    .stat-pill {
-        display: flex;
+    /* View Button Premium style */
+    .btn-view-action {
+        border: 1px solid rgba(79, 70, 229, 0.2);
+        background: rgba(79, 70, 229, 0.04);
+        color: #4f46e5;
+        border-radius: 30px;
+        padding: 4px 14px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        transition: all 0.2s ease-in-out;
+        text-decoration: none;
+        display: inline-flex;
         align-items: center;
-        padding: 8px 16px;
-        background: #ffffff;
-        border-radius: 50px;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-        border: 1px solid #e2e8f0;
+        gap: 4px;
     }
-    .stat-pill-primary {
-        background: linear-gradient(135deg, rgba(79, 70, 229, 0.06), rgba(217, 70, 239, 0.06));
-        border-color: rgba(79, 70, 229, 0.15);
+    .btn-view-action:hover {
+        background: #4f46e5;
+        color: #ffffff !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2) !important;
+    }
+
+    /* Stats Card premium styling */
+    .stat-card-premium {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        transition: all 0.25s ease-in-out;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+    }
+    .stat-card-premium:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
     }
     
+    /* Mobile Card design */
+    .mobile-bill-card {
+        border-radius: 14px !important;
+        transition: all 0.25s ease-in-out;
+        border: 1px solid #f1f5f9 !important;
+        background: #ffffff;
+        margin-bottom: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+    }
+    .mobile-bill-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05) !important;
+    }
+    .mobile-bill-card-cash { border-left: 4px solid #10b981 !important; }
+    .mobile-bill-card-online { border-left: 4px solid #3b82f6 !important; }
+    .mobile-bill-card-split { border-left: 4px solid #8b5cf6 !important; }
+
     .text-muted-plus {
         color: #8b96a5 !important;
     }
@@ -108,29 +198,29 @@
 </div>
 
 <!-- Stats Summary Bar -->
-<div class="row g-2 mb-3">
+<div class="row g-3 mb-3.5">
     <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm bg-white overflow-hidden" style="border-left: 4px solid var(--primary) !important;">
-            <div class="p-2 d-flex align-items-center justify-content-between">
+        <div class="card stat-card-premium overflow-hidden" style="border-left: 4px solid #4f46e5 !important;">
+            <div class="p-3 d-flex align-items-center justify-content-between">
                 <div>
-                    <span class="text-xxs text-uppercase fw-bold text-muted d-block">Total Revenue</span>
-                    <span class="fs-6 fw-bold text-dark">₹{{ stats.total_revenue|floatformat:0 }}</span>
+                    <span class="text-xxs text-uppercase fw-bold text-muted-plus d-block mb-1">Total Revenue</span>
+                    <span class="fs-5 fw-extrabold text-dark" style="font-weight: 800; letter-spacing: -0.02em;">₹{{ stats.total_revenue|floatformat:0 }}</span>
                 </div>
-                <div class="rounded-circle bg-primary bg-opacity-10 p-1.5 text-primary d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
-                    <i class="bi bi-currency-rupee text-xs"></i>
+                <div class="rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                    <i class="bi bi-currency-rupee fs-5"></i>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm bg-white overflow-hidden" style="border-left: 4px solid var(--secondary) !important;">
-            <div class="p-2 d-flex align-items-center justify-content-between">
+        <div class="card stat-card-premium overflow-hidden" style="border-left: 4px solid #06b6d4 !important;">
+            <div class="p-3 d-flex align-items-center justify-content-between">
                 <div>
-                    <span class="text-xxs text-uppercase fw-bold text-muted d-block">Total Bills</span>
-                    <span class="fs-6 fw-bold text-dark">{{ stats.bill_count }}</span>
+                    <span class="text-xxs text-uppercase fw-bold text-muted-plus d-block mb-1">Total Bills</span>
+                    <span class="fs-5 fw-extrabold text-dark" style="font-weight: 800; letter-spacing: -0.02em;">{{ stats.bill_count }}</span>
                 </div>
-                <div class="rounded-circle bg-secondary bg-opacity-10 p-1.5 text-secondary d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
-                    <i class="bi bi-receipt text-xs"></i>
+                <div class="rounded-3 bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; color: #06b6d4 !important; background-color: rgba(6, 182, 212, 0.1) !important;">
+                    <i class="bi bi-receipt fs-5"></i>
                 </div>
             </div>
         </div>
@@ -138,19 +228,19 @@
 </div>
 
 <!-- Filters -->
-<div class="card border-0 shadow-sm p-2.5 mb-3 bg-white" style="overflow: visible;">
+<div class="card border-0 shadow-sm p-3 mb-3 bg-white" style="overflow: visible; border: 1px solid #e2e8f0 !important; border-radius: 14px;">
     <form method="GET" class="row g-2 align-items-center">
         <!-- Search bar -->
         <div class="col-12 col-md-4">
             <div class="input-group input-group-sm">
-                <span class="input-group-text border-0 bg-light rounded-pill-start text-muted"><i class="bi bi-search"></i></span>
-                <input type="text" name="q" class="form-control border-0 bg-light text-xs py-1.5" placeholder="Search bill, mobile, name..." value="{{ query }}">
-                <button class="btn btn-primary rounded-pill-end shadow-sm px-3 text-xs fw-semibold" type="submit">Search</button>
+                <span class="input-group-text border-0 bg-light rounded-pill-start text-muted ps-3"><i class="bi bi-search"></i></span>
+                <input type="text" name="q" class="form-control border-0 bg-light text-xs py-2 px-2" placeholder="Search invoice, customer phone or name..." value="{{ query }}">
+                <button class="btn btn-primary rounded-pill-end shadow-sm px-3 text-xs fw-semibold" type="submit" style="padding-top: 7px; padding-bottom: 7px;">Search</button>
             </div>
         </div>
         <!-- Branch filter -->
         <div class="col-6 col-md-2">
-            <select name="branch" class="form-select form-select-sm rounded-pill border-0 bg-light text-xs px-3 py-1.5" onchange="this.form.submit()" data-no-search>
+            <select name="branch" class="form-select form-select-sm rounded-pill border-0 bg-light text-xs px-3 py-2" onchange="this.form.submit()" data-no-search>
                 <option value="">All Branches</option>
                 {% for b in branches %}
                 <option value="{{ b.id }}" {% if b.id|stringformat:"s" == selected_branch %}selected{% endif %}>{{ b.name }}</option>
@@ -159,7 +249,7 @@
         </div>
         <!-- Payment filter -->
         <div class="col-6 col-md-2">
-            <select name="payment_method" class="form-select form-select-sm rounded-pill border-0 bg-light text-xs px-3 py-1.5" onchange="this.form.submit()" data-no-search>
+            <select name="payment_method" class="form-select form-select-sm rounded-pill border-0 bg-light text-xs px-3 py-2" onchange="this.form.submit()" data-no-search>
                 <option value="">All Payments</option>
                 <option value="cash" {% if selected_payment == 'cash' %}selected{% endif %}>Cash</option>
                 <option value="online" {% if selected_payment == 'online' %}selected{% endif %}>Online</option>
@@ -169,14 +259,14 @@
         <!-- Date filters -->
         <div class="col-6 col-md-2">
             <div class="input-group input-group-sm">
-                <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2">From</span>
-                <input type="date" name="start_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ start_date }}" onchange="this.form.submit()">
+                <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted-plus px-2">From</span>
+                <input type="date" name="start_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-2" value="{{ start_date }}" onchange="this.form.submit()">
             </div>
         </div>
         <div class="col-6 col-md-2">
             <div class="input-group input-group-sm">
-                <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2">To</span>
-                <input type="date" name="end_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ end_date }}" onchange="this.form.submit()">
+                <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted-plus px-2">To</span>
+                <input type="date" name="end_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-2" value="{{ end_date }}" onchange="this.form.submit()">
             </div>
         </div>
     </form>
@@ -188,14 +278,12 @@
         <table class="table align-middle mb-0 table-compact">
             <thead>
                 <tr class="border-bottom">
-                    <th class="ps-4" style="width: 14%;">Invoice / Date</th>
-                    <th style="width: 13%;">Branch & Staff</th>
-                    <th style="width: 13%;">Customer</th>
-                    <th style="width: 22%;">Purchased Items</th>
-                    <th style="width: 11%;">Total & Pay</th>
-                    <th style="width: 11%;">Return Status</th>
-                    <th class="text-center" style="width: 8%;">View</th>
-                    <th class="text-end pe-4" style="width: 8%;">Return</th>
+                    <th class="ps-4" style="width: 14%; min-width: 110px;"><i class="bi bi-receipt me-1 text-primary"></i>Invoice / Date</th>
+                    <th style="width: 13%; min-width: 120px;"><i class="bi bi-shop me-1 text-primary"></i>Branch & Staff</th>
+                    <th style="width: 13%; min-width: 120px;"><i class="bi bi-person me-1 text-primary"></i>Customer</th>
+                    <th style="width: 34%; min-width: 240px;"><i class="bi bi-cart3 me-1 text-primary"></i>Purchased Items</th>
+                    <th style="width: 16%; min-width: 120px;"><i class="bi bi-credit-card me-1 text-primary"></i>Total & Pay</th>
+                    <th class="text-end pe-4" style="width: 10%; min-width: 80px;"><i class="bi bi-lightning me-1 text-primary"></i>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -203,21 +291,30 @@
                 <tr>
                     <!-- Invoice / Date -->
                     <td class="ps-4">
-                        <a href="{% url 'bill_detail' bill.id %}" class="fw-bold text-primary text-xs d-block text-decoration-none">#{{ bill.invoice_number|default:bill.id }}</a>
-                        <span class="text-muted text-xxs d-block mt-0.5"><i class="bi bi-clock me-1"></i>{{ bill.created_at|date:"d M y, H:i" }}</span>
+                        <a href="{% url 'bill_detail' bill.id %}" class="invoice-badge">#{{ bill.invoice_number|default:bill.id }}</a>
+                        {% if bill.total_savings > 0 %}
+                        <span class="badge bg-purple text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle" style="background: linear-gradient(135deg, #d946ef, #8b5cf6) !important; font-size: 0.6rem; vertical-align: middle;">
+                            <i class="bi bi-tag-fill me-0.5"></i>Combo
+                        </span>
+                        {% endif %}
+                        <span class="text-muted text-xxs d-block mt-1"><i class="bi bi-clock me-1"></i>{{ bill.created_at|date:"d M y, H:i" }}</span>
                     </td>
                     
                     <!-- Branch & Staff -->
                     <td>
-                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-semibold mb-1 d-inline-block">{{ bill.branch.name }}</span>
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-semibold mb-1 d-inline-block"><i class="bi bi-shop me-0.5"></i>{{ bill.branch.name }}</span>
                         <span class="text-muted text-xxs d-block"><i class="bi bi-person me-1"></i>{{ bill.staff.username }}</span>
                     </td>
                     
                     <!-- Customer -->
                     <td>
-                        <span class="fw-semibold text-dark text-xs d-block">{{ bill.customer_name|default:"Guest" }}</span>
+                        {% if bill.customer_name and bill.customer_name != "Guest" %}
+                        <span class="fw-semibold text-dark text-xs d-block">{{ bill.customer_name }}</span>
                         {% if bill.customer_phone %}
                         <span class="text-muted text-xxs d-block mt-0.5"><i class="bi bi-telephone me-1"></i>{{ bill.customer_phone }}</span>
+                        {% endif %}
+                        {% else %}
+                        <span class="badge bg-light text-muted border px-2 py-1 text-xxs fw-semibold rounded-pill"><i class="bi bi-person me-1"></i>Walk-in</span>
                         {% endif %}
                     </td>
                     
@@ -225,11 +322,13 @@
                     <td>
                         <div class="item-scroll-list">
                             {% for item in bill.items.all %}
-                            <div class="text-xs text-dark d-flex align-items-center justify-content-between py-1 border-bottom border-light">
-                                <span class="fw-medium text-truncate me-2" style="max-width: 160px;" title="{{ item.product.name }}">{{ item.product.name }}</span>
-                                <div class="d-flex align-items-center gap-1.5">
-                                    <code class="text-muted text-xxs font-monospace">[{{ item.product.barcode }}]</code>
-                                    <span class="badge bg-light text-secondary border-0 px-1.5 py-0.5 text-xxs">x{{ item.quantity }}</span>
+                            <div class="scrollable-item-row d-flex align-items-center justify-content-between">
+                                <span class="fw-semibold text-truncate text-dark text-xxs me-2" style="max-width: calc(100% - 100px);" title="{{ item.product.name }}">
+                                    <i class="bi bi-dot text-primary me-0.5"></i>{{ item.product.name }}
+                                </span>
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="badge bg-light text-muted border-0 px-1 py-0.5 text-xxs font-monospace" style="font-size: 8px;">{{ item.product.barcode }}</span>
+                                    <span class="badge bg-primary text-white border-0 px-1.5 py-0.5 rounded-pill text-xxs font-monospace" style="font-size: 9px; min-width: 20px; text-align: center;">x{{ item.quantity }}</span>
                                 </div>
                             </div>
                             {% endfor %}
@@ -238,14 +337,14 @@
                     
                     <!-- Total & Pay -->
                     <td>
-                        <span class="fw-bold text-dark text-xs d-block">₹{{ bill.total_amount }}</span>
+                        <span class="fw-bold text-dark text-xs d-block" style="font-weight: 800; font-size: 0.85rem;">₹{{ bill.total_amount }}</span>
                         <div class="mt-1">
                             {% if bill.payment_method == 'cash' %}
-                            <span class="badge bg-success-subtle text-success rounded-pill px-2 py-0.5 text-xxs">Cash</span>
+                            <span class="badge-cash">Cash</span>
                             {% elif bill.payment_method == 'online' %}
-                            <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-0.5 text-xxs">Online</span>
+                            <span class="badge-online">Online</span>
                             {% else %}
-                            <span class="badge bg-info-subtle text-info rounded-pill px-2 py-0.5 text-xxs">Split</span>
+                            <span class="badge-split">Split</span>
                             <div class="text-muted text-xxs mt-0.5 font-monospace" style="font-size: 9px; line-height: 1.1;">
                                 C: ₹{{ bill.cash_amount|floatformat:0 }} | O: ₹{{ bill.online_amount|floatformat:0 }}
                             </div>
@@ -253,102 +352,18 @@
                         </div>
                     </td>
                     
-                    <!-- Return Status -->
-                    <td>
-                        {% if bill.has_returns %}
-                        <span class="badge bg-danger-subtle text-danger rounded-pill px-2.5 py-1 text-xxs fw-bold d-inline-flex align-items-center mb-1">
-                            <i class="bi bi-arrow-return-left me-1"></i>Refund: ₹{{ bill.return_amount|floatformat:0 }}
-                        </span>
-                        <button class="btn btn-link text-danger p-0 d-block text-xxs text-decoration-none" 
-                                type="button" 
-                                data-bs-toggle="collapse" 
-                                data-bs-target="#returns-{{ bill.id }}" 
-                                aria-expanded="false" 
-                                aria-controls="returns-{{ bill.id }}">
-                            <i class="bi bi-eye-fill me-1"></i>View Items
-                        </button>
-                        {% else %}
-                        <span class="text-muted text-xxs">—</span>
-                        {% endif %}
-                    </td>
                     
-                    <td class="text-center">
-                        <a href="{% url 'bill_detail' bill.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-2.5 py-0.5 text-xxs fw-semibold shadow-sm">
-                            <i class="bi bi-eye me-0.5"></i>View
-                        </a>
-                    </td>
+
+                    <!-- Actions -->
                     <td class="text-end pe-4">
-                        <a href="{% url 'return_create' %}?invoice_id={{ bill.id }}" class="btn btn-warning btn-sm rounded-pill px-2.5 py-0.5 text-xxs fw-semibold shadow-sm">
-                            <i class="bi bi-arrow-counterclockwise me-0.5"></i>Return
+                        <a href="{% url 'bill_detail' bill.id %}" class="btn-view-action">
+                            <i class="bi bi-eye"></i>View
                         </a>
                     </td>
                 </tr>
-                
-                <!-- Collapsible Return Details Row -->
-                {% if bill.has_returns %}
-                <tr class="collapse-row">
-                    <td colspan="8" class="p-0 border-0">
-                        <div class="collapse" id="returns-{{ bill.id }}">
-                            <div class="p-3 border-top border-bottom bg-light-subtle">
-                                <div class="collapse-card card-body p-3 bg-white">
-                                    <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom border-light">
-                                        <h6 class="text-danger fw-bold m-0 text-xs text-uppercase tracking-wider">
-                                            <i class="bi bi-arrow-return-left me-1"></i>Returned Items Details
-                                        </h6>
-                                        <span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-0.5 text-xxs fw-bold">
-                                            Total Refunded: ₹{{ bill.return_amount|floatformat:0 }}
-                                        </span>
-                                    </div>
-                                    
-                                    {% if bill.return_reason %}
-                                    <div class="mb-3 text-dark text-xs bg-danger-subtle bg-opacity-10 p-2 rounded border-start border-3 border-danger">
-                                        <strong>Return Reason / Remark:</strong> {{ bill.return_reason }}
-                                    </div>
-                                    {% endif %}
-                                    
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-borderless align-middle mb-0 text-xs">
-                                            <thead>
-                                                <tr class="text-muted border-bottom text-uppercase text-xxs fw-bold">
-                                                    <th>Product Name</th>
-                                                    <th>Barcode</th>
-                                                    <th class="text-center">Returned Qty</th>
-                                                    <th class="text-end">Item Price</th>
-                                                    <th class="text-center">Condition</th>
-                                                    <th class="text-center">Action Taken</th>
-                                                    <th class="text-end pe-3">Refund Amount</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for ri in bill.returned_items_list %}
-                                                <tr class="border-bottom border-light">
-                                                    <td class="fw-semibold text-dark">{{ ri.name }}</td>
-                                                    <td><code class="text-muted">{{ ri.barcode }}</code></td>
-                                                    <td class="text-center">
-                                                        <span class="badge bg-danger-subtle text-danger px-2 py-0.5">x{{ ri.quantity }}</span>
-                                                    </td>
-                                                    <td class="text-end">₹{{ ri.price|floatformat:0 }}</td>
-                                                    <td class="text-center">
-                                                        <span class="badge bg-secondary-subtle text-secondary text-xxs px-2 py-0.5 text-capitalize">{{ ri.condition }}</span>
-                                                    </td>
-                                                    <td class="text-center">
-                                                        <span class="badge bg-info-subtle text-info text-xxs px-2 py-0.5 text-capitalize">{{ ri.action }}</span>
-                                                    </td>
-                                                    <td class="text-end fw-bold text-danger pe-3">₹{{ ri.total|floatformat:0 }}</td>
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                {% endif %}
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="text-center py-4 text-muted">No sales data found.</td>
+                    <td colspan="6" class="text-center py-4 text-muted">No sales data found.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -358,80 +373,70 @@
     <!-- Mobile Card View -->
     <div class="d-md-none bg-light-subtle p-2">
         {% for bill in page_obj %}
-        <div class="card border-0 shadow-sm p-3 mb-2.5 bg-white rounded-3">
-            <div class="d-flex justify-content-between align-items-start mb-2 pb-2 border-bottom border-light">
+        <div class="card mobile-bill-card mobile-bill-card-{{ bill.payment_method }} p-3 border-0">
+            <div class="d-flex justify-content-between align-items-start mb-2.5 pb-2 border-bottom border-light">
                 <div>
-                    <a href="{% url 'bill_detail' bill.id %}" class="fw-bold text-primary text-xs d-block text-decoration-none">#{{ bill.invoice_number|default:bill.id }}</a>
-                    <span class="text-muted text-xxs d-block mt-0.5">{{ bill.created_at|date:"d M y, H:i" }}</span>
+                    <a href="{% url 'bill_detail' bill.id %}" class="invoice-badge">#{{ bill.invoice_number|default:bill.id }}</a>
+                    {% if bill.total_savings > 0 %}
+                    <span class="badge bg-purple text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle" style="background: linear-gradient(135deg, #d946ef, #8b5cf6) !important; font-size: 0.6rem; vertical-align: middle;">
+                        <i class="bi bi-tag-fill me-0.5"></i>Combo
+                    </span>
+                    {% endif %}
+                    <span class="text-muted text-xxs d-block mt-1"><i class="bi bi-clock me-1"></i>{{ bill.created_at|date:"d M y, H:i" }}</span>
                 </div>
                 <div>
-                    <span class="badge bg-secondary-subtle text-secondary rounded-pill text-xxs">{{ bill.branch.name }}</span>
+                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-semibold"><i class="bi bi-shop me-0.5"></i>{{ bill.branch.name }}</span>
                 </div>
             </div>
             
-            <div class="row g-2 mb-2">
+            <div class="row g-2 mb-2.5">
                 <div class="col-6">
-                    <span class="text-xxs text-uppercase fw-bold text-muted d-block">Customer</span>
-                    <span class="fw-semibold text-dark text-xs d-block">{{ bill.customer_name|default:"Guest" }}</span>
+                    <span class="text-xxs text-uppercase fw-bold text-muted-plus d-block mb-1">Customer</span>
+                    {% if bill.customer_name and bill.customer_name != "Guest" %}
+                    <span class="fw-semibold text-dark text-xs d-block">{{ bill.customer_name }}</span>
                     {% if bill.customer_phone %}
-                    <span class="text-muted text-xxs d-block mt-0.5">{{ bill.customer_phone }}</span>
+                    <span class="text-muted text-xxs d-block mt-0.5"><i class="bi bi-telephone me-1"></i>{{ bill.customer_phone }}</span>
+                    {% endif %}
+                    {% else %}
+                    <span class="badge bg-light text-muted border px-2 py-0.5 text-xxs fw-semibold rounded-pill"><i class="bi bi-person me-0.5"></i>Walk-in</span>
                     {% endif %}
                 </div>
                 <div class="col-6 text-end">
-                    <span class="text-xxs text-uppercase fw-bold text-muted d-block">Amount & Pay</span>
-                    <span class="fw-bold text-dark text-xs d-block">₹{{ bill.total_amount }}</span>
+                    <span class="text-xxs text-uppercase fw-bold text-muted-plus d-block mb-1">Total & Pay</span>
+                    <span class="fw-bold text-dark text-xs d-block" style="font-weight: 800; font-size: 0.85rem;">₹{{ bill.total_amount }}</span>
                     <div class="mt-1">
                         {% if bill.payment_method == 'cash' %}
-                        <span class="badge bg-success-subtle text-success rounded-pill px-2 py-0.5 text-xxs">Cash</span>
+                        <span class="badge-cash">Cash</span>
                         {% elif bill.payment_method == 'online' %}
-                        <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-0.5 text-xxs">Online</span>
+                        <span class="badge-online">Online</span>
                         {% else %}
-                        <span class="badge bg-info-subtle text-info rounded-pill px-2 py-0.5 text-xxs">Split</span>
+                        <span class="badge-split">Split</span>
                         {% endif %}
                     </div>
                 </div>
             </div>
             
-            <div class="mb-2 bg-light p-2 rounded-2">
-                <span class="text-xxs text-uppercase fw-bold text-muted d-block mb-1">Purchased Items</span>
+            <div class="mb-2 bg-light bg-opacity-50 p-2 rounded-3">
+                <span class="text-xxs text-uppercase fw-bold text-muted-plus d-block mb-1.5"><i class="bi bi-cart3 me-1"></i>Purchased Items</span>
                 <div class="d-flex flex-column gap-1">
                     {% for item in bill.items.all %}
-                    <div class="text-xxs d-flex justify-content-between text-dark">
-                        <span>{{ item.product.name }}</span>
-                        <span class="fw-semibold">x{{ item.quantity }}</span>
+                    <div class="scrollable-item-row d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold text-truncate text-dark text-xxs me-2" style="max-width: calc(100% - 90px);">{{ item.product.name }}</span>
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="badge bg-light text-muted border-0 px-1 py-0.5 text-xxs font-monospace" style="font-size: 8px;">{{ item.product.barcode }}</span>
+                            <span class="badge bg-primary text-white border-0 px-1.5 py-0.5 rounded-pill text-xxs font-monospace" style="font-size: 8px;">x{{ item.quantity }}</span>
+                        </div>
                     </div>
                     {% endfor %}
                 </div>
             </div>
             
-            {% if bill.has_returns %}
-            <div class="bg-danger-subtle bg-opacity-10 p-2.5 rounded mb-2 border-start border-3 border-danger">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="text-xxs text-danger fw-bold"><i class="bi bi-arrow-return-left me-1"></i>Returned Info</span>
-                    <span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-0.5 text-xxs">Refund: ₹{{ bill.return_amount|floatformat:0 }}</span>
-                </div>
-                {% if bill.return_reason %}
-                <div class="text-xxs text-muted mb-1"><strong>Reason:</strong> {{ bill.return_reason }}</div>
-                {% endif %}
-                <div class="d-flex flex-column gap-1">
-                    {% for ri in bill.returned_items_list %}
-                    <div class="text-xxs text-danger d-flex justify-content-between">
-                        <span>{{ ri.name }}</span>
-                        <span>x{{ ri.quantity }}</span>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-            
-            <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-light">
-                <span class="text-xxs text-muted">Staff: {{ bill.staff.username }}</span>
-                <div class="btn-group btn-group-sm shadow-sm" role="group">
-                    <a href="{% url 'bill_detail' bill.id %}" class="btn btn-outline-primary px-2.5 py-1 text-xxs fw-semibold d-inline-flex align-items-center">
-                        <i class="bi bi-eye me-1"></i>View
-                    </a>
-                    <a href="{% url 'return_create' %}?invoice_id={{ bill.id }}" class="btn btn-warning px-2.5 py-1 text-xxs fw-semibold d-inline-flex align-items-center">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i>Return
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2 pt-2 border-top border-light">
+                <span class="text-xxs text-muted"><i class="bi bi-person me-1"></i>Staff: {{ bill.staff.username }}</span>
+                
+                <div class="d-flex gap-1.5 flex-nowrap">
+                    <a href="{% url 'bill_detail' bill.id %}" class="btn-view-action">
+                        <i class="bi bi-eye"></i>View
                     </a>
                 </div>
             </div>

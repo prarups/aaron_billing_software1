@@ -1,13 +1,12 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
-from .forms import ReturnCreateForm
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.db import transaction, models
 from django.utils import timezone
 from django.db.models import Sum, Count, F, Subquery, OuterRef
 from core.models import Product, ProductRegistry, StockTransaction
-from .models import Bill, BillItem, ReturnRequest, CreditNote
+from .models import Bill, BillItem
 import json
 import csv
 
@@ -79,64 +78,6 @@ def get_product_by_barcode(request):
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'}, status=404)
 
-@login_required
-@transaction.atomic
-def return_create_view(request):
-    if request.method == 'POST':
-        form = ReturnCreateForm(request.POST)
-        if form.is_valid():
-            import json
-            # Parse selected return items sent as JSON
-            return_items_json = request.POST.get('return_items', '[]')
-            try:
-                return_items = json.loads(return_items_json)
-            except json.JSONDecodeError:
-                return_items = []
-                        # Process each returned item with its own condition and action
-            for item_data in return_items:
-                try:
-                    bill_item = BillItem.objects.select_related('product').get(id=item_data['id'])
-                except BillItem.DoesNotExist:
-                    continue
-                qty = int(item_data.get('quantity', 1))
-                condition = item_data.get('condition', form.cleaned_data['condition'])
-                action_type = item_data.get('action_type', form.cleaned_data['action_type'])
-                reason = form.cleaned_data['reason']
-                # Create ReturnRequest per item
-                ret = ReturnRequest.objects.create(
-                    invoice=form.cleaned_data['invoice_id'],
-                    bill_item=bill_item,
-                    product=bill_item.product,
-                    quantity=qty,
-                    condition=condition,
-                    action_type=action_type,
-                    requested_by=request.user,
-                    product_name=bill_item.product.name,
-                    reason=reason,
-                    status=ReturnRequest.Status.APPROVED,
-                    active_branch=request.user.active_branch,
-                )
-                # Credit note per item – only for refunds
-                if action_type == 'REFUND':
-                    CreditNote.objects.create(
-                        invoice=form.cleaned_data['invoice_id'],
-                        amount=bill_item.unit_price * qty,
-                        reason=reason,
-                        issued_by=request.user,
-                    )
-                # Update stock
-                _process_stock(ret, request.user)
-            # Old per-item loop removed (handled above)
-
-            messages.success(request, f"Processed {len(return_items)} returned item(s) for Invoice {form.cleaned_data['invoice_id'].invoice_number or form.cleaned_data['invoice_id'].id}.")
-            return redirect('stock_pivot_report')
-    else:
-        initial = {}
-        invoice_id = request.GET.get('invoice_id')
-        if invoice_id:
-            initial['invoice_id'] = invoice_id
-        form = ReturnCreateForm(initial=initial)
-    return render(request, 'billing/return_create.html', {'form': form})
 
 @login_required
 @transaction.atomic
@@ -151,7 +92,8 @@ def process_bill(request):
             payment_method = data.get('payment_method', 'cash')
             cash_amount = data.get('cash_amount', 0)
             online_amount = data.get('online_amount', 0)
-            retail_price = data.get('retail_price', data.get('discount_amount', 0))
+
+            retail_price = data.get('retail_price', 0)
             
             if not items:
                 return JsonResponse({'error': 'Cart is empty'}, status=400)
@@ -160,6 +102,12 @@ def process_bill(request):
                 if editing_bill_id:
                     # Retrieve existing bill for modification
                     bill = get_object_or_404(Bill, id=editing_bill_id)
+                    
+                    # Double-check authorization to edit
+                    can_edit = request.user.role == 'owner' or getattr(request.user, 'has_bill_edit_rights', False)
+                    is_newly_created = request.session.get('newly_created_bill_id') == bill.id
+                    if not (can_edit or is_newly_created):
+                        return JsonResponse({'error': 'Unauthorized to edit this bill.'}, status=403)
                     # Revert stock quantities of old items
                     for old_item in bill.items.all():
                         try:
@@ -184,6 +132,7 @@ def process_bill(request):
                     bill.cash_amount = cash_amount
                     bill.online_amount = online_amount
                     bill.retail_price = retail_price
+
                 else:
                     # Create a new Bill
                     bill = Bill.objects.create(
@@ -199,6 +148,7 @@ def process_bill(request):
                     )
                 
                 subtotal_amount = 0
+                retail_price_total = 0
                 resolved_items = []
                 for item in items:
                     product = get_object_or_404(Product, id=item['id'])
@@ -331,7 +281,7 @@ def process_bill(request):
                     
                     subtotal_amount += bill_item.subtotal
                 
-                total_amount = float(subtotal_amount) + float(retail_price)
+                total_amount = float(subtotal_amount) + float(bill.retail_price)
                 if total_amount < 0:
                     total_amount = 0
                     
@@ -377,13 +327,21 @@ def update_customer_details(request, bill_id):
 @login_required
 def edit_bill_back(request, bill_id):
     bill = get_object_or_404(Bill, id=bill_id)
-    # Check permissions
+    # Check permissions (branch ownership)
     if not request.user.is_superuser and bill.branch != request.user.active_branch:
         return HttpResponse("Unauthorized to edit this bill.", status=403)
-        
-    # Check if editing is allowed (only allowed if it was the last generated bill)
-    if request.session.get('newly_created_bill_id') != bill.id:
-        return HttpResponse("Editing is only allowed immediately after generating the bill.", status=403)
+
+    # Restrict editing to the same calendar day as bill creation (applies to all users, including admin)
+    from django.utils import timezone
+    if bill.created_at.date() != timezone.now().date():
+        return HttpResponse("Editing is only allowed on the same day the bill was created.", status=403)
+
+    # Existing permission check: allow owners or users with explicit edit rights
+    can_edit = request.user.role == 'owner' or getattr(request.user, 'has_bill_edit_rights', False)
+    if not can_edit:
+        # Also allow if this is the bill just created in the current session
+        if request.session.get('newly_created_bill_id') != bill.id:
+            return HttpResponse("Editing is only allowed immediately after generating the bill.", status=403)
         
     items_data = []
     for item in bill.items.all():
@@ -430,9 +388,7 @@ def bill_detail(request, bill_id):
     bill = get_object_or_404(Bill, id=bill_id)
     if not request.user.is_superuser and bill.branch != request.user.active_branch:
         return HttpResponse("Unauthorized to view this bill.", status=403)
-        
     items = bill.items.select_related('product').all()
-    
     # Build WhatsApp message text
     public_url = request.build_absolute_uri(f"/billing/share/{bill.share_id}/")
     wa_lines = [
@@ -446,8 +402,17 @@ def bill_detail(request, bill_id):
     # Check if this bill was just created in the current session and redirected from POS
     from_pos = request.GET.get('from_pos') == 'true'
     newly_created_id = request.session.get('newly_created_bill_id')
-    allow_edit = from_pos and (newly_created_id == bill.id)
+    can_edit = request.user.role == 'owner' or getattr(request.user, 'has_bill_edit_rights', False)
+    allow_edit = can_edit or (from_pos and (newly_created_id == bill.id))
     
+    # Build items list with barcode formatting for Code39 font
+    items = list(items)
+    for it in items:
+        raw_bc = it.product.barcode or ''
+        # Replace spaces with hyphens (safe delimiter) and wrap with asterisks as required by Code39
+        safe_bc = raw_bc.replace(' ', '-')
+        it.barcode_display = f"*{safe_bc}*"
+
     return render(request, 'billing/bill_detail.html', {
         'bill': bill,
         'items': items,
@@ -460,6 +425,19 @@ def public_bill_detail(request, share_id):
     """Publicly accessible bill view for customers (no login required)."""
     bill = get_object_or_404(Bill, share_id=share_id)
     items = bill.items.select_related('product').all()
+    # Prepare barcode for Code39: replace spaces with hyphens and wrap with asterisks
+    items = list(items)
+    for it in items:
+        raw = it.product.barcode or ''
+        safe = raw.replace(' ', '-')
+        it.barcode_display = f"*{safe}*"
+    # Build items list with barcode formatting for Code39 font
+    items = list(items)
+    for it in items:
+        raw_bc = it.product.barcode or ''
+        safe_bc = raw_bc.replace(' ', '-')
+        it.barcode_display = f"*{safe_bc}*"
+
     return render(request, 'billing/public_bill_detail.html', {
         'bill': bill,
         'items': items,
@@ -510,7 +488,7 @@ def owner_bill_list(request):
     
     # Restricted query for Managers
     accessible_branches = request.user.get_accessible_branches()
-    bills = Bill.objects.filter(branch__in=accessible_branches).order_by('-created_at').select_related('branch', 'staff').prefetch_related('items__product', 'return_requests__product')
+    bills = Bill.objects.filter(branch__in=accessible_branches).order_by('-created_at').select_related('branch', 'staff').prefetch_related('items__product')
     
     # Filter by active branch if manager
     if request.user.role == 'manager':
@@ -567,22 +545,6 @@ def owner_bill_list(request):
     paginator = Paginator(bills, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
-    # Annotate each bill on the current page with return data
-    for bill in page_obj:
-        returns_qs = bill.return_requests.filter(status=ReturnRequest.Status.APPROVED)
-        bill.return_amount = sum([(ret.quantity * (ret.product.price if ret.product else 0)) for ret in returns_qs if ret.action_type == 'REFUND'])
-        bill.return_reason = ", ".join(set([ret.reason for ret in returns_qs if ret.reason]))
-        bill.returned_items_list = [{
-            'name': ret.product_name,
-            'barcode': ret.product.barcode if ret.product else 'N/A',
-            'quantity': ret.quantity,
-            'price': float(ret.product.price) if ret.product else 0,
-            'total': float(ret.quantity * (ret.product.price if ret.product else 0)),
-            'condition': ret.get_condition_display(),
-            'action': ret.get_action_type_display(),
-        } for ret in returns_qs]
-        bill.has_returns = len(bill.returned_items_list) > 0
     context = {
         'page_obj': page_obj,
         'stats': stats,
@@ -614,7 +576,7 @@ def export_sales_csv(request):
     
     # Build base queryset
     accessible_branches = request.user.get_accessible_branches()
-    bills = Bill.objects.filter(branch__in=accessible_branches).order_by('-created_at').select_related('branch', 'staff').prefetch_related('items__product', 'return_requests')
+    bills = Bill.objects.filter(branch__in=accessible_branches).order_by('-created_at').select_related('branch', 'staff').prefetch_related('items__product')
     
     q = request.GET.get('q', '')
     start_date = request.GET.get('start_date', '')
@@ -651,11 +613,10 @@ def export_sales_csv(request):
         
     for bill in bills.select_related('branch', 'staff'):
         purchased_items = ", ".join([f"{item.product.name} ({item.product.barcode}) x{item.quantity}" for item in bill.items.all()])
-        # Aggregate return data
-        returns_qs = bill.return_requests.filter(status=ReturnRequest.Status.APPROVED)
-        total_return_amount = sum([ (ret.quantity * (ret.product.price if ret.product else 0)) for ret in returns_qs if ret.action_type == 'REFUND' ])
-        return_reason = ", ".join(set([ret.reason for ret in returns_qs if ret.reason]))
-        returned_items = ", ".join([f"{ret.product_name} [{ret.product.barcode if ret.product else 'N/A'}] x{ret.quantity} @₹{ret.product.price if ret.product else 0}/ea ({ret.get_condition_display()}/{ret.get_action_type_display()})" for ret in returns_qs])
+        # Return data is deactivated
+        total_return_amount = 0
+        return_reason = ""
+        returned_items = ""
         writer.writerow([
             bill.invoice_number,
             bill.branch.name if bill.branch else 'N/A',

@@ -781,6 +781,8 @@
             }
         }
 
+
+
         fetch('/billing/process-bill/', {
             method: 'POST',
             headers: {
@@ -795,7 +797,8 @@
                 cash_amount: cash_amount,
                 online_amount: online_amount,
                 retail_price: retailPrice,
-                editing_bill_id: editingBillId
+                editing_bill_id: editingBillId,
+
             })
         })
         .then(res => res.json())
