@@ -126,8 +126,16 @@ class StaffForm(forms.ModelForm):
         cleaned_data = super().clean()
         role = cleaned_data.get('role')
         branches = cleaned_data.get('branches')
+        # Enforce at least one branch for managers and staff
+        if role in ['manager', 'staff'] and (not branches or len(branches) == 0):
+            raise forms.ValidationError(
+                "Managers and Staff must be assigned at least one branch."
+            )
+        # Only owners and managers can be assigned multiple branches
         if role not in ['owner', 'manager'] and branches and len(branches) > 1:
-            raise forms.ValidationError('Only managers and admins can be assigned multiple branches.')
+            raise forms.ValidationError(
+                "Only managers and admins can be assigned multiple branches."
+            )
         return cleaned_data
 
     def save(self, commit=True):

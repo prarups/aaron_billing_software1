@@ -501,6 +501,12 @@ def owner_bill_list(request):
     if request.user.role == 'staff':
         return HttpResponse("Unauthorized", status=403)
     
+    # Ensure active_branch is set for manager/owner
+    if not request.user.active_branch:
+        accessible = request.user.get_accessible_branches()
+        if accessible.exists():
+            request.user.active_branch = accessible.first()
+            request.user.save()
     # Restricted query for Managers
     accessible_branches = request.user.get_accessible_branches()
     bills = Bill.objects.filter(branch__in=accessible_branches).order_by('-created_at').select_related('branch', 'staff').prefetch_related('items__product')
@@ -533,10 +539,12 @@ def owner_bill_list(request):
         # Ensure they can only filter branches they manage
         if branch_id and branch_id != 'None':
             if not branches.filter(id=branch_id).exists():
-                branch_id = str(request.user.active_branch.id)
+                if request.user.active_branch:
+                    branch_id = str(request.user.active_branch.id)
         else:
-            # Default to active branch if no valid filter
-            branch_id = str(request.user.active_branch.id)
+            # Default to active branch if no valid filter and active_branch exists
+            if request.user.active_branch:
+                branch_id = str(request.user.active_branch.id)
     else:
         from core.models import Branch
         branches = Branch.objects.all()
