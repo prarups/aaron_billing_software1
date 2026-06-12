@@ -657,14 +657,16 @@
     // Scanner
     document.getElementById('toggle-scanner').addEventListener('click', () => {
         const wrapper = document.getElementById('scanner-wrapper');
-        const btn = document.getElementById('toggle-scanner');
-        if (isScannerOpen) {
-            html5QrCode.stop().then(() => {
-                wrapper.style.display = 'none';
-                isScannerOpen = false;
-                btn.innerHTML = '<i class="bi bi-camera me-1"></i> Scan';
-            });
-        } else {
+const btn = document.getElementById('toggle-scanner');
+if (isScannerOpen) {
+    // Immediately update UI to show Scan button
+    btn.innerHTML = '<i class="bi bi-camera me-1"></i> Scan';
+    wrapper.style.display = 'none';
+    // Reset state synchronously
+    isScannerOpen = false;
+    // Stop scanner and handle any errors gracefully
+    html5QrCode.stop().catch(err => console.error('Error stopping scanner:', err));
+} else {
             wrapper.style.display = 'block';
             btn.innerHTML = '<i class="bi bi-x-lg me-1"></i> Close';
             html5QrCode.start(
