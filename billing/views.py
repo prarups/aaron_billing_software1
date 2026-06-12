@@ -338,11 +338,15 @@ def edit_bill_back(request, bill_id):
 
     # Existing permission check: allow owners or users with explicit edit rights
     can_edit = request.user.role == 'owner' or getattr(request.user, 'has_bill_edit_rights', False)
+    # Allow editing from POS interface (e.g., when a staff is actively billing) via a query flag
+    from_pos = request.GET.get('from_pos') == 'true'
+    if from_pos:
+        can_edit = True
     if not can_edit:
         # Also allow if this is the bill just created in the current session
         if request.session.get('newly_created_bill_id') != bill.id:
             return HttpResponse("Editing is only allowed immediately after generating the bill.", status=403)
-        
+            
     items_data = []
     for item in bill.items.all():
         # Get current registry stock
@@ -390,14 +394,25 @@ def bill_detail(request, bill_id):
         return HttpResponse("Unauthorized to view this bill.", status=403)
     items = bill.items.select_related('product').all()
     # Build WhatsApp message text
+    import urllib.parse
     public_url = request.build_absolute_uri(f"/billing/share/{bill.share_id}/")
     wa_lines = [
         f"*Bill {bill.invoice_number or bill.id} - {bill.branch.name}*",
         f"View/Download Bill: {public_url}",
         "Follow us on Instagram: https://www.instagram.com/aaron_garments?igsh=YWpkdWE0emkyZjNv"
     ]
-    wa_text = "%0A".join(wa_lines)
-    wa_link = f"https://wa.me/{bill.customer_phone}?text={wa_text}" if bill.customer_phone else None
+    wa_text = "\n".join(wa_lines)
+    # Normalize phone number: strip non-digits and ensure it has a country code (default to '91' for India)
+    def normalize_phone(phone: str) -> str:
+        digits = ''.join(filter(str.isdigit, phone))
+        # If the number starts with a country code (e.g., 1-3 digits) and length > 10, keep as is
+        if len(digits) > 10:
+            return digits
+        # Otherwise, prepend default country code (you may adjust as needed)
+        return f"91{digits}" if digits else ''
+    normalized_phone = normalize_phone(bill.customer_phone) if bill.customer_phone else ''
+    encoded_text = urllib.parse.quote(wa_text)
+    wa_link = f"https://wa.me/{normalized_phone}?text={encoded_text}" if normalized_phone else None
     
     # Check if this bill was just created in the current session and redirected from POS
     from_pos = request.GET.get('from_pos') == 'true'
