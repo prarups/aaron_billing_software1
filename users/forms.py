@@ -90,20 +90,25 @@ class StaffForm(forms.ModelForm):
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['role'].choices = [('owner', 'Admin'), ('manager', 'Manager'), ('staff', 'Staff')]
-        self.fields['branches'].queryset = Branch.objects.all()
-        # Employee ID is optional on form input as it will auto-generate if blank
-        self.fields['employee_id'].required = False
-        # Mobile number is mandatory
-        self.fields['mobile_number'].required = True
-
     def clean_password(self):
         password = self.cleaned_data.get('password')
         if not self.instance.pk and not password:
             raise forms.ValidationError("Password is required for new accounts.")
         return password
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['role'].choices = [('owner', 'Admin'), ('manager', 'Manager'), ('staff', 'Staff')]
+        self.fields['branches'].queryset = Branch.objects.all()
+        # Employee ID is optional on form input as it will auto‑generate if blank
+        self.fields['employee_id'].required = False
+        # Make employee_id read‑only on edit
+        if self.instance.pk:
+            self.fields['employee_id'].widget.attrs['readonly'] = True
+            self.fields['employee_id'].disabled = True
+
+        self.fields['mobile_number'].required = True
+
 
     def clean_is_active(self):
         is_active = self.cleaned_data.get('is_active')

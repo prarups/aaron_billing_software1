@@ -9,9 +9,7 @@
             <!-- Receipt Header -->
             <div class="card-body p-4">
                 <div class="text-center mb-4 bg-vibrant p-4 mx-n4 mt-n4 position-relative">
-                    {% if allow_edit %}
-                    <a href="{% url 'edit_bill_back' bill.id %}?from_pos=true" class="btn btn-warning btn-sm position-absolute top-0 start-0 m-3 shadow-none text-white fw-bold" style="font-size: 0.7rem;">Edit</a>
-                    {% endif %}
+                    
                     <a href="{% if request.user.role != 'staff' %}{% url 'owner_bill_list' %}{% else %}{% url 'pos_index' %}{% endif %}" onclick="if (document.referrer && document.referrer.includes(window.location.host)) { window.history.back(); return false; }" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 shadow-none" aria-label="Close" style="font-size: 0.8rem;" title="Close and return"></a>
                     <h3 class="fw-bold text-white mb-1">Aaron Garments</h3>
                     <p class="text-white opacity-90 small mb-0 fw-semibold">{{ bill.branch.name }} &bull; Code: {{ bill.branch.code }}</p>
