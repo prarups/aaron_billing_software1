@@ -156,6 +156,11 @@
                         </a>
                         {% endif %}
                     </div>
+                    {% if allow_edit %}
+                    <a href="{% url 'edit_bill_back' bill.id %}?from_pos=true" class="btn btn-warning rounded-pill-sm px-4 py-3">
+                        <i class="bi bi-pencil-square me-2"></i>Edit Bill
+                    </a>
+                    {% endif %}
                     {% if request.user.role != 'staff' %}
                     <a href="{% url 'owner_bill_list' %}" onclick="if (document.referrer && document.referrer.includes(window.location.host)) { window.history.back(); return false; }" class="btn btn-outline-secondary rounded-pill-sm px-4 py-3">
                         <i class="bi bi-arrow-left me-1"></i> Back to Sales Report

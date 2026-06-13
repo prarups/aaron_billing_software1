@@ -14,6 +14,7 @@ import json
 from django.urls import reverse
 @login_required
 def dashboard_redirect(request):
+    """Redirect user to the appropriate dashboard based on role."""
     if request.user.role == 'owner':
         return redirect('owner_dashboard')
     elif request.user.role == 'manager':

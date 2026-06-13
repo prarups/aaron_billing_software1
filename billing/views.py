@@ -417,8 +417,8 @@ def bill_detail(request, bill_id):
     # Check if this bill was just created in the current session and redirected from POS
     from_pos = request.GET.get('from_pos') == 'true'
     newly_created_id = request.session.get('newly_created_bill_id')
-    can_edit = request.user.role == 'owner' or getattr(request.user, 'has_bill_edit_rights', False)
-    allow_edit = can_edit or (from_pos and (newly_created_id == bill.id))
+    # Allow edit only immediately after a newly created bill in this session
+    allow_edit = (newly_created_id == bill.id)
     
     # Build items list with barcode formatting for Code39 font
     items = list(items)
