@@ -9,8 +9,9 @@ from billing.models import Bill
 from core.models import Branch, Product, ProductRegistry
 from .forms import BranchForm, StaffForm
 from .models import User
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 import json
+import csv
 from django.urls import reverse
 @login_required
 def dashboard_redirect(request):
@@ -31,8 +32,8 @@ def switch_branch(request):
         branch_id = request.POST.get('branch_id')
         if branch_id:
             branch = get_object_or_404(Branch, id=branch_id)
-            # Permission check
-            if request.user.is_owner() or request.user.role in ['manager', 'assistant_manager'] or request.user.branches.filter(id=branch.id).exists():
+            # Permission check - must be an authorized branch
+            if branch in request.user.get_accessible_branches():
                 request.user.active_branch = branch
                 request.user.save()
     
@@ -138,6 +139,7 @@ class OwnerDashboardView(TemplateView):
             )
         ).order_by('-today_sales', 'name')
         context['branches'] = branches
+        context['branches_by_code'] = branches.order_by('code', 'id')
         context['recent_bills'] = Bill.objects.order_by('-created_at')[:5]
         
         # Staff list (admins, managers, and staff) with pagination for scalability
@@ -597,6 +599,81 @@ def export_dashboard_sales_csv(request):
             row['branch__name'] or '',
             row['branch__location'] or '',
             int(row['total_sales']) if row['total_sales'] is not None else 0
+        ])
+        
+    return response
+
+
+@login_required
+def export_branches_csv(request):
+    if not request.user.is_owner():
+        return HttpResponse("Unauthorized", status=403)
+        
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="branches_report.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Branch ID / Code', 'Branch Name', 'Location', 'Contact Number', 'Invoice Prefix', 'Sales Staff Count'])
+    
+    from core.models import Branch
+    from django.db.models import Count
+    
+    branches = Branch.objects.annotate(
+        active_staff_count=Count('assigned_users', filter=models.Q(assigned_users__role='sales_staff'))
+    ).order_by('code', 'id')
+    
+    for b in branches:
+        writer.writerow([
+            b.code or b.id,
+            b.name,
+            b.location,
+            b.contact_number or '-',
+            b.invoice_prefix,
+            f"{b.active_staff_count} staff"
+        ])
+        
+    return response
+
+
+@login_required
+def export_staff_csv(request):
+    if not request.user.is_owner():
+        return HttpResponse("Unauthorized", status=403)
+        
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="sales_staff_accounts.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow([
+        'Employee ID', 'Username', 'First Name', 'Last Name', 'Email', 
+        'Role', 'Status', 'Product Rights', 'Bill Edit Rights', 
+        'Date of Joining', 'Mobile Number', 'Address', 'Assigned Branches'
+    ])
+    
+    staff_qs = User.objects.filter(
+        role__in=['owner', 'manager', 'assistant_manager', 'sales_staff']
+    ).prefetch_related('branches').order_by('employee_id', 'username')
+    
+    for s in staff_qs:
+        branches_str = ", ".join([b.name for b in s.branches.all()])
+        status = "Active" if s.is_active else "Inactive"
+        prod_rights = "Yes" if s.has_product_rights else "No"
+        bill_rights = "Yes" if s.has_bill_edit_rights else "No"
+        
+        writer.writerow([
+            s.employee_id or '-',
+            s.username,
+            s.first_name,
+            s.last_name,
+            s.email or '-',
+            s.get_role_display(),
+            status,
+            prod_rights,
+            bill_rights,
+            s.date_of_joining.strftime('%Y-%m-%d') if s.date_of_joining else '-',
+            s.mobile_number or '-',
+            s.address or '-',
+            branches_str or '-'
         ])
         
     return response

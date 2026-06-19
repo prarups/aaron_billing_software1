@@ -20,6 +20,7 @@ urlpatterns = [
     path('branch/add/', views.branch_create, name='branch_create'),
     path('branch/edit/<int:pk>/', views.branch_edit, name='branch_edit'),
     path('branch/delete/<int:pk>/', views.branch_delete, name='branch_delete'),
+    path('branch/export/', views.export_branches_csv, name='export_branches_csv'),
 
     # Staff Management URLs
     path('staff/add/', views.staff_create, name='staff_create'),
@@ -28,5 +29,6 @@ urlpatterns = [
     path('staff/toggle/<int:staff_id>/', views.toggle_staff_active, name='staff_toggle'),
     path('staff/toggle-product-rights/<int:staff_id>/', views.toggle_product_rights, name='toggle_product_rights'),
     path('staff/toggle-bill-edit-rights/<int:staff_id>/', views.toggle_bill_edit_rights, name='toggle_bill_edit_rights'),
+    path('staff/export/', views.export_staff_csv, name='export_staff_csv'),
 ]
 

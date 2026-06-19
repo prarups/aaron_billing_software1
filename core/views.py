@@ -747,7 +747,7 @@ def bulk_insert(request):
                         # Old template: Branch, Product Name, Barcode, Size, Price, Stock, Low Stock Level
                         product_name = (row.get('Name') or row.get('Product Name') or '').strip()
                         barcode = (row.get('Barcode') or '').strip()
-                        size = (row.get('Size') or '').strip()
+                        size = (row.get('HSN') or row.get('Size') or '').strip()
                         price = (row.get('Price') or '').strip()
                         stock = (row.get('Initial Stock') or row.get('Stock') or '').strip()
                         low_stock = (row.get('Low Stock Alert') or row.get('Low Stock Level') or '10').strip()
@@ -865,7 +865,7 @@ def bulk_insert(request):
 @login_required
 def download_bulk_template(request):
     # Updated bulk insert template header to include Branch Code
-    header = ["Product Name","Barcode","Price","Size","Branch Code","Initial Stock","Low Stock Alert"]
+    header = ["Product Name","Barcode","Price","HSN","Branch Code","Initial Stock","Low Stock Alert"]
     # This endpoint will generate a CSV template for bulk insert
     import csv
     from django.http import HttpResponse
@@ -874,8 +874,8 @@ def download_bulk_template(request):
     response['Content-Disposition'] = 'attachment; filename="bulk_insert_template.csv"'
     writer = csv.writer(response)
     writer.writerow(header)
-    writer.writerow(['Example Product', 'EX001', '299.00', 'M', 'BR001', '50', '10'])
-    writer.writerow(['Another Product', 'EX002', '149.00', 'L', 'BR001', '100', '15'])
+    writer.writerow(['Example Product', 'EX001', '299.00', '8409', 'BR001', '50', '10'])
+    writer.writerow(['Another Product', 'EX002', '149.00', '8409', 'BR001', '100', '15'])
     
     return response
 

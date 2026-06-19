@@ -212,9 +212,15 @@
                 <button type="submit" class="btn btn-warning w-100 rounded-pill py-2 fw-bold shadow-sm" id="submitBtn">
                     <i class="bi bi-check-circle me-1"></i> Confirm Return & Exchange
                 </button>
+                {% if request.user.role == 'sales_staff' %}
+                <a href="{% url 'staff_activity' %}" class="btn btn-light w-100 rounded-pill py-2 mt-2">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Daily Sales Activity
+                </a>
+                {% else %}
                 <a href="{% url 'owner_bill_list' %}" class="btn btn-light w-100 rounded-pill py-2 mt-2">
                     <i class="bi bi-arrow-left me-1"></i> Back to Sales Report
                 </a>
+                {% endif %}
             </form>
         </div>
     </div>

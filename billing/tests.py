@@ -266,10 +266,10 @@ class BillDetailNavigationTestCase(TestCase):
         url = reverse('bill_detail', args=[self.bill.id])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        # Verify close X button falls back to pos_index for staff
-        self.assertContains(response, 'href="/billing/"')
-        # Verify Back to Sales Report button is NOT present for staff
-        self.assertNotContains(response, 'Back to Sales Report')
+        # Verify close X button falls back to staff_activity for staff
+        self.assertContains(response, 'href="/billing/activity/"')
+        # Verify Back to Daily Sales Activity button is present for staff
+        self.assertContains(response, 'Back to Daily Sales Activity')
 
     def test_bill_detail_whatsapp_link_with_instagram(self):
         self.bill.customer_phone = '9876543210'

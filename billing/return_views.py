@@ -23,7 +23,10 @@ def return_create_view(request):
         if form.is_valid():
             returns = form.save(request.user)
             messages.success(request, f"Processed {len(returns)} returned item(s).")
-            return redirect("stock_pivot_report")
+            if request.user.role == 'sales_staff':
+                return redirect("staff_activity")
+            else:
+                return redirect("stock_pivot_report")
         else:
             print(f"DEBUG return_create_view form errors: {form.errors.as_data()}")
             messages.error(request, "Please correct the errors below.")

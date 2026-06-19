@@ -141,6 +141,19 @@ class StaffForm(forms.ModelForm):
             return timezone.now().date()
         return date
 
+    def clean(self):
+        cleaned_data = super().clean()
+        role = cleaned_data.get('role')
+        branches = cleaned_data.get('branches')
+        
+        if role in ['manager', 'assistant_manager', 'sales_staff']:
+            if not branches:
+                self.add_error('branches', "Please select at least one branch for this account.")
+            elif role == 'sales_staff' and branches.count() > 1:
+                self.add_error('branches', "Sales Staff cannot be assigned to more than one branch. Please select only one branch.")
+        
+        return cleaned_data
+
     def save(self, commit=True):
         user = super().save(commit=False)
         password = self.cleaned_data.get('password')

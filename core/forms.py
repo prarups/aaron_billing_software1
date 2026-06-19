@@ -65,11 +65,14 @@ class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
         fields = ['name', 'barcode', 'price', 'size']
+        labels = {
+            'size': 'HSN',
+        }
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control rounded-pill'}),
             'barcode': forms.TextInput(attrs={'class': 'form-control rounded-pill'}),
             'price': forms.NumberInput(attrs={'class': 'form-control rounded-pill', 'step': '1'}),
-            'size': forms.TextInput(attrs={'class': 'form-control rounded-pill'}),
+            'size': forms.TextInput(attrs={'class': 'form-control rounded-pill', 'placeholder': 'HSN Code'}),
         }
 
     def __init__(self, *args, **kwargs):

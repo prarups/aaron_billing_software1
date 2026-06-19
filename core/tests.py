@@ -1217,6 +1217,54 @@ class ComboBadgeTestCase(TestCase):
         self.assertContains(response, 'Products: 1')
 
 
+class ComboListPermissionTestCase(TestCase):
+    def setUp(self):
+        from core.models import ComboGroup
+        self.client = Client()
+        self.branch_a = Branch.objects.create(name="Nellore Branch", code="10001", invoice_prefix="AN")
+        self.branch_b = Branch.objects.create(name="Guntur Branch", code="10002", invoice_prefix="AG")
+        
+        # Owner user
+        self.owner = User.objects.create_user(
+            username="owner_user", 
+            password="password123", 
+            role="owner",
+            active_branch=self.branch_a
+        )
+        
+        # Staff user assigned ONLY to Branch A
+        self.staff_a = User.objects.create_user(
+            username="staff_a", 
+            password="password123", 
+            role="sales_staff",
+            active_branch=self.branch_a
+        )
+        self.staff_a.branches.add(self.branch_a)
+        
+        # Create two combos: one for Branch A, one for Branch B
+        self.combo_a = ComboGroup.objects.create(name="Nellore Deal", is_active=True)
+        self.combo_a.branches.add(self.branch_a)
+        
+        self.combo_b = ComboGroup.objects.create(name="Guntur Deal", is_active=True)
+        self.combo_b.branches.add(self.branch_b)
+
+    def test_owner_sees_all_combos(self):
+        self.client.login(username="owner_user", password="password123")
+        url = reverse('combo_list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nellore Deal")
+        self.assertContains(response, "Guntur Deal")
+
+    def test_staff_only_sees_assigned_branch_combos(self):
+        self.client.login(username="staff_a", password="password123")
+        url = reverse('combo_list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nellore Deal")
+        self.assertNotContains(response, "Guntur Deal")
+
+
 
 
 

@@ -41,7 +41,13 @@ def calculate_optimal_combo_price(item_prices, tiers_list):
 
 @login_required
 def combo_list(request):
-    combos = ComboGroup.objects.prefetch_related('branches', 'products', 'tiers').all().order_by('-created_at')
+    if request.user.is_owner():
+        combos = ComboGroup.objects.all()
+    else:
+        accessible_branches = request.user.get_accessible_branches()
+        combos = ComboGroup.objects.filter(branches__in=accessible_branches).distinct()
+        
+    combos = combos.prefetch_related('branches', 'products', 'tiers').order_by('-created_at')
     return render(request, 'core/combo_list.html', {
         'combos': combos
     })
@@ -172,12 +178,22 @@ def combo_delete(request, pk):
 def combo_offers_public(request):
     # Determine accessible branches; public user can select any branch
     from core.models import Branch
-    branches = Branch.objects.all().order_by('name')
+    if request.user.is_authenticated:
+        branches = request.user.get_accessible_branches().order_by('name')
+    else:
+        branches = Branch.objects.all().order_by('name')
     
     selected_branch_id = request.GET.get('branch_id')
     selected_branch = None
     if selected_branch_id:
         selected_branch = get_object_or_404(Branch, id=selected_branch_id)
+        if request.user.is_authenticated and not request.user.is_owner():
+            if selected_branch not in branches:
+                selected_branch = branches.first()
+                if selected_branch:
+                    selected_branch_id = str(selected_branch.id)
+                else:
+                    selected_branch_id = None
     elif request.user.is_authenticated and request.user.active_branch:
         selected_branch = request.user.active_branch
         selected_branch_id = str(selected_branch.id)
@@ -202,6 +218,10 @@ def get_branch_combo_data(request):
         return JsonResponse({'error': 'No branch_id provided'}, status=400)
         
     branch = get_object_or_404(Branch, id=branch_id)
+    if request.user.is_authenticated and not request.user.is_owner():
+        if branch not in request.user.get_accessible_branches():
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+            
     combo_groups = ComboGroup.objects.filter(is_active=True, branches=branch).prefetch_related('products', 'tiers')
     
     # We need to filter products to only those available at this branch (registered in ProductRegistry with stock > 0)

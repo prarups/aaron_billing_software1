@@ -332,3 +332,141 @@ class ToggleBillEditRightsTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+
+class BranchSortingTestCase(TestCase):
+    def setUp(self):
+        # Delete any existing branches to avoid collision
+        Branch.objects.all().delete()
+        # Create branches with out-of-order codes
+        self.branch_c = Branch.objects.create(name="Branch C", code=10003, invoice_prefix="AC")
+        self.branch_a = Branch.objects.create(name="Branch A", code=10001, invoice_prefix="AA")
+        self.branch_b = Branch.objects.create(name="Branch B", code=10002, invoice_prefix="AB")
+        
+        # Owner user
+        self.owner = User.objects.create_user(
+            username="owner_user_sorting", 
+            password="password123", 
+            role="owner",
+            is_staff=True
+        )
+
+    def test_owner_dashboard_branches_sorted_by_code(self):
+        self.client.login(username="owner_user_sorting", password="password123")
+        from django.urls import reverse
+        url = reverse('owner_dashboard')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        
+        branches_by_code = response.context['branches_by_code']
+        # Extract codes
+        codes = [b.code for b in branches_by_code]
+        # Should be in ascending order
+        self.assertEqual(codes, [10001, 10002, 10003])
+
+
+class ExportCSVTestCase(TestCase):
+    def setUp(self):
+        # Clean existing branches/users
+        Branch.objects.all().delete()
+        self.branch = Branch.objects.create(name="Nellore Branch", code=10001, invoice_prefix="AN")
+        self.owner = User.objects.create_user(
+            username="owner_user_export", 
+            password="password123", 
+            role="owner",
+            is_staff=True
+        )
+        self.staff = User.objects.create_user(
+            username="staff_user_export", 
+            password="password123", 
+            role="sales_staff"
+        )
+
+    def test_export_branches_csv_as_owner(self):
+        self.client.login(username="owner_user_export", password="password123")
+        from django.urls import reverse
+        url = reverse('export_branches_csv')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'text/csv')
+        self.assertTrue('branches_report.csv' in response['Content-Disposition'])
+
+    def test_export_branches_csv_as_staff_denied(self):
+        self.client.login(username="staff_user_export", password="password123")
+        from django.urls import reverse
+        url = reverse('export_branches_csv')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_export_staff_csv_as_owner(self):
+        self.client.login(username="owner_user_export", password="password123")
+        from django.urls import reverse
+        url = reverse('export_staff_csv')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'text/csv')
+        self.assertTrue('sales_staff_accounts.csv' in response['Content-Disposition'])
+
+    def test_export_staff_csv_as_staff_denied(self):
+        self.client.login(username="staff_user_export", password="password123")
+        from django.urls import reverse
+        url = reverse('export_staff_csv')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 403)
+
+
+class StaffFormBranchValidationTestCase(TestCase):
+    def setUp(self):
+        # Clean up database to prevent uniqueness collisions
+        Branch.objects.all().delete()
+        User.objects.all().delete()
+        self.branch1 = Branch.objects.create(name="Branch One", code=10001, invoice_prefix="AA")
+        self.branch2 = Branch.objects.create(name="Branch Two", code=10002, invoice_prefix="AB")
+
+    def test_clean_validation_no_branches_fails(self):
+        from users.forms import StaffForm
+        data = {
+            'username': 'newstaff1',
+            'role': 'sales_staff',
+            'branches': [],
+            'mobile_number': '1234567890'
+        }
+        form = StaffForm(data=data)
+        self.assertFalse(form.is_valid())
+        self.assertTrue('branches' in form.errors)
+        self.assertEqual(form.errors['branches'][0], "Please select at least one branch for this account.")
+
+    def test_clean_validation_staff_multiple_branches_fails(self):
+        from users.forms import StaffForm
+        data = {
+            'username': 'newstaff2',
+            'role': 'sales_staff',
+            'branches': [self.branch1.id, self.branch2.id],
+            'mobile_number': '1234567890'
+        }
+        form = StaffForm(data=data)
+        self.assertFalse(form.is_valid())
+        self.assertTrue('branches' in form.errors)
+        self.assertEqual(form.errors['branches'][0], "Sales Staff cannot be assigned to more than one branch. Please select only one branch.")
+
+    def test_clean_validation_staff_single_branch_succeeds(self):
+        from users.forms import StaffForm
+        data = {
+            'username': 'newstaff3',
+            'role': 'sales_staff',
+            'branches': [self.branch1.id],
+            'mobile_number': '1234567890'
+        }
+        form = StaffForm(data=data)
+        self.assertTrue(form.is_valid())
+
+    def test_clean_validation_manager_multiple_branches_succeeds(self):
+        from users.forms import StaffForm
+        data = {
+            'username': 'newmanager1',
+            'role': 'manager',
+            'branches': [self.branch1.id, self.branch2.id],
+            'mobile_number': '1234567890'
+        }
+        form = StaffForm(data=data)
+        self.assertTrue(form.is_valid())
+

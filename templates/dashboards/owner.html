@@ -469,9 +469,14 @@
         <div class="glass-card p-3">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="fw-bold text-primary mb-0"><i class="bi bi-shop me-1.5"></i>Overall Branches</h6>
-                <button class="btn btn-primary btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#addBranchModal">
-                    <i class="bi bi-plus-circle me-1"></i>Create Branch
-                </button>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'export_branches_csv' %}" class="btn btn-outline-success btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm">
+                        <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i>Export CSV
+                    </a>
+                    <button class="btn btn-primary btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#addBranchModal">
+                        <i class="bi bi-plus-circle me-1"></i>Create Branch
+                    </button>
+                </div>
             </div>
 
             <div class="table-responsive">
@@ -488,7 +493,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for branch in branches %}
+                        {% for branch in branches_by_code %}
                         <tr id="branch-row-{{ branch.id }}">
                             <td class="fw-bold text-muted text-xs">{{ branch.code|default:branch.id }}</td>
                             <td class="fw-bold text-primary text-xs">{{ branch.name }}</td>
@@ -558,9 +563,14 @@
                         </select>
                     </div>
                 </div>
-                <button class="btn btn-primary btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm align-self-start align-self-md-auto" data-bs-toggle="modal" data-bs-target="#addStaffModal">
-                    <i class="bi bi-person-plus me-1"></i>Add Sales Staff
-                </button>
+                <div class="d-flex gap-2 align-self-start align-self-md-auto">
+                    <a href="{% url 'export_staff_csv' %}" class="btn btn-outline-success btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm">
+                        <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i>Export CSV
+                    </a>
+                    <button class="btn btn-primary btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+                        <i class="bi bi-person-plus me-1"></i>Add Sales Staff
+                    </button>
+                </div>
             </div>
 
             <div class="table-responsive"><div class="bg-white rounded-3 shadow-sm p-3">
@@ -1234,6 +1244,14 @@
                                 form.querySelector('.modal-body').prepend(errorAlert);
                             }
                         }
+
+                        // Smoothly scroll the modal to the first validation error
+                        setTimeout(() => {
+                            const firstErr = form.querySelector('.error-message, .is-invalid');
+                            if (firstErr) {
+                                firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }, 55);
                     }
                 })
                 .catch(err => {
@@ -1247,6 +1265,47 @@
         handleAjaxFormSubmit('editStaffForm');
         handleAjaxFormSubmit('addBranchForm');
         handleAjaxFormSubmit('editBranchForm');
+
+        // Dynamically enforce single branch selection for Sales Staff
+        function enforceSingleBranchForStaff(modalId, roleSelectId, pickerId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            const roleSelect = modal.querySelector(`#${roleSelectId}`);
+            const picker = modal.querySelector(`#${pickerId}`);
+            if (!roleSelect || !picker) return;
+
+            function checkRules() {
+                if (roleSelect.value === 'sales_staff') {
+                    const checkedCheckboxes = picker.querySelectorAll('input[type="checkbox"]:checked');
+                    if (checkedCheckboxes.length > 1) {
+                        for (let i = 1; i < checkedCheckboxes.length; i++) {
+                            checkedCheckboxes[i].checked = false;
+                        }
+                    }
+                }
+            }
+
+            roleSelect.addEventListener('change', checkRules);
+
+            picker.addEventListener('change', function(e) {
+                if (e.target.type === 'checkbox' && roleSelect.value === 'sales_staff' && e.target.checked) {
+                    const checkboxes = picker.querySelectorAll('input[type="checkbox"]');
+                    checkboxes.forEach(cb => {
+                        if (cb !== e.target) {
+                            cb.checked = false;
+                        }
+                    });
+                }
+            });
+
+            // Initial check
+            checkRules();
+        }
+
+        // Apply rules to Add modal
+        enforceSingleBranchForStaff('addStaffModal', 'id_role', 'branchPickerAdd');
+        // Apply rules to Edit modal
+        enforceSingleBranchForStaff('editStaffModal', 'editStaffRole', 'branchPickerEdit');
     }
 
     if (document.readyState === 'loading') {
