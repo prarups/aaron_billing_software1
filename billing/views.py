@@ -557,11 +557,14 @@ def owner_bill_list(request):
         else:
             branch_id = str(request.user.active_branch.id)
     else:
-        # Default to active branch if no valid filter and active_branch exists
-        if request.user.active_branch:
-            branch_id = str(request.user.active_branch.id)
+        # For Owners: show all branches by default unless a branch filter is explicitly selected in GET
         from core.models import Branch
         branches = Branch.objects.all()
+        if branch_id and branch_id != 'None':
+            if not branches.filter(id=branch_id).exists():
+                branch_id = None
+        else:
+            branch_id = None
 
     if branch_id and branch_id != 'None':
         bills = bills.filter(branch_id=branch_id)
