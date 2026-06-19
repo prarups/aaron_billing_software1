@@ -13,7 +13,7 @@ urlpatterns = [
     path('all-bills/', views.owner_bill_list, name='owner_bill_list'),
     path('export/', views.export_sales_csv, name='export_sales_csv'),
     path('clear-exchange-session/', views.clear_exchange_session, name='clear_exchange_session'),
-    # Return endpoints disabled
-    # path('return/', return_views.return_create_view, name='return_create'),
-    # path('return/bill-items/', return_views.get_bill_items_api, name='get_bill_items'),
+    # Return endpoints
+    path('return/', return_views.return_create_view, name='return_create'),
+    path('return/bill-items/', return_views.get_bill_items_api, name='get_bill_items'),
 ]

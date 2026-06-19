@@ -181,6 +181,15 @@
     .bg-light-subtle {
         background-color: #f8fafc !important;
     }
+    .info-btn-hover {
+        transition: all 0.2s ease-in-out;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .info-btn-hover:hover {
+        transform: scale(1.25);
+        color: #d97706 !important; /* amber-600 */
+    }
 </style>
 {% endblock %}
 
@@ -297,6 +306,11 @@
                             <i class="bi bi-tag-fill me-0.5"></i>Combo
                         </span>
                         {% endif %}
+                        {% if bill.has_returns %}
+                        <button type="button" class="badge bg-success text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle border-0 info-btn-hover" style="background: linear-gradient(135deg, #10b981, #059669) !important; font-size: 0.6rem; vertical-align: middle; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#returns-modal-{{ bill.id }}">
+                            <i class="bi bi-arrow-left-right me-0.5"></i>Exchanged
+                        </button>
+                        {% endif %}
                         <span class="text-muted text-xxs d-block mt-1"><i class="bi bi-clock me-1"></i>{{ bill.created_at|date:"d M y, H:i" }}</span>
                     </td>
                     
@@ -333,6 +347,7 @@
                             </div>
                             {% endfor %}
                         </div>
+                        {# return details are in the popup modal triggered by Exchanged badge #}
                     </td>
                     
                     <!-- Total & Pay -->
@@ -356,9 +371,14 @@
 
                     <!-- Actions -->
                     <td class="text-end pe-4">
-                        <a href="{% url 'bill_detail' bill.id %}" class="btn-view-action">
-                            <i class="bi bi-eye"></i>View
-                        </a>
+                        <div class="d-inline-flex gap-1.5">
+                            <a href="{% url 'bill_detail' bill.id %}" class="btn-view-action">
+                                <i class="bi bi-eye"></i>View
+                            </a>
+                            <a href="{% url 'return_create' %}?invoice_id={{ bill.invoice_number|default:bill.id }}" class="btn btn-outline-warning rounded-pill text-xs fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 0.72rem; padding: 4px 12px; border: 1px solid rgba(255, 193, 7, 0.3); background: rgba(255, 193, 7, 0.04); color: #ffc107; text-decoration: none;">
+                                <i class="bi bi-arrow-return-left"></i>Return
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
@@ -381,6 +401,11 @@
                     <span class="badge bg-purple text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle" style="background: linear-gradient(135deg, #d946ef, #8b5cf6) !important; font-size: 0.6rem; vertical-align: middle;">
                         <i class="bi bi-tag-fill me-0.5"></i>Combo
                     </span>
+                    {% endif %}
+                    {% if bill.has_returns %}
+                    <button type="button" class="badge bg-success text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle border-0 info-btn-hover" style="background: linear-gradient(135deg, #10b981, #059669) !important; font-size: 0.6rem; vertical-align: middle; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#returns-modal-{{ bill.id }}">
+                        <i class="bi bi-arrow-left-right me-0.5"></i>Exchanged
+                    </button>
                     {% endif %}
                     <span class="text-muted text-xxs d-block mt-1"><i class="bi bi-clock me-1"></i>{{ bill.created_at|date:"d M y, H:i" }}</span>
                 </div>
@@ -431,12 +456,17 @@
                 </div>
             </div>
             
+            {# return details are in the popup modal triggered by Exchanged badge #}
+            
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2 pt-2 border-top border-light">
                 <span class="text-xxs text-muted"><i class="bi bi-person me-1"></i>Staff: {{ bill.staff.username }}</span>
                 
                 <div class="d-flex gap-1.5 flex-nowrap">
                     <a href="{% url 'bill_detail' bill.id %}" class="btn-view-action">
                         <i class="bi bi-eye"></i>View
+                    </a>
+                    <a href="{% url 'return_create' %}?invoice_id={{ bill.invoice_number|default:bill.id }}" class="btn btn-outline-warning rounded-pill text-xs fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 0.72rem; padding: 4px 12px; border: 1px solid rgba(255, 193, 7, 0.3); background: rgba(255, 193, 7, 0.04); color: #ffc107; text-decoration: none;">
+                        <i class="bi bi-arrow-return-left"></i>Return
                     </a>
                 </div>
             </div>
@@ -468,5 +498,87 @@
     </ul>
 </nav>
 {% endif %}
+
+{% for bill in page_obj %}
+    {% if bill.has_returns %}
+    <!-- Return Details Modal -->
+    <div class="modal fade text-start" id="returns-modal-{{ bill.id }}" tabindex="-1" aria-hidden="true" style="white-space: normal;">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; background: #ffffff;">
+                <div class="modal-header border-bottom border-light pb-2">
+                    <h6 class="modal-title fw-bold text-dark d-flex align-items-center gap-1">
+                        <i class="bi bi-arrow-left-right text-warning"></i> Return Details
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="font-size: 0.75rem;"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <div class="mb-3">
+                        <span class="text-xxs text-uppercase fw-bold text-muted-plus d-block mb-0.5">INVOICE</span>
+                        <span class="fw-bold text-dark fs-6">#{{ bill.invoice_number|default:bill.id }}</span>
+                    </div>
+                    <div class="d-flex flex-column gap-2">
+                        {% for ret in bill.return_requests.all %}
+                        <div class="p-2.5 rounded-3 bg-light border border-light" style="font-size: 0.75rem;">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="text-xxs text-danger fw-bold"><i class="bi bi-dash-circle me-0.5"></i>RETURNED</span>
+                                <span class="badge bg-danger-subtle text-danger px-1.5 py-0.5 rounded-pill text-xxs font-monospace" style="font-size: 8px;">x{{ ret.quantity }}</span>
+                            </div>
+                            <div class="fw-semibold text-dark mb-1">
+                                {{ ret.product.name|default:ret.product_name }}
+                                {% if ret.product.barcode %}
+                                <span class="text-muted font-monospace text-xxs d-block mt-0.5" style="font-size: 9px;">Barcode: {{ ret.product.barcode }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="text-xxs text-muted mb-2">
+                                Condition: <span class="badge {% if ret.condition == 'GOOD' %}bg-success-subtle text-success{% else %}bg-danger-subtle text-danger{% endif %}" style="font-size: 8px;">{{ ret.get_condition_display }}</span>
+                            </div>
+                            
+                            {% if ret.replacement_product %}
+                            <div class="border-top border-light my-2"></div>
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="text-xxs text-success fw-bold"><i class="bi bi-plus-circle me-0.5"></i>EXCHANGED WITH</span>
+                                <span class="badge bg-success-subtle text-success px-1.5 py-0.5 rounded-pill text-xxs font-monospace" style="font-size: 8px;">x{{ ret.replacement_quantity }}</span>
+                            </div>
+                            <div class="fw-semibold text-dark mb-1">
+                                {{ ret.replacement_product.name }}
+                                {% if ret.replacement_product.barcode %}
+                                <span class="text-muted font-monospace text-xxs d-block mt-0.5" style="font-size: 9px;">Barcode: {{ ret.replacement_product.barcode }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                            <div class="border-top border-light my-2"></div>
+                            
+                            <div class="d-flex align-items-center justify-content-between text-xxs">
+                                <span class="text-muted">Price Difference:</span>
+                                <span>
+                                    {% if ret.price_difference > 0 %}
+                                    <strong class="text-success">+₹{{ ret.price_difference|floatformat:0 }}</strong>
+                                    {% elif ret.price_difference < 0 %}
+                                    <strong class="text-danger">-₹{{ ret.price_difference|floatformat:0|cut:"-" }}</strong>
+                                    {% else %}
+                                    <strong class="text-muted">₹0</strong>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            
+                            {% if ret.status != 'A' %}
+                            <div class="d-flex align-items-center justify-content-between text-xxs mt-1">
+                                <span class="text-muted">Status:</span>
+                                <span class="badge {% if ret.status == 'P' %}bg-warning{% elif ret.status == 'R' %}bg-danger{% else %}bg-secondary{% endif %} text-white px-1 py-0.5" style="font-size: 7px;">{{ ret.get_status_display }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill btn-sm text-xs px-3 w-100" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
 {% endblock %}
 

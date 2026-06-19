@@ -19,6 +19,8 @@ def dashboard_redirect(request):
         return redirect('owner_dashboard')
     elif request.user.role == 'manager':
         return redirect('manager_dashboard')
+    elif request.user.role == 'assistant_manager':
+        return redirect('manager_dashboard')
     else:
         return redirect('staff_dashboard')
 
@@ -30,7 +32,7 @@ def switch_branch(request):
         if branch_id:
             branch = get_object_or_404(Branch, id=branch_id)
             # Permission check
-            if request.user.is_owner() or request.user.branches.filter(id=branch.id).exists():
+            if request.user.is_owner() or request.user.role in ['manager', 'assistant_manager'] or request.user.branches.filter(id=branch.id).exists():
                 request.user.active_branch = branch
                 request.user.save()
     
@@ -72,14 +74,19 @@ class OwnerDashboardView(TemplateView):
         context['is_filtered'] = is_filtered
 
         # Overall Stats (either today, or for the specified date range)
+        import datetime
         if is_filtered:
-            range_bills = Bill.objects.filter(created_at__date__range=[start_date, end_date])
+            start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
+            end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
+            range_bills = Bill.objects.filter(created_at__range=(start_datetime, end_datetime))
             context['total_sales_today'] = range_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
             context['transaction_count_today'] = range_bills.count()
             context['stats_label'] = f"Sales ({start_date.strftime('%d %b')} - {end_date.strftime('%d %b')})"
             context['trans_label'] = "Transactions (Period)"
         else:
-            today_bills = Bill.objects.filter(created_at__date=today)
+            today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+            today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+            today_bills = Bill.objects.filter(created_at__range=(today_start, today_end))
             context['total_sales_today'] = today_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
             context['transaction_count_today'] = today_bills.count()
             context['stats_label'] = "Total Sales (Today)"
@@ -102,15 +109,20 @@ class OwnerDashboardView(TemplateView):
         ).order_by().values('branches').annotate(cnt=Count('id')).values('cnt')
 
         # Subquery for sales (today or period range)
+        import datetime
         if is_filtered:
+            start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
+            end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
             sales_subquery = Bill.objects.filter(
                 branch=OuterRef('pk'),
-                created_at__date__range=[start_date, end_date]
+                created_at__range=(start_datetime, end_datetime)
             ).order_by().values('branch').annotate(total=Sum('total_amount')).values('total')
         else:
+            today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+            today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
             sales_subquery = Bill.objects.filter(
                 branch=OuterRef('pk'),
-                created_at__date=today
+                created_at__range=(today_start, today_end)
             ).order_by().values('branch').annotate(total=Sum('total_amount')).values('total')
 
         branches = Branch.objects.annotate(
@@ -129,36 +141,210 @@ class OwnerDashboardView(TemplateView):
         context['recent_bills'] = Bill.objects.order_by('-created_at')[:5]
         
         # Staff list (admins, managers, and staff) with pagination for scalability
-        staff_qs = User.objects.filter(role__in=['owner', 'manager', 'staff']).prefetch_related('branches').order_by('username')
+        staff_qs = User.objects.filter(role__in=['owner', 'manager', 'assistant_manager', 'sales_staff']).prefetch_related('branches').order_by('employee_id', 'username')
         from django.core.paginator import Paginator
         paginator = Paginator(staff_qs, 25)  # 25 staff per page
         page_number = self.request.GET.get('staff_page', 1)
         context['staff_list'] = paginator.get_page(page_number)
         
+        # Manager employee performance data
+        managers = User.objects.filter(role__in=['manager', 'assistant_manager']).prefetch_related('branches')
+        manager_data = []
+        import datetime
+        today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+        today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+        for mgr in managers:
+            staff_qs = User.objects.filter(role='sales_staff', branches__in=mgr.branches.all()).distinct()
+            staff_info = []
+            for staff in staff_qs:
+                daily_sales = Bill.objects.filter(staff=staff, created_at__range=(today_start, today_end)).aggregate(total=Sum('total_amount'))['total'] or 0
+                staff_info.append({
+                    'employee_id': staff.employee_id,
+                    'date_of_joining': staff.date_of_joining,
+                    'sales': daily_sales,
+                })
+            manager_data.append({
+                'manager': mgr,
+                'staff': staff_info,
+            })
+        context['manager_performance'] = manager_data
+
         # Forms for creating new entries
         context['branch_form'] = BranchForm()
         context['staff_form'] = StaffForm()
-        
+
         return context
 
+class AssistantManagerDashboardView(TemplateView):
+    template_name = 'dashboards/assistant_manager.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        branch = user.active_branch
+        today = timezone.now().date()
+        import datetime
+        today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+        today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+        if branch:
+            branch_bills = Bill.objects.filter(branch=branch, created_at__range=(today_start, today_end))
+            context['branch_sales_today'] = branch_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            context['product_count'] = Product.objects.count()
+            context['staff_count'] = branch.assigned_users.filter(role='sales_staff').count()
+            context['recent_branch_bills'] = Bill.objects.filter(branch=branch).order_by('-created_at')[:5]
+        return context
 class ManagerDashboardView(TemplateView):
     template_name = 'dashboards/manager.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        user = self.request.user
+        branch = user.active_branch
+        today = timezone.now().date()
+        import datetime
+        today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+        today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+        # Branch-specific stats (same as AssistantManagerDashboardView)
+        if branch:
+            branch_bills = Bill.objects.filter(branch=branch, created_at__range=(today_start, today_end))
+            context['branch_sales_today'] = branch_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            context['product_count'] = Product.objects.count()
+            context['staff_count'] = branch.assigned_users.filter(role='sales_staff').count()
+            context['recent_branch_bills'] = Bill.objects.filter(branch=branch).order_by('-created_at')[:5]
+        # Staff performance for manager/assistant manager
+        if user.role in ['manager', 'assistant_manager']:
+            staff_qs = User.objects.filter(role='sales_staff', branches__in=user.branches.all()).distinct()
+            staff_info = []
+            for staff in staff_qs:
+                daily_sales = Bill.objects.filter(staff=staff, created_at__range=(today_start, today_end)).aggregate(total=Sum('total_amount'))['total'] or 0
+                staff_info.append({
+                    'employee_id': staff.employee_id,
+                    'name': staff.get_full_name() or staff.username,
+                    'date_of_joining': staff.date_of_joining,
+                    'sales': daily_sales,
+                })
+            context['my_staff_performance'] = staff_info
+        return context
+
+
+class ManagerStaffPerformanceView(TemplateView):
+    template_name = 'dashboards/manager_performance.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        # Get date range from query params, default to today
+        from_date_str = self.request.GET.get('from')
+        to_date_str = self.request.GET.get('to')
+        try:
+            from datetime import datetime
+            from_date = datetime.strptime(from_date_str, '%Y-%m-%d').date() if from_date_str else timezone.now().date()
+            to_date = datetime.strptime(to_date_str, '%Y-%m-%d').date() if to_date_str else timezone.now().date()
+        except Exception:
+            from_date = to_date = timezone.now().date()
+        # Ensure proper ordering
+        if from_date > to_date:
+            from_date, to_date = to_date, from_date
+        # Gather staff performance within range
+        import datetime
+        from_datetime = timezone.make_aware(datetime.datetime.combine(from_date, datetime.time.min))
+        to_datetime = timezone.make_aware(datetime.datetime.combine(to_date, datetime.time.max))
+        staff_qs = User.objects.filter(role__in=['sales_staff','manager'], branches__in=user.branches.all()).distinct()
+        staff_info = []
+        for staff in staff_qs:
+            sales = Bill.objects.filter(staff=staff, created_at__range=(from_datetime, to_datetime)).aggregate(total=Sum('total_amount'))['total'] or 0
+            staff_info.append({
+                'employee_id': staff.employee_id,
+                'name': staff.get_full_name() or staff.username,
+                'date_of_joining': staff.date_of_joining,
+                'sales': sales,
+            })
+        context['my_staff_performance'] = staff_info
+        context['from_date'] = from_date.strftime('%Y-%m-%d')
+        context['to_date'] = to_date.strftime('%Y-%m-%d')
+        # Summary sales figures
+        today = timezone.now().date()
+        today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+        today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+        today_sales = Bill.objects.filter(created_at__range=(today_start, today_end)).aggregate(total=Sum('total_amount'))['total'] or 0
+        total_sales = Bill.objects.aggregate(total=Sum('total_amount'))['total'] or 0
+        context['today_sales'] = today_sales
+        context['total_sales'] = total_sales
+        return context
+
+    def render_to_response(self, context, **response_kwargs):
+        # CSV export handling
+        if self.request.GET.get('format') == 'csv':
+            import csv
+            from datetime import datetime
+            from django.http import HttpResponse
+            from django.db.models.functions import TruncDate
+            # Determine date range
+            from_date_str = context.get('from_date')
+            to_date_str = context.get('to_date')
+            try:
+                start_date = datetime.strptime(from_date_str, '%Y-%m-%d').date() if from_date_str else timezone.now().date()
+                end_date = datetime.strptime(to_date_str, '%Y-%m-%d').date() if to_date_str else timezone.now().date()
+            except Exception:
+                start_date = end_date = timezone.now().date()
+            if start_date > end_date:
+                start_date, end_date = end_date, start_date
+            # Query bills for selected staff within the date range, aggregated per staff per day
+            import datetime
+            start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
+            end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
+            staff_qs = User.objects.filter(role__in=['sales_staff','manager'], branches__in=self.request.user.branches.all()).distinct()
+            sales_qs = Bill.objects.filter(
+                staff__in=staff_qs,
+                created_at__range=(start_datetime, end_datetime)
+            ).annotate(date=TruncDate('created_at')).values(
+                'staff__employee_id', 'staff__username', 'date'
+            ).annotate(daily_sales=Sum('total_amount')).order_by('staff__employee_id', 'date')
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="staff_performance_detail.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Emp. ID', 'Name', 'Date', 'Sales'])
+            for row in sales_qs:
+                writer.writerow([
+                    row['staff__employee_id'],
+                    row['staff__username'],
+                    row['date'].strftime('%Y-%m-%d') if row['date'] else '',
+                    row['daily_sales'] or 0,
+                ])
+            return response
+        return super().render_to_response(context, **response_kwargs)
+
+# Export CSV for backward compatibility (optional helper view)
+def export_manager_performance_csv(request):
+    view = ManagerStaffPerformanceView()
+    # Reuse the same logic by delegating to the view's render_to_response
+    return view.as_view()(request)
+
+
+
+
+
+
+
+    # Reuse the same context as ManagerDashboardView (branch-specific stats)
+    def get_context_data(self, **kwargs):
+        # Duplicate logic from ManagerDashboardView, adjusting if needed
+        context = super().get_context_data(**kwargs)
         branch = self.request.user.active_branch
         if not branch:
             return context
-            
         today = timezone.now().date()
-        branch_bills = Bill.objects.filter(branch=branch, created_at__date=today)
-        
+        import datetime
+        today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+        today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+        branch_bills = Bill.objects.filter(branch=branch, created_at__range=(today_start, today_end))
         context['branch_sales_today'] = branch_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
         context['product_count'] = Product.objects.count()
-        context['staff_count'] = branch.assigned_users.filter(role='staff').count()
-        
+        context['staff_count'] = branch.assigned_users.filter(role='sales_staff').count()
         context['recent_branch_bills'] = Bill.objects.filter(branch=branch).order_by('-created_at')[:5]
         return context
+
+    # Duplicate get_context_data removed
 
 class StaffDashboardView(TemplateView):
     template_name = 'dashboards/staff.html'
@@ -167,7 +353,10 @@ class StaffDashboardView(TemplateView):
         context = super().get_context_data(**kwargs)
         today = timezone.now().date()
         branch = self.request.user.active_branch
-        staff_bills = Bill.objects.filter(staff=self.request.user, branch=branch, created_at__date=today)
+        import datetime
+        today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+        today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+        staff_bills = Bill.objects.filter(staff=self.request.user, branch=branch, created_at__range=(today_start, today_end))
         
         context['my_sales_today'] = staff_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
         context['my_bill_count'] = staff_bills.count()
@@ -233,7 +422,7 @@ def branch_delete(request, pk):
 
 @login_required
 def staff_create(request):
-    if not request.user.is_owner():
+    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
         return redirect('dashboard')
     if request.method == 'POST':
         form = StaffForm(request.POST)
@@ -247,12 +436,13 @@ def staff_create(request):
                 errors = {field: [err['message'] for err in errs] for field, errs in form.errors.get_json_data().items()}
                 return JsonResponse({'success': False, 'errors': errors})
             errors_str = " ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
+            print('Staff Create Form Errors:', form.errors)
             messages.error(request, f"Failed to create staff. {errors_str}")
     return redirect(reverse('owner_dashboard') + '#staff')
 
 @login_required
 def staff_edit(request, pk):
-    if not request.user.is_owner():
+    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
         return redirect('dashboard')
     user = get_object_or_404(User, pk=pk)
     if request.method == 'POST':
@@ -270,12 +460,13 @@ def staff_edit(request, pk):
                 errors = {field: [err['message'] for err in errs] for field, errs in form.errors.get_json_data().items()}
                 return JsonResponse({'success': False, 'errors': errors})
             errors_str = " ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
+            print('Staff Edit Form Errors:', form.errors)
             messages.error(request, f"Failed to update staff. {errors_str}")
     return redirect(reverse('owner_dashboard') + '#staff')
 
 @login_required
 def staff_delete(request, pk):
-    if not request.user.is_owner():
+    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
         return redirect('dashboard')
     user = get_object_or_404(User, pk=pk)
     if request.method == 'POST':
@@ -291,7 +482,7 @@ def toggle_staff_active(request, staff_id):
     Expects a POST request with a JSON payload containing `is_active` boolean.
     Only owners can perform this action.
     """
-    if not request.user.is_owner():
+    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
         return JsonResponse({'error': 'Permission denied.'}, status=403)
     staff = get_object_or_404(User, pk=staff_id)
     if staff == request.user:
@@ -358,7 +549,7 @@ def export_dashboard_sales_csv(request):
     """Exports date-wise and branch-wise total sales amount for the specified date range.
     Only owners and managers are authorized.
     """
-    if request.user.role == 'staff':
+    if request.user.role == 'sales_staff':
         from django.http import HttpResponse
         return HttpResponse("Unauthorized", status=403)
         
@@ -386,8 +577,11 @@ def export_dashboard_sales_csv(request):
     writer.writerow(['Date', 'Branch Code', 'Branch Name', 'Location', 'Total Sales (INR)'])
     
     # Query date-wise and branch-wise total sales
+    import datetime
+    start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
+    end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
     sales_data = Bill.objects.filter(
-        created_at__date__range=[start_date, end_date]
+        created_at__range=(start_datetime, end_datetime)
     ).annotate(
         date=TruncDate('created_at')
     ).values(

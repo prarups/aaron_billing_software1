@@ -8,7 +8,7 @@ from .forms import ProductForm
 
 @login_required
 def product_list(request):
-    if request.user.role == 'staff':
+    if request.user.role == 'sales_staff':
         return redirect('dashboard')
     
     # Auto-initialize active branch if None
@@ -80,7 +80,7 @@ def product_list(request):
 
 @login_required
 def export_products_csv(request):
-    if request.user.role == 'staff':
+    if request.user.role == 'sales_staff':
         return redirect('dashboard')
         
     import csv
@@ -882,7 +882,7 @@ def download_bulk_template(request):
 @login_required
 def stock_pivot_report(request):
     """Report showing products, their stock movement (Op, In, Out, Cl) and branch-wise closing stock."""
-    if request.user.role == 'staff':
+    if request.user.role == 'sales_staff':
         return redirect('dashboard')
     
     from django.db.models import Sum, Q, F, Count
@@ -947,39 +947,49 @@ def stock_pivot_report(request):
     stock_map = {(r['product_id'], r['branch_id']): r['stock_quantity'] for r in registries}
     reg_id_map = {(r['product_id'], r['branch_id']): r['id'] for r in registries}
     
-    # 2. Fetch stock movements
+    # 2. Fetch stock movements (Op, In, Ret, Out, Dmg, Ret Dmg, Cl)
     start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
     end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
 
-    txns = StockTransaction.objects.filter(
-        created_at__gte=start_datetime,
+    # Period transactions using conditional aggregation
+    period_txns = StockTransaction.objects.filter(
+        created_at__range=(start_datetime, end_datetime),
         branch__in=active_branches
-    ).values('product_id', 'branch_id', 'transaction_type').annotate(total_qty=Sum('quantity'))
-    
-    txn_map = {}
-    for t in txns:
-        key = (t['product_id'], t['branch_id'], t['transaction_type'])
-        txn_map[key] = t['total_qty']
+    ).values('product_id', 'branch_id').annotate(
+        in_std=Sum('quantity', filter=Q(transaction_type='IN') & ~Q(reference__startswith='Return #')),
+        ret_good=Sum('quantity', filter=Q(transaction_type='IN') & Q(reference__startswith='Return #')),
+        out_gross=Sum('quantity', filter=Q(transaction_type='OUT')),
+        dmg_std=Sum('quantity', filter=Q(transaction_type='DMG') & ~Q(reference__startswith='Return #')),
+        ret_dmg=Sum('quantity', filter=Q(transaction_type='DMG') & Q(reference__startswith='Return #')),
+        adj=Sum('quantity', filter=Q(transaction_type='ADJ')),
+    )
+    period_map = {(t['product_id'], t['branch_id']): t for t in period_txns}
 
-    # Fetch all-time OUT, DMG, and ADJ transactions for received till now calculation
+    # All-time transactions using conditional aggregation
     all_time_txns = StockTransaction.objects.filter(
-        transaction_type__in=['OUT', 'DMG', 'ADJ'],
         branch__in=active_branches
-    ).values('product_id', 'branch_id', 'transaction_type').annotate(total_qty=Sum('quantity'))
-    all_time_map = {}
-    for t in all_time_txns:
-        key = (t['product_id'], t['branch_id'], t['transaction_type'])
-        all_time_map[key] = t['total_qty']
+    ).values('product_id', 'branch_id').annotate(
+        out_gross=Sum('quantity', filter=Q(transaction_type='OUT')),
+        ret_good=Sum('quantity', filter=Q(transaction_type='IN') & Q(reference__startswith='Return #')),
+        ret_dmg=Sum('quantity', filter=Q(transaction_type='DMG') & Q(reference__startswith='Return #')),
+        dmg_std=Sum('quantity', filter=Q(transaction_type='DMG') & ~Q(reference__startswith='Return #')),
+        adj=Sum('quantity', filter=Q(transaction_type='ADJ')),
+    )
+    all_time_map = {(t['product_id'], t['branch_id']): t for t in all_time_txns}
         
-    future_txns_map = {}
+    future_map = {}
     if end_date < today:
         future_txns = StockTransaction.objects.filter(
             created_at__gt=end_datetime,
             branch__in=active_branches
-        ).values('product_id', 'branch_id', 'transaction_type').annotate(total_qty=Sum('quantity'))
-        for t in future_txns:
-            key = (t['product_id'], t['branch_id'], t['transaction_type'])
-            future_txns_map[key] = t['total_qty']
+        ).values('product_id', 'branch_id').annotate(
+            in_std=Sum('quantity', filter=Q(transaction_type='IN') & ~Q(reference__startswith='Return #')),
+            ret_good=Sum('quantity', filter=Q(transaction_type='IN') & Q(reference__startswith='Return #')),
+            out_gross=Sum('quantity', filter=Q(transaction_type='OUT')),
+            dmg_std=Sum('quantity', filter=Q(transaction_type='DMG') & ~Q(reference__startswith='Return #')),
+            adj=Sum('quantity', filter=Q(transaction_type='ADJ')),
+        )
+        future_map = {(t['product_id'], t['branch_id']): t for t in future_txns}
 
     report_data = []
     
@@ -988,10 +998,12 @@ def stock_pivot_report(request):
             'product': p,
             'total_op': 0,
             'total_in': 0,
+            'total_ret': 0,
             'total_out': 0,
             'total_adj_plus': 0,
             'total_adj_minus': 0,
             'total_dmg': 0,
+            'total_ret_dmg': 0,
             'total_cl': 0,
             'total_rec': 0,
             'total_all_time_out': 0,
@@ -1002,56 +1014,82 @@ def stock_pivot_report(request):
         for b in active_branches:
             curr_stock = stock_map.get((p.id, b.id), 0)
             
-            period_in = txn_map.get((p.id, b.id, 'IN'), 0)
-            period_adj = txn_map.get((p.id, b.id, 'ADJ'), 0)
-            period_out = txn_map.get((p.id, b.id, 'OUT'), 0)
-            period_dmg = txn_map.get((p.id, b.id, 'DMG'), 0)
+            p_tx = period_map.get((p.id, b.id), {})
+            period_in_std = p_tx.get('in_std') or 0
+            period_ret = p_tx.get('ret_good') or 0
+            period_out_gross = p_tx.get('out_gross') or 0
+            period_dmg_std = p_tx.get('dmg_std') or 0
+            period_ret_dmg = p_tx.get('ret_dmg') or 0
+            period_adj = p_tx.get('adj') or 0
             
             period_adj_plus = period_adj if period_adj > 0 else 0
             period_adj_minus = abs(period_adj) if period_adj < 0 else 0
             
-            # Cumulative received till now = current closing stock + all-time sales + all-time damaged - all-time adjustments
-            all_time_out = all_time_map.get((p.id, b.id, 'OUT'), 0)
-            all_time_dmg = all_time_map.get((p.id, b.id, 'DMG'), 0)
-            all_time_adj = all_time_map.get((p.id, b.id, 'ADJ'), 0)
-            total_rec = curr_stock + all_time_out + all_time_dmg - all_time_adj
+            # All-time aggregates for all-time columns
+            a_tx = all_time_map.get((p.id, b.id), {})
+            all_time_out_gross = a_tx.get('out_gross') or 0
+            all_time_ret = a_tx.get('ret_good') or 0
+            all_time_ret_dmg = a_tx.get('ret_dmg') or 0
+            all_time_dmg_std = a_tx.get('dmg_std') or 0
+            all_time_adj = a_tx.get('adj') or 0
             
-            future_in = future_txns_map.get((p.id, b.id, 'IN'), 0)
-            future_adj = future_txns_map.get((p.id, b.id, 'ADJ'), 0)
-            future_out = future_txns_map.get((p.id, b.id, 'OUT'), 0)
-            future_dmg = future_txns_map.get((p.id, b.id, 'DMG'), 0)
+            # Net sold all-time = gross sold all-time - good returns all-time - damaged returns all-time
+            all_time_out_net = all_time_out_gross - all_time_ret - all_time_ret_dmg
+            # Cumulative received till now = current stock + all-time gross out + all-time standard damaged - all-time good returns - all-time adj
+            total_rec = curr_stock + all_time_out_gross + all_time_dmg_std - all_time_ret - all_time_adj
             
-            # Compute opening stock based on current stock and period transactions
-            opening_stock = curr_stock - period_in + period_out + period_dmg - period_adj
-            # Closing stock after applying period transactions
-            closing_stock = opening_stock + period_in - period_out - period_dmg + period_adj
+            # Calculate closing stock at end_date if in the past
+            if end_date < today:
+                f_tx = future_map.get((p.id, b.id), {})
+                future_in_std = f_tx.get('in_std') or 0
+                future_ret = f_tx.get('ret_good') or 0
+                future_out_gross = f_tx.get('out_gross') or 0
+                future_dmg_std = f_tx.get('dmg_std') or 0
+                future_adj = f_tx.get('adj') or 0
+                
+                closing_stock = curr_stock - (future_in_std + future_ret) + future_out_gross + future_dmg_std - future_adj
+            else:
+                closing_stock = curr_stock
+                
+            # Compute opening stock: Cl_stock - (In + Ret) + Out_gross + Dmg_std - Adj
+            opening_stock = closing_stock - (period_in_std + period_ret) + period_out_gross + period_dmg_std - period_adj
             
-            if opening_stock == 0 and period_in == 0 and period_out == 0 and period_dmg == 0 and period_adj == 0 and closing_stock == 0 and (p.id, b.id) not in stock_map:
+            # Net sold in period = gross out - good returns - damaged returns
+            period_out_net = period_out_gross - period_ret - period_ret_dmg
+            
+            if opening_stock == 0 and period_in_std == 0 and period_ret == 0 and period_out_net == 0 and period_dmg_std == 0 and period_ret_dmg == 0 and period_adj == 0 and closing_stock == 0 and (p.id, b.id) not in stock_map:
                 continue
             
+            # Net all-time damaged = standard damaged all-time + return damaged all-time
+            all_time_dmg_net = all_time_dmg_std + all_time_ret_dmg
+
             item['total_op'] += opening_stock
-            item['total_in'] += period_in
-            item['total_out'] += period_out
+            item['total_in'] += period_in_std
+            item['total_ret'] += period_ret
+            item['total_out'] += period_out_net
             item['total_adj_plus'] += period_adj_plus
             item['total_adj_minus'] += period_adj_minus
-            item['total_dmg'] += period_dmg
+            item['total_dmg'] += period_dmg_std
+            item['total_ret_dmg'] += period_ret_dmg
             item['total_cl'] += closing_stock
             item['total_rec'] += total_rec
-            item['total_all_time_out'] += all_time_out
-            item['total_all_time_dmg'] += all_time_dmg
+            item['total_all_time_out'] += all_time_out_net
+            item['total_all_time_dmg'] += all_time_dmg_net
             
             item['branch_stocks'].append({
                 'branch': b,
                 'op': opening_stock,
-                'in': period_in,
-                'out': period_out,
+                'in': period_in_std,
+                'ret': period_ret,
+                'out': period_out_net,
                 'adj_plus': period_adj_plus,
                 'adj_minus': period_adj_minus,
-                'dmg': period_dmg,
+                'dmg': period_dmg_std,
+                'ret_dmg': period_ret_dmg,
                 'cl': closing_stock,
                 'rec': total_rec,
-                'all_time_out': all_time_out,
-                'all_time_dmg': all_time_dmg,
+                'all_time_out': all_time_out_net,
+                'all_time_dmg': all_time_dmg_net,
                 'reg_id': reg_id_map.get((p.id, b.id)),
             })
             
@@ -1073,7 +1111,7 @@ def stock_pivot_report(request):
 @login_required
 def export_stock_pivot_excel(request):
     """Export the multi-branch stock pivot report to an Excel file with multiple sheets."""
-    if request.user.role == 'staff':
+    if request.user.role == 'sales_staff':
         return redirect('dashboard')
         
     # Mirroring logic from view
@@ -1132,20 +1170,45 @@ def export_stock_pivot_excel(request):
     start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
     end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
 
-    txns = StockTransaction.objects.filter(created_at__gte=start_datetime, branch__in=active_branches).values('product_id', 'branch_id', 'transaction_type').annotate(total_qty=Sum('quantity'))
-    txn_map = {(t['product_id'], t['branch_id'], t['transaction_type']): t['total_qty'] for t in txns}
-    
-    # Fetch all-time OUT, DMG, and ADJ transactions for received till now calculation in Excel
-    all_time_txns = StockTransaction.objects.filter(
-        transaction_type__in=['OUT', 'DMG', 'ADJ'],
+    # Period transactions using conditional aggregation
+    period_txns = StockTransaction.objects.filter(
+        created_at__range=(start_datetime, end_datetime),
         branch__in=active_branches
-    ).values('product_id', 'branch_id', 'transaction_type').annotate(total_qty=Sum('quantity'))
-    all_time_map = {(t['product_id'], t['branch_id'], t['transaction_type']): t['total_qty'] for t in all_time_txns}
-    
-    future_txns_map = {}
+    ).values('product_id', 'branch_id').annotate(
+        in_std=Sum('quantity', filter=Q(transaction_type='IN') & ~Q(reference__startswith='Return #')),
+        ret_good=Sum('quantity', filter=Q(transaction_type='IN') & Q(reference__startswith='Return #')),
+        out_gross=Sum('quantity', filter=Q(transaction_type='OUT')),
+        dmg_std=Sum('quantity', filter=Q(transaction_type='DMG') & ~Q(reference__startswith='Return #')),
+        ret_dmg=Sum('quantity', filter=Q(transaction_type='DMG') & Q(reference__startswith='Return #')),
+        adj=Sum('quantity', filter=Q(transaction_type='ADJ')),
+    )
+    period_map = {(t['product_id'], t['branch_id']): t for t in period_txns}
+
+    # All-time transactions using conditional aggregation
+    all_time_txns = StockTransaction.objects.filter(
+        branch__in=active_branches
+    ).values('product_id', 'branch_id').annotate(
+        out_gross=Sum('quantity', filter=Q(transaction_type='OUT')),
+        ret_good=Sum('quantity', filter=Q(transaction_type='IN') & Q(reference__startswith='Return #')),
+        ret_dmg=Sum('quantity', filter=Q(transaction_type='DMG') & Q(reference__startswith='Return #')),
+        dmg_std=Sum('quantity', filter=Q(transaction_type='DMG') & ~Q(reference__startswith='Return #')),
+        adj=Sum('quantity', filter=Q(transaction_type='ADJ')),
+    )
+    all_time_map = {(t['product_id'], t['branch_id']): t for t in all_time_txns}
+        
+    future_map = {}
     if end_date < today:
-        future_txns = StockTransaction.objects.filter(created_at__gt=end_datetime, branch__in=active_branches).values('product_id', 'branch_id', 'transaction_type').annotate(total_qty=Sum('quantity'))
-        future_txns_map = {(t['product_id'], t['branch_id'], t['transaction_type']): t['total_qty'] for t in future_txns}
+        future_txns = StockTransaction.objects.filter(
+            created_at__gt=end_datetime,
+            branch__in=active_branches
+        ).values('product_id', 'branch_id').annotate(
+            in_std=Sum('quantity', filter=Q(transaction_type='IN') & ~Q(reference__startswith='Return #')),
+            ret_good=Sum('quantity', filter=Q(transaction_type='IN') & Q(reference__startswith='Return #')),
+            out_gross=Sum('quantity', filter=Q(transaction_type='OUT')),
+            dmg_std=Sum('quantity', filter=Q(transaction_type='DMG') & ~Q(reference__startswith='Return #')),
+            adj=Sum('quantity', filter=Q(transaction_type='ADJ')),
+        )
+        future_map = {(t['product_id'], t['branch_id']): t for t in future_txns}
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     timestamp = timezone.now().strftime("%Y%m%d_%H%M%S")
@@ -1156,21 +1219,33 @@ def export_stock_pivot_excel(request):
     # Sheet 1: Consolidated Totals
     ws1 = wb.active
     ws1.title = "Consolidated Totals"
-    header1 = ['Product Name', 'Barcode', 'Price', 'Total Op. Qty', 'Total In Qty', 'Total Out Qty', 'Total + Adj Qty', 'Total - Adj Qty', 'Total Damaged Qty', 'Total Cl. Qty', 'Total Received Qty', 'Total Sold (All-Time)', 'Total Damaged (All-Time)']
+    header1 = [
+        'Product Name', 'Barcode', 'Price', 
+        'Total Op. Qty', 'Total In Qty', 'Total Ret. Qty', 'Total Out Qty', 
+        'Total + Adj Qty', 'Total - Adj Qty', 'Total Damaged Qty', 'Total Ret. Damaged Qty', 
+        'Total Cl. Qty', 'Total Received Qty', 'Total Sold (All-Time)', 'Total Damaged (All-Time)'
+    ]
     ws1.append(header1)
     
     # Sheet 2: Individual Branch Data
     ws2 = wb.create_sheet(title="Branch Details")
-    header2 = ['Product', 'Barcode', 'Branch Name', 'Branch Code', 'Op Qty', 'In Qty', 'Out Qty', '+ Adj Qty', '- Adj Qty', 'Damaged Qty', 'Cl Qty', 'Total Received Qty', 'Total Sold (All-Time)', 'Total Damaged (All-Time)']
+    header2 = [
+        'Product', 'Barcode', 'Branch Name', 'Branch Code', 
+        'Op Qty', 'In Qty', 'Ret Qty', 'Out Qty', 
+        '+ Adj Qty', '- Adj Qty', 'Damaged Qty', 'Ret Damaged Qty', 
+        'Cl Qty', 'Total Received Qty', 'Total Sold (All-Time)', 'Total Damaged (All-Time)'
+    ]
     ws2.append(header2)
 
     for p in products:
         total_op = 0
         total_in = 0
+        total_ret = 0
         total_out = 0
         total_adj_plus = 0
         total_adj_minus = 0
         total_dmg = 0
+        total_ret_dmg = 0
         total_cl = 0
         total_rec_sum = 0
         total_all_time_out_sum = 0
@@ -1178,48 +1253,83 @@ def export_stock_pivot_excel(request):
         
         for b in active_branches:
             curr_stock = stock_map.get((p.id, b.id), 0)
-            period_in = txn_map.get((p.id, b.id, 'IN'), 0)
-            period_adj = txn_map.get((p.id, b.id, 'ADJ'), 0)
-            period_out = txn_map.get((p.id, b.id, 'OUT'), 0)
-            period_dmg = txn_map.get((p.id, b.id, 'DMG'), 0)
+            
+            p_tx = period_map.get((p.id, b.id), {})
+            period_in_std = p_tx.get('in_std') or 0
+            period_ret = p_tx.get('ret_good') or 0
+            period_out_gross = p_tx.get('out_gross') or 0
+            period_dmg_std = p_tx.get('dmg_std') or 0
+            period_ret_dmg = p_tx.get('ret_dmg') or 0
+            period_adj = p_tx.get('adj') or 0
             
             period_adj_plus = period_adj if period_adj > 0 else 0
             period_adj_minus = abs(period_adj) if period_adj < 0 else 0
             
-            # Cumulative received till now = current closing stock + all-time sales + all-time damaged - all-time adjustments
-            all_time_out = all_time_map.get((p.id, b.id, 'OUT'), 0)
-            all_time_dmg = all_time_map.get((p.id, b.id, 'DMG'), 0)
-            all_time_adj = all_time_map.get((p.id, b.id, 'ADJ'), 0)
-            total_rec = curr_stock + all_time_out + all_time_dmg - all_time_adj
+            # All-time aggregates for all-time columns
+            a_tx = all_time_map.get((p.id, b.id), {})
+            all_time_out_gross = a_tx.get('out_gross') or 0
+            all_time_ret = a_tx.get('ret_good') or 0
+            all_time_ret_dmg = a_tx.get('ret_dmg') or 0
+            all_time_dmg_std = a_tx.get('dmg_std') or 0
+            all_time_adj = a_tx.get('adj') or 0
             
-            future_in = future_txns_map.get((p.id, b.id, 'IN'), 0)
-            future_adj = future_txns_map.get((p.id, b.id, 'ADJ'), 0)
-            future_out = future_txns_map.get((p.id, b.id, 'OUT'), 0)
-            future_dmg = future_txns_map.get((p.id, b.id, 'DMG'), 0)
+            # Net sold all-time = gross sold all-time - good returns all-time - damaged returns all-time
+            all_time_out_net = all_time_out_gross - all_time_ret - all_time_ret_dmg
+            # Cumulative received till now = current stock + all-time gross out + all-time standard damaged - all-time good returns - all-time adj
+            total_rec = curr_stock + all_time_out_gross + all_time_dmg_std - all_time_ret - all_time_adj
             
-            # Compute opening stock based on current stock and period transactions
-            opening_stock = curr_stock - period_in + period_out + period_dmg - period_adj
-            # Closing stock after applying period transactions
-            closing_stock = opening_stock + period_in - period_out - period_dmg + period_adj
+            # Calculate closing stock at end_date if in the past
+            if end_date < today:
+                f_tx = future_map.get((p.id, b.id), {})
+                future_in_std = f_tx.get('in_std') or 0
+                future_ret = f_tx.get('ret_good') or 0
+                future_out_gross = f_tx.get('out_gross') or 0
+                future_dmg_std = f_tx.get('dmg_std') or 0
+                future_adj = f_tx.get('adj') or 0
+                
+                closing_stock = curr_stock - (future_in_std + future_ret) + future_out_gross + future_dmg_std - future_adj
+            else:
+                closing_stock = curr_stock
+                
+            # Compute opening stock: Cl_stock - (In + Ret) + Out_gross + Dmg_std - Adj
+            opening_stock = closing_stock - (period_in_std + period_ret) + period_out_gross + period_dmg_std - period_adj
             
-            if opening_stock == 0 and period_in == 0 and period_out == 0 and period_dmg == 0 and period_adj == 0 and closing_stock == 0 and (p.id, b.id) not in stock_map:
+            # Net sold in period = gross out - good returns - damaged returns
+            period_out_net = period_out_gross - period_ret - period_ret_dmg
+            
+            if opening_stock == 0 and period_in_std == 0 and period_ret == 0 and period_out_net == 0 and period_dmg_std == 0 and period_ret_dmg == 0 and period_adj == 0 and closing_stock == 0 and (p.id, b.id) not in stock_map:
                 continue
             
+            # Net all-time damaged = standard damaged + return damaged
+            all_time_dmg_net = all_time_dmg_std + all_time_ret_dmg
+
             total_op += opening_stock
-            total_in += period_in
-            total_out += period_out
+            total_in += period_in_std
+            total_ret += period_ret
+            total_out += period_out_net
             total_adj_plus += period_adj_plus
             total_adj_minus += period_adj_minus
-            total_dmg += period_dmg
+            total_dmg += period_dmg_std
+            total_ret_dmg += period_ret_dmg
             total_cl += closing_stock
             total_rec_sum += total_rec
-            total_all_time_out_sum += all_time_out
-            total_all_time_dmg_sum += all_time_dmg
+            total_all_time_out_sum += all_time_out_net
+            total_all_time_dmg_sum += all_time_dmg_net
             
-            row2 = [p.name, p.barcode, b.name, b.code or '', opening_stock, period_in, period_out, period_adj_plus, period_adj_minus, period_dmg, closing_stock, total_rec, all_time_out, all_time_dmg]
+            row2 = [
+                p.name, p.barcode, b.name, b.code or '', 
+                opening_stock, period_in_std, period_ret, period_out_net, 
+                period_adj_plus, period_adj_minus, period_dmg_std, period_ret_dmg, 
+                closing_stock, total_rec, all_time_out_net, all_time_dmg_net
+            ]
             ws2.append(row2)
             
-        row1 = [p.name, p.barcode, str(int(p.price)), total_op, total_in, total_out, total_adj_plus, total_adj_minus, total_dmg, total_cl, total_rec_sum, total_all_time_out_sum, total_all_time_dmg_sum]
+        row1 = [
+            p.name, p.barcode, str(int(p.price)), 
+            total_op, total_in, total_ret, total_out, 
+            total_adj_plus, total_adj_minus, total_dmg, total_ret_dmg, 
+            total_cl, total_rec_sum, total_all_time_out_sum, total_all_time_dmg_sum
+        ]
         ws1.append(row1)
 
     # Sheet 3: Detailed Ledger
@@ -1386,7 +1496,7 @@ def view_stock_adjustments(request, reg_id):
     Read-only view showing the history of all stock adjustments/corrections
     for a given product registry (product + branch).
     """
-    if request.user.role == 'staff':
+    if request.user.role == 'sales_staff':
         return redirect('dashboard')
         
     registry = get_object_or_404(ProductRegistry, pk=reg_id)

@@ -295,8 +295,11 @@ def process_bill(request):
                     bill.online_amount = total_amount
                     bill.cash_amount = 0
                 elif payment_method == 'split':
+                    # Validate split amounts sum to total and assign them
                     if float(cash_amount) + float(online_amount) != float(total_amount):
                         raise ValueError(f"Split amounts (₹{cash_amount} + ₹{online_amount}) do not match total ₹{total_amount}")
+                    bill.cash_amount = float(cash_amount)
+                    bill.online_amount = float(online_amount)
                 
                 bill.save()
                 
@@ -405,11 +408,8 @@ def bill_detail(request, bill_id):
     # Normalize phone number: strip non-digits and ensure it has a country code (default to '91' for India)
     def normalize_phone(phone: str) -> str:
         digits = ''.join(filter(str.isdigit, phone))
-        # If the number starts with a country code (e.g., 1-3 digits) and length > 10, keep as is
-        if len(digits) > 10:
-            return digits
-        # Otherwise, prepend default country code (you may adjust as needed)
-        return f"91{digits}" if digits else ''
+        # Return digits directly; if number already includes country code (len > 10), keep as is.
+        return digits
     normalized_phone = normalize_phone(bill.customer_phone) if bill.customer_phone else ''
     encoded_text = urllib.parse.quote(wa_text)
     wa_link = f"https://wa.me/{normalized_phone}?text={encoded_text}" if normalized_phone else None
@@ -428,12 +428,17 @@ def bill_detail(request, bill_id):
         safe_bc = raw_bc.replace(' ', '-')
         it.barcode_display = f"*{safe_bc}*"
 
+    from .return_models import ReturnRequest
+    returns = bill.return_requests.filter(status=ReturnRequest.Status.APPROVED).select_related('product', 'replacement_product')
+
     return render(request, 'billing/bill_detail.html', {
         'bill': bill,
         'items': items,
         'wa_link': wa_link,
         'public_url': public_url,
-        'allow_edit': allow_edit
+        'allow_edit': allow_edit,
+        'returns': returns,
+        'from_pos': from_pos,
     })
 
 def public_bill_detail(request, share_id):
@@ -453,9 +458,13 @@ def public_bill_detail(request, share_id):
         safe_bc = raw_bc.replace(' ', '-')
         it.barcode_display = f"*{safe_bc}*"
 
+    from .return_models import ReturnRequest
+    returns = bill.return_requests.filter(status=ReturnRequest.Status.APPROVED).select_related('product', 'replacement_product')
+
     return render(request, 'billing/public_bill_detail.html', {
         'bill': bill,
         'items': items,
+        'returns': returns,
     })
 
 @login_required
@@ -468,10 +477,13 @@ def staff_activity(request):
         target_date = timezone.now().date()
     
     # Filter bills for the logged-in staff at their active branch on the target date
+    import datetime
+    target_start = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time.min))
+    target_end = timezone.make_aware(datetime.datetime.combine(target_date, datetime.time.max))
     bills = Bill.objects.filter(
         staff=request.user,
         branch=request.user.active_branch,
-        created_at__date=target_date
+        created_at__range=(target_start, target_end)
     ).order_by('-created_at').prefetch_related('items__product')
     
     # Aggregates
@@ -498,7 +510,7 @@ def staff_activity(request):
 def owner_bill_list(request):
     """A comprehensive list of all bills for Owners and Managers."""
     request.session.pop('newly_created_bill_id', None)
-    if request.user.role == 'staff':
+    if request.user.role == 'sales_staff':
         return HttpResponse("Unauthorized", status=403)
     
     # Ensure active_branch is set for manager/owner
@@ -509,10 +521,10 @@ def owner_bill_list(request):
             request.user.save()
     # Restricted query for Managers
     accessible_branches = request.user.get_accessible_branches()
-    bills = Bill.objects.filter(branch__in=accessible_branches).order_by('-created_at').select_related('branch', 'staff').prefetch_related('items__product')
+    bills = Bill.objects.filter(branch__in=accessible_branches).order_by('-created_at').select_related('branch', 'staff').prefetch_related('items__product', 'return_requests__product', 'return_requests__replacement_product')
     
     # Filter by active branch if manager
-    if request.user.role == 'manager':
+    if request.user.role in ['manager', 'assistant_manager']:
         # Default to active branch if no filter chosen, but the base query above already restricts to accessible branches
         pass
     
@@ -534,35 +546,50 @@ def owner_bill_list(request):
         )
     
     # Handle branch restriction
-    if request.user.role == 'manager':
+    if request.user.role in ['manager', 'assistant_manager']:
         branches = request.user.get_accessible_branches()
         # Ensure they can only filter branches they manage
         if branch_id and branch_id != 'None':
             if not branches.filter(id=branch_id).exists():
-                if request.user.active_branch:
-                    branch_id = str(request.user.active_branch.id)
-        else:
-            # Default to active branch if no valid filter and active_branch exists
-            if request.user.active_branch:
                 branch_id = str(request.user.active_branch.id)
+        else:
+            branch_id = str(request.user.active_branch.id)
     else:
+        # Default to active branch if no valid filter and active_branch exists
+        if request.user.active_branch:
+            branch_id = str(request.user.active_branch.id)
         from core.models import Branch
         branches = Branch.objects.all()
 
     if branch_id and branch_id != 'None':
         bills = bills.filter(branch_id=branch_id)
+    import datetime
+    from django.utils.dateparse import parse_date
     if start_date and start_date != 'None':
-        bills = bills.filter(created_at__date__gte=start_date)
+        parsed_start = parse_date(start_date)
+        if parsed_start:
+            start_datetime = timezone.make_aware(datetime.datetime.combine(parsed_start, datetime.time.min))
+            bills = bills.filter(created_at__gte=start_datetime)
     if end_date and end_date != 'None':
-        bills = bills.filter(created_at__date__lte=end_date)
+        parsed_end = parse_date(end_date)
+        if parsed_end:
+            end_datetime = timezone.make_aware(datetime.datetime.combine(parsed_end, datetime.time.max))
+            bills = bills.filter(created_at__lte=end_datetime)
     if payment_method and payment_method != 'None':
         bills = bills.filter(payment_method=payment_method)
         
     # Stats for the filtered selection
-    stats = bills.aggregate(
-        total_revenue=Sum('total_amount'),
-        bill_count=Count('id')
-    )
+    from .return_models import ReturnRequest
+    total_bill_amount = bills.aggregate(total=Sum('total_amount'))['total'] or 0
+    total_exchange_diff = ReturnRequest.objects.filter(
+        invoice__in=bills,
+        status=ReturnRequest.Status.APPROVED
+    ).aggregate(total=Sum('price_difference'))['total'] or 0
+
+    stats = {
+        'total_revenue': total_bill_amount + total_exchange_diff,
+        'bill_count': bills.count()
+    }
     
     from django.core.paginator import Paginator
     paginator = Paginator(bills, 10)
@@ -583,7 +610,7 @@ def owner_bill_list(request):
 @login_required
 def export_sales_csv(request):
     # Only Owners and Managers can export
-    if request.user.role == 'staff':
+    if request.user.role == 'sales_staff':
         return HttpResponse("Unauthorized", status=403)
         
     now = timezone.now()
@@ -595,7 +622,7 @@ def export_sales_csv(request):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     
     writer = csv.writer(response)
-    writer.writerow(['Invoice Number', 'Branch Name', 'Branch Code', 'Staff', 'Customer', 'Phone', 'Total Amount', 'Retail Price', 'Cash', 'Online', 'Payment Method', 'Purchased Items', 'Return Amount', 'Return Reason', 'Returned Items', 'Date & Time'])
+    writer.writerow(['Invoice Number', 'Branch Name', 'Branch Code', 'Staff', 'Customer', 'Phone', 'Original Total', 'Retail Price', 'Cash', 'Online', 'Payment Method', 'Purchased Items', 'Return Reason', 'Returned Items', 'Replacement Items', 'Exchange Pay Difference', 'Date & Time'])
     
     # Build base queryset
     accessible_branches = request.user.get_accessible_branches()
@@ -616,7 +643,7 @@ def export_sales_csv(request):
             Q(customer_phone__icontains=q)
         )
         
-    if request.user.role == 'manager':
+    if request.user.role in ['manager', 'assistant_manager']:
         branches = request.user.get_accessible_branches()
         if branch_id and branch_id != 'None':
             if not branches.filter(id=branch_id).exists():
@@ -627,19 +654,50 @@ def export_sales_csv(request):
     if branch_id and branch_id != 'None':
         bills = bills.filter(branch_id=branch_id)
         
+    import datetime
+    from django.utils.dateparse import parse_date
     if start_date and start_date != 'None':
-        bills = bills.filter(created_at__date__gte=start_date)
+        parsed_start = parse_date(start_date)
+        if parsed_start:
+            start_datetime = timezone.make_aware(datetime.datetime.combine(parsed_start, datetime.time.min))
+            bills = bills.filter(created_at__gte=start_datetime)
     if end_date and end_date != 'None':
-        bills = bills.filter(created_at__date__lte=end_date)
+        parsed_end = parse_date(end_date)
+        if parsed_end:
+            end_datetime = timezone.make_aware(datetime.datetime.combine(parsed_end, datetime.time.max))
+            bills = bills.filter(created_at__lte=end_datetime)
     if payment_method and payment_method != 'None':
         bills = bills.filter(payment_method=payment_method)
         
+    from .return_models import ReturnRequest
+    from core.models import ComboGroup
     for bill in bills.select_related('branch', 'staff'):
         purchased_items = ", ".join([f"{item.product.name} ({item.product.barcode}) x{item.quantity}" for item in bill.items.all()])
-        # Return data is deactivated
-        total_return_amount = 0
-        return_reason = ""
-        returned_items = ""
+        
+        returns_qs = bill.return_requests.filter(status=ReturnRequest.Status.APPROVED)
+        reasons = []
+        ret_items_list = []
+        rep_items_list = []
+        exchange_pay_diff = 0
+        
+        for ret in returns_qs:
+            ret_items_list.append(f"{ret.product_name} ({ret.condition}) x{ret.quantity}")
+            if ret.replacement_product:
+                rep_items_list.append(f"{ret.replacement_product.name} x{ret.replacement_quantity}")
+            
+            # Show diff only for normal products, not combo products
+            is_combo = ret.bill_item.is_combo_purchase if ret.bill_item else False
+            
+            if not is_combo:
+                exchange_pay_diff += ret.price_difference
+            
+            if ret.reason:
+                reasons.append(ret.reason)
+                
+        returned_items = ", ".join(ret_items_list)
+        replacement_items = ", ".join(rep_items_list)
+        return_reason = ", ".join(set(reasons))
+        
         writer.writerow([
             bill.invoice_number,
             bill.branch.name if bill.branch else 'N/A',
@@ -653,9 +711,10 @@ def export_sales_csv(request):
             bill.online_amount,
             bill.get_payment_method_display(),
             purchased_items,
-            f"{total_return_amount:.2f}" if total_return_amount else '',
             return_reason,
             returned_items,
+            replacement_items,
+            f"{exchange_pay_diff:.2f}" if exchange_pay_diff else '0.00',
             bill.created_at.strftime('%Y-%m-%d %H:%M:%S')
         ])
         

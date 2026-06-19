@@ -10,6 +10,7 @@ urlpatterns = [
     path('dashboard/owner/', views.OwnerDashboardView.as_view(), name='owner_dashboard'),
     path('dashboard/owner/export-csv/', views.export_dashboard_sales_csv, name='export_dashboard_sales_csv'),
     path('dashboard/manager/', views.ManagerDashboardView.as_view(), name='manager_dashboard'),
+    path('dashboard/manager/performance/', views.ManagerStaffPerformanceView.as_view(), name='manager_performance'),
     path('dashboard/staff/', views.StaffDashboardView.as_view(), name='staff_dashboard'),
     # Alias
     path('dashboard/', views.dashboard_redirect, name='dashboard'),

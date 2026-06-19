@@ -228,13 +228,38 @@
         border-radius: 0.5rem;
         box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
-    .modal .ts-dropdown .option {
-        background: none !important;
-        color: #212529 !important;
-    }
     .modal .ts-dropdown .option:hover,
     .modal .ts-dropdown .option.active {
         background: #f0f0f0 !important;
+    }
+    /* Staff table – card style rows */
+    .table-compact tbody tr {
+        background: #fff;
+        border-radius: .75rem;
+        box-shadow: 0 2px 6px rgba(0,0,0,.04);
+        transition: transform .2s, box-shadow .2s;
+        margin-bottom: .5rem;
+    }
+    .table-compact tbody tr:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 12px rgba(99,102,241,.12);
+    }
+    /* Responsive stack for mobile */
+    @media (max-width: 768px) {
+        .table-compact thead {display:none;}
+        .table-compact tbody tr {display:flex; flex-direction:column; gap:.35rem; padding:.8rem;}
+        .table-compact td::before {
+            content: attr(data-label);
+            font-weight:600; color:#64748b; margin-right:.4rem;
+        }
+        .table-compact td {display:flex; justify-content:space-between;}
+    }
+    /* Action icons */
+    .hover-actions .btn {
+        opacity:.85; transition:opacity .2s, transform .2s;
+    }
+    .hover-actions .btn:hover {
+        opacity:1; transform:scale(1.08);
     }
 </style>
 {% endblock %}
@@ -396,7 +421,7 @@
                                 <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 text-xxs fw-bold">₹{{ branch.today_sales|default:"0" }}</span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center text-xxs text-muted mt-2 border-top pt-2">
-                                <span><i class="bi bi-people me-1"></i>{{ branch.active_staff_count }} Staff</span>
+                                <span><i class="bi bi-people me-1"></i>{{ branch.active_staff_count }} Sales Staff</span>
                                 <span class="text-success fw-bold">Goal: 25%</span>
                             </div>
                             <div class="progress mt-1.5" style="height: 4px;">
@@ -458,7 +483,7 @@
                             <th>Location</th>
                             <th>Contact</th>
                             <th>Prefix</th>
-                            <th>Staff Count</th>
+                            <th>Sales Staff Count</th>
                             <th class="text-center" style="width: 100px;">Actions</th>
                         </tr>
                     </thead>
@@ -500,7 +525,19 @@
         <div class="glass-card p-3">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
                 <div class="d-flex align-items-center flex-wrap gap-2">
-                    <h6 class="fw-bold text-primary mb-0 me-2"><i class="bi bi-people-fill me-1.5"></i>Staff accounts</h6>
+                    <h6 class="fw-bold text-primary mb-0 me-2"><i class="bi bi-people-fill me-1.5"></i>Sales Staff accounts</h6>
+                    <div class="input-group input-group-sm" style="max-width: 170px;">
+                        <input type="text" id="staffSearchInput" class="form-control border-0 bg-light rounded-start-pill text-xs py-1" placeholder="Search staff..." oninput="filterStaff()">
+                        <script>document.addEventListener('DOMContentLoaded', function() {
+    const roleSelect = document.getElementById('roleFilterSelect');
+    const branchSelect = document.getElementById('branchFilterSelect');
+    const searchInput = document.getElementById('staffSearchInput');
+    if (roleSelect) roleSelect.value = 'all';
+    if (branchSelect) branchSelect.value = 'all';
+    if (searchInput) searchInput.value = '';
+    filterStaff();
+});</script>
+                    </div>
                     <div class="input-group input-group-sm" style="max-width: 200px;">
                         <span class="input-group-text bg-light border-0 rounded-start-pill text-xxs"><i class="bi bi-filter"></i></span>
                         <select id="branchFilterSelect" class="form-select border-0 bg-light rounded-end-pill text-xs py-1" onchange="filterStaff()" data-no-search>
@@ -513,55 +550,58 @@
                     <div class="input-group input-group-sm" style="max-width: 170px;">
                         <span class="input-group-text bg-light border-0 rounded-start-pill text-xxs"><i class="bi bi-person-badge"></i></span>
                         <select id="roleFilterSelect" class="form-select border-0 bg-light rounded-end-pill text-xs py-1" onchange="filterStaff()" data-no-search>
-                            <option value="all">All Roles</option>
-                            <option value="owner">Admin</option>
-                            <option value="manager">Manager</option>
-                            <option value="staff">Staff</option>
+                              <option value="all">All Roles</option>
+                              <option value="owner">Admin</option>
+                              <option value="manager">Manager</option>
+                              <option value="assistant_manager">Assistant Manager</option>
+                              <option value="sales_staff">Sales Staff</option>
                         </select>
                     </div>
                 </div>
                 <button class="btn btn-primary btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm align-self-start align-self-md-auto" data-bs-toggle="modal" data-bs-target="#addStaffModal">
-                    <i class="bi bi-person-plus me-1"></i>Add Staff
+                    <i class="bi bi-person-plus me-1"></i>Add Sales Staff
                 </button>
             </div>
 
-            <div class="table-responsive">
+            <div class="table-responsive"><div class="bg-white rounded-3 shadow-sm p-3">
                 <table class="table align-middle table-compact" id="staffTable">
                     <thead>
                         <tr class="border-bottom">
-                            <th>Employee ID</th>
-                            <th>Username</th>
-                            <th>Full Name</th>
+                            <th>Emp. ID</th>
+                            <th>Login</th>
+                            <th>Name</th>
+                            <th>Joined</th>
                             <th>Role</th>
                             <th class="text-center">Status</th>
-                            <th class="text-center">Product Rights</th>
-                            <th class="text-center">Edit Bill Rights</th>
-                            <th>Branches</th>
+                            <th class="text-center">Products</th>
+                            
+                            <th>Location</th>
                             <th class="text-center" style="width: 100px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for staff in staff_list %}
                         <tr id="staff-row-{{ staff.id }}" class="staff-row" data-branches="{% for b in staff.branches.all %}branch-{{ b.id }} {% endfor %}" data-role="{{ staff.role }}">
-                            <td class="fw-bold text-muted text-xs">{{ staff.employee_id|default:"-" }}</td>
-                            <td class="fw-bold text-primary text-xs">@{{ staff.username }}</td>
-                            <td class="text-xs">{{ staff.first_name }} {{ staff.last_name }}</td>
-                             <td>
+                            <td data-label="Emp. ID" class="fw-bold text-muted text-xs">{{ staff.employee_id|default:"-" }}</td>
+                            <td data-label="Login" class="fw-bold text-primary text-xs staff-username">@{{ staff.username }}</td>
+                            <td data-label="Name" class="text-xs staff-name">{{ staff.first_name }} {{ staff.last_name }}</td>
+                            <td data-label="Joined" class="text-xs">{{ staff.date_of_joining|default:staff.date_joined|date:"Y-m-d" }}</td>
+                             <td data-label="Role">
                                  {% if staff.role == 'owner' %}
                                  <span class="badge badge-role-admin rounded-pill px-2.5 py-0.5 text-uppercase text-xxs">Admin</span>
-                                 {% elif staff.role == 'manager' %}
-                                 <span class="badge badge-role-manager rounded-pill px-2.5 py-0.5 text-uppercase text-xxs">Manager</span>
+                                 {% elif staff.role == 'manager' or staff.role == 'assistant_manager' %}
+                                 <span class="badge badge-role-manager rounded-pill px-2.5 py-0.5 text-uppercase text-xxs">{{ staff.role|title }}</span>
                                  {% else %}
-                                 <span class="badge badge-role-staff rounded-pill px-2.5 py-0.5 text-uppercase text-xxs">Staff</span>
+                                 <span class="badge badge-role-staff rounded-pill px-2.5 py-0.5 text-uppercase text-xxs">Sales Staff</span>
                                  {% endif %}
                              </td>
-                            <td class="text-center">
+                            <td data-label="Status" class="text-center">
                                 <div class="form-check form-switch d-inline-block">
                                     <input class="form-check-input" type="checkbox" id="activeSwitch{{ staff.id }}" {% if staff.is_active %}checked{% endif %} onchange="toggleStaffActive('{{ staff.id }}', this.checked)" {% if staff == request.user %}disabled title="You cannot deactivate your own account"{% endif %} style="transform: scale(0.85);">
                                 </div>
                             </td>
-                            <td class="text-center">
-                                {% if staff.role == 'manager' %}
+                            <td data-label="Products" class="text-center">
+                                {% if staff.role == 'manager' or staff.role == 'assistant_manager' %}
                                 <div class="form-check form-switch d-inline-block">
                                     <input class="form-check-input" type="checkbox" id="productRightsSwitch{{ staff.id }}" {% if staff.has_product_rights %}checked{% endif %} onchange="toggleProductRights('{{ staff.id }}', this.checked)" style="transform: scale(0.85);">
                                 </div>
@@ -569,16 +609,7 @@
                                 <span class="text-muted text-xxs">-</span>
                                 {% endif %}
                             </td>
-                            <td class="text-center">
-                                {% if staff.role != 'owner' %}
-                                <div class="form-check form-switch d-inline-block">
-                                    <input class="form-check-input" type="checkbox" id="billEditRightsSwitch{{ staff.id }}" {% if staff.has_bill_edit_rights %}checked{% endif %} onchange="toggleBillEditRights('{{ staff.id }}', this.checked)" style="transform: scale(0.85);">
-                                </div>
-                                {% else %}
-                                <span class="text-muted text-xxs">Full Access</span>
-                                {% endif %}
-                            </td>
-                            <td>
+                            <td data-label="Branches">
                                 <div class="d-flex flex-wrap gap-1">
                                     {% for b in staff.branches.all %}
                                     <span class="badge bg-light text-dark border rounded-pill px-2 py-0.5 text-xxs">{{ b.name }}</span>
@@ -587,9 +618,9 @@
                                     {% endfor %}
                                 </div>
                             </td>
-                            <td class="text-center hover-actions">
+                            <td data-label="Actions" class="text-center hover-actions d-flex justify-content-center gap-2">
                                 <button class="btn btn-outline-primary btn-xs rounded-circle me-1 p-1" 
-                                        onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}')" 
+                                        onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}', '{{ staff.date_of_joining|date:"Y-m-d"|default:'' }}')" 
                                         title="Edit Staff / Assign Branch" style="width: 24px; height: 24px; line-height: 1;">
                                     <i class="bi bi-pencil-square" style="font-size: 10px; display: block;"></i>
                                 </button>
@@ -606,7 +637,7 @@
                         </tr>
                         {% endfor %}
                     </tbody>
-                </table>
+                </table></div>
             </div>
             {% if staff_list.has_other_pages %}
             <nav aria-label="Staff pagination" class="mt-3">
@@ -720,12 +751,12 @@
     </div>
 </div>
 
-<!-- 3. Add Staff Modal -->
+<!-- 3. Add Sales Staff Modal -->
 <div class="modal fade" id="addStaffModal" tabindex="-1" aria-labelledby="addStaffModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
             <div class="modal-header bg-light border-0">
-                <h5 class="modal-title fw-bold" id="addStaffModalLabel"><i class="bi bi-person-plus text-primary me-2"></i>Add Staff Account</h5>
+                <h5 class="modal-title fw-bold" id="addStaffModalLabel"><i class="bi bi-person-plus text-primary me-2"></i>Add Sales Staff Account</h5>
                 <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="addStaffForm" action="{% url 'staff_create' %}" method="post">
@@ -814,12 +845,12 @@
     </div>
 </div>
 
-<!-- 4. Edit Staff Modal -->
+<!-- 4. Edit Sales Staff Modal -->
 <div class="modal fade" id="editStaffModal" tabindex="-1" aria-labelledby="editStaffModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
             <div class="modal-header bg-light border-0">
-                <h5 class="modal-title fw-bold" id="editStaffModalLabel"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Staff / Assign Branches</h5>
+                <h5 class="modal-title fw-bold" id="editStaffModalLabel"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Sales Staff / Assign Branches</h5>
                 <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="editStaffForm" method="post" action="">
@@ -854,6 +885,14 @@
                                             </div>
                                         </div>
                                         <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Employee ID</label>
+                                            <input type="text" name="employee_id" id="editStaffEmployeeId" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Employee ID (Auto-generated if blank)">
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Date of Joining</label>
+                                            <input type="date" name="date_of_joining" id="editStaffDateOfJoining" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Date of Joining">
+                                        </div>
+                                        <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Mobile Number</label>
                                             <input type="text" name="mobile_number" id="editStaffMobileNumber" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Mobile Number" required>
                                         </div>
@@ -866,12 +905,9 @@
                                              <select name="role" id="editStaffRole" class="form-select rounded-pill shadow-sm border-0 bg-light px-3" data-no-search="true" required>
                                                  <option value="owner">Admin</option>
                                                  <option value="manager">Manager</option>
-                                                 <option value="staff">Staff</option>
+                                                 <option value="assistant_manager">Assistant Manager</option>
+                                                 <option value="sales_staff">Sales Staff</option>
                                              </select>
-                                        </div>
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Employee ID</label>
-                                            <input type="text" name="employee_id" id="editStaffEmployeeId" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Employee ID (Auto-generated if blank)">
                                         </div>
                                     </div>
                                 </div>
@@ -975,7 +1011,7 @@
         modal.show();
     }
 
-    function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId, mobileNumber, address) {
+    function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId, mobileNumber, address, dateOfJoining) {
         document.getElementById('editStaffForm').action = `/users/staff/edit/${id}/`;
         document.getElementById('editStaffUsername').value = username;
         document.getElementById('editStaffFirstName').value = firstName;
@@ -984,6 +1020,7 @@
         document.getElementById('editStaffEmployeeId').value = (employeeId === 'None' || !employeeId) ? '' : employeeId;
         document.getElementById('editStaffMobileNumber').value = (mobileNumber === 'None' || !mobileNumber) ? '' : mobileNumber;
         document.getElementById('editStaffAddress').value = (address === 'None' || !address) ? '' : address;
+        document.getElementById('editStaffDateOfJoining').value = (dateOfJoining === 'None' || !dateOfJoining) ? '' : dateOfJoining;
 
         // Set role via Tom Select API if available, otherwise fallback to native
         const roleEl = document.getElementById('editStaffRole');
@@ -1079,50 +1116,22 @@
         });
     }
 
-    // Toggle staff bill edit rights via AJAX
-    function toggleBillEditRights(staffId, hasBillEditRights) {
-        const csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
-        if (!csrfEl) { alert('CSRF token not found.'); return; }
-        fetch(`/users/staff/toggle-bill-edit-rights/${staffId}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfEl.value
-            },
-            body: JSON.stringify({ has_bill_edit_rights: hasBillEditRights })
-        })
-        .then(response => {
-            if (response.redirected || response.status === 401 || response.status === 302) {
-                alert('Session expired. Please reload the page to log in again.');
-                window.location.reload();
-                return;
-            }
-            if (!response.ok) {
-                throw new Error('Server returned error status ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data && data.status !== 'success') {
-                alert('Failed to update bill edit rights.');
-            }
-        })
-        .catch((err) => {
-            console.error(err);
-            alert('Failed to update bill edit rights. Please check your connection or session.');
-        });
-    }
 
-    // Staff combined branch and role filter on table
+
+    // Staff combined branch, role, and search filter on table
     function filterStaff() {
+        const searchVal = document.getElementById('staffSearchInput').value.toLowerCase();
         const branchVal = document.getElementById('branchFilterSelect').value;
         const roleVal = document.getElementById('roleFilterSelect').value;
         
         document.querySelectorAll('.staff-row').forEach(function(row) {
+            const username = row.querySelector('.staff-username').textContent.toLowerCase();
+            const name = row.querySelector('.staff-name').textContent.toLowerCase();
+            const matchesSearch = (searchVal === '') || username.includes(searchVal) || name.includes(searchVal);
             const matchesBranch = (branchVal === 'all') || row.dataset.branches.includes(branchVal);
             const matchesRole = (roleVal === 'all') || (row.dataset.role === roleVal);
             
-            if (matchesBranch && matchesRole) {
+            if (matchesSearch && matchesBranch && matchesRole) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';

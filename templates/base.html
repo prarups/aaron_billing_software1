@@ -341,6 +341,7 @@
                             <span>Dashboard</span>
                         </a>
                     </li>
+                    
                     {% if user.role == 'owner' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link" href="{% url 'admin:core_branch_changelist' %}">
@@ -349,7 +350,7 @@
                         </a>
                     </li>
                     {% endif %}
-                    {% if user.role != 'staff' %}
+                    {% if user.role != 'sales_staff' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link" href="{% url 'product_list' %}">
                             <i class="bi bi-box-seam-fill"></i>
@@ -367,18 +368,23 @@
                             <i class="bi bi-receipt"></i>
                             <span>Sales Report</span>
                         </a>
-                    </li>
+                    {% endif %}
                     <li class="sidebar-item">
                         <a class="sidebar-link" href="{% url 'combo_list' %}">
                             <i class="bi bi-tags-fill"></i>
-                            <span>Manage Combos</span>
+                            <span>{% if user.role == 'owner' %}Manage Combos{% else %}Combo Offers{% endif %}</span>
                         </a>
                     </li>
-                    {% endif %}
                     <li class="sidebar-item">
                         <a class="sidebar-link" href="{% url 'pos_index' %}">
                             <i class="bi bi-cpu-fill"></i>
                             <span>POS Billing</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'return_create' %}">
+                            <i class="bi bi-arrow-return-left"></i>
+                            <span>Process Return</span>
                         </a>
                     </li>
                 {% endif %}
@@ -422,6 +428,7 @@
                             <span>Dashboard</span>
                         </a>
                     </li>
+                    
                     {% if user.role == 'owner' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link" href="{% url 'admin:core_branch_changelist' %}">
@@ -430,7 +437,7 @@
                         </a>
                     </li>
                     {% endif %}
-                    {% if user.role != 'staff' %}
+                    {% if user.role != 'sales_staff' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link" href="{% url 'product_list' %}">
                             <i class="bi bi-box-seam-fill"></i>
@@ -448,18 +455,23 @@
                             <i class="bi bi-receipt"></i>
                             <span>Sales Report</span>
                         </a>
-                    </li>
+                    {% endif %}
                     <li class="sidebar-item">
                         <a class="sidebar-link" href="{% url 'combo_list' %}">
                             <i class="bi bi-tags-fill"></i>
-                            <span>Manage Combos</span>
+                            <span>{% if user.role == 'owner' %}Manage Combos{% else %}Combo Offers{% endif %}</span>
                         </a>
                     </li>
-                    {% endif %}
                     <li class="sidebar-item">
                         <a class="sidebar-link" href="{% url 'pos_index' %}">
                             <i class="bi bi-cpu-fill"></i>
                             <span>POS Billing</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'return_create' %}">
+                            <i class="bi bi-arrow-return-left"></i>
+                            <span>Process Return</span>
                         </a>
                     </li>
                 {% endif %}

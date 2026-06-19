@@ -41,10 +41,6 @@ def calculate_optimal_combo_price(item_prices, tiers_list):
 
 @login_required
 def combo_list(request):
-    if request.user.role == 'staff':
-        messages.error(request, "Access denied. Only Owners and Managers can manage combos.")
-        return redirect('dashboard')
-    
     combos = ComboGroup.objects.prefetch_related('branches', 'products', 'tiers').all().order_by('-created_at')
     return render(request, 'core/combo_list.html', {
         'combos': combos
@@ -53,9 +49,9 @@ def combo_list(request):
 @login_required
 @transaction.atomic
 def combo_create(request):
-    if request.user.role == 'staff':
-        messages.error(request, "Access denied. Only Owners and Managers can manage combos.")
-        return redirect('dashboard')
+    if request.user.role != 'owner':
+        messages.error(request, "Access denied. Only Owners can manage combos.")
+        return redirect('combo_list')
     
     branches = request.user.get_accessible_branches().order_by('name')
     products = Product.objects.all().order_by('name')
@@ -102,9 +98,9 @@ def combo_create(request):
 @login_required
 @transaction.atomic
 def combo_edit(request, pk):
-    if request.user.role == 'staff':
-        messages.error(request, "Access denied. Only Owners and Managers can manage combos.")
-        return redirect('dashboard')
+    if request.user.role != 'owner':
+        messages.error(request, "Access denied. Only Owners can manage combos.")
+        return redirect('combo_list')
     
     combo = get_object_or_404(ComboGroup, pk=pk)
     branches = request.user.get_accessible_branches().order_by('name')
@@ -162,9 +158,9 @@ def combo_edit(request, pk):
 @login_required
 @transaction.atomic
 def combo_delete(request, pk):
-    if request.user.role == 'staff':
-        messages.error(request, "Access denied. Only Owners and Managers can manage combos.")
-        return redirect('dashboard')
+    if request.user.role != 'owner':
+        messages.error(request, "Access denied. Only Owners can manage combos.")
+        return redirect('combo_list')
     
     combo = get_object_or_404(ComboGroup, pk=pk)
     if request.method == 'POST':

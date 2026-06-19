@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}My Staff Performance - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="card shadow-sm mb-4" style="background: rgba(255,255,255,0.85); backdrop-filter: blur(8px);">
+    <div class="card-header bg-white bg-opacity-75 border-0">
+      <h4 class="fw-bold mb-0">My Staff Performance</h4>
+    </div>
+    <div class="card-body">
+      <!-- Date filter form -->
+      <form method="get" class="row g-3 align-items-end mb-3">
+        <div class="col-auto">
+          <label for="from" class="form-label">From</label>
+          <input type="date" id="from" name="from" class="form-control" value="{{ from_date }}">
+        </div>
+        <div class="col-auto">
+          <label for="to" class="form-label">To</label>
+          <input type="date" id="to" name="to" class="form-control" value="{{ to_date }}">
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary btn-glass">Filter</button>
+          <a href="{% url 'manager_performance' %}" class="btn btn-secondary btn-glass ms-2">Clear</a>
+          <a href="{% url 'manager_performance' %}?from={{ from_date }}&to={{ to_date }}&format=csv" class="btn btn-outline-primary btn-glass ms-2">Download CSV</a>
+        </div>
+      </form>
+      <div class="table-responsive">
+        <table class="table table-hover table-striped align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Emp. ID</th>
+              <th>Name</th>
+              <th>Joined</th>
+              <th>Daily Sales</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for staff in my_staff_performance %}
+            <tr>
+              <td>{{ staff.employee_id }}</td>
+              <td>{{ staff.name }}</td>
+              <td>{{ staff.date_of_joining|date:"Y-m-d" }}</td>
+              <td>₹{{ staff.sales|default:0 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted small">No staff assigned.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

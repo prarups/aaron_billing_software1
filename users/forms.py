@@ -78,28 +78,30 @@ class StaffForm(forms.ModelForm):
     
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'role', 'branches', 'employee_id', 'mobile_number', 'address', 'is_active']
+        fields = ['username', 'first_name', 'last_name', 'role', 'branches', 'employee_id', 'mobile_number', 'address', 'is_active', 'date_of_joining']
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Username'}),
             'first_name': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'First Name'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Last Name'}),
             'role': forms.Select(attrs={'class': 'form-select rounded-pill shadow-sm border-0 bg-light px-3', 'data-no-search': 'true'}),
             'branches': forms.SelectMultiple(attrs={'class': 'form-select rounded-pill shadow-sm border-0 bg-light', 'size': '6'}),
+            'employee_id': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Employee ID (Auto-generated if blank)', 'maxlength': '10'}),
             'mobile_number': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Mobile Number'}),
             'address': forms.Textarea(attrs={'class': 'form-control rounded-3 shadow-sm border-0 bg-light px-3', 'placeholder': 'Address', 'rows': '2'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'date_of_joining': forms.DateInput(attrs={'type':'date','class':'form-control rounded-pill shadow-sm border-0 bg-light px-3','placeholder':'Date of Joining'}),
         }
 
     def clean_password(self):
         password = self.cleaned_data.get('password')
-        if not self.instance.pk and not password:
-            raise forms.ValidationError("Password is required for new accounts.")
+        # Password is optional for new accounts; if not provided, a temporary password will be generated later.
         return password
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['role'].choices = [('owner', 'Admin'), ('manager', 'Manager'), ('staff', 'Staff')]
+        self.fields['role'].choices = [('owner', 'Admin'), ('manager', 'Manager'), ('assistant_manager', 'Assistant Manager'), ('sales_staff', 'Sales Staff')]
         self.fields['branches'].queryset = Branch.objects.all()
+        self.fields['branches'].required = False
         # Employee ID is optional on form input as it will auto‑generate if blank
         self.fields['employee_id'].required = False
         # Make employee_id read‑only on edit
@@ -119,6 +121,9 @@ class StaffForm(forms.ModelForm):
     def clean_employee_id(self):
         employee_id = self.cleaned_data.get('employee_id')
         if employee_id:
+            # Enforce max length of 10 characters (matches DB column)
+            if len(employee_id) > 10:
+                raise forms.ValidationError("Employee ID must be at most 10 characters long.")
             # Ensure unique
             qs = User.objects.filter(employee_id__iexact=employee_id)
             if self.instance.pk:
@@ -127,27 +132,27 @@ class StaffForm(forms.ModelForm):
                 raise forms.ValidationError("This Employee ID is already assigned to another user.")
         return employee_id
 
-    def clean(self):
-        cleaned_data = super().clean()
-        role = cleaned_data.get('role')
-        branches = cleaned_data.get('branches')
-        # Enforce at least one branch for managers and staff
-        if role in ['manager', 'staff'] and (not branches or len(branches) == 0):
-            raise forms.ValidationError(
-                "Managers and Staff must be assigned at least one branch."
-            )
-        # Only owners and managers can be assigned multiple branches
-        if role not in ['owner', 'manager'] and branches and len(branches) > 1:
-            raise forms.ValidationError(
-                "Only managers and admins can be assigned multiple branches."
-            )
-        return cleaned_data
+    def clean_date_of_joining(self):
+        date = self.cleaned_data.get('date_of_joining')
+        if not date:
+            # Use current date as default joining date
+            from django.utils import timezone
+            return timezone.now().date()
+        return date
 
     def save(self, commit=True):
         user = super().save(commit=False)
         password = self.cleaned_data.get('password')
         if password:
             user.set_password(password)
+        else:
+            # Generate a temporary random password for the user
+            from django.utils.crypto import get_random_string
+            temp_password = get_random_string(12)
+            user.set_password(temp_password)
+            # Optionally, you could email this password to the user or log it for admin reference
+            # Here we simply print it for debugging (remove in production)
+            print(f'Generated temporary password for user {user.username}: {temp_password}')
         if user.role == 'owner':
             user.is_superuser = True
             user.is_staff = True

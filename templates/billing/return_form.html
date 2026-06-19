@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Process Return – Aaron Billing{% endblock %}
+{% block title %}Process Return & Exchange – Aaron Billing{% endblock %}
 
 {% block content %}
 <div class="container py-4" style="max-width: 720px;">
@@ -8,10 +8,10 @@
     <!-- Header -->
     <div class="text-center mb-4">
         <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 rounded-circle mb-3" style="width:64px;height:64px;">
-            <i class="bi bi-arrow-return-left fs-3 text-warning"></i>
+            <i class="bi bi-arrow-left-right fs-3 text-warning"></i>
         </div>
-        <h4 class="fw-bold mb-1">Process Return</h4>
-        <p class="text-muted small mb-0">Select the product from the bill, specify condition & action</p>
+        <h4 class="fw-bold mb-1">Process Return & Exchange</h4>
+        <p class="text-muted small mb-0">Select returned item, condition, and choose exchange item</p>
     </div>
 
     <!-- Alerts -->
@@ -68,7 +68,7 @@
                 <!-- Product Selection -->
                 <div class="mb-3">
                     <label class="form-label small fw-bold text-muted">Product to Return</label>
-                    <select name="bill_item" id="id_bill_item" class="form-select rounded-pill border-0 bg-light">
+                    <select name="bill_item" id="id_bill_item" class="form-select rounded-pill border-0 bg-light" data-no-search="true">
                         <option value="">-- Load bill first --</option>
                     </select>
                     {% if form.bill_item.errors %}
@@ -116,6 +116,47 @@
                     </div>
                 </div>
 
+                <!-- Exchange Product Selector (Dynamic) -->
+                <div class="card bg-warning bg-opacity-10 border-0 rounded-4 mb-4" id="replacementSection" style="display:none; border-left: 4px solid var(--bs-warning) !important;">
+                    <div class="card-body p-3">
+                        <div class="small fw-bold text-warning mb-2"><i class="bi bi-arrow-left-right me-1"></i> Exchange Replacement Details</div>
+                        <div class="alert alert-info border-0 rounded-3 py-1.5 px-3 small mb-2 text-xs" id="exchangeContextMsg"></div>
+                        
+                        <!-- Combo Details Section -->
+                        <div id="comboDetailsCard" class="card bg-white border-0 shadow-sm rounded-3 p-2.5 mb-2.5" style="display:none; font-size: 0.8rem;">
+                            <div class="fw-bold text-dark mb-1" style="font-size: 0.85rem;"><i class="bi bi-info-circle-fill text-warning me-1"></i> Combo Details</div>
+                            <div class="mb-1.5">
+                                <span class="fw-semibold text-muted text-xxs text-uppercase" style="font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;">Combo Pricing Tiers</span>
+                                <div id="comboTiersDiv" class="ps-2 text-dark fw-medium mt-0.5"></div>
+                            </div>
+                            <div>
+                                <span class="fw-semibold text-muted text-xxs text-uppercase" style="font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;">Eligible Products</span>
+                                <div id="comboProductsDiv" class="ps-2 text-dark mt-0.5"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-muted">Select Replacement Product</label>
+                            <select id="replacementProductSelect" class="form-select rounded-pill border-0 bg-white" data-no-search="true">
+                                <option value="">-- Choose exchange item --</option>
+                            </select>
+                            <div class="text-muted x-small mt-1" id="replacementProductInfo"></div>
+                        </div>
+
+                        <div class="row g-2 align-items-center">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted mb-1">Exchange Qty</label>
+                                <input type="number" id="replacementQtyInput" class="form-control rounded-pill border-0 bg-white" min="1" value="1" style="height:38px;">
+                            </div>
+                            <div class="col-6 d-flex align-items-end" style="height: 100%;">
+                                <div class="w-100 p-2 rounded-pill bg-white text-center fw-bold text-dark small" id="priceDiffLabel" style="border: 1px dashed #ced4da; height:38px; line-height:22px; margin-top:24px;">
+                                    Diff: ₹0
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Add to Return List button -->
                 <button type="button" id="addReturnBtn" class="btn btn-outline-primary w-100 rounded-pill mt-2 mb-3">
                     <i class="bi bi-plus-circle me-1"></i> Add Item to Return List
@@ -124,13 +165,13 @@
                 <!-- Pending Return List -->
                 <div id="returnListContainer" class="card bg-light border-0 rounded-4 mb-4" style="display:none;">
                     <div class="card-body p-3">
-                        <div class="small fw-bold text-muted mb-2"><i class="bi bi-list-check me-1"></i> Return List</div>
+                        <div class="small fw-bold text-muted mb-2"><i class="bi bi-list-check me-1"></i> Return & Exchange List</div>
                         <table class="table table-sm align-middle mb-0 small" id="returnListTable">
                             <thead>
                                 <tr class="x-small text-uppercase text-muted">
-                                    <th>Product</th>
+                                    <th>Return ➔ Exchange Swap</th>
                                     <th>Qty</th>
-                                    <th>Price</th>
+                                    <th>Price info</th>
                                     <th class="text-center">Action</th>
                                 </tr>
                             </thead>
@@ -155,10 +196,10 @@
                         <table class="table table-sm table-borderless mb-0 small" id="summaryTable">
                             <thead class="x-small text-uppercase text-muted border-bottom">
                                 <tr>
-                                    <th>Product</th>
+                                    <th>Product Swap</th>
                                     <th>Qty × Price</th>
-                                    <th>Refund Amount</th>
-                                    <th>Stock Impact</th>
+                                    <th>Original Price</th>
+                                    <th>Exchange Difference</th>
                                 </tr>
                             </thead>
                             <tbody id="summaryBody">
@@ -168,8 +209,8 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-warning w-100 rounded-pill py-2 fw-bold shadow-sm">
-                    <i class="bi bi-check-circle me-1"></i> Confirm Return
+                <button type="submit" class="btn btn-warning w-100 rounded-pill py-2 fw-bold shadow-sm" id="submitBtn">
+                    <i class="bi bi-check-circle me-1"></i> Confirm Return & Exchange
                 </button>
                 <a href="{% url 'owner_bill_list' %}" class="btn btn-light w-100 rounded-pill py-2 mt-2">
                     <i class="bi bi-arrow-left me-1"></i> Back to Sales Report
@@ -193,12 +234,35 @@
     const conditionIcon = document.getElementById('conditionIcon');
     const conditionText = document.getElementById('conditionText');
     const summaryCard = document.getElementById('summaryCard');
+    const replacementSection = document.getElementById('replacementSection');
+    const exchangeContextMsg = document.getElementById('exchangeContextMsg');
+    const replacementProductSelect = document.getElementById('replacementProductSelect');
+    const replacementProductInfo = document.getElementById('replacementProductInfo');
+    const replacementQtyInput = document.getElementById('replacementQtyInput');
+    const priceDiffLabel = document.getElementById('priceDiffLabel');
+    const comboDetailsCard = document.getElementById('comboDetailsCard');
+    const comboTiersDiv = document.getElementById('comboTiersDiv');
+    const comboProductsDiv = document.getElementById('comboProductsDiv');
+    
     let currentItems = [];
     const returnList = [];
     const returnListTableBody = document.querySelector('#returnListTable tbody');
     const returnListContainer = document.getElementById('returnListContainer');
     const addReturnBtn = document.getElementById('addReturnBtn');
     const returnItemsField = document.getElementById('id_return_items');
+
+    // Preloaded branch products catalog
+    let allProducts = {{ all_products_json|safe }};
+
+    function safeJsonParse(val, fallback) {
+        if (!val || val === 'undefined' || val === 'null') return fallback;
+        try {
+            return JSON.parse(val);
+        } catch (e) {
+            console.error('Error parsing JSON:', e, 'for value:', val);
+            return fallback;
+        }
+    }
 
     let isInitialLoad = true;
     const prevSelectedBillItem = "{{ selected_bill_item|default:'' }}";
@@ -240,6 +304,10 @@
 
     function fetchBillItems(invoiceId) {
         billInfo.textContent = 'Loading...';
+        
+        // Remember current selection before fetching
+        const selectedValue = itemSelect.value;
+        
         fetch(`{% url 'get_bill_items' %}?invoice_id=${invoiceId}`)
             .then(r => r.json())
             .then(data => {
@@ -254,7 +322,20 @@
                     return;
                 }
                 billInfo.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Bill found – ' + data.items.length + ' product(s)</span>';
+                
+                // Dynamically update branch products list from AJAX response
+                if (data.products) {
+                    allProducts = data.products || [];
+                    console.log("Updated allProducts from AJAX:", allProducts);
+                }
+                
                 populateItems(data.items);
+                
+                // Restore selection after updating products if it's still valid
+                if (selectedValue) {
+                    itemSelect.value = selectedValue;
+                    itemSelect.dispatchEvent(new Event('change'));
+                }
             })
             .catch(() => {
                 billInfo.innerHTML = '<span class="text-danger">Error loading bill</span>';
@@ -276,15 +357,21 @@
             const remaining = item.remaining_quantity !== undefined ? item.remaining_quantity : item.quantity;
             const returned = item.returned_quantity !== undefined ? item.returned_quantity : 0;
             
-            opt.textContent = `${item.product_name} (Qty: ${item.quantity}`;
+            opt.textContent = `${item.product_name} - ${item.product_barcode || 'N/A'} (Qty: ${item.quantity}`;
             if (returned > 0) {
                 opt.textContent += `, Returned: ${returned}`;
             }
             opt.textContent += `, Remaining: ${remaining} × ₹${item.unit_price})`;
             
-            opt.dataset.qty = remaining;
-            opt.dataset.price = item.unit_price;
-            opt.dataset.name = item.product_name;
+            opt.setAttribute('data-qty', remaining);
+            opt.setAttribute('data-price', item.unit_price);
+            opt.setAttribute('data-name', item.product_name);
+            opt.setAttribute('data-product-id', item.product_id);
+            opt.setAttribute('data-is-combo', item.is_combo);
+            opt.setAttribute('data-combo-name', item.combo_name);
+            opt.setAttribute('data-combo-eligible-ids', JSON.stringify(item.combo_eligible_product_ids || []));
+            opt.setAttribute('data-combo-tiers', JSON.stringify(item.combo_tiers || []));
+            opt.setAttribute('data-combo-eligible-products', JSON.stringify(item.combo_eligible_products || []));
             
             if (remaining <= 0) {
                 opt.disabled = true;
@@ -326,7 +413,7 @@
         tbody.querySelectorAll('.select-return-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
-                const itemId = this.dataset.id;
+                const itemId = this.getAttribute('data-id');
                 itemSelect.value = itemId;
                 itemSelect.dispatchEvent(new Event('change'));
                 
@@ -335,7 +422,7 @@
             });
         });
         
-        // Restore previously selected values (e.g. after validation error) if this is the initial load
+        // Restore previously selected values if this is the initial load
         if (isInitialLoad) {
             if (prevSelectedBillItem) {
                 itemSelect.value = prevSelectedBillItem;
@@ -363,49 +450,165 @@
         itemSelect.innerHTML = '<option value="">-- Load bill first --</option>';
         productInfo.textContent = '';
         summaryCard.style.display = 'none';
+        replacementSection.style.display = 'none';
         document.getElementById('purchasedProductsContainer').style.display = 'none';
     }
 
     // Item selected
     itemSelect.addEventListener('change', function(){
         const opt = this.options[this.selectedIndex];
-        if (opt && opt.dataset.qty) {
-            const maxQty = parseInt(opt.dataset.qty);
+        if (opt && opt.getAttribute('data-qty')) {
+            const maxQty = parseInt(opt.getAttribute('data-qty'));
             qtyInput.max = maxQty;
             qtyInput.value = maxQty > 0 ? 1 : 0;
-            productInfo.innerHTML = `<i class="bi bi-info-circle me-1"></i>Remaining returnable qty: <strong>${maxQty}</strong> | Unit price: <strong>₹${opt.dataset.price}</strong>`;
+            productInfo.innerHTML = `<i class="bi bi-info-circle me-1"></i>Remaining returnable qty: <strong>${maxQty}</strong> | Unit price: <strong>₹${opt.getAttribute('data-price')}</strong>`;
+            
+            // Trigger replacement selector logic
+            setupReplacementSelector(opt);
         } else {
             productInfo.textContent = '';
+            replacementSection.style.display = 'none';
         }
         updateSummary();
     });
 
-    // Condition / action change
+    // Populate exchange options based on product type (Combo vs Normal)
+    function setupReplacementSelector(opt) {
+        const isCombo = opt.getAttribute('data-is-combo') === 'true';
+        const comboName = opt.getAttribute('data-combo-name');
+        const comboEligibleIds = safeJsonParse(opt.getAttribute('data-combo-eligible-ids'), []);
+        const comboTiers = safeJsonParse(opt.getAttribute('data-combo-tiers'), []);
+        const comboEligibleProducts = safeJsonParse(opt.getAttribute('data-combo-eligible-products'), []);
+        
+        console.log("setupReplacementSelector triggered:", {
+            isCombo: isCombo,
+            comboName: comboName,
+            comboEligibleIds: comboEligibleIds,
+            comboTiers: comboTiers,
+            comboEligibleProducts: comboEligibleProducts,
+            allProductsCount: allProducts.length
+        });
+        
+        replacementProductSelect.innerHTML = '<option value="">-- Choose exchange item --</option>';
+        replacementQtyInput.value = qtyInput.value;
+        replacementSection.style.display = 'block';
+
+        if (isCombo) {
+            // Combo item exchange constraints
+            exchangeContextMsg.className = "alert alert-warning border-0 rounded-3 py-1.5 px-3 small mb-2 text-xs";
+            exchangeContextMsg.innerHTML = `<i class="bi bi-shield-exclamation me-1"></i>Combo item from <strong>"${comboName}"</strong>. Exchange is allowed <strong>ONLY</strong> for products inside the same combo group.`;
+            
+            // Populate combo details section
+            if (comboTiers && comboTiers.length > 0) {
+                comboTiersDiv.innerHTML = comboTiers.map(t => `<div class="mb-0.5 text-success fw-bold"><i class="bi bi-tag-fill me-1"></i>${t}</div>`).join('');
+            } else {
+                comboTiersDiv.innerHTML = '<span class="text-muted small italic">No tiers configured</span>';
+            }
+            
+            if (comboEligibleProducts && comboEligibleProducts.length > 0) {
+                comboProductsDiv.innerHTML = comboEligibleProducts.map(p => 
+                    `<div class="mb-0.5 text-primary"><i class="bi bi-check2 me-1"></i><strong>${p.name}</strong> (${p.barcode}) - ₹${p.price}</div>`
+                ).join('');
+            } else {
+                comboProductsDiv.innerHTML = '<span class="text-muted small italic">No products configured</span>';
+            }
+            comboDetailsCard.style.display = 'block';
+
+            comboEligibleProducts.forEach(p => {
+                const o = document.createElement('option');
+                o.value = p.id;
+                o.textContent = `${p.name} - ${p.barcode || 'N/A'} (Stock: ${p.stock !== undefined ? p.stock : 'N/A'} | Price: ₹${p.price})`;
+                o.setAttribute('data-price', p.price);
+                o.setAttribute('data-name', p.name);
+                o.setAttribute('data-stock', p.stock !== undefined ? p.stock : 0);
+                replacementProductSelect.appendChild(o);
+            });
+        } else {
+            // Normal item exchange constraints
+            exchangeContextMsg.className = "alert alert-info border-0 rounded-3 py-1.5 px-3 small mb-2 text-xs";
+            exchangeContextMsg.innerHTML = `<i class="bi bi-info-circle me-1"></i>Normal item exchange. Allowed for **any** product of <strong>equal or greater value</strong>.`;
+            comboDetailsCard.style.display = 'none';
+            
+            allProducts.forEach(p => {
+                const o = document.createElement('option');
+                o.value = p.id;
+                o.textContent = `${p.name} - ${p.barcode || 'N/A'} (Stock: ${p.stock} | Price: ₹${p.price})`;
+                o.setAttribute('data-price', p.price);
+                o.setAttribute('data-name', p.name);
+                o.setAttribute('data-stock', p.stock);
+                replacementProductSelect.appendChild(o);
+            });
+        }
+        
+        calculateExchangeDifference();
+    }
+
+    // Recalculate price diff
+    function calculateExchangeDifference() {
+        const returnedOpt = itemSelect.options[itemSelect.selectedIndex];
+        const replacementOpt = replacementProductSelect.options[replacementProductSelect.selectedIndex];
+        
+        if (!returnedOpt || !returnedOpt.value || !replacementOpt || !replacementOpt.value) {
+            priceDiffLabel.textContent = 'Diff: ₹0';
+            priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-white text-center fw-bold text-dark small';
+            addReturnBtn.disabled = false;
+            return;
+        }
+
+        const returnedPrice = parseFloat(returnedOpt.getAttribute('data-price'));
+        const replacementPrice = parseFloat(replacementOpt.getAttribute('data-price'));
+        const isCombo = returnedOpt.getAttribute('data-is-combo') === 'true';
+
+        const retQty = parseInt(qtyInput.value) || 1;
+        const repQty = parseInt(replacementQtyInput.value) || 1;
+
+        if (isCombo) {
+            priceDiffLabel.textContent = 'Diff: ₹0 (Combo Direct Swap)';
+            priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-white text-center fw-semibold text-success small';
+            addReturnBtn.disabled = false;
+            replacementProductInfo.textContent = '';
+        } else {
+            // Normal Validation
+            if (replacementPrice < returnedPrice) {
+                priceDiffLabel.textContent = 'Error: Cheaper Item';
+                priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-danger bg-opacity-10 text-center fw-bold text-danger small';
+                replacementProductInfo.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> Price must be ≥ returned price (₹${returnedPrice})</span>`;
+                addReturnBtn.disabled = true;
+            } else {
+                const diff = (replacementPrice * repQty) - (returnedPrice * retQty);
+                priceDiffLabel.textContent = `Diff: +₹${diff}`;
+                priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-success bg-opacity-10 text-center fw-bold text-success small';
+                replacementProductInfo.textContent = '';
+                addReturnBtn.disabled = false;
+            }
+        }
+    }
+
+    replacementProductSelect.addEventListener('change', calculateExchangeDifference);
+    replacementQtyInput.addEventListener('input', calculateExchangeDifference);
+    qtyInput.addEventListener('input', calculateExchangeDifference);
+
+    // Condition change
     conditionSelect.addEventListener('change', updateConditionInfo);
-    actionSelect.addEventListener('change', updateConditionInfo);
     qtyInput.addEventListener('input', updateSummary);
 
     function updateConditionInfo() {
         const cond = conditionSelect.value;
-        const action = actionSelect.value;
         conditionInfo.style.display = 'block';
 
         if (cond === 'DAMAGED') {
             conditionAlert.className = 'alert border-0 rounded-4 mb-0 py-2 px-3 small bg-danger bg-opacity-10 text-danger';
             conditionIcon.className = 'bi bi-exclamation-triangle-fill me-1';
             conditionText.textContent = 'Damaged product will NOT be added to sellable stock. A damage adjustment (Op/In/Out/Cl) will be recorded.';
-        } else if (cond === 'GOOD' && action === 'EXCH_SAME') {
+        } else {
             conditionAlert.className = 'alert border-0 rounded-4 mb-0 py-2 px-3 small bg-primary bg-opacity-10 text-primary';
             conditionIcon.className = 'bi bi-arrow-left-right me-1';
-            conditionText.textContent = 'Good condition product: Net-neutral exchange (replaced by the same product). Stock remains unchanged.';
-        } else {
-            conditionInfo.style.display = 'none';
+            conditionText.textContent = 'Good condition product: Will be added back to sellable stock.';
         }
         updateSummary();
     }
 
     function updateSummary() {
-        // Build summary rows for each item in returnList
         const summaryBody = document.getElementById('summaryBody');
         summaryBody.innerHTML = '';
         if (returnList.length === 0) {
@@ -413,17 +616,17 @@
             return;
         }
         returnList.forEach(item => {
-            const cond = item.condition;
-            const refund = item.quantity * item.price;
-            const stockImpact = cond === 'GOOD'
-                ? `<span class="text-success">+${item.quantity} added back to stock</span>`
-                : `<span class="text-danger">Damaged – adjustment</span>`;
+            const diff = item.price_difference;
+            const diffText = diff >= 0 ? `+₹${diff}` : `₹${diff}`;
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td class="fw-semibold text-dark ps-2">${item.name}</td>
+                <td class="fw-semibold text-dark ps-2">
+                    <div class="text-danger"><i class="bi bi-dash-circle me-1"></i>${item.name}</div>
+                    <div class="text-success"><i class="bi bi-plus-circle me-1"></i>${item.replacement_product_name}</div>
+                </td>
                 <td>${item.quantity} × ₹${item.price}</td>
-                <td>₹${refund}</td>
-                <td>${stockImpact}</td>
+                <td>₹${item.quantity * item.price}</td>
+                <td class="fw-bold text-success">${diffText}</td>
             `;
             summaryBody.appendChild(row);
         });
@@ -431,64 +634,105 @@
     }
 
     function refreshReturnListUI() {
-        // Clear table
         returnListTableBody.innerHTML = '';
         returnList.forEach((item, idx) => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td class="fw-semibold text-dark ps-2">${item.name}</td>
+                <td class="fw-semibold text-dark ps-2">
+                    <div class="text-danger small"><i class="bi bi-arrow-bar-left me-1"></i>${item.name}</div>
+                    <div class="text-success small"><i class="bi bi-arrow-bar-right me-1"></i>${item.replacement_product_name}</div>
+                </td>
                 <td>${item.quantity}</td>
-                <td>₹${item.price}</td>
-                <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm rounded-pill py-0 px-2 remove-return-btn" data-index="${idx}" style="font-size:0.75rem;">Remove</button></td>
+                <td>
+                    <div class="x-small text-muted">Ret: ₹${item.price}</div>
+                    <div class="x-small text-muted">Rep: ₹${item.replacement_product_price}</div>
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-outline-danger btn-sm rounded-pill py-0 px-2 remove-return-btn" data-index="${idx}" style="font-size:0.75rem;">
+                        Remove
+                    </button>
+                </td>
             `;
             returnListTableBody.appendChild(row);
         });
-        // Show/hide container
+        
         returnListContainer.style.display = returnList.length > 0 ? 'block' : 'none';
-        // Update hidden field with full details so we can restore them on reload!
+        
+        // Sync to hidden field for form submission
         returnItemsField.value = JSON.stringify(returnList.map(i => ({
             id: i.id,
             name: i.name,
             price: i.price,
             quantity: i.quantity,
             condition: i.condition,
-            action_type: i.action_type
+            action_type: i.action_type,
+            replacement_product_id: i.replacement_product_id,
+            replacement_quantity: i.replacement_quantity
         })));
-        // Update summary after list changes
+        
         updateSummary();
     }
 
     addReturnBtn.addEventListener('click', function(){
         const opt = itemSelect.options[itemSelect.selectedIndex];
-        if (!opt || !opt.value) { alert('Select a product first.'); return; }
+        const repOpt = replacementProductSelect.options[replacementProductSelect.selectedIndex];
         
-        // 1. Prevent duplicate entries in returnList
+        if (!opt || !opt.value) { alert('Select a product to return first.'); return; }
+        if (!repOpt || !repOpt.value) { alert('Select a replacement product for exchange.'); return; }
+        
+        // Prevent duplicates
         const alreadyInList = returnList.some(item => item.id == opt.value);
         if (alreadyInList) {
-            alert('This product is already added to the return list. If you want to change its quantity, please remove it and add it again.');
+            alert('This product is already in the return list.');
             return;
         }
 
-        const maxQty = parseInt(opt.dataset.qty);
+        const maxQty = parseInt(opt.getAttribute('data-qty'));
         const qty = parseInt(qtyInput.value) || 1;
-        if (qty < 1 || qty > maxQty) { alert(`Quantity must be between 1 and ${maxQty} (remaining returnable quantity).`); return; }
+        if (qty < 1 || qty > maxQty) { alert(`Quantity must be between 1 and ${maxQty} (remaining).`); return; }
         
+        const repQty = parseInt(replacementQtyInput.value) || qty;
+
+        // Double check normal price requirements
+        const isCombo = opt.getAttribute('data-is-combo') === 'true';
+        const retPrice = parseFloat(opt.getAttribute('data-price'));
+        const repPrice = parseFloat(repOpt.getAttribute('data-price'));
+        
+        if (!isCombo && repPrice < retPrice) {
+            alert('For normal product exchanges, replacement item price must be equal or greater.');
+            return;
+        }
+
+        const priceDifference = isCombo ? 0 : (repPrice * repQty) - (retPrice * qty);
+
         // Add to list
         returnList.push({
             id: opt.value,
-            name: opt.dataset.name,
-            price: parseInt(opt.dataset.price),
+            name: opt.getAttribute('data-name'),
+            price: retPrice,
             quantity: qty,
             condition: conditionSelect.value,
-            action_type: actionSelect.value
+            action_type: 'EXCHANGE',
+            replacement_product_id: repOpt.value,
+            replacement_product_name: repOpt.getAttribute('data-name'),
+            replacement_product_price: repPrice,
+            replacement_quantity: repQty,
+            price_difference: priceDifference
         });
+        
+        // Reset selections
+        itemSelect.value = '';
+        replacementSection.style.display = 'none';
+        productInfo.textContent = '';
+        qtyInput.value = 1;
+
         refreshReturnListUI();
     });
 
     // Delegate remove button clicks
     returnListTableBody.addEventListener('click', function(e){
         if (e.target && e.target.matches('.remove-return-btn')) {
-            const idx = parseInt(e.target.dataset.index);
+            const idx = parseInt(e.target.getAttribute('data-index'));
             if (!isNaN(idx)) {
                 returnList.splice(idx, 1);
                 refreshReturnListUI();
@@ -496,13 +740,7 @@
         }
     });
 
-    // Ensure hidden field is updated on form submit
-    const returnForm = document.getElementById('returnForm');
-    returnForm.addEventListener('submit', function(){
-        // hidden field already synced
-    });
-
-    // Trigger on page load
+    // Page initialization
     updateConditionInfo();
     refreshReturnListUI();
 })();

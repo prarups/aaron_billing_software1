@@ -13,194 +13,253 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
+            background-color: #f1f5f9;
             color: #1e293b;
         }
         .receipt-card {
-            max-width: 500px;
-            margin: 2rem auto;
+            max-width: 440px;
+            margin: 1.25rem auto;
             border: none;
-            border-radius: 1.5rem;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            border-radius: 1.25rem;
+            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.05), 0 5px 15px -5px rgba(0, 0, 0, 0.05);
+            background: #ffffff;
         }
         .btn-whatsapp {
             background-color: #25D366;
             border: none;
-            transition: all 0.3s ease;
+            color: white !important;
+            transition: all 0.2s ease;
         }
         .btn-whatsapp:hover {
             background-color: #20ba56;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
-            color: white;
+            transform: translateY(-1px);
         }
         .btn-instagram {
             background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
             border: none;
-            transition: all 0.3s ease;
+            color: white !important;
+            transition: all 0.2s ease;
         }
         .btn-instagram:hover {
-            filter: brightness(1.1);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(220, 39, 67, 0.3);
-            color: white;
+            filter: brightness(1.05);
+            transform: translateY(-1px);
         }
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-4px); }
+        .x-small {
+            font-size: 0.75rem !important;
         }
-        .animate-bounce {
-            display: inline-block;
-            animation: bounce 2s infinite;
+        .xxs-text {
+            font-size: 0.68rem !important;
         }
-        .barcode-container {
-        padding: 0 5px; /* 5px quiet zone on left and right */
-        display: inline-block;
-    }
-    .barcode-row {
-        margin-top: 0.5rem;
-    }
-</style>
+        @media print {
+            body {
+                background: white;
+                color: black;
+                padding: 0;
+            }
+            .receipt-card {
+                box-shadow: none;
+                margin: 0;
+                border: none;
+                border-radius: 0;
+                max-width: 100%;
+            }
+            .card-body {
+                padding: 0 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
 </head>
 <body>
     {% load static %}
-    <div class="container px-3">
+    <div class="container px-2">
         <div class="card receipt-card overflow-hidden">
-            <div class="card-body p-4 p-md-5">
+            <div class="card-body p-3.5 p-sm-4">
                 <!-- Header -->
-                <div class="text-center mb-4">
-                    <div class="d-flex align-items-center justify-content-center gap-2 mb-3">
-                        <img src="{% static 'images/aronlogonow.png' %}" alt="Aaron Garments" style="height:36px; width:auto;"/>
-                        <span class="fw-bold fs-3 tracking-tight text-primary">Aaron <span class="text-secondary">Garments</span></span>
+                <div class="text-center mb-3">
+                    <div class="d-flex align-items-center justify-content-center gap-1.5 mb-2">
+                        <img src="{% static 'images/aronlogonow.png' %}" alt="Aaron Garments" style="height:28px; width:auto;"/>
+                        <span class="fw-bold fs-4 tracking-tight text-primary">Aaron <span class="text-secondary">Garments</span></span>
                     </div>
-                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                        <i class="bi bi-receipt-cutoff fs-2"></i>
-                    </div>
-                    <h4 class="fw-semibold mb-0">{{ bill.branch.name }}</h4>
-                    <p class="text-muted small mb-1">Branch Code: {{ bill.branch.code }}</p>
-                    {% if bill.branch.location %}
-                    <p class="text-muted x-small mb-0"><i class="bi bi-geo-alt-fill me-1 text-primary"></i>{{ bill.branch.location }}</p>
-                    {% endif %}
-                    {% if bill.branch.contact_number %}
-                    <p class="text-muted x-small mb-1"><i class="bi bi-telephone-fill me-1 text-primary"></i>{{ bill.branch.contact_number }}</p>
-                    {% endif %}
-                    <p class="text-muted x-small mb-0">
-                        <a href="https://www.instagram.com/aaron_garments?igsh=YWpkdWE0emkyZjNv" target="_blank" class="text-muted text-decoration-none fw-semibold">
+                    <h5 class="fw-bold mb-1 text-dark">{{ bill.branch.name }}</h5>
+                    <p class="text-secondary small mb-1 fw-medium">Branch Code: {{ bill.branch.code }}</p>
+                    <p class="text-muted x-small mb-1">
+                        {% if bill.branch.location %}<i class="bi bi-geo-alt-fill me-0.5 text-primary"></i>{{ bill.branch.location }}{% endif %}
+                        {% if bill.branch.contact_number %} &bull; <i class="bi bi-telephone-fill me-0.5 text-primary"></i>{{ bill.branch.contact_number }}{% endif %}
+                    </p>
+                    <div class="d-flex align-items-center justify-content-center gap-2 mt-2">
+                        <a href="https://www.instagram.com/aaron_garments?igsh=YWpkdWE0emkyZjNv" target="_blank" class="badge bg-light text-muted border border-light-subtle text-decoration-none px-2 py-1 fw-medium">
                             <i class="bi bi-instagram me-1" style="color: #E1306C;"></i>aaron_garments
                         </a>
-                    </p>
-                    <span class="badge bg-success-subtle text-success rounded-pill px-3 py-1.5 small fw-bold mt-2">
-                        <i class="bi bi-patch-check-fill me-1"></i> Digital Receipt
-                    </span>
+                        <span class="badge bg-success-subtle text-success px-2 py-1 fw-bold">
+                            <i class="bi bi-patch-check-fill me-1"></i>Digital Receipt
+                        </span>
+                    </div>
                 </div>
 
-                <!-- Meta -->
-                <div class="d-flex justify-content-between mb-4 pb-4 border-bottom">
+                <!-- Meta Info -->
+                <div class="d-flex justify-content-between align-items-center border-top border-bottom py-2 mb-3">
                     <div>
-                        <p class="x-small text-muted text-uppercase fw-bold mb-1">Invoice No</p>
-                        <p class="fw-bold mb-0">
+                        <span class="xxs-text text-uppercase text-muted fw-bold d-block">Invoice No</span>
+                        <span class="fw-bold text-dark mb-0">
                             {{ bill.invoice_number|default:bill.id }}
                             {% if bill.total_savings > 0 %}
-                            <span class="badge bg-purple text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle" style="background: linear-gradient(135deg, #d946ef, #8b5cf6) !important; font-size: 0.6rem; font-weight: normal; vertical-align: middle;">
+                            <span class="badge bg-purple text-white rounded-pill px-1.5 py-0.5 text-xxs align-middle" style="background: linear-gradient(135deg, #d946ef, #8b5cf6) !important; font-size: 0.58rem; font-weight: normal; vertical-align: middle;">
                                 Combo
                             </span>
                             {% endif %}
-                        </p>
+                        </span>
                     </div>
                     <div class="text-end">
-                        <p class="x-small text-muted text-uppercase fw-bold mb-1">Date</p>
-                        <p class="fw-bold mb-0">{{ bill.created_at|date:"d M Y" }}</p>
+                        <span class="xxs-text text-uppercase text-muted fw-bold d-block">Date</span>
+                        <span class="fw-bold text-dark mb-0">{{ bill.created_at|date:"d M Y" }}</span>
                     </div>
                 </div>
 
-                <!-- Items -->
-                <div class="mb-4">
-                    {% for item in items %}
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <p class="fw-semibold mb-0">{{ item.product.name }}</p>
-                            <p class="x-small text-muted mb-0">₹{{ item.product.price|floatformat:0 }} x {{ item.quantity }}</p>
-                        </div>
-                        <p class="fw-bold mb-0">₹{{ item.regular_total|floatformat:0 }}</p>
-                    </div>
-<div class="barcode-row mt-2">
-  <div class="barcode-container"><span class="barcode">{{ item.barcode_display }}</span></div>
-</div>
-                    {% endfor %}
+                <!-- Items Table -->
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm table-borderless align-middle mb-0" style="font-size: 0.85rem; min-width: 100%;">
+                        <thead>
+                            <tr class="text-uppercase text-muted border-bottom border-light-subtle" style="font-size: 0.7rem; letter-spacing: 0.05em;">
+                                <th class="ps-0 py-1" style="width: 50%;">Product</th>
+                                <th class="text-center py-1" style="width: 15%;">Qty</th>
+                                <th class="text-end py-1" style="width: 15%;">Price</th>
+                                <th class="text-end pe-0 py-1" style="width: 20%;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr class="border-bottom border-light-subtle align-top">
+                                <td class="ps-0 py-2">
+                                    <span class="fw-semibold text-dark d-block">{{ item.product.name }}</span>
+                                    {% if item.product.barcode %}
+                                    <div class="mt-0.5">
+                                        <code class="text-muted font-monospace xxs-text">{{ item.product.barcode }}</code>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center py-2 text-dark">{{ item.quantity }}</td>
+                                <td class="text-end py-2 text-muted">₹{{ item.product.price|floatformat:0 }}</td>
+                                <td class="text-end pe-0 py-2 fw-bold text-dark">₹{{ item.regular_total|floatformat:0 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
 
-                <!-- Total -->
-                <div class="bg-light rounded-4 p-4 mb-4">
+                <!-- Totals -->
+                <div class="bg-light rounded-3 p-3 mb-3" style="font-size: 0.85rem;">
                     {% if bill.total_savings > 0 %}
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-muted small">Subtotal (Original)</span>
-                        <span class="text-dark small">₹{{ bill.original_subtotal|floatformat:0 }}</span>
+                    <div class="d-flex justify-content-between mb-1.5">
+                        <span class="text-muted">Subtotal (Original)</span>
+                        <span class="text-dark">₹{{ bill.original_subtotal|floatformat:0 }}</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center border-bottom mb-2 pb-2">
-                        <span class="text-muted small"><i class="bi bi-lightning-charge-fill me-1 text-warning"></i>Combo Discount</span>
+                    <div class="d-flex justify-content-between mb-1.5">
+                        <span class="text-muted"><i class="bi bi-lightning-charge-fill me-1 text-warning"></i>Combo Discount</span>
                         <span class="text-success fw-bold">- ₹{{ bill.total_savings|floatformat:0 }}</span>
                     </div>
                     {% endif %}
                     {% if bill.retail_price > 0 %}
-                    <div class="d-flex justify-content-between align-items-center border-bottom mb-2 pb-2">
-                        <span class="text-muted small">Retail Price</span>
+                    <div class="d-flex justify-content-between mb-1.5">
+                        <span class="text-muted">Retail Price</span>
                         <span class="text-dark fw-bold">+ ₹{{ bill.retail_price|floatformat:0 }}</span>
                     </div>
                     {% endif %}
-                    <div class="d-flex justify-content-between align-items-center mb-0">
-                        <span class="fw-bold text-muted">FINAL TOTAL</span>
-                        <span class="h4 fw-bold text-primary mb-0">₹{{ bill.total_amount|floatformat:0 }}</span>
+                    <div class="d-flex justify-content-between align-items-center mb-0 {% if bill.total_savings > 0 or bill.retail_price > 0 %}border-top pt-2 mt-2{% endif %}">
+                        <span class="fw-bold text-dark">FINAL TOTAL</span>
+                        <span class="h5 fw-bold text-primary mb-0">₹{{ bill.total_amount|floatformat:0 }}</span>
                     </div>
+
                     {% if bill.total_savings > 0 %}
-                    <div class="text-center mt-3 pt-3 border-top">
-                        <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2 border border-success border-opacity-25 mt-1" style="font-size: 0.85rem;">
-                            <i class="bi bi-lightning-charge-fill me-1 text-warning"></i> Combo savings: ₹{{ bill.total_savings|floatformat:0 }} off!
+                    <div class="text-center mt-2.5 pt-2 border-top">
+                        <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-1 border border-success border-opacity-25" style="font-size: 0.78rem;">
+                            <i class="bi bi-lightning-charge-fill me-0.5 text-warning"></i> You saved ₹{{ bill.total_savings|floatformat:0 }}!
                         </span>
                     </div>
                     {% endif %}
+
                     {% if bill.payment_method == 'split' %}
-                    <div class="d-flex justify-content-between border-top mt-3 pt-3">
-                        <div class="text-muted small">
-                            <i class="bi bi-cash me-1"></i>Cash: ₹{{ bill.cash_amount|floatformat:0 }}
-                        </div>
-                        <div class="text-muted small">
-                            <i class="bi bi-credit-card me-1"></i>Online: ₹{{ bill.online_amount|floatformat:0 }}
-                        </div>
+                    <div class="d-flex justify-content-between border-top mt-2 pt-2 xxs-text text-muted">
+                        <div><i class="bi bi-cash me-0.5"></i>Cash: ₹{{ bill.cash_amount|floatformat:0 }}</div>
+                        <div><i class="bi bi-credit-card me-0.5"></i>Online: ₹{{ bill.online_amount|floatformat:0 }}</div>
                     </div>
                     {% else %}
-                    <div class="text-muted small mt-2 text-end">
+                    <div class="xxs-text text-muted text-end mt-1.5">
                         Paid via {{ bill.get_payment_method_display }}
                     </div>
                     {% endif %}
                 </div>
 
-                <!-- Actions -->
-                <div class="d-grid gap-3">
-                    <button onclick="window.print()" class="btn btn-outline-primary rounded-pill py-3 fw-bold">
-                        <i class="bi bi-printer-fill me-2"></i>Print Receipt
+                <!-- Returns section if applicable -->
+                {% if returns %}
+                <div class="border border-warning border-opacity-50 rounded-3 mb-3 bg-warning bg-opacity-5 p-2.5">
+                    <h6 class="fw-bold text-warning-emphasis mb-2 d-flex align-items-center gap-1.5" style="font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase;">
+                        <i class="bi bi-arrow-left-right"></i> Returns & Exchanges
+                    </h6>
+                    {% for ret in returns %}
+                    <div class="p-2 bg-white rounded shadow-sm mb-1.5 border border-light-subtle" style="font-size: 0.82rem;">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-1.5 py-0.5 text-xxs fw-bold text-uppercase">Returned</span>
+                                <span class="fw-bold text-dark ms-1">{{ ret.product_name }}</span>
+                                <span class="text-muted font-monospace text-xxs ms-1">({{ ret.product.barcode|default:'' }})</span>
+                            </div>
+                            <span class="text-muted xxs-text">Qty: {{ ret.quantity }}</span>
+                        </div>
+                        {% if ret.replacement_product %}
+                        <div class="pt-1.5 border-top border-light-subtle mt-1.5 d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-1.5 py-0.5 text-xxs fw-bold text-uppercase">Exchanged With</span>
+                                <span class="fw-semibold text-dark ms-1">{{ ret.replacement_product.name }}</span>
+                                <span class="text-muted font-monospace text-xxs ms-1">({{ ret.replacement_product.barcode }})</span>
+                            </div>
+                            <div class="text-end">
+                                <span class="text-muted xxs-text">Qty: {{ ret.replacement_quantity }}</span>
+                                {% if ret.price_difference > 0 %}
+                                <span class="text-xxs fw-bold text-primary d-block mt-0.5">(Paid Diff: ₹{{ ret.price_difference|floatformat:0 }})</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Actions (Print) -->
+                <div class="d-grid gap-2 mb-3.5 no-print">
+                    <button onclick="window.print()" class="btn btn-outline-primary rounded-pill py-2.5 fw-semibold shadow-sm">
+                        <i class="bi bi-printer-fill me-1.5"></i>Print Receipt
                     </button>
-                    <p class="text-center x-small text-muted mt-2 mb-0">
+                    <p class="text-center xxs-text text-muted mb-0">
                         <i class="bi bi-info-circle me-1"></i> Use your browser's "Print to PDF" to save a copy.
                     </p>
                 </div>
 
                 <!-- Social Connect / Lead Generation -->
-                <div class="border-top mt-4 pt-4 text-center">
-                    <h6 class="fw-bold text-dark mb-2">
-                        <i class="bi bi-gift-fill text-warning me-2 animate-bounce"></i>Get Exclusive Offers & Updates!
+                <div class="border-top pt-3 text-center social-section no-print">
+                    <h6 class="fw-bold text-dark mb-1" style="font-size: 0.85rem;">
+                        <i class="bi bi-gift-fill text-warning me-1 animate-bounce"></i>Get Exclusive Offers & Updates!
                     </h6>
-                    <p class="x-small text-muted mb-3">Join our community and follow us to stay updated with latest arrivals and deals.</p>
-                    <div class="d-grid gap-2">
-                        <a href="https://chat.whatsapp.com/CjsuRAf3g1EHUbzMVU4VpE" target="_blank" class="btn btn-whatsapp rounded-pill py-2.5 fw-bold text-white d-flex align-items-center justify-content-center gap-2 shadow-sm text-decoration-none">
-                            <i class="bi bi-whatsapp fs-5"></i> Join Our WhatsApp Group
-                        </a>
-                        <a href="https://www.instagram.com/aaron_garments?igsh=YWpkdWE0emkyZjNv" target="_blank" class="btn btn-instagram rounded-pill py-2.5 fw-bold text-white d-flex align-items-center justify-content-center gap-2 shadow-sm text-decoration-none">
-                            <i class="bi bi-instagram fs-5"></i> Follow Us on Instagram
-                        </a>
+                    <p class="xxs-text text-muted mb-2.5">Join our community and follow us to stay updated.</p>
+                    
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <a href="https://chat.whatsapp.com/CjsuRAf3g1EHUbzMVU4VpE" target="_blank" class="btn btn-whatsapp rounded-pill py-2 fw-bold text-white d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-decoration-none" style="font-size: 0.76rem;">
+                                <i class="bi bi-whatsapp fs-6"></i> WhatsApp Group
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="https://www.instagram.com/aaron_garments?igsh=YWpkdWE0emkyZjNv" target="_blank" class="btn btn-instagram rounded-pill py-2 fw-bold text-white d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-decoration-none" style="font-size: 0.76rem;">
+                                <i class="bi bi-instagram fs-6"></i> Instagram
+                            </a>
+                        </div>
                     </div>
                 </div>
 
-                <div class="text-center mt-4 pt-2">
+                <div class="text-center mt-3 pt-1">
                     <p class="text-muted small mb-0">Thank you for your purchase!</p>
                 </div>
             </div>

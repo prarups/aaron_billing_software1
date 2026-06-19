@@ -225,7 +225,7 @@ class LoginAuthenticationTestCase(TestCase):
         self.staff_user = User.objects.create_user(
             username="johndoe",
             password="password123",
-            role="staff",
+            role="sales_staff",
             is_active=True
         )
         self.staff_user.branches.add(self.branch1)
@@ -268,7 +268,7 @@ class StaffFormTestCase(TestCase):
             'first_name': 'New',
             'last_name': 'Staff',
             'password': 'password123',
-            'role': 'staff',
+            'role': 'sales_staff',
             'branches': [self.branch1.id],
             'is_active': True
         })
@@ -282,7 +282,7 @@ class StaffFormTestCase(TestCase):
             'first_name': 'New',
             'last_name': 'Staff',
             'password': 'password123',
-            'role': 'staff',
+            'role': 'sales_staff',
             'branches': [self.branch1.id],
             'mobile_number': '1234567890',
             'address': '123 Street Name',
@@ -306,7 +306,7 @@ class ToggleBillEditRightsTestCase(TestCase):
         self.staff_user = User.objects.create_user(
             username="staff_user",
             password="password123",
-            role="staff"
+            role="sales_staff"
         )
         self.staff_user.branches.add(self.branch1)
 

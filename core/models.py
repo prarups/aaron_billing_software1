@@ -56,12 +56,43 @@ class ComboPrice(models.Model):
 
 
 class ComboGroup(models.Model):
+    combo_id = models.CharField(max_length=50, unique=True, blank=True, null=True, db_index=True)
     name = models.CharField(max_length=200, help_text="e.g. Mix & Match Summer Promo")
     branches = models.ManyToManyField(Branch, related_name='combo_groups', blank=True)
     products = models.ManyToManyField(Product, related_name='combo_groups', blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if not self.combo_id:
+            from django.db.models import Max
+            import re
+            max_num = 0
+            # Exclude self if already saved but not having combo_id, though that shouldn't happen
+            queryset = ComboGroup.objects.exclude(combo_id__isnull=True)
+            if self.pk:
+                queryset = queryset.exclude(pk=self.pk)
+            for cb in queryset:
+                match = re.search(r'\d+', cb.combo_id)
+                if match:
+                    num = int(match.group())
+                    if num > max_num:
+                        max_num = num
+            if max_num == 0:
+                max_id_qs = ComboGroup.objects.all()
+                if self.pk:
+                    max_id_qs = max_id_qs.exclude(pk=self.pk)
+                max_id = max_id_qs.aggregate(max_id=Max('id'))['max_id'] or 0
+                max_num = max_id
+            
+            next_num = max_num + 1
+            candidate = f"CB-{next_num:04d}"
+            while ComboGroup.objects.filter(combo_id=candidate).exists():
+                next_num += 1
+                candidate = f"CB-{next_num:04d}"
+            self.combo_id = candidate
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -123,7 +154,7 @@ class StockTransaction(models.Model):
     quantity = models.IntegerField()  # Positive for IN/ADJ increase, Positive for OUT increase. We'll stick to absolute changes or always positive with type dictating operation. Let's use ALWAYS POSITIVE and use transaction_type for + or -. Or signed + / -. Let's use positive for quantity and rely on transaction_type.
     reference = models.CharField(max_length=100, blank=True, null=True) # e.g. "Bill #123", "Init", "Manual adjustment"
     user = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     
     def save(self, *args, **kwargs):
         if self.reference:
@@ -149,7 +180,7 @@ class StockAdjustment(models.Model):
     is_in_stock = models.BooleanField()
     reason = models.CharField(max_length=255, blank=True)
     user = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         ordering = ['-created_at']

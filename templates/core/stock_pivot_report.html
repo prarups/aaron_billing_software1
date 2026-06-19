@@ -143,18 +143,20 @@
         <table class="table align-middle mb-0 table-compact">
             <thead>
                 <tr class="border-bottom text-center">
-                    <th class="ps-3 text-start" style="width: 10%;">Branch</th>
-                    <th class="text-start" style="width: 18%;">Product Name</th>
-                    <th style="width: 8%;">Barcode</th>
-                    <th style="width: 6%;">Price</th>
-                    <th style="width: 5%; background: #f8fafc;">Op</th>
-                    <th style="width: 5%; background: #f8fafc;">In</th>
-                    <th style="width: 5%; background: #f8fafc;">Out</th>
-                    <th style="width: 5%; background: #f8fafc;">Dmg</th>
-                    <th style="width: 5%; background: #f8fafc;">Cl</th>
-                    <th class="border-start" style="width: 9%; background: #f0fdf4 !important; color: #166534 !important;">Rec (All)</th>
-                    <th style="width: 9%; background: #fef2f2 !important; color: #991b1b !important;">Sold (All)</th>
-                    <th style="width: 9%; background: #fffbeb !important; color: #92400e !important;">Dmg (All)</th>
+                    <th class="ps-3 text-start" style="width: 8%;">Branch</th>
+                    <th class="text-start" style="width: 16%;">Product Name</th>
+                    <th style="width: 7%;">Barcode</th>
+                    <th style="width: 5%;">Price</th>
+                    <th style="width: 4%; background: #f8fafc;">Op</th>
+                    <th style="width: 4%; background: #f8fafc;">In</th>
+                    <th style="width: 4%; background: #f8fafc;">Ret</th>
+                    <th style="width: 4%; background: #f8fafc;">Out</th>
+                    <th style="width: 4%; background: #f8fafc;">Dmg</th>
+                    <th style="width: 5%; background: #f8fafc;">Ret Dmg</th>
+                    <th style="width: 4%; background: #f8fafc;">Cl</th>
+                    <th class="border-start" style="width: 8%; background: #f0fdf4 !important; color: #166534 !important;">Rec (All)</th>
+                    <th style="width: 8%; background: #fef2f2 !important; color: #991b1b !important;">Sold (All)</th>
+                    <th style="width: 8%; background: #fffbeb !important; color: #92400e !important;">Dmg (All)</th>
                     <th style="width: 5%;"></th>
                 </tr>
             </thead>
@@ -170,8 +172,10 @@
                     <td class="fw-bold text-primary">₹{{ item.product.price|floatformat:0 }}</td>
                     <td class="bg-light bg-opacity-25">{{ stock_info.op }}</td>
                     <td class="bg-light bg-opacity-25 fw-semibold text-success">{{ stock_info.in }}</td>
+                    <td class="bg-light bg-opacity-25 fw-semibold text-info">{{ stock_info.ret }}</td>
                     <td class="bg-light bg-opacity-25 fw-semibold text-danger">{{ stock_info.out }}</td>
                     <td class="bg-light bg-opacity-25 fw-semibold text-warning">{{ stock_info.dmg }}</td>
+                    <td class="bg-light bg-opacity-25 fw-semibold text-danger">{{ stock_info.ret_dmg }}</td>
                     <td class="bg-light bg-opacity-50 fw-bold">{{ stock_info.cl }}</td>
                     <td class="border-start"><span class="stock-num num-received">{{ stock_info.rec }}</span></td>
                     <td><span class="stock-num num-sold">{{ stock_info.all_time_out }}</span></td>
@@ -187,7 +191,7 @@
                 {% endfor %}
                 {% empty %}
                 <tr>
-                    <td colspan="9" class="text-center py-4 text-muted">
+                    <td colspan="15" class="text-center py-4 text-muted">
                         No products found in the registry.
                     </td>
                 </tr>
@@ -277,12 +281,20 @@
                     <div class="fw-bold text-success text-xs">{{ stock_info.in }}</div>
                 </div>
                 <div class="col">
+                    <div class="stock-card-label" style="font-size: 0.55rem;">Ret</div>
+                    <div class="fw-bold text-info text-xs">{{ stock_info.ret }}</div>
+                </div>
+                <div class="col">
                     <div class="stock-card-label" style="font-size: 0.55rem;">Out</div>
                     <div class="fw-bold text-danger text-xs">{{ stock_info.out }}</div>
                 </div>
                 <div class="col">
                     <div class="stock-card-label" style="font-size: 0.55rem;">Dmg</div>
                     <div class="fw-bold text-warning text-xs">{{ stock_info.dmg }}</div>
+                </div>
+                <div class="col">
+                    <div class="stock-card-label" style="font-size: 0.55rem;">Ret Dmg</div>
+                    <div class="fw-bold text-danger text-xs">{{ stock_info.ret_dmg }}</div>
                 </div>
                 <div class="col border-start border-light-subtle">
                     <div class="stock-card-label" style="font-size: 0.55rem;">Cl</div>

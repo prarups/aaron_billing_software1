@@ -1,14 +1,13 @@
 {% extends 'base.html' %}
 
-{% block title %}Manager Dashboard - Aaron Billing{% endblock %}
+{% block title %}Assistant Manager Dashboard - Aaron Billing{% endblock %}
 
 {% block content %}
 <div class="mb-4 animate-fade-in">
-    <h4 class="fw-bold">Manager Dashboard: <span class="bg-vibrant px-3 py-1 rounded-pill-sm small">{{ user.active_branch.name|default:"Unassigned" }}{% if user.active_branch %} ({{ user.active_branch.code }}){% endif %}</span></h4>
+    <h4 class="fw-bold">Assistant Manager Dashboard: <span class="bg-vibrant px-3 py-1 rounded-pill-sm small">{{ user.active_branch.name|default:"Unassigned" }}{% if user.active_branch %} ({{ user.active_branch.code }}){% endif %}</span></h4>
 </div>
-<!-- Stats cards -->
+
 <div class="row g-4 mb-4 animate-fade-in">
-    <!-- Branch Sales (Today) -->
     <div class="col-md-4">
         <div class="glass-card p-4 h-100 bg-vibrant stats-card">
             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -20,7 +19,6 @@
             </div>
         </div>
     </div>
-    <!-- Products Registered -->
     <div class="col-md-4">
         <div class="glass-card p-4 h-100">
             <div class="d-flex justify-content-between align-items-center">
@@ -34,7 +32,6 @@
             </div>
         </div>
     </div>
-    <!-- Active Staff -->
     <div class="col-md-4">
         <div class="glass-card p-4 h-100">
             <div class="d-flex justify-content-between align-items-center">
@@ -50,14 +47,6 @@
     </div>
 </div>
 
-<!-- Button to Staff Performance page -->
-<div class="mb-3 text-end">
-    <a href="{% url 'manager_performance' %}" class="btn btn-primary btn-glass">
-        <i class="bi bi-graph-up me-2"></i>My Staff Performance
-    </a>
-</div>
-
-<!-- Recent Branch Bills -->
 <div class="row g-4 animate-fade-in" style="animation-delay: 0.1s;">
     <div class="col-md-6">
         <div class="glass-card p-4">
@@ -71,12 +60,12 @@
                     </div>
                 </div>
                 {% empty %}
-                <div class="text-center py-4"><p class="text-muted small">No recent transactions.</p></div>
+                <div class="text-center py-4">
+                    <p class="text-muted small">No recent transactions.</p>
+                </div>
                 {% endfor %}
             </div>
         </div>
     </div>
 </div>
-
-    <!-- Staff performance table moved to dedicated page -->
 {% endblock %}

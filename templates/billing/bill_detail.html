@@ -10,7 +10,7 @@
             <div class="card-body p-4">
                 <div class="text-center mb-4 bg-vibrant p-4 mx-n4 mt-n4 position-relative">
                     
-                    <a href="{% if request.user.role != 'staff' %}{% url 'owner_bill_list' %}{% else %}{% url 'pos_index' %}{% endif %}" onclick="if (document.referrer && document.referrer.includes(window.location.host)) { window.history.back(); return false; }" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 shadow-none" aria-label="Close" style="font-size: 0.8rem;" title="Close and return"></a>
+                    <a href="{% if request.user.role == 'sales_staff' %}{% url 'owner_bill_list' %}{% else %}{% url 'pos_index' %}{% endif %}" onclick="if (document.referrer && document.referrer.includes(window.location.host)) { window.history.back(); return false; }" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 shadow-none" aria-label="Close" style="font-size: 0.8rem;" title="Close and return"></a>
                     <h3 class="fw-bold text-white mb-1">Aaron Garments</h3>
                     <p class="text-white opacity-90 small mb-0 fw-semibold">{{ bill.branch.name }} &bull; Code: {{ bill.branch.code }}</p>
                     {% if bill.branch.location %}
@@ -68,17 +68,13 @@
                             <td class="small">{{ forloop.counter }}</td>
                             <td class="fw-semibold">
                                 <div>{{ item.product.name }}</div>
+                                {% if item.product.barcode %}
+                                <div class="text-muted font-monospace" style="font-size: 0.72rem; font-weight: normal;">{{ item.product.barcode }}</div>
+                                {% endif %}
                             </td>
                             <td class="text-center">{{ item.quantity }}</td>
                             <td class="text-end small">₹{{ item.product.price|floatformat:0 }}</td>
                             <td class="text-end fw-bold">₹{{ item.regular_total|floatformat:0 }}</td>
-                        </tr>
-                        <tr class="barcode-row">
-                            <td colspan="5" class="barcode-cell">
-                                <div class="barcode-container">
-                                    <span class="barcode">{{ item.barcode_display }}</span>
-                                </div>
-                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -132,6 +128,48 @@
                     {% endif %}
                 </div>
 
+                {% if returns %}
+                <div class="card border-warning mb-4 bg-warning bg-opacity-5" style="border-radius: 1rem; border-style: dashed;">
+                    <div class="card-body p-3">
+                        <h6 class="fw-bold text-warning-emphasis mb-2.5 d-flex align-items-center gap-1.5" style="font-size: 0.82rem; letter-spacing: 0.05em; text-transform: uppercase;">
+                            <i class="bi bi-arrow-left-right"></i> Returns & Exchanges
+                        </h6>
+                        {% for ret in returns %}
+                        <div class="p-2.5 bg-white rounded-3 shadow-sm mb-2 border border-light-subtle">
+                            <div class="d-flex justify-content-between align-items-start mb-1.5">
+                                <div>
+                                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-0.5 text-xxs fw-bold text-uppercase">Returned</span>
+                                    <div class="fw-bold text-xs text-dark mt-1">{{ ret.product_name }}</div>
+                                    <div class="text-muted text-xxs mt-0.5"><code class="text-muted font-monospace">{{ ret.product.barcode|default:'' }}</code></div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="text-xxs text-muted">Qty: {{ ret.quantity }}</div>
+                                    <div class="badge bg-secondary-subtle text-secondary px-1.5 py-0.5 text-xxs mt-1">{{ ret.get_condition_display }}</div>
+                                </div>
+                            </div>
+                            {% if ret.replacement_product %}
+                            <div class="pt-2 border-top border-light-subtle mt-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-0.5 text-xxs fw-bold text-uppercase">Exchanged With</span>
+                                        <div class="fw-bold text-xs text-dark mt-1">{{ ret.replacement_product.name }}</div>
+                                        <div class="text-muted text-xxs mt-0.5"><code class="text-muted font-monospace">{{ ret.replacement_product.barcode }}</code></div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="text-xxs text-muted">Qty: {{ ret.replacement_quantity }}</div>
+                                        {% if ret.price_difference > 0 %}
+                                        <div class="text-xxs fw-bold text-primary mt-1">Paid Diff: ₹{{ ret.price_difference|floatformat:0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Public Link for staff to copy -->
                 <div class="glass-card p-3 mb-4 bg-light bg-opacity-50 border-0">
                     <label class="form-label x-small text-muted text-uppercase fw-bold mb-2">Customer's Digital
@@ -161,8 +199,13 @@
                         <i class="bi bi-pencil-square me-2"></i>Edit Bill
                     </a>
                     {% endif %}
-                    {% if request.user.role != 'staff' %}
-                    <a href="{% url 'owner_bill_list' %}" onclick="if (document.referrer && document.referrer.includes(window.location.host)) { window.history.back(); return false; }" class="btn btn-outline-secondary rounded-pill-sm px-4 py-3">
+                    {% if not from_pos %}
+                    <a href="{% url 'return_create' %}?invoice_id={{ bill.invoice_number|default:bill.id }}" class="btn btn-outline-warning rounded-pill-sm px-4 py-3" style="border: 1px solid rgba(255, 193, 7, 0.4); background: rgba(255, 193, 7, 0.05); color: #e0a800; font-weight: 600;">
+                        <i class="bi bi-arrow-left-right me-2"></i>Return / Exchange Items
+                    </a>
+                    {% endif %}
+                    {% if request.user.role != 'sales_staff' %}
+                    <a href="{% url 'owner_bill_list' %}" class="btn btn-outline-secondary rounded-pill-sm px-4 py-3">
                         <i class="bi bi-arrow-left me-1"></i> Back to Sales Report
                     </a>
                     {% endif %}

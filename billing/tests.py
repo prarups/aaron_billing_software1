@@ -9,7 +9,7 @@ User = get_user_model()
 class ComboPricingTestCase(TestCase):
     def setUp(self):
         # Create user and branch
-        self.user = User.objects.create_user(username='teststaff', password='password123', role='staff')
+        self.user = User.objects.create_user(username='teststaff', password='password123', role='sales_staff')
         self.branch = Branch.objects.create(name='Test Branch', location='Test Location', invoice_prefix='TB')
         self.user.branches.add(self.branch)
         self.user.active_branch = self.branch
@@ -143,7 +143,7 @@ class ComboPricingTestCase(TestCase):
 
 class MultiProductComboTestCase(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='teststaff2', password='password123', role='staff')
+        self.user = User.objects.create_user(username='teststaff2', password='password123', role='sales_staff')
         self.branch = Branch.objects.create(name='Test Branch 2', location='Test Location 2', invoice_prefix='TB2')
         self.user.branches.add(self.branch)
         self.user.active_branch = self.branch
@@ -201,11 +201,39 @@ class MultiProductComboTestCase(TestCase):
         self.assertEqual(bill.total_amount, Decimal('500'))
         self.assertEqual(bill.total_savings, Decimal('250'))
 
+    def test_process_bill_with_optional_customer_details(self):
+        from django.urls import reverse
+        import json
+        self.client.force_login(self.user)
+
+        payload = {
+            'items': [
+                {'id': self.p1.id, 'quantity': 1}
+            ],
+            'customer_name': '',
+            'customer_phone': '',
+            'payment_method': 'cash'
+        }
+
+        response = self.client.post(
+            reverse('process_bill'),
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+
+        bill = Bill.objects.get(id=data['bill_id'])
+        self.assertEqual(bill.customer_name, '')
+        self.assertEqual(bill.customer_phone, '')
+
+
 
 class BillDetailNavigationTestCase(TestCase):
     def setUp(self):
         self.branch = Branch.objects.create(name='Test Branch', location='Test Location', invoice_prefix='TB')
-        self.staff_user = User.objects.create_user(username='teststaff', password='password123', role='staff', active_branch=self.branch)
+        self.staff_user = User.objects.create_user(username='teststaff', password='password123', role='sales_staff', active_branch=self.branch)
         self.staff_user.branches.add(self.branch)
         self.staff_user.save()
 
@@ -254,7 +282,8 @@ class BillDetailNavigationTestCase(TestCase):
         wa_link = response.context['wa_link']
         self.assertIsNotNone(wa_link)
         self.assertIn("https://wa.me/9876543210", wa_link)
-        self.assertIn("Follow us on Instagram: https://www.instagram.com/aaron_garments?igsh=YWpkdWE0emkyZjNv", wa_link)
+        import urllib.parse
+        self.assertIn("Follow us on Instagram: https://www.instagram.com/aaron_garments?igsh=YWpkdWE0emkyZjNv", urllib.parse.unquote(wa_link))
 
     def test_public_bill_detail_whatsapp_group_link(self):
         from django.urls import reverse
@@ -262,3 +291,204 @@ class BillDetailNavigationTestCase(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'https://chat.whatsapp.com/CjsuRAf3g1EHUbzMVU4VpE')
+    def test_bill_detail_return_button_conditional(self):
+        self.client.force_login(self.owner_user)
+        from django.urls import reverse
+        # When from_pos is NOT set, the return button is visible
+        url = reverse('bill_detail', args=[self.bill.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Return / Exchange Items')
+
+        # When from_pos is set to 'true', the return button is hidden
+        url_with_param = f"{url}?from_pos=true"
+        response = self.client.get(url_with_param)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Return / Exchange Items')
+
+
+class ExchangePolicyTests(TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from core.models import Branch, Product, ProductRegistry, ComboGroup
+        User = get_user_model()
+        self.branch = Branch.objects.create(name="Return Branch", location="Loc", invoice_prefix="RTN")
+        self.user = User.objects.create_user(username="retstaff", password="password123", role="sales_staff")
+        self.user.branches.add(self.branch)
+        self.user.active_branch = self.branch
+        self.user.save()
+
+        # Create Products
+        self.product_normal = Product.objects.create(branch=self.branch, name="Normal Item", barcode="9999", price=500)
+        self.product_normal_cheap = Product.objects.create(branch=self.branch, name="Cheap Normal Item", barcode="9991", price=300)
+        self.product_normal_expensive = Product.objects.create(branch=self.branch, name="Expensive Normal Item", barcode="9992", price=600)
+        
+        self.product_combo1 = Product.objects.create(branch=self.branch, name="Combo Item 1", barcode="8881", price=1000)
+        self.product_combo2 = Product.objects.create(branch=self.branch, name="Combo Item 2", barcode="8882", price=1000)
+        self.product_other = Product.objects.create(branch=self.branch, name="Non-combo Item", barcode="8883", price=1000)
+
+        # Registries
+        ProductRegistry.objects.create(branch=self.branch, product=self.product_normal, stock_quantity=10)
+        ProductRegistry.objects.create(branch=self.branch, product=self.product_normal_cheap, stock_quantity=10)
+        ProductRegistry.objects.create(branch=self.branch, product=self.product_normal_expensive, stock_quantity=10)
+        ProductRegistry.objects.create(branch=self.branch, product=self.product_combo1, stock_quantity=10)
+        ProductRegistry.objects.create(branch=self.branch, product=self.product_combo2, stock_quantity=10)
+        ProductRegistry.objects.create(branch=self.branch, product=self.product_other, stock_quantity=10)
+
+        # Create ComboGroup
+        self.combo_group = ComboGroup.objects.create(name="Summer Mix", is_active=True)
+        self.combo_group.branches.add(self.branch)
+        self.combo_group.products.add(self.product_combo1, self.product_combo2)
+
+        # Create a Bill
+        self.bill = Bill.objects.create(
+            branch=self.branch,
+            staff=self.user,
+            customer_name="Jane Doe",
+            payment_method="cash",
+            total_amount=1500
+        )
+        self.item_normal = BillItem.objects.create(
+            bill=self.bill,
+            product=self.product_normal,
+            quantity=1,
+            unit_price=500,
+            subtotal=500
+        )
+        self.item_combo = BillItem.objects.create(
+            bill=self.bill,
+            product=self.product_combo1,
+            quantity=1,
+            unit_price=1000,
+            subtotal=1000
+        )
+
+    def test_normal_item_exchange_validation(self):
+        from billing.forms import ReturnCreateForm
+        import json
+
+        # Cheap exchange should fail validation
+        data_cheap = {
+            'invoice_id': self.bill.invoice_number,
+            'reason': 'Too small',
+            'return_items': json.dumps([{
+                'id': self.item_normal.id,
+                'quantity': 1,
+                'condition': 'GOOD',
+                'replacement_product_id': self.product_normal_cheap.id,
+                'replacement_quantity': 1
+            }])
+        }
+        form_cheap = ReturnCreateForm(data=data_cheap)
+        self.assertFalse(form_cheap.is_valid())
+
+        # Equal price exchange should pass validation
+        data_equal = {
+            'invoice_id': self.bill.invoice_number,
+            'reason': 'Too small',
+            'return_items': json.dumps([{
+                'id': self.item_normal.id,
+                'quantity': 1,
+                'condition': 'GOOD',
+                'replacement_product_id': self.product_normal.id,
+                'replacement_quantity': 1
+            }])
+        }
+        form_equal = ReturnCreateForm(data=data_equal)
+        self.assertTrue(form_equal.is_valid())
+
+        # More expensive exchange should pass validation
+        data_expensive = {
+            'invoice_id': self.bill.invoice_number,
+            'reason': 'Too small',
+            'return_items': json.dumps([{
+                'id': self.item_normal.id,
+                'quantity': 1,
+                'condition': 'GOOD',
+                'replacement_product_id': self.product_normal_expensive.id,
+                'replacement_quantity': 1
+            }])
+        }
+        form_expensive = ReturnCreateForm(data=data_expensive)
+        self.assertTrue(form_expensive.is_valid())
+
+    def test_combo_item_exchange_validation(self):
+        from billing.forms import ReturnCreateForm
+        import json
+
+        # Exchanging combo item for something outside combo group should fail validation
+        data_invalid = {
+            'invoice_id': self.bill.invoice_number,
+            'reason': 'Wrong shade',
+            'return_items': json.dumps([{
+                'id': self.item_combo.id,
+                'quantity': 1,
+                'condition': 'GOOD',
+                'replacement_product_id': self.product_other.id,
+                'replacement_quantity': 1
+            }])
+        }
+        form_invalid = ReturnCreateForm(data=data_invalid)
+        self.assertFalse(form_invalid.is_valid())
+
+        # Exchanging combo item for something inside combo group should pass validation
+        data_valid = {
+            'invoice_id': self.bill.invoice_number,
+            'reason': 'Wrong shade',
+            'return_items': json.dumps([{
+                'id': self.item_combo.id,
+                'quantity': 1,
+                'condition': 'GOOD',
+                'replacement_product_id': self.product_combo2.id,
+                'replacement_quantity': 1
+            }])
+        }
+        form_valid = ReturnCreateForm(data=data_valid)
+        self.assertTrue(form_valid.is_valid())
+
+    def test_exchange_stock_movements_and_fields(self):
+        from billing.forms import ReturnCreateForm
+        from core.models import ProductRegistry, StockTransaction
+        import json
+
+        # Process a good exchange
+        data = {
+            'invoice_id': self.bill.invoice_number,
+            'reason': 'Fit issues',
+            'return_items': json.dumps([{
+                'id': self.item_normal.id,
+                'quantity': 1,
+                'condition': 'GOOD',
+                'replacement_product_id': self.product_normal_expensive.id,
+                'replacement_quantity': 1
+            }])
+        }
+        form = ReturnCreateForm(data=data)
+        self.assertTrue(form.is_valid())
+
+        # Save return
+        returns = form.save(self.user)
+        self.assertEqual(len(returns), 1)
+        ret = returns[0]
+
+        # Verify ReturnRequest record
+        self.assertEqual(ret.replacement_product, self.product_normal_expensive)
+        self.assertEqual(ret.price_difference, 100) # 600 - 500 = 100
+
+        # Verify Bill/BillItem fields
+        self.item_normal.refresh_from_db()
+        self.assertEqual(self.item_normal.returned_quantity, 1)
+        self.bill.refresh_from_db()
+        self.assertTrue(self.bill.has_returns)
+
+        # Check stock registry updates:
+        # Returned item (GOOD): stock should be +1 (10 -> 11)
+        self.assertEqual(ProductRegistry.objects.get(branch=self.branch, product=self.product_normal).stock_quantity, 11)
+        # Replacement item: stock should be -1 (10 -> 9)
+        self.assertEqual(ProductRegistry.objects.get(branch=self.branch, product=self.product_normal_expensive).stock_quantity, 9)
+
+        # Check Stock transactions logged:
+        tx_in = StockTransaction.objects.filter(product=self.product_normal, transaction_type='IN')
+        self.assertTrue(tx_in.exists())
+        tx_out = StockTransaction.objects.filter(product=self.product_normal_expensive, transaction_type='OUT')
+        self.assertTrue(tx_out.exists())

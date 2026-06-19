@@ -21,7 +21,8 @@ class Bill(models.Model):
     share_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     sequence_number = models.PositiveIntegerField(null=True, blank=True, db_index=True)
     invoice_number = models.CharField(max_length=50, unique=True, null=True, blank=True, db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    has_returns = models.BooleanField(default=False)
 
 
     @property
@@ -59,6 +60,7 @@ class BillItem(models.Model):
     bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey('core.Product', on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
+    returned_quantity = models.PositiveIntegerField(default=0)
     unit_price = models.DecimalField(max_digits=10, decimal_places=0)
     subtotal = models.DecimalField(max_digits=12, decimal_places=0)
     exchange_from = models.CharField(max_length=150, blank=True, null=True)
@@ -74,6 +76,31 @@ class BillItem(models.Model):
         reg_total = self.regular_total
         sub = Decimal(str(self.subtotal))
         return reg_total - sub if reg_total > sub else Decimal('0')
+
+    @property
+    def is_combo_purchase(self):
+        from core.models import ComboGroup
+        from django.db.models import Sum, Min
+        
+        combo_group = ComboGroup.objects.filter(
+            products=self.product,
+            branches=self.bill.branch,
+            is_active=True
+        ).first()
+        if not combo_group:
+            return False
+            
+        # Get minimum quantity required for the combo
+        min_combo_qty = combo_group.tiers.aggregate(min_qty=Min('quantity'))['min_qty']
+        if not min_combo_qty:
+            min_combo_qty = 1
+            
+        # Calculate total quantity of items in this bill belonging to this combo group
+        total_group_qty = self.bill.items.filter(
+            product__in=combo_group.products.all()
+        ).aggregate(total_qty=Sum('quantity'))['total_qty'] or 0
+        
+        return total_group_qty >= min_combo_qty
 
     def save(self, *args, **kwargs):
         if self.subtotal is None:

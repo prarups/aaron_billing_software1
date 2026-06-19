@@ -37,6 +37,17 @@
         font-size: 0.75rem;
         border-radius: 0.5rem;
     }
+
+/* Layout enhancements */
+.pos-wrapper {
+    min-height: calc(100vh - var(--header-height));
+    display: flex;
+    flex-direction: column;
+}
+.pos-container {
+    height: 100%;
+    overflow: hidden;
+}
     /* Mobile optimization */
     @media (max-width: 991.98px) {
         .pos-container {
@@ -111,6 +122,36 @@
         from { opacity: 1; }
         to   { opacity: 0.3; }
     }
+/* Glassmorphism card */
+.glass-card {
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+/* Catalog scroll area */
+.catalog-scroll {
+    max-height: calc(100vh - var(--header-height) - 200px);
+    overflow-y: auto;
+}
+
+/* Sticky quick select header */
+.quick-select-header {
+    position: sticky;
+    top: 0;
+    background: inherit;
+    z-index: 10;
+}
+
+/* Product card hover effect */
+.pos-item-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.pos-item-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--card-shadow);
+}
 </style>
 {% endblock %}
 
@@ -156,11 +197,33 @@
                         <button class="btn btn-vibrant w-100 rounded-pill shadow-sm py-2" id="add-by-barcode">Add</button>
                     </div>
                 </div>
+                <!-- Hidden input for hardware scanner -->
+                <input type="text" id="hardware-scanner-input" autocomplete="off" style="position:absolute; left:-9999px;" tabindex="-1" />
+                <script>
+                    const scannerInput = document.getElementById('hardware-scanner-input');
+                    if (scannerInput) {
+                        // Do not auto-focus hidden scanner input to allow visible fields to receive focus
+                        // Removed global click focus to prevent stealing focus from visible inputs
+                        let barcodeBuffer = '';
+                        scannerInput.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') {
+                                const barcode = barcodeBuffer.trim();
+                                barcodeBuffer = '';
+                                if (barcode) {
+                                    document.getElementById('barcode-input').value = barcode;
+                                    document.getElementById('add-by-barcode').click();
+                                }
+                            } else if (e.key.length === 1) {
+                                barcodeBuffer += e.key;
+                            }
+                        });
+                    }
+                </script>
             </div>
 
             <!-- Product List / Quick Pick -->
             <div class="glass-card p-4 border-0 shadow-sm mb-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3 quick-select-header">
                     <h6 class="text-muted small fw-bold m-0">QUICK SELECT</h6>
                     <div class="d-flex align-items-center gap-2">
                         {% if combo_groups_json != '[]' %}
@@ -169,7 +232,7 @@
                         <span class="text-primary small fw-bold">{{ registrations.count }} Items</span>
                     </div>
                 </div>
-                <div class="row g-2 product-grid">
+                <div class="row g-2 product-grid catalog-scroll">
                     {% for reg in registrations %}
                     <div class="col-4 col-sm-3 col-md-2">
                         <div class="pos-item-card glass-card p-2 text-center h-100 border-0 bg-white" 
@@ -237,22 +300,24 @@
                     </div>
                     {% endif %}
 
-                    <div class="glass-card p-3 mb-3 bg-light bg-opacity-50 border-0">
-                        <div class="row g-2">
-                            <div class="col-12">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text bg-white border-0 rounded-pill-sm me-1"><i class="bi bi-person"></i></span>
-                                    <input type="text" id="customer-name" class="form-control form-control-sm rounded-pill-sm bg-white border-0" placeholder="Customer Name">
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text bg-white border-0 rounded-pill-sm me-1"><i class="bi bi-whatsapp"></i></span>
-                                    <input type="text" id="customer-phone" class="form-control form-control-sm rounded-pill-sm bg-white border-0" placeholder="Phone Number">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                  <form id="pos-form">
+    <div class="glass-card p-3 mb-3 bg-light bg-opacity-50 border-0">
+        <div class="row g-2">
+            <div class="col-12">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-0 rounded-pill-sm me-1"><i class="bi bi-person"></i></span>
+                    <input type="text" name="customer_name" id="customer-name" class="form-control form-control-sm rounded-pill-sm bg-white border-0" placeholder="Customer Name (Optional)" autofocus>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-0 rounded-pill-sm me-1"><i class="bi bi-whatsapp"></i></span>
+                    <input type="text" name="customer_phone" id="customer-phone" class="form-control form-control-sm rounded-pill-sm bg-white border-0" placeholder="Phone Number (Optional)">
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
                     
                     <div class="mb-3">
                         <div class="btn-group w-100 shadow-sm" role="group">
@@ -532,7 +597,8 @@
             const itemHtml = `
                 <div class="cart-item d-flex align-items-center justify-content-between py-1 mb-1 border-bottom" style="border-bottom: 1px solid #f1f5f9 !important;">
                     <div class="text-truncate me-2 flex-grow-1" style="max-width: 45%;" title="${item.name}">
-                        <span class="fw-semibold text-xs text-dark" style="font-size: 0.8rem;">${item.name}</span>
+                        <span class="fw-semibold text-xs text-dark d-block text-truncate" style="font-size: 0.8rem;">${item.name}</span>
+                        <span class="text-muted font-monospace d-block text-truncate" style="font-size: 0.65rem; letter-spacing: 0.02em;">${item.barcode || ''}</span>
                     </div>
                     <div class="d-flex align-items-center justify-content-end gap-2">
                         <div class="d-flex align-items-center bg-light rounded-pill px-1.5 py-0.5" style="transform: scale(0.85); transform-origin: right center;">
@@ -755,8 +821,8 @@ if (isScannerOpen) {
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>PROCESSING...';
 
-        const customerName = document.getElementById('customer-name').value;
-        const customerPhone = document.getElementById('customer-phone').value;
+        const customerName = document.getElementById('customer-name').value.trim();
+        const customerPhone = document.getElementById('customer-phone').value.trim();
         const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
         
         let cash_amount = 0;

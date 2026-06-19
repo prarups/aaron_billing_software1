@@ -7,7 +7,7 @@ from .forms import ProductForm
 
 @login_required
 def product_list(request):
-    if request.user.role == 'staff':
+    if request.user.role == 'sales_staff':
         return redirect('dashboard')
     
     # Auto-initialize active branch if None
@@ -70,7 +70,7 @@ def product_list(request):
 
 @login_required
 def export_products_csv(request):
-    if request.user.role == 'staff':
+    if request.user.role == 'sales_staff':
         return redirect('dashboard')
         
     import csv
@@ -484,7 +484,7 @@ def download_bulk_template(request):
 @login_required
 def stock_pivot_report(request):
     """Report showing products, their stock movement (Op, In, Out, Cl) and branch-wise closing stock."""
-    if request.user.role == 'staff':
+    if request.user.role == 'sales_staff':
         return redirect('dashboard')
     
     from django.db.models import Sum, Q, F

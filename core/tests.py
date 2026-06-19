@@ -79,6 +79,64 @@ class StockPivotReportTestCase(TestCase):
         self.assertEqual(branch_stock['adj_plus'], 0)
         self.assertEqual(branch_stock['adj_minus'], 5)
 
+    def test_stock_pivot_report_view_with_returns(self):
+        # Create a GOOD return of 3 items
+        StockTransaction.objects.create(
+            product=self.product,
+            branch=self.branch,
+            transaction_type='IN',
+            quantity=3,
+            reference='Return #123 (GOOD)',
+            user=self.user
+        )
+        # Create a DAMAGED return of 1 item
+        StockTransaction.objects.create(
+            product=self.product,
+            branch=self.branch,
+            transaction_type='DMG',
+            quantity=1,
+            reference='Return #123 (DAMAGED)',
+            user=self.user
+        )
+        
+        # Initial stock: 88. Let's set it to 85.
+        self.registry.stock_quantity = 85
+        self.registry.save()
+
+        response = self.client.get(reverse('stock_pivot_report'))
+        self.assertEqual(response.status_code, 200)
+
+        report_data = response.context['report_data']
+        self.assertEqual(len(report_data), 1)
+        item = report_data[0]
+        
+        # Let's verify formulas:
+        # curr_stock = 85
+        # all_time_out_gross = 9 (from setUp)
+        # all_time_dmg_std = 2 (from setUp)
+        # all_time_ret = 3 (GOOD return)
+        # all_time_ret_dmg = 1 (DAMAGED return)
+        # all_time_adj = 0
+        #
+        # total_rec = curr_stock + all_time_out_gross + all_time_dmg_std - all_time_ret - all_time_adj
+        #           = 85 + 9 + 2 - 3 - 0 = 93.
+        #
+        # total_all_time_out = all_time_out_gross - all_time_ret - all_time_ret_dmg
+        #                    = 9 - 3 - 1 = 5.
+        
+        self.assertEqual(item['total_rec'], 93)
+        self.assertEqual(item['total_all_time_out'], 5)
+        self.assertEqual(item['total_all_time_dmg'], 3)
+        self.assertEqual(item['total_ret'], 3)
+        self.assertEqual(item['total_ret_dmg'], 1)
+
+        branch_stock = item['branch_stocks'][0]
+        self.assertEqual(branch_stock['rec'], 93)
+        self.assertEqual(branch_stock['all_time_out'], 5)
+        self.assertEqual(branch_stock['all_time_dmg'], 3)
+        self.assertEqual(branch_stock['ret'], 3)
+        self.assertEqual(branch_stock['ret_dmg'], 1)
+
     def test_export_stock_pivot_excel(self):
         response = self.client.get(reverse('export_stock_pivot_excel'))
         self.assertEqual(response.status_code, 200)

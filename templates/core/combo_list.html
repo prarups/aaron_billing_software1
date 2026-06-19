@@ -30,7 +30,7 @@
         border-bottom: 1px solid #f1f5f9;
     }
     .table-compact tbody tr:hover {
-        background-color: rgba(99, 102, 241, 0.01) !important;
+        background-color: rgba(99, 102, 241, 0.02) !important;
     }
     .hover-card {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -39,6 +39,16 @@
         transform: translateY(-3px);
         box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05) !important;
     }
+    .letter-spacing-sm {
+        letter-spacing: 0.03em;
+    }
+    /* Hover effect for modal list items */
+    .hover-item {
+        transition: background-color 0.15s ease;
+    }
+    .hover-item:hover {
+        background-color: #f8fafc !important;
+    }
 </style>
 {% endblock %}
 
@@ -46,13 +56,15 @@
 <div class="mb-4 animate-fade-in">
     <div class="d-flex flex-row justify-content-between align-items-center gap-3">
         <div>
-            <h5 class="fw-bold m-0 text-primary"><i class="bi bi-tags-fill me-2"></i>Manage Combo Offers</h5>
+            <h5 class="fw-bold m-0 text-primary"><i class="bi bi-tags-fill me-2"></i>{% if user.role == 'owner' %}Manage Combo Offers{% else %}Combo Offers{% endif %}</h5>
             <p class="text-muted text-xxs mb-0">Create and configure tiered mix-and-match combos</p>
         </div>
         <div>
+            {% if user.role == 'owner' %}
             <a href="{% url 'combo_create' %}" class="btn btn-primary rounded-pill px-4 shadow-sm btn-sm text-xs fw-semibold">
                 <i class="bi bi-plus-lg me-1"></i> Create New Combo
             </a>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -63,18 +75,24 @@
         <table class="table align-middle mb-0 table-compact">
             <thead>
                 <tr class="border-bottom">
-                    <th class="ps-4" style="width: 25%;">Combo Name</th>
+                    <th class="ps-4" style="width: 15%;">Combo ID</th>
+                    <th style="width: 20%;">Combo Name</th>
                     <th style="width: 15%;">Branches</th>
                     <th style="width: 15%;">Products Count</th>
                     <th style="width: 25%;">Pricing Tiers</th>
                     <th style="width: 10%;">Status</th>
+                    {% if user.role == 'owner' %}
                     <th class="text-end pe-4" style="width: 10%;">Action</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody>
                 {% for combo in combos %}
-                <tr>
-                    <td class="ps-4 fw-bold text-dark text-xs">
+                <tr class="combo-row" data-combo-id="{{ combo.id }}" style="cursor: pointer;">
+                    <td class="ps-4 text-xs font-monospace fw-semibold text-secondary">
+                        {{ combo.combo_id|default:"-" }}
+                    </td>
+                    <td class="fw-bold text-dark text-xs">
                         {{ combo.name }}
                     </td>
                     <td>
@@ -105,6 +123,7 @@
                         <span class="badge bg-danger-subtle text-danger rounded-pill px-2.5 py-0.5 text-xxs fw-bold">Inactive</span>
                         {% endif %}
                     </td>
+                    {% if user.role == 'owner' %}
                     <td class="text-end pe-4">
                         <div class="d-flex justify-content-end gap-1">
                             <a href="{% url 'combo_edit' combo.pk %}" class="btn btn-outline-primary btn-xs rounded-pill px-2.5 py-1 text-xxs fw-semibold">
@@ -118,12 +137,13 @@
                             </form>
                         </div>
                     </td>
+                    {% endif %}
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center py-5 text-muted">
+                    <td colspan="{% if user.role == 'owner' %}7{% else %}6{% endif %}" class="text-center py-5 text-muted">
                         <i class="bi bi-tags fs-1 d-block mb-2 opacity-25"></i>
-                        No combo offers configured yet. Click "Create New Combo" to get started.
+                        No combo offers configured yet. {% if user.role == 'owner' %}Click "Create New Combo" to get started.{% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -134,9 +154,12 @@
     <!-- Mobile Card View -->
     <div class="d-md-none bg-light-subtle p-2">
         {% for combo in combos %}
-        <div class="card border-0 shadow-sm p-3 mb-2 bg-white rounded-3">
+        <div class="card border-0 shadow-sm p-3 mb-2 bg-white rounded-3 combo-card" data-combo-id="{{ combo.id }}" style="cursor: pointer;">
             <div class="d-flex justify-content-between align-items-start mb-2 pb-2 border-bottom border-light">
-                <div class="fw-bold text-dark text-xs">{{ combo.name }}</div>
+                <div>
+                    <span class="text-xxs font-monospace text-secondary d-block mb-1">{{ combo.combo_id|default:"-" }}</span>
+                    <div class="fw-bold text-dark text-xs">{{ combo.name }}</div>
+                </div>
                 <div>
                     {% if combo.is_active %}
                     <span class="badge bg-success-subtle text-success rounded-pill text-xxs">Active</span>
@@ -165,6 +188,7 @@
                     </div>
                 </div>
             </div>
+            {% if user.role == 'owner' %}
             <div class="d-flex justify-content-end align-items-center gap-2 pt-2 border-top border-light">
                 <a href="{% url 'combo_edit' combo.pk %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1 text-xs fw-semibold">
                     <i class="bi bi-pencil me-1"></i> Edit
@@ -176,6 +200,7 @@
                     </button>
                 </form>
             </div>
+            {% endif %}
         </div>
         {% empty %}
         <div class="text-center py-5 text-muted bg-white rounded-3">
@@ -184,4 +209,104 @@
         {% endfor %}
     </div>
 </div>
+
+<!-- Combo Detail Modals -->
+{% for combo in combos %}
+<div class="modal fade" id="comboModal-{{ combo.id }}" tabindex="-1" aria-labelledby="comboModalLabel-{{ combo.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-primary text-white border-0 py-3 px-4">
+                <h6 class="modal-title fw-bold m-0" id="comboModalLabel-{{ combo.id }}">
+                    <i class="bi bi-tags-fill me-2"></i>{{ combo.name }} ({{ combo.combo_id|default:"CB" }})
+                </h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light-subtle">
+                <!-- Pricing Tiers -->
+                <div class="mb-4">
+                    <span class="text-muted text-xxs text-uppercase fw-bold letter-spacing-sm">Combo Pricing Tiers</span>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        {% for tier in combo.tiers.all %}
+                        <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2 text-xs">
+                            <strong>{{ tier.quantity }}</strong> items &rarr; <strong>₹{{ tier.price|floatformat:0 }}</strong>
+                        </span>
+                        {% empty %}
+                        <span class="text-danger text-xs fw-bold">No Tiers Configured</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Eligible Products list -->
+                <div>
+                    <span class="text-muted text-xxs text-uppercase fw-bold letter-spacing-sm">Eligible Products ({{ combo.products.count }})</span>
+                    <div class="list-group rounded-3 border-0 shadow-sm mt-2 overflow-hidden">
+                        {% for product in combo.products.all %}
+                        <div class="list-group-item border-0 border-bottom d-flex justify-content-between align-items-center py-3 px-4 bg-white hover-item">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1 text-xs">{{ product.name }}</h6>
+                                <span class="text-muted text-xxs font-monospace">{{ product.barcode }}</span>
+                            </div>
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5 py-1 text-xxs fw-bold">
+                                ₹{{ product.price|floatformat:0 }}
+                            </span>
+                        </div>
+                        {% empty %}
+                        <div class="list-group-item border-0 text-center py-4 text-muted text-xs bg-white">
+                            <i class="bi bi-box-seam fs-4 d-block mb-1 opacity-50"></i>
+                            No products associated with this combo.
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 p-3 bg-white justify-content-end gap-2">
+                <button type="button" class="btn btn-light border rounded-pill px-4 py-2 text-xs fw-semibold" data-bs-dismiss="modal">Close</button>
+                {% if user.role == 'owner' %}
+                <a href="{% url 'combo_edit' combo.pk %}" class="btn btn-primary rounded-pill px-4 py-2 text-xs fw-semibold">
+                    <i class="bi bi-pencil me-1"></i> Edit Combo
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Desktop row click event listener
+        document.querySelectorAll('.combo-row').forEach(row => {
+            row.addEventListener('click', function(e) {
+                // Ignore click if it's on an action button, form, or edit/delete link
+                if (e.target.closest('a') || e.target.closest('button') || e.target.closest('form')) {
+                    return;
+                }
+                const comboId = this.dataset.comboId;
+                const modalEl = document.getElementById('comboModal-' + comboId);
+                if (modalEl) {
+                    const modal = new bootstrap.Modal(modalEl);
+                    modal.show();
+                }
+            });
+        });
+
+        // Mobile card click event listener
+        document.querySelectorAll('.combo-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                // Ignore click if it's on an action button, form, or edit/delete link
+                if (e.target.closest('a') || e.target.closest('button') || e.target.closest('form')) {
+                    return;
+                }
+                const comboId = this.dataset.comboId;
+                const modalEl = document.getElementById('comboModal-' + comboId);
+                if (modalEl) {
+                    const modal = new bootstrap.Modal(modalEl);
+                    modal.show();
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}
