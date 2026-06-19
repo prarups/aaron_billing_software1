@@ -26,7 +26,7 @@ def return_create_view(request):
             if request.user.role == 'sales_staff':
                 return redirect("staff_activity")
             else:
-                return redirect("stock_pivot_report")
+                return redirect("owner_bill_list")
         else:
             print(f"DEBUG return_create_view form errors: {form.errors.as_data()}")
             messages.error(request, "Please correct the errors below.")

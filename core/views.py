@@ -136,6 +136,10 @@ def product_create(request):
         messages.error(request, "Permission denied. You do not have product edit rights.")
         return redirect('product_list')
 
+    next_url = request.GET.get('next') or request.POST.get('next') or request.META.get('HTTP_REFERER') or ''
+    if '/products/' not in next_url:
+        from django.urls import reverse
+        next_url = reverse('product_list')
     
     # Auto-initialize active branch if None
     if not request.user.active_branch:
@@ -183,7 +187,7 @@ def product_create(request):
                     low_stock_threshold=low_threshold,
                 )
                 # Manual stock input maps to opening stock; no StockTransaction is recorded for this initial quantity.
-                return redirect('product_list')
+                return redirect(next_url)
         else:
             pass
     else:
@@ -201,13 +205,18 @@ def product_create(request):
         })
         from .forms import ComboPriceFormSet
         combo_formset = ComboPriceFormSet()
-    return render(request, 'core/product_form.html', {'form': form, 'combo_formset': combo_formset, 'action': 'Add New', 'is_admin': True})
+    return render(request, 'core/product_form.html', {'form': form, 'combo_formset': combo_formset, 'action': 'Add New', 'is_admin': True, 'next_url': next_url})
 
 @login_required
 def product_update(request, pk):
     is_admin = (request.user.role == 'owner' or request.user.has_product_rights)
 
     product = get_object_or_404(Product, pk=pk)
+    
+    next_url = request.GET.get('next') or request.POST.get('next') or request.META.get('HTTP_REFERER') or ''
+    if '/products/' not in next_url:
+        from django.urls import reverse
+        next_url = reverse('product_list')
     
     # For updating, we might want to edit a specific registration
     reg_id = request.GET.get('reg_id')
@@ -256,7 +265,8 @@ def product_update(request, pk):
                 'action': 'Edit', 
                 'registration': registration,
                 'current_damaged_qty': current_damaged_qty,
-                'is_admin': is_admin
+                'is_admin': is_admin,
+                'next_url': next_url
             })
         
         # If we are editing stock for a specific registration
@@ -580,14 +590,15 @@ def product_update(request, pk):
                     'registration': registration,
                     'current_damaged_qty': current_damaged_qty,
                     'stock_update_error': stock_update_error,
-                    'is_admin': is_admin
+                    'is_admin': is_admin,
+                    'next_url': next_url
                 })
             
             registration.stock_quantity = new_stock
             registration.low_stock_threshold = new_low
             registration.save()
         
-        return redirect('product_list')
+        return redirect(next_url)
     else:
         initial_data = {}
         if registration:
@@ -611,7 +622,8 @@ def product_update(request, pk):
         'action': 'Edit', 
         'registration': registration,
         'current_damaged_qty': current_damaged_qty,
-        'is_admin': is_admin
+        'is_admin': is_admin,
+        'next_url': next_url
     })
 
 @login_required

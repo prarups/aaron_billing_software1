@@ -24,6 +24,7 @@
             {% endif %}
             <form method="post">
                 {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next_url }}">
 
                 {% if is_admin %}
                 <!-- Admin: Full product editing -->
@@ -121,7 +122,7 @@
                                 {% if is_admin %}
                                 <option value="add" {% if request.POST.stock_update_type == 'add' %}selected{% endif %}>Add New Stock (+)</option>
                                 {% endif %}
-                                <option value="damage" {% if request.POST.stock_update_type == 'damage' %}selected{% endif %}>Log Damage (-)</option>
+                                <option value="damage" {% if request.POST.stock_update_type == 'damage' %}selected{% endif %}>New Damage (-)</option>
                                 {% if is_admin %}
                                 <option value="correction" {% if request.POST.stock_update_type == 'correction' %}selected{% endif %}>Correction (Set New Total Stock)</option>
                                 {% endif %}
@@ -173,7 +174,7 @@
                     <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 flex-grow-1 fw-bold shadow-sm">
                         <i class="bi bi-save me-1"></i> Save
                     </button>
-                    <a href="{% url 'product_list' %}" class="btn btn-light rounded-pill px-4 py-2">Cancel</a>
+                    <a href="{{ next_url|default:'' }}{% if not next_url %}{% url 'product_list' %}{% endif %}" class="btn btn-light rounded-pill px-4 py-2">Cancel</a>
                 </div>
             </form>
         </div>
