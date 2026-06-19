@@ -408,7 +408,9 @@ def bill_detail(request, bill_id):
     # Normalize phone number: strip non-digits and ensure it has a country code (default to '91' for India)
     def normalize_phone(phone: str) -> str:
         digits = ''.join(filter(str.isdigit, phone))
-        # Return digits directly; if number already includes country code (len > 10), keep as is.
+        # If the number is 10 digits, prepend '91' for India by default
+        if len(digits) == 10:
+            return f"91{digits}"
         return digits
     normalized_phone = normalize_phone(bill.customer_phone) if bill.customer_phone else ''
     encoded_text = urllib.parse.quote(wa_text)

@@ -281,7 +281,7 @@ class BillDetailNavigationTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         wa_link = response.context['wa_link']
         self.assertIsNotNone(wa_link)
-        self.assertIn("https://wa.me/9876543210", wa_link)
+        self.assertIn("https://wa.me/919876543210", wa_link)
         import urllib.parse
         self.assertIn("Follow us on Instagram: https://www.instagram.com/aaron_garments?igsh=YWpkdWE0emkyZjNv", urllib.parse.unquote(wa_link))
 
