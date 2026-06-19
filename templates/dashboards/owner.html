@@ -759,7 +759,7 @@
                 <h5 class="modal-title fw-bold" id="addStaffModalLabel"><i class="bi bi-person-plus text-primary me-2"></i>Add Sales Staff Account</h5>
                 <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="addStaffForm" action="{% url 'staff_create' %}" method="post">
+            <form id="addStaffForm" action="{% url 'staff_create' %}" method="post" autocomplete="off">
                 {% csrf_token %}
                 
                 <div class="modal-body p-4">
@@ -853,7 +853,7 @@
                 <h5 class="modal-title fw-bold" id="editStaffModalLabel"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Sales Staff / Assign Branches</h5>
                 <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="editStaffForm" method="post" action="">
+            <form id="editStaffForm" method="post" action="" autocomplete="off">
                 {% csrf_token %}
                 <div class="modal-body p-4">
                     <div class="row g-3">
@@ -865,20 +865,20 @@
                                     <div class="row g-2">
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Username</label>
-                                            <input type="text" name="username" id="editStaffUsername" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
+                                            <input type="text" name="username" id="editStaffUsername" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" autocomplete="new-username" required>
                                         </div>
                                         <div class="col-6 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">First Name</label>
-                                            <input type="text" name="first_name" id="editStaffFirstName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3">
+                                            <input type="text" name="first_name" id="editStaffFirstName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" autocomplete="off">
                                         </div>
                                         <div class="col-6 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Last Name</label>
-                                            <input type="text" name="last_name" id="editStaffLastName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3">
+                                            <input type="text" name="last_name" id="editStaffLastName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" autocomplete="off">
                                         </div>
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">New Password (Leave blank to keep current)</label>
                                             <div class="position-relative">
-                                                <input type="password" name="password" id="editStaffPassword" class="form-control rounded-pill shadow-sm border-0 bg-light px-3">
+                                                <input type="password" name="password" id="editStaffPassword" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" autocomplete="new-password">
                                                 <button type="button" class="btn btn-link position-absolute top-50 end-0 translate-middle-y text-muted pe-3 shadow-none border-0" onclick="togglePasswordVisibility('editStaffPassword', this)" tabindex="-1">
                                                     <i class="bi bi-eye-slash-fill"></i>
                                                 </button>
@@ -886,19 +886,19 @@
                                         </div>
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Employee ID</label>
-                                            <input type="text" name="employee_id" id="editStaffEmployeeId" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Employee ID (Auto-generated if blank)">
+                                            <input type="text" name="employee_id" id="editStaffEmployeeId" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Employee ID (Auto-generated if blank)" autocomplete="off">
                                         </div>
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Date of Joining</label>
-                                            <input type="date" name="date_of_joining" id="editStaffDateOfJoining" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Date of Joining">
+                                            <input type="date" name="date_of_joining" id="editStaffDateOfJoining" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Date of Joining" autocomplete="off">
                                         </div>
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Mobile Number</label>
-                                            <input type="text" name="mobile_number" id="editStaffMobileNumber" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Mobile Number" required>
+                                            <input type="text" name="mobile_number" id="editStaffMobileNumber" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Mobile Number" autocomplete="off" required>
                                         </div>
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Address</label>
-                                            <textarea name="address" id="editStaffAddress" class="form-control rounded-3 shadow-sm border-0 bg-light px-3" rows="2" placeholder="Address"></textarea>
+                                            <textarea name="address" id="editStaffAddress" class="form-control rounded-3 shadow-sm border-0 bg-light px-3" rows="2" placeholder="Address" autocomplete="off"></textarea>
                                         </div>
                                         <div class="col-6 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Role</label>
