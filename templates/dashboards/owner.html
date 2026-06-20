@@ -467,8 +467,14 @@
     <!-- 2. BRANCHES TAB -->
     <div class="tab-pane fade animate-fade-in" id="branches" role="tabpanel" aria-labelledby="branches-tab">
         <div class="glass-card p-3">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold text-primary mb-0"><i class="bi bi-shop me-1.5"></i>Overall Branches</h6>
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <h6 class="fw-bold text-primary mb-0 me-2"><i class="bi bi-shop me-1.5"></i>Overall Branches</h6>
+                    <div class="input-group input-group-sm" style="max-width: 200px;">
+                        <span class="input-group-text bg-light border-0 rounded-start-pill text-xxs"><i class="bi bi-search"></i></span>
+                        <input type="text" id="branchSearchInput" class="form-control border-0 bg-light rounded-end-pill text-xs py-1" placeholder="Search code or name..." oninput="filterBranches()">
+                    </div>
+                </div>
                 <div class="d-flex gap-2">
                     <a href="{% url 'export_branches_csv' %}" class="btn btn-outline-success btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm">
                         <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i>Export CSV
@@ -494,9 +500,9 @@
                     </thead>
                     <tbody>
                         {% for branch in branches_by_code %}
-                        <tr id="branch-row-{{ branch.id }}">
-                            <td class="fw-bold text-muted text-xs">{{ branch.code|default:branch.id }}</td>
-                            <td class="fw-bold text-primary text-xs">{{ branch.name }}</td>
+                        <tr id="branch-row-{{ branch.id }}" class="branch-row">
+                            <td class="fw-bold text-muted text-xs branch-code">{{ branch.code|default:branch.id }}</td>
+                            <td class="fw-bold text-primary text-xs branch-name">{{ branch.name }}</td>
                             <td class="text-xs">{{ branch.location }}</td>
                             <td class="text-xs">{{ branch.contact_number|default:"-" }}</td>
                             <td><span class="badge bg-light text-dark border text-xxs">{{ branch.invoice_prefix }}</span></td>
@@ -521,6 +527,41 @@
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 gap-2">
+                <div class="text-muted text-xs">
+                    Showing {{ branches_by_code.start_index|default:0 }} to {{ branches_by_code.end_index|default:0 }} of {{ branches_by_code.paginator.count|default:0 }} branches
+                </div>
+                {% if branches_by_code.has_other_pages %}
+                <nav aria-label="Branch pagination" class="mb-0">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        {% if branches_by_code.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?branch_page={{ branches_by_code.previous_page_number }}#branches">Previous</a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for i in branches_by_code.paginator.page_range %}
+                            {% if branches_by_code.number == i %}
+                            <li class="page-item active">
+                                <span class="page-link rounded-pill border-0 shadow px-2.5 mx-1 bg-primary text-white">{{ i }}</span>
+                            </li>
+                            {% elif i > branches_by_code.number|add:-3 and i < branches_by_code.number|add:3 %}
+                            <li class="page-item">
+                                <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?branch_page={{ i }}#branches">{{ i }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if branches_by_code.has_next %}
+                        <li class="page-item">
+                            <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?branch_page={{ branches_by_code.next_page_number }}#branches">Next</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -649,35 +690,40 @@
                     </tbody>
                 </table></div>
             </div>
-            {% if staff_list.has_other_pages %}
-            <nav aria-label="Staff pagination" class="mt-3">
-                <ul class="pagination pagination-sm justify-content-center">
-                    {% if staff_list.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?staff_page={{ staff_list.previous_page_number }}#staff">Previous</a>
-                    </li>
-                    {% endif %}
-                    
-                    {% for i in staff_list.paginator.page_range %}
-                        {% if staff_list.number == i %}
-                        <li class="page-item active">
-                            <span class="page-link rounded-pill border-0 shadow px-2.5 mx-1 bg-primary text-white">{{ i }}</span>
-                        </li>
-                        {% elif i > staff_list.number|add:-3 and i < staff_list.number|add:3 %}
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 gap-2">
+                <div class="text-muted text-xs">
+                    Showing {{ staff_list.start_index|default:0 }} to {{ staff_list.end_index|default:0 }} of {{ staff_list.paginator.count|default:0 }} staff accounts
+                </div>
+                {% if staff_list.has_other_pages %}
+                <nav aria-label="Staff pagination" class="mb-0">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        {% if staff_list.has_previous %}
                         <li class="page-item">
-                            <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?staff_page={{ i }}#staff">{{ i }}</a>
+                            <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?staff_page={{ staff_list.previous_page_number }}#staff">Previous</a>
                         </li>
                         {% endif %}
-                    {% endfor %}
-                    
-                    {% if staff_list.has_next %}
-                    <li class="page-item">
-                        <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?staff_page={{ staff_list.next_page_number }}#staff">Next</a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
+                        
+                        {% for i in staff_list.paginator.page_range %}
+                            {% if staff_list.number == i %}
+                            <li class="page-item active">
+                                <span class="page-link rounded-pill border-0 shadow px-2.5 mx-1 bg-primary text-white">{{ i }}</span>
+                            </li>
+                            {% elif i > staff_list.number|add:-3 and i < staff_list.number|add:3 %}
+                            <li class="page-item">
+                                <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?staff_page={{ i }}#staff">{{ i }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if staff_list.has_next %}
+                        <li class="page-item">
+                            <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?staff_page={{ staff_list.next_page_number }}#staff">Next</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
@@ -1149,6 +1195,24 @@
         });
     }
 
+    // Branch code and name filter on table
+    function filterBranches() {
+        const searchVal = document.getElementById('branchSearchInput').value.toLowerCase();
+        
+        document.querySelectorAll('.branch-row').forEach(function(row) {
+            const code = row.querySelector('.branch-code').textContent.toLowerCase();
+            const name = row.querySelector('.branch-name').textContent.toLowerCase();
+            
+            const matchesSearch = (searchVal === '') || code.includes(searchVal) || name.includes(searchVal);
+            
+            if (matchesSearch) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
     // Search filter for branch checkbox pickers
     function filterBranchPicker(pickerId, query) {
         const picker = document.getElementById(pickerId);
@@ -1210,8 +1274,20 @@
                     },
                     body: formData
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (response.redirected || response.status === 401 || response.status === 302) {
+                        alert('Session expired. Please reload the page to log in again.');
+                        window.location.reload();
+                        return null;
+                    }
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error('Server returned an unexpected non-JSON response.');
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    if (!data) return;
                     if (data.success) {
                         window.location.reload();
                     } else {

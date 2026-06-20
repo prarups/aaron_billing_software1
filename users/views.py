@@ -139,13 +139,19 @@ class OwnerDashboardView(TemplateView):
             )
         ).order_by('-today_sales', 'name')
         context['branches'] = branches
-        context['branches_by_code'] = branches.order_by('code', 'id')
+        
+        # Paginate branches_by_code (10 per page)
+        from django.core.paginator import Paginator
+        branches_by_code_qs = branches.order_by('code', 'id')
+        branch_paginator = Paginator(branches_by_code_qs, 10)
+        branch_page_number = self.request.GET.get('branch_page', 1)
+        context['branches_by_code'] = branch_paginator.get_page(branch_page_number)
+        
         context['recent_bills'] = Bill.objects.order_by('-created_at')[:5]
         
         # Staff list (admins, managers, and staff) with pagination for scalability
         staff_qs = User.objects.filter(role__in=['owner', 'manager', 'assistant_manager', 'sales_staff']).prefetch_related('branches').order_by('employee_id', 'username')
-        from django.core.paginator import Paginator
-        paginator = Paginator(staff_qs, 25)  # 25 staff per page
+        paginator = Paginator(staff_qs, 10)  # 10 staff per page
         page_number = self.request.GET.get('staff_page', 1)
         context['staff_list'] = paginator.get_page(page_number)
         
@@ -180,6 +186,13 @@ class OwnerDashboardView(TemplateView):
 class AssistantManagerDashboardView(TemplateView):
     template_name = 'dashboards/assistant_manager.html'
 
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('login')
+        if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
+            return redirect('dashboard')
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
@@ -197,6 +210,13 @@ class AssistantManagerDashboardView(TemplateView):
         return context
 class ManagerDashboardView(TemplateView):
     template_name = 'dashboards/manager.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('login')
+        if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
+            return redirect('dashboard')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -232,6 +252,13 @@ class ManagerDashboardView(TemplateView):
 class ManagerStaffPerformanceView(TemplateView):
     template_name = 'dashboards/manager_performance.html'
 
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('login')
+        if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
+            return redirect('dashboard')
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
@@ -251,13 +278,14 @@ class ManagerStaffPerformanceView(TemplateView):
         import datetime
         from_datetime = timezone.make_aware(datetime.datetime.combine(from_date, datetime.time.min))
         to_datetime = timezone.make_aware(datetime.datetime.combine(to_date, datetime.time.max))
-        staff_qs = User.objects.filter(role__in=['sales_staff','manager'], branches__in=user.branches.all()).distinct()
+        staff_qs = User.objects.filter(role__in=['sales_staff', 'manager', 'assistant_manager'], branches__in=user.branches.all()).distinct()
         staff_info = []
         for staff in staff_qs:
             sales = Bill.objects.filter(staff=staff, created_at__range=(from_datetime, to_datetime)).aggregate(total=Sum('total_amount'))['total'] or 0
             staff_info.append({
                 'employee_id': staff.employee_id,
                 'name': staff.get_full_name() or staff.username,
+                'designation': staff.get_role_display(),
                 'date_of_joining': staff.date_of_joining,
                 'sales': sales,
             })
@@ -295,21 +323,28 @@ class ManagerStaffPerformanceView(TemplateView):
             import datetime
             start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
             end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
-            staff_qs = User.objects.filter(role__in=['sales_staff','manager'], branches__in=self.request.user.branches.all()).distinct()
+            staff_qs = User.objects.filter(role__in=['sales_staff', 'manager', 'assistant_manager'], branches__in=self.request.user.branches.all()).distinct()
             sales_qs = Bill.objects.filter(
                 staff__in=staff_qs,
                 created_at__range=(start_datetime, end_datetime)
             ).annotate(date=TruncDate('created_at')).values(
-                'staff__employee_id', 'staff__username', 'date'
+                'staff__employee_id', 'staff__username', 'staff__role', 'date'
             ).annotate(daily_sales=Sum('total_amount')).order_by('staff__employee_id', 'date')
             response = HttpResponse(content_type='text/csv')
             response['Content-Disposition'] = 'attachment; filename="staff_performance_detail.csv"'
             writer = csv.writer(response)
-            writer.writerow(['Emp. ID', 'Name', 'Date', 'Sales'])
+            writer.writerow(['Emp. ID', 'Name', 'Designation', 'Date', 'Sales'])
+            role_display_map = {
+                'owner': 'Admin',
+                'manager': 'Manager',
+                'assistant_manager': 'Assistant Manager',
+                'sales_staff': 'Sales Staff'
+            }
             for row in sales_qs:
                 writer.writerow([
                     row['staff__employee_id'],
                     row['staff__username'],
+                    role_display_map.get(row['staff__role'], row['staff__role']),
                     row['date'].strftime('%Y-%m-%d') if row['date'] else '',
                     row['daily_sales'] or 0,
                 ])
@@ -350,6 +385,11 @@ def export_manager_performance_csv(request):
 
 class StaffDashboardView(TemplateView):
     template_name = 'dashboards/staff.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('login')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

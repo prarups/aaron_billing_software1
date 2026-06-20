@@ -36,13 +36,13 @@ self.addEventListener('fetch', event => {
   // Only handle GET requests
   if (event.request.method !== 'GET') return;
 
-  // Do not intercept or cache admin, authentication/login/logout routes, or the root URL
   const url = new URL(event.request.url);
-  const authPaths = ['/admin/', '/users/login/', '/users/logout/', '/login/', '/logout/'];
-  const isAuthOrAdmin = authPaths.some(path => url.pathname.startsWith(path)) || url.pathname === '/';
+  const isStatic = url.pathname.startsWith('/static/');
+  const isPrecached = ASSETS.includes(url.pathname);
 
-  if (isAuthOrAdmin) {
-    return; // Let browser handle normally without SW intervention
+  // Only intercept static assets or pre-cached files
+  if (!isStatic && !isPrecached) {
+    return; // Let browser handle dynamic/HTML pages normally without SW intervention
   }
 
   event.respondWith(
@@ -57,9 +57,18 @@ self.addEventListener('fetch', event => {
         }
         return response;
       })
-      .catch(() => {
+      .catch(async () => {
         // Fallback to cache if network fails
-        return caches.match(event.request);
+        const cachedResponse = await caches.match(event.request);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        // Return a valid offline text/plain response instead of undefined to prevent browser console TypeErrors
+        return new Response("Resource unavailable offline", {
+          status: 503,
+          statusText: "Service Unavailable",
+          headers: new Headers({ "Content-Type": "text/plain" })
+        });
       })
   );
 });
