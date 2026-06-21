@@ -196,13 +196,13 @@
                         <label class="form-label small fw-bold text-muted">Select Eligible Products</label>
                         <select name="products" id="products-select" class="form-select" multiple required data-no-search>
                             {% for product in products %}
-                            <option value="{{ product.id }}" data-branch="{{ product.branch_id }}" {% if combo and product.id in selected_product_ids %}selected{% endif %}>{{ product.name }} ({{ product.barcode }}) - ₹{{ product.price }}</option>
+                            <option value="{{ product.id }}" data-branch="{{ product.branch_id }}" data-name="{{ product.name }}" {% if combo and product.id in selected_product_ids %}selected{% endif %}>{{ product.name }} ({{ product.barcode }}) - ₹{{ product.price }}</option>
                             {% endfor %}
                         </select>
                         <div class="d-flex justify-content-between align-items-center mt-1.5">
                             <div class="form-text x-small m-0" id="product-filter-hint">Select a branch first — only that branch’s products will appear.</div>
                             <button type="button" id="select-all-visible-btn" class="btn btn-outline-secondary btn-xs rounded-pill px-2.5 py-1 text-xxs fw-bold shadow-none" style="border-color: #dee2e6; color: #475569;">
-                                <i class="bi bi-check-all me-1"></i> Select All Matching Search
+                                <i class="bi bi-check-all me-1"></i> Select All Sizes of Selected
                             </button>
                         </div>
                     </div>
@@ -329,6 +329,7 @@ document.addEventListener('DOMContentLoaded', function () {
             value: opt.value,
             label: opt.textContent.trim(),
             branchId: opt.dataset.branch,
+            name: opt.dataset.name,
             preSelected: opt.selected
         });
     });
@@ -374,20 +375,31 @@ document.addEventListener('DOMContentLoaded', function () {
     // Re-select pre-selected products after initial filter
     allProducts.filter(p => p.preSelected).forEach(p => productTS.addItem(p.value, true));
 
-    // ── Select All Matching Search Button ──
+    // ── Select All Sizes of Selected Button ──
     const selectAllBtn = document.getElementById('select-all-visible-btn');
     selectAllBtn.addEventListener('click', function () {
-        const searchInput = productTS.control.querySelector('input');
-        const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        const selectedVals = productTS.getValue(); // array of selected product IDs (strings)
+        if (selectedVals.length === 0) {
+            alert('Please select at least one product size first.');
+            return;
+        }
+
+        // Find the names of currently selected products
+        const selectedNames = new Set();
+        allProducts.forEach(p => {
+            if (selectedVals.includes(p.value.toString())) {
+                selectedNames.add(p.name);
+            }
+        });
+
         const branchId = branchSelect.value;
-        
         let count = 0;
+        
         allProducts.forEach(p => {
             if (!branchId || p.branchId === branchId) {
-                if (!searchVal || p.label.toLowerCase().includes(searchVal)) {
-                    // Only add if not already selected
-                    const currentVal = productTS.getValue();
-                    if (!currentVal.includes(p.value)) {
+                if (selectedNames.has(p.name)) {
+                    // Add if not already selected
+                    if (!selectedVals.includes(p.value.toString())) {
                         productTS.addItem(p.value, true);
                         count++;
                     }
@@ -396,12 +408,14 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         productTS.refreshOptions(false);
         if (count > 0) {
-            selectAllBtn.innerHTML = `<i class="bi bi-check-lg me-1"></i> Selected ${count} items!`;
+            selectAllBtn.innerHTML = `<i class="bi bi-check-lg me-1"></i> Selected ${count} more sizes!`;
             selectAllBtn.className = 'btn btn-success btn-xs rounded-pill px-2.5 py-1 text-xxs fw-bold shadow-none';
             setTimeout(() => {
-                selectAllBtn.innerHTML = `<i class="bi bi-check-all me-1"></i> Select All Matching Search`;
+                selectAllBtn.innerHTML = `<i class="bi bi-check-all me-1"></i> Select All Sizes of Selected`;
                 selectAllBtn.className = 'btn btn-outline-secondary btn-xs rounded-pill px-2.5 py-1 text-xxs fw-bold shadow-none';
             }, 1500);
+        } else {
+            alert('All sizes for the selected products are already added.');
         }
     });
 });
