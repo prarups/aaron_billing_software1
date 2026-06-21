@@ -1,7 +1,7 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from core.models import Product, Branch, ProductRegistry, StockTransaction
+from core.models import Product, Branch, ProductRegistry, StockTransaction, ComboGroup
 
 User = get_user_model()
 
@@ -1265,9 +1265,82 @@ class ComboListPermissionTestCase(TestCase):
         self.assertNotContains(response, "Guntur Deal")
 
 
+class ComboOptimizationsTestCase(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.branch_a = Branch.objects.create(name="Nellore Branch", code="10001", invoice_prefix="AN")
+        self.branch_b = Branch.objects.create(name="Guntur Branch", code="10002", invoice_prefix="AG")
+        
+        # User roles
+        self.owner = User.objects.create_user(
+            username="owner_user", 
+            password="password123", 
+            role="owner",
+            active_branch=self.branch_a
+        )
+        self.staff_a = User.objects.create_user(
+            username="staff_a", 
+            password="password123", 
+            role="sales_staff",
+            active_branch=self.branch_a
+        )
+        self.staff_a.branches.add(self.branch_a)
+        
+        # Create some products
+        self.prod_a = Product.objects.create(branch=self.branch_a, name="Shirt XL", barcode="11111", price=500)
+        self.prod_b = Product.objects.create(branch=self.branch_b, name="Pants L", barcode="22222", price=700)
 
+    def test_branch_products_ajax_owner(self):
+        self.client.login(username="owner_user", password="password123")
+        url = reverse('branch_products_ajax')
+        response = self.client.get(f"{url}?branch_id={self.branch_a.id}")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data['products']), 1)
+        self.assertEqual(data['products'][0]['name'], "Shirt XL")
 
+    def test_branch_products_ajax_staff_permissions(self):
+        self.client.login(username="staff_a", password="password123")
+        url = reverse('branch_products_ajax')
+        # Allowed for assigned branch A
+        response = self.client.get(f"{url}?branch_id={self.branch_a.id}")
+        self.assertEqual(response.status_code, 200)
+        
+        # Denied for unassigned branch B
+        response = self.client.get(f"{url}?branch_id={self.branch_b.id}")
+        self.assertEqual(response.status_code, 403)
 
+    def test_combo_list_search_by_name(self):
+        self.client.login(username="owner_user", password="password123")
+        ComboGroup.objects.create(name="Nellore Deal", is_active=True)
+        ComboGroup.objects.create(name="Guntur Deal", is_active=True)
+        
+        url = reverse('combo_list')
+        response = self.client.get(f"{url}?q=Nellore")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nellore Deal")
+        self.assertNotContains(response, "Guntur Deal")
+
+    def test_combo_list_search_by_combo_id(self):
+        self.client.login(username="owner_user", password="password123")
+        combo = ComboGroup.objects.create(name="Nellore Deal", is_active=True)
+        
+        url = reverse('combo_list')
+        response = self.client.get(f"{url}?q={combo.combo_id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nellore Deal")
+
+    def test_combo_list_pagination(self):
+        self.client.login(username="owner_user", password="password123")
+        for i in range(12):
+            ComboGroup.objects.create(name=f"Combo {i}", is_active=True)
+            
+        url = reverse('combo_list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        # Verify pagination shows 10 items
+        self.assertEqual(len(response.context['combos']), 10)
+        self.assertTrue(response.context['page_obj'].has_other_pages())
 
 
 

@@ -191,7 +191,7 @@
                 <!-- Manual Search -->
                 <div class="row g-2">
                     <div class="col-8 col-md-9">
-                        <input type="text" id="barcode-input" class="form-control rounded-pill border-0 shadow-sm bg-light py-2 px-4" placeholder="Enter Barcode...">
+                        <input type="text" id="barcode-input" class="form-control rounded-pill border-0 shadow-sm bg-light py-2 px-4" placeholder="Search by name or enter barcode...">
                     </div>
                     <div class="col-4 col-md-3">
                         <button class="btn btn-vibrant w-100 rounded-pill shadow-sm py-2" id="add-by-barcode">Add</button>
@@ -234,10 +234,12 @@
                 </div>
                 <div class="row g-2 product-grid catalog-scroll">
                     {% for reg in registrations %}
-                    <div class="col-4 col-sm-3 col-md-2">
+                    <div class="col-4 col-sm-3 col-md-2 product-card-col">
                         <div class="pos-item-card glass-card p-2 text-center h-100 border-0 bg-white" 
                              id="product-{{ reg.product.id }}"
                              data-product-id="{{ reg.product.id }}"
+                             data-product-name="{{ reg.product.name|escapejs }}"
+                             data-product-barcode="{{ reg.product.barcode }}"
                              data-combos='[{% for c in reg.product.combos.all %}{"quantity": {{ c.quantity }}, "price": {{ c.price|floatformat:0 }}}{% if not forloop.last %},{% endif %}{% endfor %}]'
                              onclick="addToCart('{{ reg.product.id }}', '{{ reg.product.name|escapejs }}', '{{ reg.product.price|floatformat:0 }}', '{{ reg.stock_quantity }}', this.getAttribute('data-combos'), '{{ reg.product.barcode }}')">
                             <div class="stock-badge {% if reg.stock_quantity <= reg.low_stock_threshold %}bg-danger{% else %}bg-success{% endif %}">
@@ -716,9 +718,67 @@
                     addToCart(data.id.toString(), data.name, data.price, data.stock, JSON.stringify(data.combos || []), data.barcode);
                     showScanToast('✅ ' + data.name, 'success');
                     document.getElementById('barcode-input').value = '';
+                    // Clear search filter by dispatching input event
+                    document.getElementById('barcode-input').dispatchEvent(new Event('input'));
                 }
             });
     });
+
+    // Live Search & Instant Add on Enter
+    const barcodeInput = document.getElementById('barcode-input');
+    if (barcodeInput) {
+        // 1. Live Filter Search
+        barcodeInput.addEventListener('input', function() {
+            const query = this.value.trim().toLowerCase();
+            const cards = document.querySelectorAll('.pos-item-card');
+            
+            cards.forEach(card => {
+                const name = (card.getAttribute('data-product-name') || '').toLowerCase();
+                const barcode = (card.getAttribute('data-product-barcode') || '').toLowerCase();
+                const col = card.closest('.product-card-col') || card.parentElement;
+                
+                if (!query || name.includes(query) || barcode.includes(query)) {
+                    col.classList.remove('d-none');
+                } else {
+                    col.classList.add('d-none');
+                }
+            });
+        });
+
+        // 2. Instant Add on Enter key
+        barcodeInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const barcode = this.value.trim();
+                if (!barcode) return;
+
+                // First check if there is an exact barcode match locally in our DOM
+                const cards = document.querySelectorAll('.pos-item-card');
+                let matchedCard = null;
+                
+                for (let card of cards) {
+                    const cardBarcode = (card.getAttribute('data-product-barcode') || '').trim();
+                    if (cardBarcode && cardBarcode.toLowerCase() === barcode.toLowerCase()) {
+                        matchedCard = card;
+                        break;
+                    }
+                }
+
+                if (matchedCard) {
+                    // Instantly add using click trigger
+                    matchedCard.click();
+                    const productName = matchedCard.getAttribute('data-product-name') || '';
+                    showScanToast('✅ ' + productName, 'success');
+                    this.value = '';
+                    // Trigger input event to clear the search filter as well
+                    this.dispatchEvent(new Event('input'));
+                } else {
+                    // Fallback to AJAX lookup if not found locally
+                    document.getElementById('add-by-barcode').click();
+                }
+            }
+        });
+    }
 
     // Scanner
     document.getElementById('toggle-scanner').addEventListener('click', () => {

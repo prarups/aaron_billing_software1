@@ -23,4 +23,5 @@ urlpatterns = [
     path('combos/edit/<int:pk>/', combo_views.combo_edit, name='combo_edit'),
     path('combos/delete/<int:pk>/', combo_views.combo_delete, name='combo_delete'),
     path('combos/ajax-data/', combo_views.get_branch_combo_data, name='ajax_combo_data'),
+    path('combos/branch-products-ajax/', combo_views.branch_products_ajax, name='branch_products_ajax'),
 ]

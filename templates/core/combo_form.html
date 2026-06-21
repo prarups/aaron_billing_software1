@@ -196,7 +196,7 @@
                         <label class="form-label small fw-bold text-muted">Select Eligible Products</label>
                         <select name="products" id="products-select" class="form-select" multiple required data-no-search>
                             {% for product in products %}
-                            <option value="{{ product.id }}" data-branch="{{ product.branch_id }}" data-name="{{ product.name }}" {% if combo and product.id in selected_product_ids %}selected{% endif %}>{{ product.name }} ({{ product.barcode }}) - ₹{{ product.price }}</option>
+                            <option value="{{ product.id }}" data-branch="{{ product.branch_id }}" data-name="{{ product.name }}" data-barcode="{{ product.barcode }}" {% if combo and product.id in selected_product_ids %}selected{% endif %}>{{ product.name }} ({{ product.barcode }}) - ₹{{ product.price }}</option>
                             {% endfor %}
                         </select>
                         <div class="d-flex justify-content-between align-items-center mt-1.5">
@@ -326,54 +326,126 @@ document.addEventListener('DOMContentLoaded', function () {
     productSelect.querySelectorAll('option').forEach(opt => {
         if (!opt.value) return;
         allProducts.push({
-            value: opt.value,
+            value: opt.value.toString(),
             label: opt.textContent.trim(),
-            branchId: opt.dataset.branch,
+            branchId: opt.dataset.branch.toString(),
             name: opt.dataset.name,
+            barcode: opt.dataset.barcode || '',
             preSelected: opt.selected
         });
     });
 
     const productTS = new TomSelect(productSelect, {
         plugins: ['remove_button', 'dropdown_input'],
-        placeholder: 'Search and select products…',
+        placeholder: 'Scan barcode or type product name…',
         create: false,
         allowEmptyOption: false,
-        maxOptions: 500,
+        valueField: 'value',
+        labelField: 'label',
+        searchField: 'label',
+        maxOptions: 50,
+        load: function(query, callback) {
+            const branchId = branchSelect.value;
+            if (!branchId) {
+                alert('Please select a branch first.');
+                callback();
+                return;
+            }
+            if (!query.length) {
+                callback();
+                return;
+            }
+            fetch(`/core/combos/branch-products-ajax/?branch_id=${branchId}&q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.products) {
+                        const productsList = data.products.map(p => {
+                            const item = {
+                                value: p.id.toString(),
+                                label: `${p.name} (${p.barcode}) - ₹${p.price}`,
+                                branchId: p.branch_id.toString(),
+                                name: p.name,
+                                barcode: p.barcode
+                            };
+                            // Add to global allProducts cache for the select all sizes helper
+                            if (!allProducts.some(ap => ap.value === item.value)) {
+                                allProducts.push(item);
+                            }
+                            return item;
+                        });
+                        callback(productsList);
+                    } else {
+                        callback();
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    callback();
+                });
+        },
         render: {
             option: function(data, escape) {
-                return `<div class="py-1 px-2" style="font-size:0.82rem;">${escape(data.text)}</div>`;
+                return `<div class="py-1 px-2" style="font-size:0.82rem;">${escape(data.label)}</div>`;
             },
             item: function(data, escape) {
-                return `<div class="d-flex align-items-center gap-1">${escape(data.text)}</div>`;
+                return `<div class="d-flex align-items-center gap-1">${escape(data.label)}</div>`;
             }
         }
     });
 
-    // ── Product filter by selected branch ──
-    function filterProducts() {
-        const branchId = branchSelect.value;
-        const current  = productTS.getValue();
-
-        productTS.clearOptions();
+    // Handle branch change: clear selections and clear options
+    branchSelect.addEventListener('change', function () {
+        updateClearBtn();
         productTS.clear(true);
+        productTS.clearOptions();
+        allProducts.length = 0;
+    });
 
-        allProducts.forEach(p => {
-            if (!branchId || p.branchId === branchId) {
-                productTS.addOption({ value: p.value, text: p.label });
-                if (current.includes(p.value)) {
-                    productTS.addItem(p.value, true);
-                }
+    clearBtn.addEventListener('click', function () {
+        branchSelect.value = '';
+        updateClearBtn();
+        productTS.clear(true);
+        productTS.clearOptions();
+        allProducts.length = 0;
+    });
+
+    // Helper to determine if name similarity matches (sharing first 2 words)
+    function namesAreSimilar(name1, name2) {
+        if (!name1 || !name2) return false;
+        const w1 = name1.toLowerCase().trim().split(/[\s\-_]+/).filter(Boolean);
+        const w2 = name2.toLowerCase().trim().split(/[\s\-_]+/).filter(Boolean);
+        if (w1.length === 0 || w2.length === 0) return false;
+        
+        const minWords = Math.min(w1.length, w2.length, 2);
+        for (let i = 0; i < minWords; i++) {
+            if (w1[i] !== w2[i]) {
+                return false;
             }
-        });
-        productTS.refreshOptions(false);
+        }
+        return true;
     }
 
-    // Run initial filter (populates products matching pre-selected branch)
-    filterProducts();
-    
-    // Re-select pre-selected products after initial filter
-    allProducts.filter(p => p.preSelected).forEach(p => productTS.addItem(p.value, true));
+    // Helper to determine if barcode matches or has a similar prefix
+    function barcodesAreSimilar(bc1, bc2) {
+        if (!bc1 || !bc2) return false;
+        bc1 = bc1.trim();
+        bc2 = bc2.trim();
+        if (bc1 === bc2) return true;
+        
+        // Match numeric prefix digits (e.g. 610079)
+        const d1 = bc1.match(/^\d+/);
+        const d2 = bc2.match(/^\d+/);
+        if (d1 && d2 && d1[0] === d2[0] && d1[0].length >= 4) {
+            return true;
+        }
+        
+        // Fallback to substring match for alphanumeric barcodes
+        const minLen = Math.min(bc1.length, bc2.length);
+        if (minLen >= 4 && bc1.substring(0, 4) === bc2.substring(0, 4)) {
+            return true;
+        }
+        return false;
+    }
 
     // ── Select All Sizes of Selected Button ──
     const selectAllBtn = document.getElementById('select-all-visible-btn');
@@ -384,11 +456,11 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Find the names of currently selected products
-        const selectedNames = new Set();
+        // Find details of currently selected products
+        const selectedProductsList = [];
         allProducts.forEach(p => {
             if (selectedVals.includes(p.value.toString())) {
-                selectedNames.add(p.name);
+                selectedProductsList.push(p);
             }
         });
 
@@ -397,9 +469,18 @@ document.addEventListener('DOMContentLoaded', function () {
         
         allProducts.forEach(p => {
             if (!branchId || p.branchId === branchId) {
-                if (selectedNames.has(p.name)) {
-                    // Add if not already selected
-                    if (!selectedVals.includes(p.value.toString())) {
+                // If candidate is not already selected
+                if (!selectedVals.includes(p.value.toString())) {
+                    // Check if candidate matches any selected product
+                    const matchesAny = selectedProductsList.some(sel => {
+                        // Match if they share the exact name OR
+                        // if they share both name prefix (first 2 words) AND barcode prefix
+                        if (p.name === sel.name) return true;
+                        
+                        return barcodesAreSimilar(p.barcode, sel.barcode) && namesAreSimilar(p.name, sel.name);
+                    });
+                    
+                    if (matchesAny) {
                         productTS.addItem(p.value, true);
                         count++;
                     }

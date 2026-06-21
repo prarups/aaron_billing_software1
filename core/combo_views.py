@@ -3,6 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from django.db import transaction
+from django.db.models import Q
+from django.core.paginator import Paginator
 from decimal import Decimal
 from core.models import Branch, Product, ProductRegistry, ComboGroup, ComboTier
 
@@ -43,6 +45,7 @@ def calculate_optimal_combo_price(item_prices, tiers_list):
 def combo_list(request):
     branches = request.user.get_accessible_branches().order_by('name')
     selected_branch_id = request.GET.get('branch', '')
+    q = request.GET.get('q', '').strip()
     
     if request.user.is_owner():
         combos = ComboGroup.objects.all()
@@ -52,11 +55,24 @@ def combo_list(request):
     if selected_branch_id:
         combos = combos.filter(branches=selected_branch_id)
         
+    if q:
+        combos = combos.filter(
+            Q(combo_id__icontains=q) | Q(name__icontains=q)
+        )
+        
     combos = combos.prefetch_related('branches', 'products', 'tiers').order_by('-created_at')
+    
+    # Paginate by 10
+    paginator = Paginator(combos, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     return render(request, 'core/combo_list.html', {
-        'combos': combos,
+        'page_obj': page_obj,
+        'combos': page_obj.object_list,
         'branches': branches,
-        'selected_branch_id': selected_branch_id
+        'selected_branch_id': selected_branch_id,
+        'q': q
     })
 
 @login_required
@@ -67,7 +83,8 @@ def combo_create(request):
         return redirect('combo_list')
     
     branches = request.user.get_accessible_branches().order_by('name')
-    products = Product.objects.all().order_by('name')
+    products = Product.objects.none()
+    selected_branch_ids = set()
     
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
@@ -105,7 +122,7 @@ def combo_create(request):
     return render(request, 'core/combo_form.html', {
         'branches': branches,
         'products': products,
-        'selected_branch_ids': set(),
+        'selected_branch_ids': selected_branch_ids,
         'selected_product_ids': set(),
         'title': 'Create Combo Offer'
     })
@@ -119,10 +136,11 @@ def combo_edit(request, pk):
     
     combo = get_object_or_404(ComboGroup, pk=pk)
     branches = request.user.get_accessible_branches().order_by('name')
-    products = Product.objects.all().order_by('name')
     
     selected_branch_ids = set(combo.branches.values_list('id', flat=True))
     selected_product_ids = set(combo.products.values_list('id', flat=True))
+    
+    products = combo.products.all().order_by('name')
     
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
@@ -174,6 +192,40 @@ def combo_edit(request, pk):
         'selected_product_ids': selected_product_ids,
         'title': f'Edit Combo: {combo.name}'
     })
+
+@login_required
+def branch_products_ajax(request):
+    branch_id = request.GET.get('branch_id')
+    q = request.GET.get('q', '').strip()
+    if not branch_id:
+        return JsonResponse({'products': []})
+    
+    # Check permissions
+    branches = request.user.get_accessible_branches()
+    if not request.user.is_owner() and not branches.filter(id=branch_id).exists():
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+        
+    if q:
+        matching_names = Product.objects.filter(branch_id=branch_id).filter(
+            Q(barcode__icontains=q) | Q(name__icontains=q)
+        ).values_list('name', flat=True).distinct()
+        
+        products = Product.objects.filter(branch_id=branch_id, name__in=matching_names).order_by('name')
+    else:
+        # Return first 20 products initially
+        products = Product.objects.filter(branch_id=branch_id).order_by('name')[:20]
+        
+    product_list = [
+        {
+            'id': p.id,
+            'name': p.name,
+            'barcode': p.barcode,
+            'price': float(p.price),
+            'branch_id': p.branch_id
+        }
+        for p in products
+    ]
+    return JsonResponse({'products': product_list})
 
 @login_required
 @transaction.atomic
