@@ -124,10 +124,30 @@ class ComboPriceForm(forms.ModelForm):
             raise forms.ValidationError("Price cannot be negative.")
         return price
 
+from django.forms import BaseInlineFormSet
+
+class BaseComboPriceFormSet(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        for form in self.forms:
+            if form.errors:
+                return
+
+        quantities = []
+        for form in self.forms:
+            if self.can_delete and self._should_delete_form(form):
+                continue
+            qty = form.cleaned_data.get('quantity')
+            if qty in quantities:
+                raise forms.ValidationError(f"Duplicate combo quantity: {qty}. Each milestone quantity must be unique.")
+            if qty:
+                quantities.append(qty)
+
 ComboPriceFormSet = inlineformset_factory(
     Product,
     ComboPrice,
     form=ComboPriceForm,
+    formset=BaseComboPriceFormSet,
     fields=['quantity', 'price'],
     extra=0,
     can_delete=True,

@@ -136,7 +136,8 @@ class ProductRegistry(models.Model):
 
     class Meta:
         unique_together = ('branch', 'product')
-        verbose_name_plural = "Product Registries"
+        verbose_name = "Branch-wise Product"
+        verbose_name_plural = "Branch-wise Products"
 
     def __str__(self):
         return f"{self.product.name} at {self.branch.name}"

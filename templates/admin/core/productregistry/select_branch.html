@@ -1,0 +1,77 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .branch-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+    .branch-card {
+        background: var(--body-bg, #fff);
+        border: 1px solid var(--border-color, #ccc);
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transition: transform 0.2s, box-shadow 0.2s;
+        text-decoration: none !important;
+        display: block;
+    }
+    .branch-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        border-color: var(--primary, #79aec8);
+    }
+    .branch-card h3 {
+        margin: 0 0 10px 0;
+        color: var(--primary, #79aec8);
+    }
+    .branch-card p {
+        margin: 0;
+        color: var(--body-quiet-color, #666);
+        font-size: 13px;
+    }
+    .show-all-link {
+        display: inline-block;
+        margin-top: 30px;
+        font-weight: bold;
+        color: var(--link-color, #447e9b);
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label='core' %}">Core</a>
+&rsaquo; Branch-wise Products
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Select a Branch to View Products</h1>
+    <p>Please choose a branch below to view and manage its products and stock levels.</p>
+    
+    <div class="branch-grid">
+        {% for branch in branches_list %}
+            <a href="?branch__id__exact={{ branch.id }}" class="branch-card">
+                <h3>{{ branch.name }}</h3>
+                <p>Code: {{ branch.code }}</p>
+                <p>{{ branch.location }}</p>
+            </a>
+        {% empty %}
+            <p>No accessible branches found.</p>
+        {% endfor %}
+    </div>
+    
+    <div style="margin-top: 30px; text-align: center;">
+        <a href="?branch__id__exact=" class="show-all-link">Show All Branches' Products</a>
+    </div>
+</div>
+{% endblock %}

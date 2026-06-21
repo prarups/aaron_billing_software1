@@ -1,12 +1,28 @@
 from django.contrib import admin
 from django.db.models import Q
+from django.utils.html import format_html
+from django.urls import reverse
 from .models import Branch, Product, ProductRegistry, StockTransaction, StockAdjustment, ComboPrice, ComboGroup, ComboTier
+
+class ProductRegistryBranchInline(admin.TabularInline):
+    model = ProductRegistry
+    extra = 0
+    raw_id_fields = ('product',)
+    fields = ('product', 'stock_quantity', 'damaged_qty', 'low_stock_threshold')
+    verbose_name = "Branch Product Stock"
+    verbose_name_plural = "Branch Product Stocks"
 
 @admin.register(Branch)
 class BranchAdmin(admin.ModelAdmin):
-    list_display = ('name', 'location', 'contact_number', 'code', 'created_at')
+    list_display = ('name', 'location', 'contact_number', 'code', 'view_products_link', 'created_at')
     readonly_fields = ('code',)
     search_fields = ('name', 'location')
+    inlines = [ProductRegistryBranchInline]
+
+    def view_products_link(self, obj):
+        url = reverse('admin:core_productregistry_changelist') + f"?branch__id__exact={obj.id}"
+        return format_html('<a class="button" style="background-color: #4f46e5; color: white; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 11px;" href="{}">View Products</a>', url)
+    view_products_link.short_description = "Branch Products"
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -45,13 +61,17 @@ class ComboPriceInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'barcode', 'price', 'size', 'created_at')
-    list_filter = ('created_at',)
+    list_display = ('name', 'barcode', 'price', 'size', 'display_branches', 'created_at')
+    list_filter = ('branches', 'created_at')
     search_fields = ('name', 'barcode')
     inlines = [ProductRegistryInline, ComboPriceInline]
 
+    def display_branches(self, obj):
+        return ", ".join([b.name for b in obj.branches.all()])
+    display_branches.short_description = "Branches"
+
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
+        qs = super().get_queryset(request).prefetch_related('branches')
         if request.user.is_superuser or getattr(request.user, 'role', '') == 'owner':
             return qs
         accessible_branches = request.user.get_accessible_branches()
@@ -81,16 +101,63 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(ProductRegistry)
 class ProductRegistryAdmin(admin.ModelAdmin):
-    list_display = ('product', 'branch', 'stock_quantity', 'damaged_qty', 'updated_at')
-    list_filter = ('branch', 'updated_at')
+    list_display = (
+        'get_product_name', 
+        'get_barcode', 
+        'get_price', 
+        'get_size', 
+        'branch', 
+        'stock_quantity', 
+        'damaged_qty', 
+        'low_stock_threshold', 
+        'updated_at'
+    )
+    list_display_links = ('get_product_name',)
+    list_filter = ('branch', 'product__created_at')
     search_fields = ('product__name', 'product__barcode', 'branch__name')
+    list_editable = ('stock_quantity', 'damaged_qty', 'low_stock_threshold')
+
+    def get_product_name(self, obj):
+        return obj.product.name
+    get_product_name.short_description = 'Product Name'
+    get_product_name.admin_order_field = 'product__name'
+
+    def get_barcode(self, obj):
+        return obj.product.barcode
+    get_barcode.short_description = 'Barcode'
+    get_barcode.admin_order_field = 'product__barcode'
+
+    def get_price(self, obj):
+        return f"₹{obj.product.price:.0f}"
+    get_price.short_description = 'Price'
+    get_price.admin_order_field = 'product__price'
+
+    def get_size(self, obj):
+        return obj.product.size or "—"
+    get_size.short_description = 'Size'
+    get_size.admin_order_field = 'product__size'
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
+        qs = super().get_queryset(request).select_related('product', 'branch')
         if request.user.is_superuser or getattr(request.user, 'role', '') == 'owner':
             return qs
         accessible_branches = request.user.get_accessible_branches()
         return qs.filter(branch__in=accessible_branches)
+
+    def changelist_view(self, request, extra_context=None):
+        if 'branch__id__exact' not in request.GET and not request.GET.get('q') and request.method == 'GET':
+            from django.shortcuts import render
+            branches = Branch.objects.all()
+            if not request.user.is_superuser and getattr(request.user, 'role', '') != 'owner':
+                accessible = request.user.get_accessible_branches()
+                branches = branches.filter(id__in=accessible)
+            
+            extra_context = extra_context or {}
+            extra_context['branches_list'] = branches
+            extra_context['title'] = "Select a Branch to View Products"
+            return render(request, 'admin/core/productregistry/select_branch.html', extra_context)
+            
+        return super().changelist_view(request, extra_context=extra_context)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "branch" and not (request.user.is_superuser or getattr(request.user, 'role', '') == 'owner'):
