@@ -238,8 +238,15 @@ class ComboTierInline(admin.TabularInline):
 
 @admin.register(ComboGroup)
 class ComboGroupAdmin(admin.ModelAdmin):
-    list_display = ('name', 'is_active', 'created_at')
-    list_filter = ('is_active',)
-    search_fields = ('name',)
+    list_display = ('combo_id', 'name', 'display_branches', 'is_active', 'created_at')
+    list_filter = ('branches', 'is_active')
+    search_fields = ('name', 'combo_id')
     filter_horizontal = ('branches', 'products')
     inlines = [ComboTierInline]
+
+    def display_branches(self, obj):
+        return ", ".join([b.name for b in obj.branches.all()])
+    display_branches.short_description = "Branches"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('branches')

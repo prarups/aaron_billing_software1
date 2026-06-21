@@ -41,15 +41,22 @@ def calculate_optimal_combo_price(item_prices, tiers_list):
 
 @login_required
 def combo_list(request):
+    branches = request.user.get_accessible_branches().order_by('name')
+    selected_branch_id = request.GET.get('branch', '')
+    
     if request.user.is_owner():
         combos = ComboGroup.objects.all()
     else:
-        accessible_branches = request.user.get_accessible_branches()
-        combos = ComboGroup.objects.filter(branches__in=accessible_branches).distinct()
+        combos = ComboGroup.objects.filter(branches__in=branches).distinct()
+        
+    if selected_branch_id:
+        combos = combos.filter(branches=selected_branch_id)
         
     combos = combos.prefetch_related('branches', 'products', 'tiers').order_by('-created_at')
     return render(request, 'core/combo_list.html', {
-        'combos': combos
+        'combos': combos,
+        'branches': branches,
+        'selected_branch_id': selected_branch_id
     })
 
 @login_required
@@ -98,6 +105,8 @@ def combo_create(request):
     return render(request, 'core/combo_form.html', {
         'branches': branches,
         'products': products,
+        'selected_branch_ids': set(),
+        'selected_product_ids': set(),
         'title': 'Create Combo Offer'
     })
 
@@ -111,6 +120,9 @@ def combo_edit(request, pk):
     combo = get_object_or_404(ComboGroup, pk=pk)
     branches = request.user.get_accessible_branches().order_by('name')
     products = Product.objects.all().order_by('name')
+    
+    selected_branch_ids = set(combo.branches.values_list('id', flat=True))
+    selected_product_ids = set(combo.products.values_list('id', flat=True))
     
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
@@ -158,6 +170,8 @@ def combo_edit(request, pk):
         'combo': combo,
         'branches': branches,
         'products': products,
+        'selected_branch_ids': selected_branch_ids,
+        'selected_product_ids': selected_product_ids,
         'title': f'Edit Combo: {combo.name}'
     })
 
