@@ -563,8 +563,15 @@
         let groupComboQty = 0;
 
         comboGroups.forEach(group => {
-            let groupItems = basket.filter(item => group.product_ids.includes(item.id));
+            let groupItems = basket.filter(item => !processedItemIds.has(item.id) && group.product_ids.includes(item.id));
             if (groupItems.length > 0) {
+                // Check if total quantity of eligible items satisfies the minimum milestone
+                let groupQty = groupItems.reduce((sum, item) => sum + item.quantity, 0);
+                let minQty = group.tiers.length > 0 ? Math.min(...group.tiers.map(t => t.quantity)) : null;
+                if (minQty !== null && groupQty < minQty) {
+                    return;
+                }
+
                 mainGroup = group;
                 let groupPrices = [];
                 groupItems.forEach(item => {

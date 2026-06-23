@@ -8,6 +8,32 @@ from django.core.paginator import Paginator
 from decimal import Decimal
 from core.models import Branch, Product, ProductRegistry, ComboGroup, ComboTier
 
+def check_combo_barcode_overlap(request, target_branch_ids, selected_barcodes, is_active, exclude_combo_id=None):
+    if not selected_barcodes or not is_active:
+        return False
+    
+    overlapping_combos = ComboGroup.objects.filter(
+        is_active=True,
+        branches__in=target_branch_ids,
+        products__barcode__in=selected_barcodes
+    )
+    if exclude_combo_id:
+        overlapping_combos = overlapping_combos.exclude(id=exclude_combo_id)
+        
+    overlapping_combos = overlapping_combos.prefetch_related('products', 'branches').distinct()
+    if overlapping_combos.exists():
+        for o_combo in overlapping_combos:
+            overlapping_barcodes = set(selected_barcodes) & set(o_combo.products.values_list('barcode', flat=True))
+            overlapping_branches = set(target_branch_ids) & set(o_combo.branches.values_list('id', flat=True))
+            branch_names = ", ".join(Branch.objects.filter(id__in=overlapping_branches).values_list('name', flat=True))
+            barcodes_str = ", ".join(overlapping_barcodes)
+            messages.error(
+                request,
+                f"Barcode(s) '{barcodes_str}' are already assigned to active combo group '{o_combo.name}' ({o_combo.combo_id}) in branch(es): {branch_names}."
+            )
+        return True
+    return False
+
 def calculate_optimal_combo_price(item_prices, tiers_list):
     """
     item_prices: list of floats/Decimals representing base prices of items in the combo.
@@ -113,6 +139,8 @@ def combo_create(request):
             messages.error(request, "Combo Name is required.")
         elif not target_branch_ids:
             messages.error(request, "Please select at least one branch for availability.")
+        elif check_combo_barcode_overlap(request, target_branch_ids, selected_barcodes, is_active):
+            pass
         else:
             # Create ComboGroup
             combo = ComboGroup.objects.create(name=name, is_active=is_active)
@@ -191,6 +219,8 @@ def combo_edit(request, pk):
             messages.error(request, "Combo Name is required.")
         elif not target_branch_ids:
             messages.error(request, "Please select at least one branch for availability.")
+        elif check_combo_barcode_overlap(request, target_branch_ids, selected_barcodes, is_active, exclude_combo_id=combo.id):
+            pass
         else:
             combo.name = name
             combo.is_active = is_active

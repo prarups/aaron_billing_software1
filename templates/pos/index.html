@@ -534,8 +534,15 @@
 
         // Step 1: apply multi-product combo group pricing (DP)
         comboGroups.forEach(group => {
-            let groupItems = cart.filter(item => group.barcodes && group.barcodes.includes(item.barcode));
+            let groupItems = cart.filter(item => !processedIds.has(item.id) && group.barcodes && group.barcodes.includes(item.barcode));
             if (groupItems.length === 0) return;
+
+            // Check if total quantity of eligible items satisfies the minimum milestone
+            let groupQty = groupItems.reduce((sum, item) => sum + item.quantity, 0);
+            let minQty = group.tiers.length > 0 ? Math.min(...group.tiers.map(t => t.quantity)) : null;
+            if (minQty !== null && groupQty < minQty) {
+                return;
+            }
 
             let groupPrices = [];
             groupItems.forEach(item => {

@@ -201,6 +201,51 @@ class MultiProductComboTestCase(TestCase):
         self.assertEqual(bill.total_amount, Decimal('500'))
         self.assertEqual(bill.total_savings, Decimal('250'))
 
+    def test_process_bill_with_overlapping_combo_groups_shared_barcode(self):
+        from django.urls import reverse
+        import json
+        self.client.force_login(self.user)
+
+        # Create product p3
+        p3 = Product.objects.create(name='Orange', barcode='103', price=200, branch=self.branch)
+        ProductRegistry.objects.create(branch=self.branch, product=p3, stock_quantity=100)
+
+        # Combo C: p3 only, milestone 5 -> 700 (min milestone = 5)
+        group_c = ComboGroup.objects.create(name='Combo C', is_active=True)
+        group_c.branches.add(self.branch)
+        group_c.products.add(p3)
+        ComboTier.objects.create(combo_group=group_c, quantity=5, price=700)
+
+        # Combo D: p3 only, milestone 3 -> 500 (min milestone = 3)
+        group_d = ComboGroup.objects.create(name='Combo D', is_active=True)
+        group_d.branches.add(self.branch)
+        group_d.products.add(p3)
+        ComboTier.objects.create(combo_group=group_d, quantity=3, price=500)
+
+        # Scanned: 3 of p3.
+        # If Combo C is evaluated first, eligible qty = 3. Since 3 < 5 (min milestone of C), Combo C must skip processing p3.
+        # Then Combo D is evaluated. Eligible qty = 3. Since 3 >= 3 (min milestone of D), Combo D processes p3 and applies milestone price 500.
+        payload = {
+            'items': [
+                {'id': p3.id, 'quantity': 3}
+            ],
+            'customer_name': 'Jane Doe',
+            'customer_phone': '1234567890',
+            'payment_method': 'cash'
+        }
+
+        response = self.client.post(
+            reverse('process_bill'),
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+
+        bill = Bill.objects.get(id=data['bill_id'])
+        self.assertEqual(bill.total_amount, Decimal('500'))
+
     def test_process_bill_with_optional_customer_details(self):
         from django.urls import reverse
         import json

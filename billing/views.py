@@ -199,6 +199,12 @@ def process_bill(request):
                             
                     if not group_cart_items:
                         continue
+
+                    # Check if total quantity of eligible items satisfies the minimum milestone
+                    total_qty = sum(r_item['quantity'] for r_item in group_cart_items)
+                    min_qty = min(t[0] for t in group_tiers)
+                    if total_qty < min_qty:
+                        continue
                         
                     # Expand items to get individual base prices
                     expanded_prices = []

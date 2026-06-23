@@ -1459,6 +1459,75 @@ class ComboForcedMilestoneTestCase(TestCase):
         self.assertEqual(optimal, 897.0)
 
 
+class ComboBarcodeOverlapValidationTestCase(TestCase):
+    def setUp(self):
+        from django.test import Client
+        from core.models import ComboTier
+        self.client = Client()
+        self.branch = Branch.objects.create(name="Nellore Branch", code="10001", invoice_prefix="AN")
+        self.owner = User.objects.create_user(
+            username="owner_user", 
+            password="password123", 
+            role="owner",
+            active_branch=self.branch
+        )
+        self.product = Product.objects.create(branch=self.branch, name="Shirt XL", barcode="12345", price=500)
+        self.registry = ProductRegistry.objects.create(branch=self.branch, product=self.product, stock_quantity=10)
+
+        # Create an initial active combo group
+        self.combo1 = ComboGroup.objects.create(name="Nellore Deal 1", is_active=True)
+        self.combo1.branches.add(self.branch)
+        self.combo1.products.add(self.product)
+        ComboTier.objects.create(combo_group=self.combo1, quantity=2, price=900)
+
+    def test_create_combo_overlap_validation_error(self):
+        self.client.login(username="owner_user", password="password123")
+        url = reverse('combo_create')
+        post_data = {
+            'name': 'Nellore Deal 2',
+            'is_active': 'on',
+            'products': [self.product.barcode],
+            'selected_branches': [str(self.branch.id)],
+            'tier_quantity[]': ['3'],
+            'tier_price[]': ['1200']
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nellore Deal 1")
+        self.assertContains(response, "CB-0001")
+        
+        # Verify that combo was NOT created
+        self.assertFalse(ComboGroup.objects.filter(name="Nellore Deal 2").exists())
+
+    def test_edit_combo_overlap_validation_error(self):
+        self.client.login(username="owner_user", password="password123")
+        
+        # Create a second active combo group but with a different barcode initially
+        product2 = Product.objects.create(branch=self.branch, name="Pants L", barcode="67890", price=700)
+        combo2 = ComboGroup.objects.create(name="Nellore Deal 2", is_active=True)
+        combo2.branches.add(self.branch)
+        combo2.products.add(product2)
+        
+        url = reverse('combo_edit', kwargs={'pk': combo2.pk})
+        post_data = {
+            'name': 'Nellore Deal 2',
+            'is_active': 'on',
+            'products': [self.product.barcode],  # Try to change it to the overlapping barcode
+            'selected_branches': [str(self.branch.id)],
+            'tier_quantity[]': ['3'],
+            'tier_price[]': ['1200']
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nellore Deal 1")
+        self.assertContains(response, "CB-0001")
+        
+        # Verify that product2 was NOT updated to the overlapping barcode in combo2
+        combo2.refresh_from_db()
+        self.assertNotIn(self.product, combo2.products.all())
+
+
+
 
 
 
