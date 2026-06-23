@@ -412,16 +412,23 @@
         let n = prices.length;
         let memo = {};
         let sortedTiers = [...tiers].sort((a, b) => b.quantity - a.quantity);
+        let minQty = tiers.length > 0 ? Math.min(...tiers.map(t => t.quantity)) : null;
 
         function solve(index) {
             if (index >= n) return 0;
             if (memo[index] !== undefined) return memo[index];
-            let best = prices[index] + solve(index + 1);
-            for (let tier of sortedTiers) {
-                if (tier.quantity <= n - index) {
-                    let cost = tier.price + solve(index + tier.quantity);
-                    if (cost < best) best = cost;
+            
+            let best;
+            if (minQty !== null && (n - index) >= minQty) {
+                best = Infinity;
+                for (let tier of sortedTiers) {
+                    if (tier.quantity <= n - index) {
+                        let cost = tier.price + solve(index + tier.quantity);
+                        if (cost < best) best = cost;
+                    }
                 }
+            } else {
+                best = prices[index] + solve(index + 1);
             }
             memo[index] = best;
             return best;

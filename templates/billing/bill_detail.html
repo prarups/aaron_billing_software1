@@ -346,17 +346,39 @@
             text-shadow: none !important;
             box-shadow: none !important;
             font-weight: bold !important;
+            opacity: 1 !important;
         }
 
         body, html {
             background: #ffffff !important;
             color: #000000 !important;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+            font-family: Arial, Helvetica, sans-serif !important;
             font-size: 10px !important;
             line-height: 1.15 !important;
             margin: 0 !important;
             padding: 0 !important;
             width: 100% !important;
+            font-weight: bold !important;
+        }
+
+        /* Override all utility classes to prevent color, gradient, or faint styles in print */
+        .bg-vibrant, .glass-card, .card-body, .text-white, .text-primary, .text-muted, .bg-light, .bg-purple, .badge, .text-success, .text-danger, .list-group-item, .card {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            border-color: #000000 !important;
+            opacity: 1 !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+            font-weight: bold !important;
+        }
+
+        /* Force pure bold black text for all common content wrappers */
+        p, div, span, td, th, h1, h2, h3, h4, h5, h6, a, i, strong, small, label {
+            color: #000000 !important;
+            font-weight: bold !important;
+            opacity: 1 !important;
+            background: transparent !important;
         }
 
         /* Optimize container for receipt printers (prevent shadows, margins, and force auto size) */
@@ -437,7 +459,7 @@
 
         th, td {
             padding: 3px 1px !important;
-            border-bottom: 1px dashed #e5e7eb !important;
+            border-bottom: 1px dashed #000000 !important;
             font-size: 10px !important;
         }
 

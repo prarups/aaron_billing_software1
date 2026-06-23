@@ -94,6 +94,20 @@ class ComboGroup(models.Model):
             self.combo_id = candidate
         super().save(*args, **kwargs)
 
+    @property
+    def distinct_products(self):
+        seen = set()
+        result = []
+        for product in self.products.all():
+            if product.barcode not in seen:
+                seen.add(product.barcode)
+                result.append(product)
+        return result
+
+    @property
+    def distinct_products_count(self):
+        return self.products.values('barcode').distinct().count()
+
     def __str__(self):
         return self.name
 

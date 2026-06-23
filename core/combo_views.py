@@ -12,7 +12,7 @@ def calculate_optimal_combo_price(item_prices, tiers_list):
     """
     item_prices: list of floats/Decimals representing base prices of items in the combo.
     tiers_list: list of tuples/dicts with quantity and price, e.g. [(2, 180), (5, 400)]
-    Returns the minimum cost to buy all these items.
+    Returns the cost to buy all these items, forcing combo tier application when quantity milestone is met.
     """
     prices = sorted([float(p) for p in item_prices], reverse=True)
     n = len(prices)
@@ -20,21 +20,25 @@ def calculate_optimal_combo_price(item_prices, tiers_list):
     sorted_tiers = sorted(tiers_list, key=lambda t: t[0], reverse=True)
     memo = {}
 
+    min_qty = min(qty for qty, _ in sorted_tiers) if sorted_tiers else None
+
     def solve(index):
         if index >= n:
             return 0.0
         if index in memo:
             return memo[index]
 
-        # Option 1: Buy current item as single
-        best = prices[index] + solve(index + 1)
-
-        # Option 2: Apply any of the available tiers
-        for qty, tier_price in sorted_tiers:
-            if qty <= n - index:
-                cost = float(tier_price) + solve(index + qty)
-                if cost < best:
-                    best = cost
+        # Force applying combo tier if remaining quantity satisfies the minimum milestone
+        if min_qty is not None and (n - index) >= min_qty:
+            best = float('inf')
+            for qty, tier_price in sorted_tiers:
+                if qty <= n - index:
+                    cost = float(tier_price) + solve(index + qty)
+                    if cost < best:
+                        best = cost
+        else:
+            # Only fallback to single pricing for leftovers
+            best = prices[index] + solve(index + 1)
 
         memo[index] = best
         return best

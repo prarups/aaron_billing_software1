@@ -43,6 +43,7 @@ def pos_index(request):
                 'name': grp.name,
                 'tiers': tiers,
                 'product_ids': [str(p.id) for p in grp.products.all()],
+                'barcodes': list(grp.products.values_list('barcode', flat=True)),
             })
     
     return render(request, 'pos/index.html', {
@@ -193,7 +194,7 @@ def process_bill(request):
                     group_cart_items = []
                     for r_item in resolved_items:
                         p = r_item['product']
-                        if p.id not in processed_items and group.products.filter(id=p.id).exists():
+                        if p.id not in processed_items and group.products.filter(barcode=p.barcode).exists():
                             group_cart_items.append(r_item)
                             
                     if not group_cart_items:

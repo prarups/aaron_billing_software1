@@ -424,15 +424,23 @@
         let n = sorted.length;
         let memo = {};
         let sortedTiers = [...tiers].sort((a, b) => b.quantity - a.quantity);
+        let minQty = tiers.length > 0 ? Math.min(...tiers.map(t => t.quantity)) : null;
+
         function solve(i) {
             if (i >= n) return 0;
             if (memo[i] !== undefined) return memo[i];
-            let best = sorted[i] + solve(i + 1);
-            for (let t of sortedTiers) {
-                if (t.quantity <= n - i) {
-                    let c = t.price + solve(i + t.quantity);
-                    if (c < best) best = c;
+            
+            let best;
+            if (minQty !== null && (n - i) >= minQty) {
+                best = Infinity;
+                for (let t of sortedTiers) {
+                    if (t.quantity <= n - i) {
+                        let c = t.price + solve(i + t.quantity);
+                        if (c < best) best = c;
+                    }
                 }
+            } else {
+                best = sorted[i] + solve(i + 1);
             }
             memo[i] = best;
             return best;
@@ -526,7 +534,7 @@
 
         // Step 1: apply multi-product combo group pricing (DP)
         comboGroups.forEach(group => {
-            let groupItems = cart.filter(item => group.product_ids.includes(String(item.id)));
+            let groupItems = cart.filter(item => group.barcodes && group.barcodes.includes(item.barcode));
             if (groupItems.length === 0) return;
 
             let groupPrices = [];
@@ -1072,11 +1080,15 @@ if (isScannerOpen) {
 
     // Highlight combo-eligible product cards
     (function highlightComboProducts() {
-        let comboProductIds = new Set();
-        comboGroups.forEach(g => g.product_ids.forEach(id => comboProductIds.add(String(id))));
-        if (comboProductIds.size === 0) return;
-        document.querySelectorAll('[data-product-id]').forEach(card => {
-            if (comboProductIds.has(card.dataset.productId)) {
+        let comboBarcodes = new Set();
+        comboGroups.forEach(g => {
+            if (g.barcodes) {
+                g.barcodes.forEach(bc => comboBarcodes.add(String(bc)));
+            }
+        });
+        if (comboBarcodes.size === 0) return;
+        document.querySelectorAll('[data-product-barcode]').forEach(card => {
+            if (comboBarcodes.has(card.dataset.productBarcode)) {
                 const tag = card.querySelector('.combo-tag');
                 if (tag) tag.classList.remove('d-none');
                 card.style.borderTop = '2px solid #c7d2fe';

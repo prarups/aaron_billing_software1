@@ -1430,6 +1430,36 @@ class ComboMultiBranchTestCase(TestCase):
         self.assertEqual(data['products'][0]['name'], "Shirt XL")
 
 
+class ComboForcedMilestoneTestCase(TestCase):
+    def test_forced_milestone_application(self):
+        from core.combo_views import calculate_optimal_combo_price
+        # 4 items at 299 each (total 1196 without combo), combo tier is 4 items -> 2000
+        # It must force the combo price of 2000 to apply since milestone quantity is reached
+        prices = [299, 299, 299, 299]
+        tiers = [(4, 2000)]
+        optimal = calculate_optimal_combo_price(prices, tiers)
+        self.assertEqual(optimal, 2000.0)
+
+    def test_forced_milestone_application_with_leftover(self):
+        from core.combo_views import calculate_optimal_combo_price
+        # 5 items at 299 each (total 1495 without combo), combo tier is 4 items -> 2000
+        # It must apply combo tier once (2000) and fallback to single price for the 5th item (299)
+        prices = [299, 299, 299, 299, 299]
+        tiers = [(4, 2000)]
+        optimal = calculate_optimal_combo_price(prices, tiers)
+        self.assertEqual(optimal, 2299.0)
+
+    def test_no_milestone_met(self):
+        from core.combo_views import calculate_optimal_combo_price
+        # 3 items at 299 each, combo tier is 4 items -> 2000
+        # It must fallback to regular prices since 3 items cannot satisfy the milestone
+        prices = [299, 299, 299]
+        tiers = [(4, 2000)]
+        optimal = calculate_optimal_combo_price(prices, tiers)
+        self.assertEqual(optimal, 897.0)
+
+
+
 
 
 

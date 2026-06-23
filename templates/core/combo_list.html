@@ -132,7 +132,7 @@
                         </div>
                     </td>
                     <td>
-                        <span class="badge bg-info-subtle text-info rounded-pill px-2.5 py-0.5 text-xxs fw-bold">{{ combo.products.count }} Products</span>
+                        <span class="badge bg-info-subtle text-info rounded-pill px-2.5 py-0.5 text-xxs fw-bold">{{ combo.distinct_products_count }} Products</span>
                     </td>
                     <td>
                         <div class="d-flex flex-wrap gap-1">
@@ -207,7 +207,7 @@
                     {% endfor %}
                     {% endif %}
                 </div>
-                <div class="text-muted text-xxs mb-1.5"><i class="bi bi-box-seam me-1"></i>Products: <span class="badge bg-info-subtle text-info rounded-pill text-xxs">{{ combo.products.count }}</span></div>
+                <div class="text-muted text-xxs mb-1.5"><i class="bi bi-box-seam me-1"></i>Products: <span class="badge bg-info-subtle text-info rounded-pill text-xxs">{{ combo.distinct_products_count }}</span></div>
                 <div class="mt-2">
                     <span class="text-muted text-xxs d-block mb-1">Tiers:</span>
                     <div class="d-flex flex-wrap gap-1">
@@ -309,9 +309,9 @@
                 
                 <!-- Eligible Products list -->
                 <div>
-                    <span class="text-muted text-xxs text-uppercase fw-bold letter-spacing-sm">Eligible Products ({{ combo.products.count }})</span>
+                    <span class="text-muted text-xxs text-uppercase fw-bold letter-spacing-sm">Eligible Products ({{ combo.distinct_products_count }})</span>
                     <div class="list-group rounded-3 border-0 shadow-sm mt-2 overflow-hidden">
-                        {% for product in combo.products.all %}
+                        {% for product in combo.distinct_products %}
                         <div class="list-group-item border-0 border-bottom d-flex justify-content-between align-items-center py-3 px-4 bg-white hover-item">
                             <div>
                                 <h6 class="fw-bold text-dark mb-1 text-xs">{{ product.name }}</h6>
