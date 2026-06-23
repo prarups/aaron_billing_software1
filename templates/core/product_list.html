@@ -283,10 +283,14 @@
                     </p>
                     <div class="mb-3 d-flex align-items-center gap-1.5 text-xxs text-secondary fw-semibold">
                         <i class="bi bi-box-seam text-primary"></i>
+                        {% if active_filter == 'low_stock' %}
+                        <span class="text-danger fw-bold">Low Stock Products: {{ b.low_stock_count|default:"0" }}</span>
+                        {% else %}
                         <span>Products: {{ b.product_count|default:"0" }}</span>
+                        {% endif %}
                     </div>
                 </div>
-                <a href="?branch={{ b.id }}" class="btn btn-primary rounded-2 w-100 py-1.5 text-xxs fw-semibold text-white d-flex align-items-center justify-content-center gap-1.5">
+                <a href="?branch={{ b.id }}{% if active_filter %}&filter={{ active_filter }}{% endif %}" class="btn btn-primary rounded-2 w-100 py-1.5 text-xxs fw-semibold text-white d-flex align-items-center justify-content-center gap-1.5">
                     <span>View Product Master</span>
                     <i class="bi bi-arrow-right" style="font-size: 0.75rem;"></i>
                 </a>

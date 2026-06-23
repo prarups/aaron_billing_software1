@@ -72,7 +72,8 @@ def combo_list(request):
         'combos': page_obj.object_list,
         'branches': branches,
         'selected_branch_id': selected_branch_id,
-        'q': q
+        'q': q,
+        'total_branches_count': branches.count(),
     })
 
 @login_required
@@ -83,27 +84,44 @@ def combo_create(request):
         return redirect('combo_list')
     
     branches = request.user.get_accessible_branches().order_by('name')
-    products = Product.objects.none()
-    selected_branch_ids = set()
     
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
         is_active = request.POST.get('is_active') == 'on'
-        selected_branch = request.POST.get('branches')  # single branch
-        selected_products = request.POST.getlist('products')
+        
+        apply_to_all = request.POST.get('apply_to_all_branches') == 'on'
+        selected_branches = request.POST.getlist('selected_branches')
+        selected_barcodes = request.POST.getlist('products')
         
         tier_quantities = request.POST.getlist('tier_quantity[]')
         tier_prices = request.POST.getlist('tier_price[]')
         
+        # Determine target branches
+        target_branch_ids = set()
+        if apply_to_all:
+            target_branch_ids = set(branches.values_list('id', flat=True))
+        else:
+            for bid_str in selected_branches:
+                if bid_str:
+                    target_branch_ids.add(int(bid_str))
+        
         if not name:
             messages.error(request, "Combo Name is required.")
+        elif not target_branch_ids:
+            messages.error(request, "Please select at least one branch for availability.")
         else:
             # Create ComboGroup
             combo = ComboGroup.objects.create(name=name, is_active=is_active)
-            if selected_branch:
-                combo.branches.set([selected_branch])
-            if selected_products:
-                combo.products.set(selected_products)
+            combo.branches.set(target_branch_ids)
+            
+            # Map products by barcode across target branches
+            if selected_barcodes:
+                all_matching_products = Product.objects.filter(branch_id__in=target_branch_ids, barcode__in=selected_barcodes)
+                combo.products.set(all_matching_products)
+                
+
+            else:
+                combo.products.clear()
                 
             # Create tiers
             for qty_str, price_str in zip(tier_quantities, tier_prices):
@@ -121,9 +139,9 @@ def combo_create(request):
             
     return render(request, 'core/combo_form.html', {
         'branches': branches,
-        'products': products,
-        'selected_branch_ids': selected_branch_ids,
-        'selected_product_ids': set(),
+        'selected_branch_ids': set(),
+        'selected_products': [],
+        'applied_to_all': False,
         'title': 'Create Combo Offer'
     })
 
@@ -137,35 +155,52 @@ def combo_edit(request, pk):
     combo = get_object_or_404(ComboGroup, pk=pk)
     branches = request.user.get_accessible_branches().order_by('name')
     
-    selected_branch_ids = set(combo.branches.values_list('id', flat=True))
-    selected_product_ids = set(combo.products.values_list('id', flat=True))
+    all_branch_ids = set(branches.values_list('id', flat=True))
+    combo_branch_ids = set(combo.branches.values_list('id', flat=True))
     
-    products = combo.products.all().order_by('name')
+    # Check if all branches are selected
+    applied_to_all = len(combo_branch_ids) >= len(all_branch_ids) and all_branch_ids.issubset(combo_branch_ids)
+    
+    selected_products = combo.products.values('name', 'barcode').distinct()
     
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
         is_active = request.POST.get('is_active') == 'on'
-        selected_branch = request.POST.get('branches')  # single branch
-        selected_products = request.POST.getlist('products')
+        
+        apply_to_all = request.POST.get('apply_to_all_branches') == 'on'
+        selected_branches = request.POST.getlist('selected_branches')
+        selected_barcodes = request.POST.getlist('products')
         
         tier_quantities = request.POST.getlist('tier_quantity[]')
         tier_prices = request.POST.getlist('tier_price[]')
         
+        # Determine target branches
+        target_branch_ids = set()
+        if apply_to_all:
+            target_branch_ids = set(branches.values_list('id', flat=True))
+        else:
+            for bid_str in selected_branches:
+                if bid_str:
+                    target_branch_ids.add(int(bid_str))
+        
         if not name:
             messages.error(request, "Combo Name is required.")
+        elif not target_branch_ids:
+            messages.error(request, "Please select at least one branch for availability.")
         else:
             combo.name = name
             combo.is_active = is_active
             combo.save()
             
-            selected_branch = request.POST.get('branches')  # single branch
-            if selected_branch:
-                combo.branches.set([selected_branch])
-            else:
-                combo.branches.clear()
+            # Update branches
+            combo.branches.set(target_branch_ids)
+            
+            # Find matching products by barcode across target branches
+            if selected_barcodes:
+                all_matching_products = Product.objects.filter(branch_id__in=target_branch_ids, barcode__in=selected_barcodes)
+                combo.products.set(all_matching_products)
                 
-            if selected_products:
-                combo.products.set(selected_products)
+
             else:
                 combo.products.clear()
                 
@@ -187,9 +222,9 @@ def combo_edit(request, pk):
     return render(request, 'core/combo_form.html', {
         'combo': combo,
         'branches': branches,
-        'products': products,
-        'selected_branch_ids': selected_branch_ids,
-        'selected_product_ids': selected_product_ids,
+        'selected_branch_ids': combo_branch_ids,
+        'selected_products': selected_products,
+        'applied_to_all': applied_to_all,
         'title': f'Edit Combo: {combo.name}'
     })
 
@@ -329,3 +364,23 @@ def get_branch_combo_data(request):
         'combos': combo_data_list,
         'products': list(all_eligible_products.values())
     })
+
+@login_required
+def global_products_ajax(request):
+    q = request.GET.get('q', '').strip()
+    if not q:
+        return JsonResponse({'products': []})
+        
+    products = Product.objects.filter(
+        Q(barcode__icontains=q) | Q(name__icontains=q)
+    ).values('name', 'barcode').distinct()[:30]
+    
+    product_list = [
+        {
+            'barcode': p['barcode'],
+            'name': p['name'],
+            'label': f"{p['name']} ({p['barcode']})"
+        }
+        for p in products
+    ]
+    return JsonResponse({'products': product_list})

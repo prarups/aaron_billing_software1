@@ -67,7 +67,16 @@
 
                 <!-- Product Selection -->
                 <div class="mb-3">
-                    <label class="form-label small fw-bold text-muted">Product to Return</label>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label small fw-bold text-muted mb-0">Product to Return</label>
+                    </div>
+                    <!-- Barcode Search for Return Product -->
+                    <div class="mb-2" id="returnBarcodeSearchGroup" style="display:none;">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text border-0 bg-light ps-3 text-muted"><i class="bi bi-upc-scan"></i></span>
+                            <input type="text" id="returnBarcodeSearch" class="form-control border-0 bg-light py-1.5 text-xs shadow-none" placeholder="Scan or Enter barcode to select return item..." style="border-radius: 0 2rem 2rem 0;">
+                        </div>
+                    </div>
                     <select name="bill_item" id="id_bill_item" class="form-select rounded-pill border-0 bg-light" data-no-search="true">
                         <option value="">-- Load bill first --</option>
                     </select>
@@ -135,7 +144,18 @@
                             </div>
                         </div>
                         
-                        <div class="mb-2">
+                        <!-- Barcode search for non-combo products -->
+                        <div class="mb-3" id="barcodeSearchGroup" style="display:none;">
+                            <label class="form-label small fw-bold text-muted">Scan or Enter Replacement Barcode</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text border-0 bg-white ps-3 text-muted"><i class="bi bi-upc-scan"></i></span>
+                                <input type="text" id="replacementBarcodeSearch" class="form-control border-0 bg-white py-1.5 text-xs shadow-none" placeholder="Scan barcode or type and press Enter..." style="border-radius: 0 2rem 2rem 0;">
+                                <button class="btn btn-primary btn-sm px-3 text-xs fw-semibold rounded-pill ms-2" type="button" id="barcodeSearchBtn">Lookup</button>
+                            </div>
+                            <div class="text-danger x-small mt-1" id="barcodeSearchError" style="display:none;"></div>
+                        </div>
+
+                        <div class="mb-2" id="replacementProductSelectGroup">
                             <label class="form-label small fw-bold text-muted">Select Replacement Product</label>
                             <select id="replacementProductSelect" class="form-select rounded-pill border-0 bg-white" data-no-search="true">
                                 <option value="">-- Choose exchange item --</option>
@@ -157,10 +177,19 @@
                     </div>
                 </div>
 
-                <!-- Add to Return List button -->
-                <button type="button" id="addReturnBtn" class="btn btn-outline-primary w-100 rounded-pill mt-2 mb-3">
-                    <i class="bi bi-plus-circle me-1"></i> Add Item to Return List
-                </button>
+                <!-- Add to Return & Exchange List buttons -->
+                <div class="row g-2 mt-2 mb-3">
+                    <div class="col-sm-6">
+                        <button type="button" id="addReturnBtn" class="btn btn-outline-primary w-100 rounded-pill py-2 fw-semibold text-xs" style="font-size: 0.8rem;">
+                            <i class="bi bi-arrow-left-right me-1"></i> Add Return & Replacement
+                        </button>
+                    </div>
+                    <div class="col-sm-6">
+                        <button type="button" id="addExtraReplacementBtn" class="btn btn-outline-success w-100 rounded-pill py-2 fw-semibold text-xs" style="display: none; font-size: 0.8rem;">
+                            <i class="bi bi-plus-circle me-1"></i> Add Extra Replacement (No Return)
+                        </button>
+                    </div>
+                </div>
 
                 <!-- Pending Return List -->
                 <div id="returnListContainer" class="card bg-light border-0 rounded-4 mb-4" style="display:none;">
@@ -255,10 +284,14 @@
     const returnListTableBody = document.querySelector('#returnListTable tbody');
     const returnListContainer = document.getElementById('returnListContainer');
     const addReturnBtn = document.getElementById('addReturnBtn');
+    const addExtraReplacementBtn = document.getElementById('addExtraReplacementBtn');
     const returnItemsField = document.getElementById('id_return_items');
+    const returnBarcodeSearchGroup = document.getElementById('returnBarcodeSearchGroup');
+    const returnBarcodeSearch = document.getElementById('returnBarcodeSearch');
 
     // Preloaded branch products catalog
     let allProducts = {{ all_products_json|safe }};
+    let currentBranchId = "{{ target_branch_id|default:'' }}";
 
     function safeJsonParse(val, fallback) {
         if (!val || val === 'undefined' || val === 'null') return fallback;
@@ -334,7 +367,12 @@
                     allProducts = data.products || [];
                     console.log("Updated allProducts from AJAX:", allProducts);
                 }
+                if (data.branch_id) {
+                    currentBranchId = data.branch_id;
+                    console.log("Updated currentBranchId from AJAX:", currentBranchId);
+                }
                 
+                if (addExtraReplacementBtn) addExtraReplacementBtn.style.display = 'block';
                 populateItems(data.items);
                 
                 // Restore selection after updating products if it's still valid
@@ -352,6 +390,10 @@
     function populateItems(items) {
         currentItems = items;
         itemSelect.innerHTML = '<option value="">-- Select product --</option>';
+        
+        // No special replacement_only option needed in dropdown anymore
+        if (returnBarcodeSearchGroup) returnBarcodeSearchGroup.style.display = 'block';
+        if (returnBarcodeSearch) returnBarcodeSearch.value = '';
         
         const tbody = document.getElementById('purchasedProductsBody');
         tbody.innerHTML = '';
@@ -458,22 +500,31 @@
         summaryCard.style.display = 'none';
         replacementSection.style.display = 'none';
         document.getElementById('purchasedProductsContainer').style.display = 'none';
+        if (addExtraReplacementBtn) addExtraReplacementBtn.style.display = 'none';
+        if (returnBarcodeSearchGroup) returnBarcodeSearchGroup.style.display = 'none';
+        if (returnBarcodeSearch) returnBarcodeSearch.value = '';
     }
 
     // Item selected
     itemSelect.addEventListener('change', function(){
         const opt = this.options[this.selectedIndex];
-        if (opt && opt.getAttribute('data-qty')) {
+        if (opt && opt.value) {
+            qtyInput.disabled = false;
             const maxQty = parseInt(opt.getAttribute('data-qty'));
             qtyInput.max = maxQty;
             qtyInput.value = maxQty > 0 ? 1 : 0;
             productInfo.innerHTML = `<i class="bi bi-info-circle me-1"></i>Remaining returnable qty: <strong>${maxQty}</strong> | Unit price: <strong>₹${opt.getAttribute('data-price')}</strong>`;
-            
-            // Trigger replacement selector logic
             setupReplacementSelector(opt);
         } else {
+            qtyInput.disabled = true;
+            qtyInput.value = 0;
             productInfo.textContent = '';
-            replacementSection.style.display = 'none';
+            // When no returned item is selected, we still allow choosing replacement items (for extra replacements)
+            replacementProductSelect.innerHTML = '<option value="">-- Enter barcode above to search replacement --</option>';
+            exchangeContextMsg.className = "alert alert-info border-0 rounded-3 py-1.5 px-3 small mb-2 text-xs";
+            exchangeContextMsg.innerHTML = `<i class="bi bi-info-circle me-1"></i>Add extra replacement product.`;
+            comboDetailsCard.style.display = 'none';
+            calculateExchangeDifference();
         }
         updateSummary();
     });
@@ -499,7 +550,18 @@
         replacementQtyInput.value = qtyInput.value;
         replacementSection.style.display = 'block';
 
+        const barcodeSearchGroup = document.getElementById('barcodeSearchGroup');
+        const replacementBarcodeSearch = document.getElementById('replacementBarcodeSearch');
+        const barcodeSearchError = document.getElementById('barcodeSearchError');
+        if (replacementBarcodeSearch) {
+            replacementBarcodeSearch.value = '';
+        }
+        if (barcodeSearchError) {
+            barcodeSearchError.style.display = 'none';
+        }
+
         if (isCombo) {
+            if (barcodeSearchGroup) barcodeSearchGroup.style.display = 'none';
             // Combo item exchange constraints
             exchangeContextMsg.className = "alert alert-warning border-0 rounded-3 py-1.5 px-3 small mb-2 text-xs";
             exchangeContextMsg.innerHTML = `<i class="bi bi-shield-exclamation me-1"></i>Combo item from <strong>"${comboName}"</strong>. Exchange is allowed <strong>ONLY</strong> for products inside the same combo group.`;
@@ -530,62 +592,76 @@
                 replacementProductSelect.appendChild(o);
             });
         } else {
+            if (barcodeSearchGroup) barcodeSearchGroup.style.display = 'block';
             // Normal item exchange constraints
             exchangeContextMsg.className = "alert alert-info border-0 rounded-3 py-1.5 px-3 small mb-2 text-xs";
             exchangeContextMsg.innerHTML = `<i class="bi bi-info-circle me-1"></i>Normal item exchange. Allowed for **any** product of <strong>equal or greater value</strong>.`;
             comboDetailsCard.style.display = 'none';
             
-            allProducts.forEach(p => {
-                const o = document.createElement('option');
-                o.value = p.id;
-                o.textContent = `${p.name} - ${p.barcode || 'N/A'} (Stock: ${p.stock} | Price: ₹${p.price})`;
-                o.setAttribute('data-price', p.price);
-                o.setAttribute('data-name', p.name);
-                o.setAttribute('data-stock', p.stock);
-                replacementProductSelect.appendChild(o);
-            });
+            replacementProductSelect.innerHTML = '<option value="">-- Enter barcode above to search replacement --</option>';
         }
         
         calculateExchangeDifference();
     }
 
-    // Recalculate price diff
+    // Recalculate price diff and check stock availability
     function calculateExchangeDifference() {
         const returnedOpt = itemSelect.options[itemSelect.selectedIndex];
         const replacementOpt = replacementProductSelect.options[replacementProductSelect.selectedIndex];
         
-        if (!returnedOpt || !returnedOpt.value || !replacementOpt || !replacementOpt.value) {
+        if (!replacementOpt || !replacementOpt.value) {
             priceDiffLabel.textContent = 'Diff: ₹0';
             priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-white text-center fw-bold text-dark small';
             addReturnBtn.disabled = false;
+            if (addExtraReplacementBtn) addExtraReplacementBtn.disabled = true;
             return;
         }
 
-        const returnedPrice = parseFloat(returnedOpt.getAttribute('data-price'));
+        const returnedPrice = (returnedOpt && returnedOpt.value && returnedOpt.value !== 'replacement_only') ? parseFloat(returnedOpt.getAttribute('data-price')) : 0;
         const replacementPrice = parseFloat(replacementOpt.getAttribute('data-price'));
-        const isCombo = returnedOpt.getAttribute('data-is-combo') === 'true';
+        const isCombo = returnedOpt && returnedOpt.getAttribute('data-is-combo') === 'true';
 
-        const retQty = parseInt(qtyInput.value) || 1;
+        const retQty = (returnedOpt && returnedOpt.value && returnedOpt.value !== 'replacement_only') ? (parseInt(qtyInput.value) || 0) : 0;
         const repQty = parseInt(replacementQtyInput.value) || 1;
+
+        // Stock availability check
+        const repStock = parseInt(replacementOpt.getAttribute('data-stock')) || 0;
+        const isSameProduct = (returnedOpt && returnedOpt.value && returnedOpt.value !== 'replacement_only') ? (returnedOpt.getAttribute('data-product-id') == replacementOpt.value) : false;
+        const isGoodCondition = conditionSelect.value === 'GOOD';
+        const effectiveStock = (isSameProduct && isGoodCondition) ? (repStock + retQty) : repStock;
+
+        if (repQty > effectiveStock) {
+            priceDiffLabel.textContent = 'Error: No Stock';
+            priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-danger bg-opacity-10 text-center fw-bold text-danger small';
+            replacementProductInfo.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> Insufficient stock. Available: ${effectiveStock}</span>`;
+            addReturnBtn.disabled = true;
+            if (addExtraReplacementBtn) addExtraReplacementBtn.disabled = true;
+            return;
+        }
 
         if (isCombo) {
             priceDiffLabel.textContent = 'Diff: ₹0 (Combo Direct Swap)';
             priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-white text-center fw-semibold text-success small';
             addReturnBtn.disabled = false;
+            if (addExtraReplacementBtn) addExtraReplacementBtn.disabled = false;
             replacementProductInfo.textContent = '';
         } else {
-            // Normal Validation
-            if (replacementPrice < returnedPrice) {
-                priceDiffLabel.textContent = 'Error: Cheaper Item';
-                priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-danger bg-opacity-10 text-center fw-bold text-danger small';
-                replacementProductInfo.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> Price must be ≥ returned price (₹${returnedPrice})</span>`;
-                addReturnBtn.disabled = true;
+            // Normal Validation based on total value
+            const totalRetPrice = returnedPrice * retQty;
+            const totalRepPrice = replacementPrice * repQty;
+            const diff = totalRepPrice - totalRetPrice;
+            if (diff < 0) {
+                priceDiffLabel.textContent = `Diff: -₹${Math.abs(diff)}`;
+                priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-warning bg-opacity-10 text-center fw-bold text-warning small';
+                replacementProductInfo.innerHTML = `<span class="text-warning"><i class="bi bi-info-circle"></i> Value is below return. You can add more replacement items to reach the total return value.</span>`;
+                addReturnBtn.disabled = false;
+                if (addExtraReplacementBtn) addExtraReplacementBtn.disabled = false;
             } else {
-                const diff = (replacementPrice * repQty) - (returnedPrice * retQty);
                 priceDiffLabel.textContent = `Diff: +₹${diff}`;
                 priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-success bg-opacity-10 text-center fw-bold text-success small';
                 replacementProductInfo.textContent = '';
                 addReturnBtn.disabled = false;
+                if (addExtraReplacementBtn) addExtraReplacementBtn.disabled = false;
             }
         }
     }
@@ -595,7 +671,10 @@
     qtyInput.addEventListener('input', calculateExchangeDifference);
 
     // Condition change
-    conditionSelect.addEventListener('change', updateConditionInfo);
+    conditionSelect.addEventListener('change', function() {
+        updateConditionInfo();
+        calculateExchangeDifference();
+    });
     qtyInput.addEventListener('input', updateSummary);
 
     function updateConditionInfo() {
@@ -621,21 +700,60 @@
             summaryCard.style.display = 'none';
             return;
         }
+        
+        let totalReturned = 0;
+        let totalReplacement = 0;
+
         returnList.forEach(item => {
-            const diff = item.price_difference;
-            const diffText = diff >= 0 ? `+₹${diff}` : `₹${diff}`;
+            let rowRetPrice = 0;
+            let rowRepPrice = item.replacement_product_price * item.replacement_quantity;
+
+            if (item.is_combo) {
+                rowRetPrice = rowRepPrice;
+            } else {
+                rowRetPrice = item.price * item.quantity;
+            }
+
+            totalReturned += rowRetPrice;
+            totalReplacement += rowRepPrice;
+
+            const diff = rowRepPrice - rowRetPrice;
+            const diffText = diff >= 0 ? `+₹${diff}` : `-₹${Math.abs(diff)}`;
+            const diffClass = diff >= 0 ? 'text-success' : 'text-danger';
+
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td class="fw-semibold text-dark ps-2">
-                    <div class="text-danger"><i class="bi bi-dash-circle me-1"></i>${item.name}</div>
-                    <div class="text-success"><i class="bi bi-plus-circle me-1"></i>${item.replacement_product_name}</div>
+                    ${item.id ? `<div class="text-danger small"><i class="bi bi-dash-circle me-1"></i>${item.name}</div>` : `<div class="text-muted small"><i class="bi bi-dash-circle me-1"></i>No Return (Extra Replacement)</div>`}
+                    <div class="text-success small"><i class="bi bi-plus-circle me-1"></i>${item.replacement_product_name}</div>
                 </td>
-                <td>${item.quantity} × ₹${item.price}</td>
-                <td>₹${item.quantity * item.price}</td>
-                <td class="fw-bold text-success">${diffText}</td>
+                <td>
+                    ${item.id ? `<div>${item.quantity} × ₹${item.price}</div>` : `<div>-</div>`}
+                    <div>${item.replacement_quantity} × ₹${item.replacement_product_price}</div>
+                </td>
+                <td>
+                    ${item.id ? `₹${rowRetPrice}` : `₹0`}
+                </td>
+                <td class="fw-bold ${diffClass}">${diffText}</td>
             `;
             summaryBody.appendChild(row);
         });
+
+        // Add total summary row
+        const balance = totalReplacement - totalReturned;
+        const balanceClass = balance >= 0 ? 'text-success font-bold' : 'text-danger font-bold';
+        const balanceText = balance >= 0 ? `+₹${balance}` : `-₹${Math.abs(balance)}`;
+
+        const totalRow = document.createElement('tr');
+        totalRow.className = 'border-top fw-bold table-light';
+        totalRow.innerHTML = `
+            <td class="ps-2">TOTAL SUMMARY</td>
+            <td>Returned: ₹${totalReturned}<br>Replacement: ₹${totalReplacement}</td>
+            <td>₹${totalReturned}</td>
+            <td class="${balanceClass}">${balanceText}</td>
+        `;
+        summaryBody.appendChild(totalRow);
+
         summaryCard.style.display = 'block';
     }
 
@@ -683,7 +801,7 @@
         const opt = itemSelect.options[itemSelect.selectedIndex];
         const repOpt = replacementProductSelect.options[replacementProductSelect.selectedIndex];
         
-        if (!opt || !opt.value) { alert('Select a product to return first.'); return; }
+        if (!opt || !opt.value || opt.value === 'replacement_only') { alert('Select a valid product to return first.'); return; }
         if (!repOpt || !repOpt.value) { alert('Select a replacement product for exchange.'); return; }
         
         // Prevent duplicates
@@ -696,19 +814,14 @@
         const maxQty = parseInt(opt.getAttribute('data-qty'));
         const qty = parseInt(qtyInput.value) || 1;
         if (qty < 1 || qty > maxQty) { alert(`Quantity must be between 1 and ${maxQty} (remaining).`); return; }
+        const retPrice = parseFloat(opt.getAttribute('data-price'));
         
-        const repQty = parseInt(replacementQtyInput.value) || qty;
+        const repQty = parseInt(replacementQtyInput.value) || 1;
 
         // Double check normal price requirements
         const isCombo = opt.getAttribute('data-is-combo') === 'true';
-        const retPrice = parseFloat(opt.getAttribute('data-price'));
         const repPrice = parseFloat(repOpt.getAttribute('data-price'));
         
-        if (!isCombo && repPrice < retPrice) {
-            alert('For normal product exchanges, replacement item price must be equal or greater.');
-            return;
-        }
-
         const priceDifference = isCombo ? 0 : (repPrice * repQty) - (retPrice * qty);
 
         // Add to list
@@ -723,17 +836,59 @@
             replacement_product_name: repOpt.getAttribute('data-name'),
             replacement_product_price: repPrice,
             replacement_quantity: repQty,
-            price_difference: priceDifference
+            price_difference: priceDifference,
+            is_combo: isCombo
         });
         
         // Reset selections
         itemSelect.value = '';
-        replacementSection.style.display = 'none';
+        replacementProductSelect.innerHTML = '<option value="">-- Enter barcode above to search replacement --</option>';
+        if (document.getElementById('replacementBarcodeSearch')) {
+            document.getElementById('replacementBarcodeSearch').value = '';
+        }
         productInfo.textContent = '';
         qtyInput.value = 1;
+        qtyInput.disabled = true;
 
         refreshReturnListUI();
     });
+
+    if (addExtraReplacementBtn) {
+        addExtraReplacementBtn.addEventListener('click', function(){
+            const repOpt = replacementProductSelect.options[replacementProductSelect.selectedIndex];
+            
+            if (!repOpt || !repOpt.value) { alert('Select a replacement product to add.'); return; }
+            
+            const repQty = parseInt(replacementQtyInput.value) || 1;
+            const repPrice = parseFloat(repOpt.getAttribute('data-price'));
+            const priceDifference = repPrice * repQty;
+
+            // Add to list as replacement only
+            returnList.push({
+                id: null,
+                name: 'No Return (Replacement Only)',
+                price: 0,
+                quantity: 0,
+                condition: 'GOOD',
+                action_type: 'EXCHANGE',
+                replacement_product_id: repOpt.value,
+                replacement_product_name: repOpt.getAttribute('data-name'),
+                replacement_product_price: repPrice,
+                replacement_quantity: repQty,
+                price_difference: priceDifference,
+                is_combo: false
+            });
+            
+            // Reset replacement selections only
+            replacementProductSelect.innerHTML = '<option value="">-- Enter barcode above to search replacement --</option>';
+            if (document.getElementById('replacementBarcodeSearch')) {
+                document.getElementById('replacementBarcodeSearch').value = '';
+            }
+            replacementQtyInput.value = 1;
+
+            refreshReturnListUI();
+        });
+    }
 
     // Delegate remove button clicks
     returnListTableBody.addEventListener('click', function(e){
@@ -745,6 +900,126 @@
             }
         }
     });
+
+    // Barcode Search logic for Replacement Product
+    const replacementBarcodeSearch = document.getElementById('replacementBarcodeSearch');
+    const barcodeSearchBtn = document.getElementById('barcodeSearchBtn');
+    const barcodeSearchError = document.getElementById('barcodeSearchError');
+
+    function performReplacementBarcodeLookup() {
+        const barcode = replacementBarcodeSearch.value.trim();
+        if (!barcode) return;
+        
+        barcodeSearchError.style.display = 'none';
+        
+        fetch(`{% url 'get_replacement_product' %}?barcode=${encodeURIComponent(barcode)}&branch_id=${currentBranchId}`)
+            .then(r => {
+                if (!r.ok) {
+                    throw new Error('Product not found at this branch.');
+                }
+                return r.json();
+            })
+            .then(p => {
+                // Populate and select this product in replacementProductSelect
+                replacementProductSelect.innerHTML = '';
+                const o = document.createElement('option');
+                o.value = p.id;
+                o.textContent = `${p.name} - ${p.barcode || 'N/A'} (Stock: ${p.stock} | Price: ₹${p.price})`;
+                o.setAttribute('data-price', p.price);
+                o.setAttribute('data-name', p.name);
+                o.setAttribute('data-stock', p.stock);
+                replacementProductSelect.appendChild(o);
+                replacementProductSelect.value = p.id;
+                
+                // Trigger change event to recalculate difference and stock checks
+                replacementProductSelect.dispatchEvent(new Event('change'));
+            })
+            .catch(err => {
+                barcodeSearchError.textContent = err.message;
+                barcodeSearchError.style.display = 'block';
+                
+                // Clear selection
+                replacementProductSelect.innerHTML = '<option value="">-- Enter barcode above to search replacement --</option>';
+                calculateExchangeDifference();
+            });
+    }
+
+    if (replacementBarcodeSearch) {
+        replacementBarcodeSearch.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performReplacementBarcodeLookup();
+            }
+        });
+    }
+
+    if (returnBarcodeSearch) {
+        returnBarcodeSearch.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const barcode = this.value.trim();
+                if (!barcode) return;
+                
+                // Find matching item in currentItems by barcode
+                const foundItem = currentItems.find(item => item.product_barcode === barcode);
+                if (foundItem) {
+                    if (foundItem.remaining_quantity <= 0) {
+                        alert(`Product "${foundItem.product_name}" has already been fully returned.`);
+                        return;
+                    }
+                    itemSelect.value = foundItem.id;
+                    itemSelect.dispatchEvent(new Event('change'));
+                    this.value = ''; // clear input
+                    
+                    // Focus qty or replacement barcode search
+                    setTimeout(() => {
+                        const repBarcodeSearch = document.getElementById('replacementBarcodeSearch');
+                        if (repBarcodeSearch) repBarcodeSearch.focus();
+                    }, 100);
+                } else {
+                    alert('Product with this barcode not found in this bill.');
+                }
+            }
+        });
+    }
+    if (barcodeSearchBtn) {
+        barcodeSearchBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            performReplacementBarcodeLookup();
+        });
+    }
+
+    // Validate total replacement value vs total returned value on submit
+    const returnForm = document.getElementById('returnForm');
+    if (returnForm) {
+        returnForm.addEventListener('submit', function(e) {
+            if (returnList.length === 0) {
+                e.preventDefault();
+                alert('Please add at least one item to the return list.');
+                return;
+            }
+            
+            let totalReturnedVal = 0;
+            let totalReplacementVal = 0;
+            returnList.forEach(item => {
+                if (item.is_combo) {
+                    totalReturnedVal += (item.replacement_product_price * item.replacement_quantity);
+                    totalReplacementVal += (item.replacement_product_price * item.replacement_quantity);
+                } else {
+                    totalReturnedVal += (item.price * item.quantity);
+                    totalReplacementVal += (item.replacement_product_price * item.replacement_quantity);
+                }
+            });
+
+            if (totalReplacementVal < totalReturnedVal) {
+                e.preventDefault();
+                alert(`Cannot complete return: Total replacement value (₹${totalReplacementVal}) must be equal or greater than total returned value (₹${totalReturnedVal}). Please add more replacement items.`);
+                return;
+            }
+        });
+    }
+
+
 
     // Page initialization
     updateConditionInfo();

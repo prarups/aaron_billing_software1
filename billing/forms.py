@@ -113,78 +113,125 @@ class ReturnCreateForm(forms.Form):
 
         # Validate each item in the return list
         validated_items = []
-        from core.models import Product, ComboGroup
+        from core.models import Product, ComboGroup, ProductRegistry
+        simulated_stock = {}
+        total_returned_value = 0
+        total_replacement_value = 0
+
         for ri in return_items:
             try:
-                item_id = int(ri['id'])
+                # Support nullable item ID for replacement-only items
+                item_id_raw = ri.get('id')
+                if item_id_raw is not None and str(item_id_raw).isdigit():
+                    item_id = int(item_id_raw)
+                else:
+                    item_id = None
+                
                 qty = int(ri['quantity'])
                 rep_prod_id = int(ri['replacement_product_id'])
                 rep_qty = int(ri.get('replacement_quantity', qty))
             except (ValueError, KeyError, TypeError):
                 raise forms.ValidationError('Invalid product, quantity, or replacement product in return list.')
 
-            if qty < 1:
-                raise forms.ValidationError('Return quantity must be at least 1.')
+            if item_id is not None:
+                if qty < 1:
+                    raise forms.ValidationError('Return quantity must be at least 1.')
 
-            try:
-                item = BillItem.objects.select_related('product').get(id=item_id)
-            except BillItem.DoesNotExist:
-                raise forms.ValidationError('Product item not found.')
+                try:
+                    item = BillItem.objects.select_related('product').get(id=item_id)
+                except BillItem.DoesNotExist:
+                    raise forms.ValidationError('Product item not found.')
 
-            if item.bill_id != bill.id:
-                raise forms.ValidationError(f'Product {item.product.name} does not belong to this bill.')
+                if item.bill_id != bill.id:
+                    raise forms.ValidationError(f'Product {item.product.name} does not belong to this bill.')
+
+                # Check remaining returnable quantity
+                from .return_models import ReturnRequest
+                from django.db.models import Sum
+                returned_qty = ReturnRequest.objects.filter(
+                    bill_item=item,
+                    status=ReturnRequest.Status.APPROVED
+                ).aggregate(total=Sum('quantity'))['total'] or 0
+
+                remaining_qty = max(0, item.quantity - returned_qty)
+                if qty > remaining_qty:
+                    raise forms.ValidationError(
+                        f'Return quantity ({qty}) for {item.product.name} exceeds remaining returnable quantity ({remaining_qty}).'
+                    )
+            else:
+                item = None
+                qty = 0
 
             try:
                 rep_product = Product.objects.get(id=rep_prod_id)
             except Product.DoesNotExist:
                 raise forms.ValidationError('Replacement product not found.')
 
-            # Check remaining returnable quantity
-            from .return_models import ReturnRequest
-            from django.db.models import Sum
-            returned_qty = ReturnRequest.objects.filter(
-                bill_item=item,
-                status=ReturnRequest.Status.APPROVED
-            ).aggregate(total=Sum('quantity'))['total'] or 0
+            # Check replacement product stock availability at bill's branch
+            if rep_product.id not in simulated_stock:
+                try:
+                    rep_registry = ProductRegistry.objects.get(product=rep_product, branch=bill.branch)
+                    simulated_stock[rep_product.id] = rep_registry.stock_quantity
+                except ProductRegistry.DoesNotExist:
+                    simulated_stock[rep_product.id] = 0
 
-            remaining_qty = max(0, item.quantity - returned_qty)
-            if qty > remaining_qty:
+            cond = ri.get('condition', 'GOOD')
+            # If exchanging same product and condition is GOOD, returning adds to stock before swap
+            if item and item.product.id == rep_product.id and cond == 'GOOD':
+                simulated_stock[rep_product.id] += qty
+
+            if simulated_stock[rep_product.id] < rep_qty:
+                actual_available = simulated_stock[rep_product.id]
+                if item and item.product.id == rep_product.id and cond == 'GOOD':
+                    actual_available -= qty
                 raise forms.ValidationError(
-                    f'Return quantity ({qty}) for {item.product.name} exceeds remaining returnable quantity ({remaining_qty}).'
+                    f'Insufficient stock for replacement product "{rep_product.name}" at this branch. '
+                    f'Available stock: {actual_available}, requested: {rep_qty}.'
                 )
 
+            # Deduct replacement from simulated stock
+            simulated_stock[rep_product.id] -= rep_qty
+
             # Validate Combo Group constraints vs Normal constraints
-            # Check if returned item was purchased as part of a combo
-            if item.is_combo_purchase:
-                combo_group = ComboGroup.objects.filter(
-                    products=item.product,
-                    branches=bill.branch,
-                    is_active=True
-                ).first()
-                # Replacement must belong to the same combo group
-                if not combo_group.products.filter(id=rep_product.id).exists():
-                    raise forms.ValidationError(
-                        f'Product {item.product.name} was sold as part of combo "{combo_group.name}". '
-                        f'It can only be exchanged for products in the same combo group. '
-                        f'{rep_product.name} is not in that combo group.'
-                    )
+            if item:
+                # Check if returned item was purchased as part of a combo
+                if item.is_combo_purchase:
+                    combo_group = ComboGroup.objects.filter(
+                        products=item.product,
+                        branches=bill.branch,
+                        is_active=True
+                    ).first()
+                    # Replacement must belong to the same combo group
+                    if not combo_group.products.filter(id=rep_product.id).exists():
+                        raise forms.ValidationError(
+                            f'Product {item.product.name} was sold as part of combo "{combo_group.name}". '
+                            f'It can only be exchanged for products in the same combo group. '
+                            f'{rep_product.name} is not in that combo group.'
+                        )
+            is_combo = item.is_combo_purchase if item else False
+            if is_combo:
+                # Balanced combo swap: add replacement price to both totals so they cancel out
+                total_returned_value += rep_product.price * rep_qty
+                total_replacement_value += rep_product.price * rep_qty
             else:
-                # Normal item exchange: replacement price must be >= returned unit price
-                if rep_product.price < item.unit_price:
-                    raise forms.ValidationError(
-                        f'Product {item.product.name} is a normal item. '
-                        f'Exchanges must be for products of equal or greater value. '
-                        f'({rep_product.name} price ₹{rep_product.price:.0f} is less than returned item price ₹{item.unit_price:.0f})'
-                    )
+                if item:
+                    total_returned_value += item.unit_price * qty
+                total_replacement_value += rep_product.price * rep_qty
 
             validated_items.append({
                 'bill_item': item,
                 'quantity': qty,
-                'condition': ri.get('condition', 'GOOD'),
+                'condition': cond,
                 'action_type': 'EXCHANGE',
                 'replacement_product': rep_product,
                 'replacement_quantity': rep_qty,
             })
+
+        # Overall validation: total replacement value must be >= total returned value (for normal items)
+        if total_replacement_value < total_returned_value:
+            raise forms.ValidationError(
+                f'Total replacement value (₹{total_replacement_value:.0f}) must be equal or greater than total returned value (₹{total_returned_value:.0f}).'
+            )
 
         cleaned['validated_return_items'] = validated_items
         return cleaned
@@ -205,18 +252,19 @@ class ReturnCreateForm(forms.Form):
             rep_qty = vi['replacement_quantity']
 
             # Check if combo product to determine price difference
-            is_combo = item.is_combo_purchase
+            is_combo = item.is_combo_purchase if item else False
 
             if is_combo:
                 price_diff = 0
             else:
-                price_diff = (rep_product.price * rep_qty) - (item.unit_price * qty)
+                unit_price = item.unit_price if item else 0
+                price_diff = (rep_product.price * rep_qty) - (unit_price * qty)
 
             # Create approved ReturnRequest
             ret = ReturnRequest.objects.create(
                 invoice=bill,
                 bill_item=item,
-                product=item.product,
+                product=item.product if item else None,
                 quantity=qty,
                 condition=condition,
                 action_type=action_type,
@@ -224,48 +272,50 @@ class ReturnCreateForm(forms.Form):
                 replacement_quantity=rep_qty,
                 price_difference=price_diff,
                 requested_by=user,
-                product_name=item.product.name,
+                product_name=item.product.name if item else f"Replacement: {rep_product.name}",
                 reason=reason,
                 status=ReturnRequest.Status.APPROVED,
                 active_branch=user.active_branch,
             )
 
             # Update cache/helper fields on Bill and BillItem
-            item.returned_quantity += qty
-            item.save()
+            if item:
+                item.returned_quantity += qty
+                item.save()
 
             bill.has_returns = True
             bill.save()
 
             # Process stock updates directly here in a single transaction context
             # 1. Update returned product stock
-            ret_registry, _ = ProductRegistry.objects.get_or_create(
-                product=item.product,
-                branch=bill.branch,
-                defaults={'stock_quantity': 0, 'damaged_qty': 0}
-            )
-            if condition == 'GOOD':
-                ret_registry.stock_quantity += qty
-                ret_registry.save()
-                StockTransaction.objects.create(
+            if item:
+                ret_registry, _ = ProductRegistry.objects.get_or_create(
                     product=item.product,
                     branch=bill.branch,
-                    transaction_type='IN',
-                    quantity=qty,
-                    reference=f"Return #{ret.pk} (GOOD)",
-                    user=user
+                    defaults={'stock_quantity': 0, 'damaged_qty': 0}
                 )
-            elif condition == 'DAMAGED':
-                ret_registry.damaged_qty += qty
-                ret_registry.save()
-                StockTransaction.objects.create(
-                    product=item.product,
-                    branch=bill.branch,
-                    transaction_type='DMG',
-                    quantity=qty,
-                    reference=f"Return #{ret.pk} (DAMAGED)",
-                    user=user
-                )
+                if condition == 'GOOD':
+                    ret_registry.stock_quantity += qty
+                    ret_registry.save()
+                    StockTransaction.objects.create(
+                        product=item.product,
+                        branch=bill.branch,
+                        transaction_type='IN',
+                        quantity=qty,
+                        reference=f"Return #{ret.pk} (GOOD)",
+                        user=user
+                    )
+                elif condition == 'DAMAGED':
+                    ret_registry.damaged_qty += qty
+                    ret_registry.save()
+                    StockTransaction.objects.create(
+                        product=item.product,
+                        branch=bill.branch,
+                        transaction_type='DMG',
+                        quantity=qty,
+                        reference=f"Return #{ret.pk} (DAMAGED)",
+                        user=user
+                    )
 
             # 2. Update replacement product stock
             if rep_product:

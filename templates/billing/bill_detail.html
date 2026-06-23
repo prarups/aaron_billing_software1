@@ -10,7 +10,7 @@
             <div class="card-body p-4">
                 <div class="text-center mb-4 bg-vibrant p-4 mx-n4 mt-n4 position-relative">
                     
-                    <a href="{% if request.user.role == 'sales_staff' %}{% url 'staff_activity' %}{% else %}{% url 'owner_bill_list' %}{% endif %}" onclick="if (document.referrer && document.referrer.includes(window.location.host)) { window.history.back(); return false; }" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 shadow-none" aria-label="Close" style="font-size: 0.8rem;" title="Close and return"></a>
+                    <a href="{% if request.GET.from_pos == 'true' %}{% url 'pos_index' %}{% elif request.user.role == 'sales_staff' %}{% url 'staff_activity' %}{% else %}{% url 'owner_bill_list' %}{% endif %}" {% if request.GET.from_pos != 'true' %}onclick="if (document.referrer && document.referrer.includes(window.location.host)) { window.history.back(); return false; }"{% endif %} class="btn-close btn-close-white position-absolute top-0 end-0 m-3 shadow-none" aria-label="Close" style="font-size: 0.8rem;" title="Close and return"></a>
                     <h3 class="fw-bold text-white mb-1">Aaron Garments</h3>
                     <p class="text-white opacity-90 small mb-0 fw-semibold">{{ bill.branch.name }} &bull; Code: {{ bill.branch.code }}</p>
                     {% if bill.branch.location %}
@@ -128,6 +128,11 @@
                     {% endif %}
                 </div>
 
+                <!-- Terms & Conditions Footer -->
+                <div class="text-center my-2 pb-2 border-bottom text-muted" style="font-size: 0.75rem;" id="receiptFooter">
+                    <p class="mb-0 fw-semibold"><i class="bi bi-info-circle me-1"></i>No refund. Exchange should be within 3 days.</p>
+                </div>
+
                 {% if returns %}
                 <div class="card border-warning mb-4 bg-warning bg-opacity-5" style="border-radius: 1rem; border-style: dashed;">
                     <div class="card-body p-3">
@@ -185,14 +190,17 @@
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="d-grid gap-3">
+                <div class="d-grid gap-2 no-print">
                     <div class="d-flex gap-2">
                         {% if wa_link %}
                         <a href="{{ wa_link }}" target="_blank"
-                            class="btn btn-success rounded-pill-sm px-4 fw-bold flex-grow-1 py-3 shadow">
-                            <i class="bi bi-whatsapp me-2"></i>Send Bill
+                            class="btn btn-success rounded-pill-sm px-3 fw-bold flex-grow-1 py-2.5 shadow">
+                            <i class="bi bi-whatsapp me-1.5"></i>Send Bill
                         </a>
                         {% endif %}
+                        <button type="button" onclick="window.print()" class="btn btn-primary rounded-pill-sm px-3 fw-bold flex-grow-1 py-2.5 shadow border-0 bg-primary">
+                            <i class="bi bi-printer me-1.5"></i>Print Bill
+                        </button>
                     </div>
                     {% if allow_edit %}
                     <a href="{% url 'edit_bill_back' bill.id %}?from_pos=true" class="btn btn-warning rounded-pill-sm px-4 py-3">
@@ -318,6 +326,181 @@
 
     .custom-edit-btn i {
         font-size: 0.8rem;
+    }
+
+    @media print {
+        @page {
+            size: auto;
+            margin: 4mm 2mm;
+        }
+
+        /* Hide all navigation, sidebars, headers, close buttons, and non-print items */
+        header, footer, nav, .navbar, .btn, .btn-close, .glass-card label, .no-print, [title="Close and return"], .glass-card .input-group, .custom-edit-btn, .modal {
+            display: none !important;
+        }
+
+        /* Force clean black text on white backgrounds */
+        * {
+            background: transparent !important;
+            color: #000000 !important;
+            text-shadow: none !important;
+            box-shadow: none !important;
+        }
+
+        body, html {
+            background: #ffffff !important;
+            color: #000000 !important;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+            font-size: 10px !important;
+            line-height: 1.15 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+        }
+
+        /* Optimize container for receipt printers (prevent shadows, margins, and force auto size) */
+        .container, .row, .col-md-7, .col-md-8 {
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            display: block !important;
+        }
+
+        .glass-card {
+            border: none !important;
+            background: #ffffff !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
+            width: 74mm !important; /* Safe print width for 80mm thermal printers */
+            max-width: 100% !important;
+            display: block !important;
+        }
+
+        .card-body {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* Remove dark background gradient and set text to solid black with dashed border */
+        .bg-vibrant {
+            background: #ffffff !important;
+            color: #000000 !important;
+            border-bottom: 1.5px dashed #000000 !important;
+            padding: 4px 0 !important;
+            margin: 0 0 8px 0 !important;
+            text-align: center !important;
+        }
+
+        .bg-vibrant h3 {
+            font-size: 14px !important;
+            font-weight: bold !important;
+            margin-bottom: 2px !important;
+        }
+
+        /* Tighten margins and paddings globally to save paper */
+        .mb-4, .mb-3, .pb-3, .mt-3, .pt-3, .my-3, .mb-2, .mt-2 {
+            margin-bottom: 4px !important;
+            margin-top: 4px !important;
+            padding-bottom: 2px !important;
+            padding-top: 2px !important;
+        }
+
+        .mx-n4, .mt-n4, .mx-n2 {
+            margin: 0 !important;
+        }
+
+        /* Bill Meta Section */
+        .border-bottom {
+            border-bottom: 1.5px dashed #000000 !important;
+            padding-bottom: 4px !important;
+            margin-bottom: 8px !important;
+        }
+
+        /* Table formatting for clean receipt layout */
+        table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin: 4px 0 !important;
+        }
+        
+        thead {
+            border-bottom: 1.5px dashed #000000 !important;
+        }
+
+        th {
+            font-weight: bold !important;
+            text-transform: uppercase !important;
+            font-size: 9px !important;
+        }
+
+        th, td {
+            padding: 3px 1px !important;
+            border-bottom: 1px dashed #e5e7eb !important;
+            font-size: 10px !important;
+        }
+
+        tr:last-child td {
+            border-bottom: none !important;
+        }
+        
+        /* Grand total section print styling */
+        .bg-vibrant.glass-card {
+            border: 1.5px dashed #000000 !important;
+            padding: 6px !important;
+            margin: 8px 0 !important;
+            border-radius: 0 !important;
+        }
+
+        .bg-vibrant.glass-card h2 {
+            font-size: 14px !important;
+            font-weight: bold !important;
+            margin: 0 !important;
+        }
+
+        .border-top {
+            border-top: 1.5px dashed #000000 !important;
+            padding-top: 4px !important;
+            margin-top: 6px !important;
+        }
+
+        .border-white, .border-opacity-25 {
+            border-color: #000000 !important;
+        }
+
+        /* Receipt Footer styling */
+        #receiptFooter {
+            border-top: 1.5px dashed #000000 !important;
+            border-bottom: 1.5px dashed #000000 !important;
+            padding: 6px 0 !important;
+            margin: 8px 0 !important;
+            font-size: 9px !important;
+            text-align: center !important;
+            font-weight: bold !important;
+        }
+
+        #receiptFooter p {
+            margin: 0 !important;
+        }
+
+        /* Returns section formatting */
+        .card.border-warning {
+            border: 1.5px dashed #000000 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            margin-bottom: 8px !important;
+        }
+
+        .card.border-warning .card-body {
+            padding: 4px !important;
+        }
+
+        .card.border-warning .bg-white {
+            border: 1px dashed #000000 !important;
+            border-radius: 0 !important;
+            padding: 4px !important;
+            margin-bottom: 4px !important;
+        }
     }
 </style>
 {% endblock %}

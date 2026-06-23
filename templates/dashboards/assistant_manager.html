@@ -17,6 +17,10 @@
                 <h2 class="mb-0 fw-bold">₹{{ branch_sales_today|default:"0"|floatformat:0 }}</h2>
                 <i class="bi bi-currency-rupee fs-1 text-white-50"></i>
             </div>
+            <div class="border-top border-white-10 mt-3 pt-2 d-flex justify-content-between text-white-50 small" style="font-size: 0.8rem;">
+                <span>Cash: <strong>₹{{ branch_cash_today|default:"0"|floatformat:0 }}</strong></span>
+                <span>Online: <strong>₹{{ branch_online_today|default:"0"|floatformat:0 }}</strong></span>
+            </div>
         </div>
     </div>
     <div class="col-md-4">

@@ -120,11 +120,15 @@
                     </td>
                     <td>
                         <div class="d-flex flex-wrap gap-1">
+                            {% if combo.branches.count >= total_branches_count %}
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-semibold">All Branches</span>
+                            {% else %}
                             {% for branch in combo.branches.all %}
                             <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-semibold">{{ branch.name }}</span>
                             {% empty %}
                             <span class="text-muted text-xxs">None</span>
                             {% endfor %}
+                            {% endif %}
                         </div>
                     </td>
                     <td>
@@ -193,11 +197,15 @@
             </div>
             <div class="mb-3">
                 <div class="text-muted text-xxs mb-1.5"><i class="bi bi-shop me-1"></i>Branches: 
+                    {% if combo.branches.count >= total_branches_count %}
+                    <span class="badge bg-secondary-subtle text-secondary rounded-pill text-xxs">All Branches</span>
+                    {% else %}
                     {% for branch in combo.branches.all %}
                     <span class="badge bg-secondary-subtle text-secondary rounded-pill text-xxs">{{ branch.name }}</span>
                     {% empty %}
                     <span class="text-muted">None</span>
                     {% endfor %}
+                    {% endif %}
                 </div>
                 <div class="text-muted text-xxs mb-1.5"><i class="bi bi-box-seam me-1"></i>Products: <span class="badge bg-info-subtle text-info rounded-pill text-xxs">{{ combo.products.count }}</span></div>
                 <div class="mt-2">

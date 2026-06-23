@@ -175,32 +175,49 @@
                 <!-- Assignment Section -->
                 <div class="bg-light p-3 rounded-4 mb-4 border border-light shadow-sm bg-opacity-50" style="overflow: visible;">
                     <h6 class="fw-bold mb-3 text-secondary text-xxs text-uppercase"><i class="bi bi-diagram-3 me-1"></i>Assignments & Availability</h6>
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted">Assign to Branch</label>
-                        <div class="branch-select-wrap">
-                            <select name="branches" id="branches-select" class="form-select" data-no-search>
-                                <option value="">— Select a branch —</option>
-                                {% for branch in branches %}
-                                <option value="{{ branch.id }}" {% if combo and branch.id in selected_branch_ids %}selected{% endif %}>{{ branch.name }} ({{ branch.code }})</option>
-                                {% endfor %}
-                            </select>
-                            <i class="bi bi-chevron-down branch-chevron"></i>
-                            <button type="button" class="branch-clear-btn d-none" id="branch-clear-btn" title="Remove branch">
-                                <i class="bi bi-x-lg"></i>
-                            </button>
+                    <div class="mb-4">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input animate-switch" type="checkbox" name="apply_to_all_branches" id="apply-to-all-branches" {% if applied_to_all %}checked{% endif %}>
+                            <label class="form-check-label small fw-bold text-muted" for="apply-to-all-branches">
+                                <i class="bi bi-globe me-1"></i> Apply to All Branches
+                            </label>
+                            <div class="form-text x-small mt-0 text-muted">This combo will be active across all branches in the system.</div>
                         </div>
-                        <div class="form-text x-small">The combo offers will only show up on this branch.</div>
+
+                        <!-- Specific branches selection -->
+                        <div class="p-3 bg-white rounded-4 border border-light shadow-sm {% if applied_to_all %}d-none{% endif %}" id="specific-branches-container">
+                            <label class="form-label small fw-bold text-muted mb-2"><i class="bi bi-branches me-1 text-primary"></i>Select Target Branches</label>
+                            
+                            <!-- Search branch input -->
+                            <div class="input-group input-group-sm mb-2 shadow-xs" style="max-width: 350px;">
+                                <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted small"></i></span>
+                                <input type="text" id="branch-search-input" class="form-control rounded-end-pill text-xs px-2 shadow-none border-0 bg-light" placeholder="Type branch name or code to filter...">
+                            </div>
+
+                            <div class="row g-2 overflow-auto ps-1" style="max-height: 180px;" id="branches-list-container">
+                                {% for branch in branches %}
+                                <div class="col-sm-6 branch-checkbox-item" data-branch-name="{{ branch.name|lower }}" data-branch-code="{{ branch.code }}">
+                                    <div class="form-check">
+                                        <input class="form-check-input target-branch-cb" type="checkbox" name="selected_branches" value="{{ branch.id }}" id="target-branch-{{ branch.id }}" {% if branch.id in selected_branch_ids %}checked{% endif %}>
+                                        <label class="form-check-label small text-secondary" for="target-branch-{{ branch.id }}">
+                                            {{ branch.name }} ({{ branch.code }})
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-muted">Select Eligible Products</label>
                         <select name="products" id="products-select" class="form-select" multiple required data-no-search>
-                            {% for product in products %}
-                            <option value="{{ product.id }}" data-branch="{{ product.branch_id }}" data-name="{{ product.name }}" data-barcode="{{ product.barcode }}" {% if combo and product.id in selected_product_ids %}selected{% endif %}>{{ product.name }} ({{ product.barcode }}) - ₹{{ product.price }}</option>
+                            {% for product in selected_products %}
+                            <option value="{{ product.barcode }}" selected>{{ product.name }} ({{ product.barcode }})</option>
                             {% endfor %}
                         </select>
                         <div class="d-flex justify-content-between align-items-center mt-1.5">
-                            <div class="form-text x-small m-0" id="product-filter-hint">Select a branch first — only that branch’s products will appear.</div>
+                            <div class="form-text x-small m-0" id="product-filter-hint">Search for products by name or barcode to add them.</div>
                             <button type="button" id="select-all-visible-btn" class="btn btn-outline-secondary btn-xs rounded-pill px-2.5 py-1 text-xxs fw-bold shadow-none" style="border-color: #dee2e6; color: #475569;">
                                 <i class="bi bi-check-all me-1"></i> Select All Sizes of Selected
                             </button>
@@ -301,37 +318,17 @@ function removeTierRow(button) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-    const branchSelect  = document.getElementById('branches-select');
-    const clearBtn      = document.getElementById('branch-clear-btn');
     const productSelect = document.getElementById('products-select');
 
-    // ── Branch X clear button ──
-    function updateClearBtn() {
-        clearBtn.classList.toggle('d-none', !branchSelect.value);
-    }
-    branchSelect.addEventListener('change', function () {
-        updateClearBtn();
-        filterProducts();
-    });
-    clearBtn.addEventListener('click', function () {
-        branchSelect.value = '';
-        updateClearBtn();
-        filterProducts();
-    });
-    updateClearBtn(); // show X if pre-selected in edit mode
-
     // ── Manually init TomSelect on products with remove_button plugin ──
-    // (data-no-search stops global auto-init so we control it here)
     const allProducts = [];
     productSelect.querySelectorAll('option').forEach(opt => {
         if (!opt.value) return;
         allProducts.push({
-            value: opt.value.toString(),
+            value: opt.value.toString(), // barcode
             label: opt.textContent.trim(),
-            branchId: opt.dataset.branch.toString(),
-            name: opt.dataset.name,
-            barcode: opt.dataset.barcode || '',
-            preSelected: opt.selected
+            name: opt.textContent.split('(')[0].trim(),
+            barcode: opt.value.toString()
         });
     });
 
@@ -345,29 +342,21 @@ document.addEventListener('DOMContentLoaded', function () {
         searchField: 'label',
         maxOptions: 50,
         load: function(query, callback) {
-            const branchId = branchSelect.value;
-            if (!branchId) {
-                alert('Please select a branch first.');
-                callback();
-                return;
-            }
             if (!query.length) {
                 callback();
                 return;
             }
-            fetch(`/core/combos/branch-products-ajax/?branch_id=${branchId}&q=${encodeURIComponent(query)}`)
+            fetch(`/core/combos/global-products-ajax/?q=${encodeURIComponent(query)}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.products) {
                         const productsList = data.products.map(p => {
                             const item = {
-                                value: p.id.toString(),
-                                label: `${p.name} (${p.barcode}) - ₹${p.price}`,
-                                branchId: p.branch_id.toString(),
+                                value: p.barcode,
+                                label: p.label,
                                 name: p.name,
                                 barcode: p.barcode
                             };
-                            // Add to global allProducts cache for the select all sizes helper
                             if (!allProducts.some(ap => ap.value === item.value)) {
                                 allProducts.push(item);
                             }
@@ -391,22 +380,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 return `<div class="d-flex align-items-center gap-1">${escape(data.label)}</div>`;
             }
         }
-    });
-
-    // Handle branch change: clear selections and clear options
-    branchSelect.addEventListener('change', function () {
-        updateClearBtn();
-        productTS.clear(true);
-        productTS.clearOptions();
-        allProducts.length = 0;
-    });
-
-    clearBtn.addEventListener('click', function () {
-        branchSelect.value = '';
-        updateClearBtn();
-        productTS.clear(true);
-        productTS.clearOptions();
-        allProducts.length = 0;
     });
 
     // Helper to determine if name similarity matches (sharing first 2 words)
@@ -450,9 +423,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // ── Select All Sizes of Selected Button ──
     const selectAllBtn = document.getElementById('select-all-visible-btn');
     selectAllBtn.addEventListener('click', function () {
-        const selectedVals = productTS.getValue(); // array of selected product IDs (strings)
+        const selectedVals = productTS.getValue(); // array of selected barcodes
         if (selectedVals.length === 0) {
-            alert('Please select at least one product size first.');
+            alert('Please select at least one product first.');
             return;
         }
 
@@ -464,26 +437,20 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        const branchId = branchSelect.value;
         let count = 0;
         
         allProducts.forEach(p => {
-            if (!branchId || p.branchId === branchId) {
-                // If candidate is not already selected
-                if (!selectedVals.includes(p.value.toString())) {
-                    // Check if candidate matches any selected product
-                    const matchesAny = selectedProductsList.some(sel => {
-                        // Match if they share the exact name OR
-                        // if they share both name prefix (first 2 words) AND barcode prefix
-                        if (p.name === sel.name) return true;
-                        
-                        return barcodesAreSimilar(p.barcode, sel.barcode) && namesAreSimilar(p.name, sel.name);
-                    });
-                    
-                    if (matchesAny) {
-                        productTS.addItem(p.value, true);
-                        count++;
-                    }
+            // If candidate is not already selected
+            if (!selectedVals.includes(p.value.toString())) {
+                // Check if candidate matches any selected product
+                const matchesAny = selectedProductsList.some(sel => {
+                    if (p.name === sel.name) return true;
+                    return barcodesAreSimilar(p.barcode, sel.barcode) && namesAreSimilar(p.name, sel.name);
+                });
+                
+                if (matchesAny) {
+                    productTS.addItem(p.value, true);
+                    count++;
                 }
             }
         });
@@ -496,7 +463,54 @@ document.addEventListener('DOMContentLoaded', function () {
                 selectAllBtn.className = 'btn btn-outline-secondary btn-xs rounded-pill px-2.5 py-1 text-xxs fw-bold shadow-none';
             }, 1500);
         } else {
-            alert('All sizes for the selected products are already added.');
+            alert('All similar products are already added.');
+        }
+    });
+
+    // ── Multi-branch application options toggling & validation ──
+    const applyToAll = document.getElementById('apply-to-all-branches');
+    const specificBranchesContainer = document.getElementById('specific-branches-container');
+    const branchSearch = document.getElementById('branch-search-input');
+
+    function handleToggles() {
+        if (applyToAll.checked) {
+            specificBranchesContainer.classList.add('d-none');
+        } else {
+            specificBranchesContainer.classList.remove('d-none');
+        }
+    }
+
+    applyToAll.addEventListener('change', handleToggles);
+    
+    // Dynamic text filtering for branches checklist
+    if (branchSearch) {
+        branchSearch.addEventListener('input', function () {
+            const query = this.value.toLowerCase().trim();
+            const items = document.querySelectorAll('.branch-checkbox-item');
+            items.forEach(item => {
+                const name = item.dataset.branchName || '';
+                const code = item.dataset.branchCode || '';
+                if (name.includes(query) || code.includes(query)) {
+                    item.classList.remove('d-none');
+                } else {
+                    item.classList.add('d-none');
+                }
+            });
+        });
+    }
+
+    // Initial run
+    handleToggles();
+
+    // Prevent submission if no branch is selected
+    const comboForm = document.getElementById('combo-form');
+    comboForm.addEventListener('submit', function (e) {
+        if (!applyToAll.checked) {
+            const checkedTargetBranches = document.querySelectorAll('.target-branch-cb:checked');
+            if (checkedTargetBranches.length === 0) {
+                e.preventDefault();
+                alert('Please select at least one branch for availability, or toggle "Apply to All Branches".');
+            }
         }
     });
 });

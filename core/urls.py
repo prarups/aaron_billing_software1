@@ -16,6 +16,7 @@ urlpatterns = [
     path('reports/stock-pivot/', views.stock_pivot_report, name='stock_pivot_report'),
     path('reports/stock-pivot/export/', views.export_stock_pivot_excel, name='export_stock_pivot_excel'),
     path('pos/', views.pos_view, name='pos_view'),
+    path('api/recent-bills/', views.api_recent_bills, name='api_recent_bills'),
     
     # Combo URLs
     path('combos/', combo_views.combo_list, name='combo_list'),
@@ -24,4 +25,5 @@ urlpatterns = [
     path('combos/delete/<int:pk>/', combo_views.combo_delete, name='combo_delete'),
     path('combos/ajax-data/', combo_views.get_branch_combo_data, name='ajax_combo_data'),
     path('combos/branch-products-ajax/', combo_views.branch_products_ajax, name='branch_products_ajax'),
+    path('combos/global-products-ajax/', combo_views.global_products_ajax, name='global_products_ajax'),
 ]

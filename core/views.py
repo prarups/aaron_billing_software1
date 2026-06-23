@@ -4,6 +4,8 @@ from django.contrib import messages
 from .models import Product, Branch, ProductRegistry, StockTransaction, StockAdjustment, ComboPrice
 from django import forms
 from .forms import ProductForm
+from django.http import JsonResponse
+from billing.models import Bill
 
 
 @login_required
@@ -67,7 +69,15 @@ def product_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    branches = accessible_branches.annotate(product_count=Count('productregistry'))
+    if active_filter == 'low_stock':
+        branches = accessible_branches.annotate(
+            low_stock_count=Count(
+                'productregistry',
+                filter=Q(productregistry__stock_quantity__lte=F('productregistry__low_stock_threshold'))
+            )
+        ).filter(low_stock_count__gt=0)
+    else:
+        branches = accessible_branches.annotate(product_count=Count('productregistry'))
 
     return render(request, 'core/product_list.html', {
         'page_obj': page_obj,
@@ -255,14 +265,10 @@ def product_update(request, pk):
                 for obj in combo_formset.deleted_objects:
                     obj.delete()
         elif not is_admin:
-            # Non-admin: skip product/combo changes, just proceed to stock updates
-            pass
-        else:
-            # Admin but form invalid
             return render(request, 'core/product_form.html', {
-                'form': form, 
+                'form': form,
                 'combo_formset': combo_formset,
-                'action': 'Edit', 
+                'action': 'Edit',
                 'registration': registration,
                 'current_damaged_qty': current_damaged_qty,
                 'is_admin': is_admin,
@@ -1588,4 +1594,19 @@ def pos_view(request):
         'active_filter': active_filter,
     })
 
+
+@login_required
+def api_recent_bills(request):
+    """Return recent bills as JSON for auto-refresh on dashboard."""
+    # Optionally limit to recent 5 bills
+    recent = Bill.objects.order_by('-created_at')[:5]
+    bills = []
+    for b in recent:
+        bills.append({
+            'id': b.id,
+            'invoice_number': b.invoice_number,
+            'branch_name': b.branch.name if b.branch else '',
+            'total_amount': float(b.total_amount),
+        })
+    return JsonResponse({'bills': bills})
 

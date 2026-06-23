@@ -16,4 +16,5 @@ urlpatterns = [
     # Return endpoints
     path('return/', return_views.return_create_view, name='return_create'),
     path('return/bill-items/', return_views.get_bill_items_api, name='get_bill_items'),
+    path('return/get-replacement/', return_views.get_replacement_product_api, name='get_replacement_product'),
 ]

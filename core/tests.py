@@ -1343,5 +1343,93 @@ class ComboOptimizationsTestCase(TestCase):
         self.assertTrue(response.context['page_obj'].has_other_pages())
 
 
+class ComboMultiBranchTestCase(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.branch_a = Branch.objects.create(name="Nellore Branch", code="10001", invoice_prefix="AN")
+        self.branch_b = Branch.objects.create(name="Guntur Branch", code="10002", invoice_prefix="AG")
+        
+        # Owner user
+        self.owner = User.objects.create_user(
+            username="owner_user", 
+            password="password123", 
+            role="owner",
+            active_branch=self.branch_a
+        )
+        
+        # Products with matching barcodes in both branches
+        self.prod_a = Product.objects.create(branch=self.branch_a, name="Shirt XL", barcode="BAR123", price=500)
+        self.prod_b = Product.objects.create(branch=self.branch_b, name="Shirt XL", barcode="BAR123", price=500)
+
+    def test_create_combo_apply_to_all_branches(self):
+        self.client.login(username="owner_user", password="password123")
+        url = reverse('combo_create')
+        post_data = {
+            'name': 'All Branch Deal',
+            'is_active': 'on',
+            'products': [self.prod_a.barcode],
+            'apply_to_all_branches': 'on',
+            'tier_quantity[]': ['2'],
+            'tier_price[]': ['900']
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 302) # Redirects to list
+        
+        combo = ComboGroup.objects.get(name='All Branch Deal')
+        # Check that both branches are assigned
+        self.assertEqual(combo.branches.count(), 2)
+        self.assertTrue(self.branch_a in combo.branches.all())
+        self.assertTrue(self.branch_b in combo.branches.all())
+        
+        # Check that both products (matching barcode) are associated
+        self.assertEqual(combo.products.count(), 2)
+        self.assertTrue(self.prod_a in combo.products.all())
+        self.assertTrue(self.prod_b in combo.products.all())
+
+    def test_edit_combo_apply_to_specific_branches(self):
+        # Create a combo initially only for branch_a
+        combo = ComboGroup.objects.create(name='Nellore Only Deal', is_active=True)
+        combo.branches.add(self.branch_a)
+        combo.products.add(self.prod_a)
+        
+        self.client.login(username="owner_user", password="password123")
+        url = reverse('combo_edit', kwargs={'pk': combo.pk})
+        
+        # Edit combo to apply to both branches
+        post_data = {
+            'name': 'Updated Deal',
+            'is_active': 'on',
+            'products': [self.prod_a.barcode],
+            'selected_branches': [str(self.branch_a.id), str(self.branch_b.id)],
+            'tier_quantity[]': ['2'],
+            'tier_price[]': ['900']
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 302)
+        
+        combo.refresh_from_db()
+        self.assertEqual(combo.name, 'Updated Deal')
+        
+        # Check that both branches are assigned
+        self.assertEqual(combo.branches.count(), 2)
+        self.assertTrue(self.branch_a in combo.branches.all())
+        self.assertTrue(self.branch_b in combo.branches.all())
+        
+        # Check that both products (matching barcode) are associated
+        self.assertEqual(combo.products.count(), 2)
+        self.assertTrue(self.prod_a in combo.products.all())
+        self.assertTrue(self.prod_b in combo.products.all())
+
+    def test_global_products_ajax(self):
+        self.client.login(username="owner_user", password="password123")
+        url = reverse('global_products_ajax')
+        response = self.client.get(f"{url}?q=Shirt")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data['products']), 1)
+        self.assertEqual(data['products'][0]['name'], "Shirt XL")
+
+
+
 
 

@@ -51,23 +51,152 @@
             font-size: 0.68rem !important;
         }
         @media print {
-            body {
-                background: white;
-                color: black;
-                padding: 0;
+            @page {
+                size: auto;
+                margin: 4mm 2mm;
             }
+
+            /* Hide all non-print elements */
+            .no-print, .social-section, .btn, button, footer {
+                display: none !important;
+            }
+
+            /* Force clean black text on white backgrounds */
+            * {
+                background: transparent !important;
+                color: #000000 !important;
+                text-shadow: none !important;
+                box-shadow: none !important;
+            }
+
+            body, html {
+                background: #ffffff !important;
+                color: #000000 !important;
+                font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+                font-size: 10px !important;
+                line-height: 1.15 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+
+            .container {
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
             .receipt-card {
-                box-shadow: none;
-                margin: 0;
-                border: none;
-                border-radius: 0;
-                max-width: 100%;
+                box-shadow: none !important;
+                margin: 0 auto !important;
+                border: none !important;
+                border-radius: 0 !important;
+                width: 74mm !important; /* Safe print width for 80mm thermal printers */
+                max-width: 100% !important;
+                background: #ffffff !important;
+                display: block !important;
             }
+
             .card-body {
                 padding: 0 !important;
+                margin: 0 !important;
             }
-            .no-print {
-                display: none !important;
+
+            /* Header styles */
+            .card-body > .text-center {
+                border-bottom: 1.5px dashed #000000 !important;
+                padding-bottom: 4px !important;
+                margin-bottom: 8px !important;
+            }
+
+            /* General spacing reduction */
+            .mb-3, .mb-4, .pb-3, .mt-3, .pt-3, .my-3, .mb-2, .mt-2, .py-2 {
+                margin-bottom: 4px !important;
+                margin-top: 4px !important;
+                padding-bottom: 2px !important;
+                padding-top: 2px !important;
+            }
+
+            .border-top {
+                border-top: 1.5px dashed #000000 !important;
+            }
+
+            .border-bottom {
+                border-bottom: 1.5px dashed #000000 !important;
+            }
+
+            /* Table formatting */
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                margin: 4px 0 !important;
+            }
+
+            thead tr {
+                border-bottom: 1.5px dashed #000000 !important;
+            }
+
+            th {
+                font-weight: bold !important;
+                text-transform: uppercase !important;
+                font-size: 9px !important;
+            }
+
+            th, td {
+                padding: 3px 1px !important;
+                border-bottom: 1px dashed #e5e7eb !important;
+                font-size: 10px !important;
+            }
+
+            tr:last-child td {
+                border-bottom: none !important;
+            }
+
+            /* Totals styling */
+            .bg-light {
+                border: 1.5px dashed #000000 !important;
+                padding: 6px !important;
+                margin: 8px 0 !important;
+                border-radius: 0 !important;
+                font-size: 10px !important;
+            }
+
+            .bg-light .border-top {
+                border-top: 1px dashed #000000 !important;
+                padding-top: 4px !important;
+                margin-top: 4px !important;
+            }
+
+            /* Receipt Footer */
+            #receiptFooter {
+                border-top: 1.5px dashed #000000 !important;
+                border-bottom: 1.5px dashed #000000 !important;
+                padding: 6px 0 !important;
+                margin: 8px 0 !important;
+                font-size: 9px !important;
+                text-align: center !important;
+                font-weight: bold !important;
+            }
+
+            #receiptFooter p {
+                margin: 0 !important;
+            }
+
+            /* Returns section formatting */
+            .border-warning {
+                border: 1.5px dashed #000000 !important;
+                border-radius: 0 !important;
+                background: transparent !important;
+                padding: 4px !important;
+                margin-bottom: 8px !important;
+            }
+
+            .border-warning .bg-white {
+                border: 1px dashed #000000 !important;
+                border-radius: 0 !important;
+                padding: 4px !important;
+                margin-bottom: 4px !important;
             }
         }
     </style>
@@ -190,6 +319,11 @@
                         Paid via {{ bill.get_payment_method_display }}
                     </div>
                     {% endif %}
+                </div>
+
+                <!-- Terms & Conditions Footer -->
+                <div class="text-center my-2 pb-2 border-bottom text-muted" style="font-size: 0.75rem;" id="receiptFooter">
+                    <p class="mb-0 fw-semibold"><i class="bi bi-info-circle me-1"></i>No refund. Exchange should be within 3 days.</p>
                 </div>
 
                 <!-- Returns section if applicable -->

@@ -81,6 +81,8 @@ class OwnerDashboardView(TemplateView):
             end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
             range_bills = Bill.objects.filter(created_at__range=(start_datetime, end_datetime))
             context['total_sales_today'] = range_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            context['total_cash_today'] = range_bills.aggregate(Sum('cash_amount'))['cash_amount__sum'] or 0
+            context['total_online_today'] = range_bills.aggregate(Sum('online_amount'))['online_amount__sum'] or 0
             context['transaction_count_today'] = range_bills.count()
             context['stats_label'] = f"Sales ({start_date.strftime('%d %b')} - {end_date.strftime('%d %b')})"
             context['trans_label'] = "Transactions (Period)"
@@ -89,6 +91,8 @@ class OwnerDashboardView(TemplateView):
             today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
             today_bills = Bill.objects.filter(created_at__range=(today_start, today_end))
             context['total_sales_today'] = today_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            context['total_cash_today'] = today_bills.aggregate(Sum('cash_amount'))['cash_amount__sum'] or 0
+            context['total_online_today'] = today_bills.aggregate(Sum('online_amount'))['online_amount__sum'] or 0
             context['transaction_count_today'] = today_bills.count()
             context['stats_label'] = "Total Sales (Today)"
             context['trans_label'] = "Transactions"
@@ -106,7 +110,7 @@ class OwnerDashboardView(TemplateView):
         # Subquery for active staff count
         staff_subquery = User.objects.filter(
             branches=OuterRef('pk'),
-            role__in=['manager', 'staff']
+            role__in=['sales_staff', 'assistant_manager']
         ).order_by().values('branches').annotate(cnt=Count('id')).values('cnt')
 
         # Subquery for sales (today or period range)
@@ -118,6 +122,16 @@ class OwnerDashboardView(TemplateView):
                 branch=OuterRef('pk'),
                 created_at__range=(start_datetime, end_datetime)
             ).order_by().values('branch').annotate(total=Sum('total_amount')).values('total')
+            
+            cash_subquery = Bill.objects.filter(
+                branch=OuterRef('pk'),
+                created_at__range=(start_datetime, end_datetime)
+            ).order_by().values('branch').annotate(total=Sum('cash_amount')).values('total')
+            
+            online_subquery = Bill.objects.filter(
+                branch=OuterRef('pk'),
+                created_at__range=(start_datetime, end_datetime)
+            ).order_by().values('branch').annotate(total=Sum('online_amount')).values('total')
         else:
             today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
             today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
@@ -125,10 +139,30 @@ class OwnerDashboardView(TemplateView):
                 branch=OuterRef('pk'),
                 created_at__range=(today_start, today_end)
             ).order_by().values('branch').annotate(total=Sum('total_amount')).values('total')
+            
+            cash_subquery = Bill.objects.filter(
+                branch=OuterRef('pk'),
+                created_at__range=(today_start, today_end)
+            ).order_by().values('branch').annotate(total=Sum('cash_amount')).values('total')
+            
+            online_subquery = Bill.objects.filter(
+                branch=OuterRef('pk'),
+                created_at__range=(today_start, today_end)
+            ).order_by().values('branch').annotate(total=Sum('online_amount')).values('total')
 
         branches = Branch.objects.annotate(
             today_sales=Coalesce(
                 Subquery(sales_subquery),
+                0,
+                output_field=models.DecimalField()
+            ),
+            today_cash=Coalesce(
+                Subquery(cash_subquery),
+                0,
+                output_field=models.DecimalField()
+            ),
+            today_online=Coalesce(
+                Subquery(online_subquery),
                 0,
                 output_field=models.DecimalField()
             ),
@@ -142,18 +176,32 @@ class OwnerDashboardView(TemplateView):
         
         # Paginate branches_by_code (10 per page)
         from django.core.paginator import Paginator
+        from django.db.models import Q
         branches_by_code_qs = branches.order_by('code', 'id')
-        branch_paginator = Paginator(branches_by_code_qs, 10)
-        branch_page_number = self.request.GET.get('branch_page', 1)
-        context['branches_by_code'] = branch_paginator.get_page(branch_page_number)
+        
+        branch_search = self.request.GET.get('branch_search', '').strip()
+        if branch_search:
+            # Cast code to string or search on code directly
+            branches_by_code_qs = branches_by_code_qs.filter(
+                Q(name__icontains=branch_search) |
+                Q(location__icontains=branch_search) |
+                Q(invoice_prefix__icontains=branch_search)
+            )
+            # Try parsing search query as integer to search on code
+            try:
+                code_val = int(branch_search)
+                branches_by_code_qs = branches_by_code_qs | branches.filter(code=code_val)
+            except ValueError:
+                pass
+                
+        context['branches_by_code'] = branches_by_code_qs
+        context['branch_search'] = branch_search
         
         context['recent_bills'] = Bill.objects.order_by('-created_at')[:5]
         
-        # Staff list (admins, managers, and staff) with pagination for scalability
+        # Staff list (admins, managers, and staff) without pagination for client-side search scalability
         staff_qs = User.objects.filter(role__in=['owner', 'manager', 'assistant_manager', 'sales_staff']).prefetch_related('branches').order_by('employee_id', 'username')
-        paginator = Paginator(staff_qs, 10)  # 10 staff per page
-        page_number = self.request.GET.get('staff_page', 1)
-        context['staff_list'] = paginator.get_page(page_number)
+        context['staff_list'] = staff_qs
         
         # Manager employee performance data
         managers = User.objects.filter(role__in=['manager', 'assistant_manager']).prefetch_related('branches')
@@ -204,8 +252,10 @@ class AssistantManagerDashboardView(TemplateView):
         if branch:
             branch_bills = Bill.objects.filter(branch=branch, created_at__range=(today_start, today_end))
             context['branch_sales_today'] = branch_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            context['branch_cash_today'] = branch_bills.aggregate(Sum('cash_amount'))['cash_amount__sum'] or 0
+            context['branch_online_today'] = branch_bills.aggregate(Sum('online_amount'))['online_amount__sum'] or 0
             context['product_count'] = Product.objects.count()
-            context['staff_count'] = branch.assigned_users.filter(role='sales_staff').count()
+            context['staff_count'] = branch.assigned_users.filter(role__in=['sales_staff', 'assistant_manager']).exclude(id=user.id).count()
             context['recent_branch_bills'] = Bill.objects.filter(branch=branch).order_by('-created_at')[:5]
         return context
 class ManagerDashboardView(TemplateView):
@@ -230,12 +280,14 @@ class ManagerDashboardView(TemplateView):
         if branch:
             branch_bills = Bill.objects.filter(branch=branch, created_at__range=(today_start, today_end))
             context['branch_sales_today'] = branch_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+            context['branch_cash_today'] = branch_bills.aggregate(Sum('cash_amount'))['cash_amount__sum'] or 0
+            context['branch_online_today'] = branch_bills.aggregate(Sum('online_amount'))['online_amount__sum'] or 0
             context['product_count'] = Product.objects.count()
-            context['staff_count'] = branch.assigned_users.filter(role='sales_staff').count()
+            context['staff_count'] = branch.assigned_users.filter(role__in=['sales_staff', 'assistant_manager']).exclude(id=user.id).count()
             context['recent_branch_bills'] = Bill.objects.filter(branch=branch).order_by('-created_at')[:5]
         # Staff performance for manager/assistant manager
         if user.role in ['manager', 'assistant_manager']:
-            staff_qs = User.objects.filter(role='sales_staff', branches__in=user.branches.all()).distinct()
+            staff_qs = User.objects.filter(role__in=['sales_staff', 'assistant_manager'], branches__in=user.branches.all()).exclude(id=user.id).distinct()
             staff_info = []
             for staff in staff_qs:
                 daily_sales = Bill.objects.filter(staff=staff, created_at__range=(today_start, today_end)).aggregate(total=Sum('total_amount'))['total'] or 0
@@ -659,7 +711,7 @@ def export_branches_csv(request):
     from django.db.models import Count
     
     branches = Branch.objects.annotate(
-        active_staff_count=Count('assigned_users', filter=models.Q(assigned_users__role='sales_staff'))
+        active_staff_count=Count('assigned_users', filter=models.Q(assigned_users__role__in=['sales_staff', 'assistant_manager']))
     ).order_by('code', 'id')
     
     for b in branches:

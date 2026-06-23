@@ -332,6 +332,10 @@
                         <span class="fs-5 fw-bold mb-0 text-white">₹{{ total_sales_today|default:"0"|floatformat:0 }}</span>
                         <i class="bi bi-wallet2 fs-4 text-white-50"></i>
                     </div>
+                    <div class="border-top border-white-10 mt-2 pt-1.5 d-flex justify-content-between text-white-50 small" style="font-size: 0.72rem;">
+                        <span>Cash: <strong>₹{{ total_cash_today|default:"0"|floatformat:0 }}</strong></span>
+                        <span>Online: <strong>₹{{ total_online_today|default:"0"|floatformat:0 }}</strong></span>
+                    </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
@@ -396,7 +400,12 @@
                                 {% for branch in branches %}
                                 <tr>
                                     <td class="fw-semibold text-dark">{{ branch.name }} ({{ branch.code }})</td>
-                                    <td class="fw-bold text-primary">₹{{ branch.today_sales|default:"0" }}</td>
+                                    <td class="fw-bold text-primary">
+                                        ₹{{ branch.today_sales|default:"0" }}
+                                        <div class="text-muted text-xxs mt-0.5" style="font-weight: 500;">
+                                            Cash: ₹{{ branch.today_cash|default:"0"|floatformat:0 }} | Online: ₹{{ branch.today_online|default:"0"|floatformat:0 }}
+                                        </div>
+                                    </td>
                                     <td class="text-muted">{{ branch.active_staff_count }} Assigned</td>
                                     <td>
                                         <div class="progress" style="height: 6px;">
@@ -418,7 +427,12 @@
                                     <span class="fw-bold text-dark text-xs d-block">{{ branch.name }}</span>
                                     <span class="text-muted text-xxs">Code: {{ branch.code }}</span>
                                 </div>
-                                <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 text-xxs fw-bold">₹{{ branch.today_sales|default:"0" }}</span>
+                                <div class="text-end">
+                                    <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 text-xxs fw-bold">₹{{ branch.today_sales|default:"0" }}</span>
+                                    <div class="text-muted" style="font-size: 0.65rem; margin-top: 2px;">
+                                        C: ₹{{ branch.today_cash|default:"0"|floatformat:0 }} | O: ₹{{ branch.today_online|default:"0"|floatformat:0 }}
+                                    </div>
+                                </div>
                             </div>
                             <div class="d-flex justify-content-between align-items-center text-xxs text-muted mt-2 border-top pt-2">
                                 <span><i class="bi bi-people me-1"></i>{{ branch.active_staff_count }} Sales Staff</span>
@@ -473,6 +487,11 @@
                     <div class="input-group input-group-sm" style="max-width: 200px;">
                         <span class="input-group-text bg-light border-0 rounded-start-pill text-xxs"><i class="bi bi-search"></i></span>
                         <input type="text" id="branchSearchInput" class="form-control border-0 bg-light rounded-end-pill text-xs py-1" placeholder="Search code or name..." oninput="filterBranches()">
+                        <script>document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('branchSearchInput');
+    if (searchInput) searchInput.value = '';
+    filterBranches();
+});</script>
                     </div>
                 </div>
                 <div class="d-flex gap-2">
@@ -530,38 +549,11 @@
             </div>
 
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 gap-2">
-                <div class="text-muted text-xs">
-                    Showing {{ branches_by_code.start_index|default:0 }} to {{ branches_by_code.end_index|default:0 }} of {{ branches_by_code.paginator.count|default:0 }} branches
+                <div class="text-muted text-xs" id="branch-count-info">
+                    Showing all {{ branches_by_code|length }} branches
                 </div>
-                {% if branches_by_code.has_other_pages %}
-                <nav aria-label="Branch pagination" class="mb-0">
-                    <ul class="pagination pagination-sm justify-content-center mb-0">
-                        {% if branches_by_code.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?branch_page={{ branches_by_code.previous_page_number }}#branches">Previous</a>
-                        </li>
-                        {% endif %}
-                        
-                        {% for i in branches_by_code.paginator.page_range %}
-                            {% if branches_by_code.number == i %}
-                            <li class="page-item active">
-                                <span class="page-link rounded-pill border-0 shadow px-2.5 mx-1 bg-primary text-white">{{ i }}</span>
-                            </li>
-                            {% elif i > branches_by_code.number|add:-3 and i < branches_by_code.number|add:3 %}
-                            <li class="page-item">
-                                <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?branch_page={{ i }}#branches">{{ i }}</a>
-                            </li>
-                            {% endif %}
-                        {% endfor %}
-                        
-                        {% if branches_by_code.has_next %}
-                        <li class="page-item">
-                            <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?branch_page={{ branches_by_code.next_page_number }}#branches">Next</a>
-                        </li>
-                        {% endif %}
-                    </ul>
+                <nav aria-label="Branch pagination" class="mb-0" id="branch-pagination-nav">
                 </nav>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -691,38 +683,11 @@
                 </table></div>
             </div>
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 gap-2">
-                <div class="text-muted text-xs">
-                    Showing {{ staff_list.start_index|default:0 }} to {{ staff_list.end_index|default:0 }} of {{ staff_list.paginator.count|default:0 }} staff accounts
+                <div class="text-muted text-xs" id="staff-count-info">
+                    Showing all {{ staff_list|length }} staff accounts
                 </div>
-                {% if staff_list.has_other_pages %}
-                <nav aria-label="Staff pagination" class="mb-0">
-                    <ul class="pagination pagination-sm justify-content-center mb-0">
-                        {% if staff_list.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?staff_page={{ staff_list.previous_page_number }}#staff">Previous</a>
-                        </li>
-                        {% endif %}
-                        
-                        {% for i in staff_list.paginator.page_range %}
-                            {% if staff_list.number == i %}
-                            <li class="page-item active">
-                                <span class="page-link rounded-pill border-0 shadow px-2.5 mx-1 bg-primary text-white">{{ i }}</span>
-                            </li>
-                            {% elif i > staff_list.number|add:-3 and i < staff_list.number|add:3 %}
-                            <li class="page-item">
-                                <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?staff_page={{ i }}#staff">{{ i }}</a>
-                            </li>
-                            {% endif %}
-                        {% endfor %}
-                        
-                        {% if staff_list.has_next %}
-                        <li class="page-item">
-                            <a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?staff_page={{ staff_list.next_page_number }}#staff">Next</a>
-                        </li>
-                        {% endif %}
-                    </ul>
+                <nav aria-label="Staff pagination" class="mb-0" id="staff-pagination-nav">
                 </nav>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -1174,11 +1139,99 @@
 
 
 
+    let currentStaffPage = 1;
+    let currentBranchPage = 1;
+    const rowsPerPage = 10;
+
+    function renderPagination(navId, totalItems, currentPage, onPageChange) {
+        const nav = document.getElementById(navId);
+        if (!nav) return;
+        nav.innerHTML = '';
+        
+        const totalPages = Math.ceil(totalItems / rowsPerPage);
+        if (totalPages <= 1) {
+            return;
+        }
+        
+        const ul = document.createElement('ul');
+        ul.className = 'pagination pagination-sm justify-content-center mb-0';
+        
+        if (currentPage > 1) {
+            const li = document.createElement('li');
+            li.className = 'page-item';
+            const a = document.createElement('a');
+            a.className = 'page-link rounded-pill border-0 shadow-sm px-2.5 mx-1';
+            a.href = '#';
+            a.textContent = 'Previous';
+            a.onclick = function(e) {
+                e.preventDefault();
+                onPageChange(currentPage - 1);
+            };
+            li.appendChild(a);
+            ul.appendChild(li);
+        }
+        
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                const li = document.createElement('li');
+                if (i === currentPage) {
+                    li.className = 'page-item active';
+                    const span = document.createElement('span');
+                    span.className = 'page-link rounded-pill border-0 shadow px-2.5 mx-1 bg-primary text-white';
+                    span.textContent = i;
+                    li.appendChild(span);
+                } else {
+                    li.className = 'page-item';
+                    const a = document.createElement('a');
+                    a.className = 'page-link rounded-pill border-0 shadow-sm px-2.5 mx-1';
+                    a.href = '#';
+                    a.textContent = i;
+                    a.onclick = function(e) {
+                        e.preventDefault();
+                        onPageChange(i);
+                    };
+                    li.appendChild(a);
+                }
+                ul.appendChild(li);
+            } else if (i === currentPage - 3 || i === currentPage + 3) {
+                const li = document.createElement('li');
+                li.className = 'page-item disabled';
+                const span = document.createElement('span');
+                span.className = 'page-link rounded-pill border-0 px-2 mx-1 text-muted bg-transparent';
+                span.textContent = '...';
+                li.appendChild(span);
+                ul.appendChild(li);
+            }
+        }
+        
+        if (currentPage < totalPages) {
+            const li = document.createElement('li');
+            li.className = 'page-item';
+            const a = document.createElement('a');
+            a.className = 'page-link rounded-pill border-0 shadow-sm px-2.5 mx-1';
+            a.href = '#';
+            a.textContent = 'Next';
+            a.onclick = function(e) {
+                e.preventDefault();
+                onPageChange(currentPage + 1);
+            };
+            li.appendChild(a);
+            ul.appendChild(li);
+        }
+        
+        nav.appendChild(ul);
+    }
+
     // Staff combined branch, role, and search filter on table
-    function filterStaff() {
+    function filterStaff(resetPage = true) {
+        if (resetPage) {
+            currentStaffPage = 1;
+        }
         const searchVal = document.getElementById('staffSearchInput').value.toLowerCase();
         const branchVal = document.getElementById('branchFilterSelect').value;
         const roleVal = document.getElementById('roleFilterSelect').value;
+        
+        const matchedRows = [];
         
         document.querySelectorAll('.staff-row').forEach(function(row) {
             const username = row.querySelector('.staff-username').textContent.toLowerCase();
@@ -1188,16 +1241,47 @@
             const matchesRole = (roleVal === 'all') || (row.dataset.role === roleVal);
             
             if (matchesSearch && matchesBranch && matchesRole) {
+                matchedRows.push(row);
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        const totalItems = matchedRows.length;
+        const startIndex = totalItems === 0 ? 0 : (currentStaffPage - 1) * rowsPerPage;
+        const endIndex = Math.min(startIndex + rowsPerPage, totalItems);
+        
+        matchedRows.forEach(function(row, index) {
+            if (index >= startIndex && index < endIndex) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
             }
         });
+        
+        const info = document.getElementById('staff-count-info');
+        if (info) {
+            if (totalItems === 0) {
+                info.textContent = 'Showing 0 to 0 of 0 staff accounts';
+            } else {
+                info.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${totalItems} staff accounts`;
+            }
+        }
+        
+        renderPagination('staff-pagination-nav', totalItems, currentStaffPage, function(newPage) {
+            currentStaffPage = newPage;
+            filterStaff(false);
+        });
     }
 
     // Branch code and name filter on table
-    function filterBranches() {
+    function filterBranches(resetPage = true) {
+        if (resetPage) {
+            currentBranchPage = 1;
+        }
         const searchVal = document.getElementById('branchSearchInput').value.toLowerCase();
+        
+        const matchedRows = [];
         
         document.querySelectorAll('.branch-row').forEach(function(row) {
             const code = row.querySelector('.branch-code').textContent.toLowerCase();
@@ -1206,10 +1290,36 @@
             const matchesSearch = (searchVal === '') || code.includes(searchVal) || name.includes(searchVal);
             
             if (matchesSearch) {
+                matchedRows.push(row);
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        const totalItems = matchedRows.length;
+        const startIndex = totalItems === 0 ? 0 : (currentBranchPage - 1) * rowsPerPage;
+        const endIndex = Math.min(startIndex + rowsPerPage, totalItems);
+        
+        matchedRows.forEach(function(row, index) {
+            if (index >= startIndex && index < endIndex) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
             }
+        });
+        
+        const info = document.getElementById('branch-count-info');
+        if (info) {
+            if (totalItems === 0) {
+                info.textContent = 'Showing 0 to 0 of 0 branches';
+            } else {
+                info.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${totalItems} branches`;
+            }
+        }
+        
+        renderPagination('branch-pagination-nav', totalItems, currentBranchPage, function(newPage) {
+            currentBranchPage = newPage;
+            filterBranches(false);
         });
     }
 

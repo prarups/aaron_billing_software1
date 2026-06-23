@@ -115,28 +115,13 @@ def return_create_view(request):
         except (Bill.DoesNotExist, ValueError):
             pass
 
-    # Fetch all products registered at the bill's branch or the user's active branch
-    all_products = []
-    target_branch = None
-    
-    # Check if bill was successfully loaded
+    target_branch_id = ""
     if bill:
-        target_branch = bill.branch
-        
-    if not target_branch and request.user.is_authenticated and request.user.active_branch:
-        target_branch = request.user.active_branch
-        
-    if target_branch:
-        registrations = ProductRegistry.objects.filter(branch=target_branch).select_related('product')
-        for r in registrations:
-            all_products.append({
-                "id": r.product.id,
-                "name": r.product.name,
-                "barcode": r.product.barcode,
-                "price": int(r.product.price),
-                "stock": r.stock_quantity
-            })
-    all_products_json = json.dumps(all_products)
+        target_branch_id = bill.branch.id
+    elif request.user.is_authenticated and request.user.active_branch:
+        target_branch_id = request.user.active_branch.id
+
+    all_products_json = "[]"
 
     selected_bill_item = form.data.get("bill_item") if form.is_bound else ""
     selected_quantity = form.data.get("quantity") if form.is_bound else 1
@@ -147,6 +132,7 @@ def return_create_view(request):
         "form": form,
         "bill_items_json": bill_items_json,
         "all_products_json": all_products_json,
+        "target_branch_id": target_branch_id,
         "selected_bill_item": selected_bill_item,
         "selected_quantity": selected_quantity,
         "selected_condition": selected_condition,
@@ -226,22 +212,44 @@ def get_bill_items_api(request):
             "combo_eligible_products": combo_eligible_products,
         })
 
-    # Fetch all products registered at the bill's branch
-    registrations = ProductRegistry.objects.filter(branch=bill.branch).select_related('product')
-    products = []
-    for r in registrations:
-        products.append({
-            "id": r.product.id,
-            "name": r.product.name,
-            "barcode": r.product.barcode,
-            "price": int(r.product.price),
-            "stock": r.stock_quantity
-        })
-
     return JsonResponse({
         "items": items,
-        "products": products
+        "products": [],
+        "branch_id": bill.branch.id if bill else ""
     })
+
+
+@login_required
+def get_replacement_product_api(request):
+    """AJAX endpoint: returns product details by barcode and branch ID for exchange replacement lookup."""
+    from core.models import Branch, ProductRegistry
+    barcode = request.GET.get('barcode', '').strip()
+    branch_id = request.GET.get('branch_id', '')
+
+    if not barcode:
+        return JsonResponse({'error': 'No barcode provided'}, status=400)
+    if not branch_id:
+        return JsonResponse({'error': 'No branch ID provided'}, status=400)
+
+    try:
+        from django.shortcuts import get_object_or_404
+        branch = get_object_or_404(Branch, id=branch_id)
+        if branch not in request.user.get_accessible_branches():
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+
+        registry = ProductRegistry.objects.select_related('product').get(
+            product__barcode=barcode,
+            branch=branch
+        )
+        return JsonResponse({
+            'id': registry.product.id,
+            'name': registry.product.name,
+            'barcode': registry.product.barcode,
+            'price': float(registry.product.price),
+            'stock': registry.stock_quantity
+        })
+    except ProductRegistry.DoesNotExist:
+        return JsonResponse({'error': 'Product not found at this branch'}, status=404)
 
 
 def _process_stock(ret, user):
