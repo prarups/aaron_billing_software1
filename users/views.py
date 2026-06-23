@@ -668,7 +668,7 @@ def export_dashboard_sales_csv(request):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     
     writer = csv.writer(response)
-    writer.writerow(['Date', 'Branch Code', 'Branch Name', 'Location', 'Total Sales (INR)'])
+    writer.writerow(['Date', 'Branch Code', 'Branch Name', 'Location', 'Total Sales (INR)', 'Cash Sales (INR)', 'Online Sales (INR)'])
     
     # Query date-wise and branch-wise total sales
     import datetime
@@ -681,7 +681,9 @@ def export_dashboard_sales_csv(request):
     ).values(
         'date', 'branch__id', 'branch__name', 'branch__code', 'branch__location'
     ).annotate(
-        total_sales=Sum('total_amount')
+        total_sales=Sum('total_amount'),
+        cash_sales=Sum('cash_amount'),
+        online_sales=Sum('online_amount')
     ).order_by('date', 'branch__name')
     
     for row in sales_data:
@@ -690,7 +692,9 @@ def export_dashboard_sales_csv(request):
             row['branch__code'] or '',
             row['branch__name'] or '',
             row['branch__location'] or '',
-            int(row['total_sales']) if row['total_sales'] is not None else 0
+            int(row['total_sales']) if row['total_sales'] is not None else 0,
+            int(row['cash_sales']) if row['cash_sales'] is not None else 0,
+            int(row['online_sales']) if row['online_sales'] is not None else 0
         ])
         
     return response
