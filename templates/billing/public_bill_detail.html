@@ -325,10 +325,40 @@
                 <div class="text-center my-2 pb-2 border-bottom text-muted" style="font-size: 0.75rem;" id="receiptFooter">
                     <p class="mb-0 fw-semibold"><i class="bi bi-info-circle me-1"></i>No refund. Exchange should be within 3 days.</p>
                 </div>
+                <!-- Actions (Print) -->
+                <div class="d-grid gap-2 mb-3.5 no-print">
+                    <button onclick="window.print()" class="btn btn-outline-primary rounded-pill py-2.5 fw-semibold shadow-sm">
+                        <i class="bi bi-printer-fill me-1.5"></i>Print Receipt
+                    </button>
+                    <p class="text-center xxs-text text-muted mb-0">
+                        <i class="bi bi-info-circle me-1"></i> Use your browser's "Print to PDF" to save a copy.
+                    </p>
+                </div>
 
-                <!-- Returns section if applicable -->
+                <!-- Social Connect / Lead Generation -->
+                <div class="border-top pt-3 text-center social-section no-print">
+                    <h6 class="fw-bold text-dark mb-1" style="font-size: 0.85rem;">
+                        <i class="bi bi-gift-fill text-warning me-1 animate-bounce"></i>Get Exclusive Offers & Updates!
+                    </h6>
+                    <p class="xxs-text text-muted mb-2.5">Join our community and follow us to stay updated.</p>
+                    
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <a href="https://chat.whatsapp.com/CjsuRAf3g1EHUbzMVU4VpE" target="_blank" class="btn btn-whatsapp rounded-pill py-2 fw-bold text-white d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-decoration-none" style="font-size: 0.76rem;">
+                                <i class="bi bi-whatsapp fs-6"></i> WhatsApp Group
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="https://www.instagram.com/aaron_garments?igsh=YWpkdWE0emkyZjNv" target="_blank" class="btn btn-instagram rounded-pill py-2 fw-bold text-white d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-decoration-none" style="font-size: 0.76rem;">
+                                <i class="bi bi-instagram fs-6"></i> Instagram
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Returns section if applicable (Printed at the end of the bill) -->
                 {% if returns %}
-                <div class="border border-warning border-opacity-50 rounded-3 mb-3 bg-warning bg-opacity-5 p-2.5">
+                <div class="border border-warning border-opacity-50 rounded-3 mb-3 bg-warning bg-opacity-5 p-2.5 mt-3">
                     <h6 class="fw-bold text-warning-emphasis mb-2 d-flex align-items-center gap-1.5" style="font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase;">
                         <i class="bi bi-arrow-left-right"></i> Returns & Exchanges
                     </h6>
@@ -361,37 +391,6 @@
                     {% endfor %}
                 </div>
                 {% endif %}
-
-                <!-- Actions (Print) -->
-                <div class="d-grid gap-2 mb-3.5 no-print">
-                    <button onclick="window.print()" class="btn btn-outline-primary rounded-pill py-2.5 fw-semibold shadow-sm">
-                        <i class="bi bi-printer-fill me-1.5"></i>Print Receipt
-                    </button>
-                    <p class="text-center xxs-text text-muted mb-0">
-                        <i class="bi bi-info-circle me-1"></i> Use your browser's "Print to PDF" to save a copy.
-                    </p>
-                </div>
-
-                <!-- Social Connect / Lead Generation -->
-                <div class="border-top pt-3 text-center social-section no-print">
-                    <h6 class="fw-bold text-dark mb-1" style="font-size: 0.85rem;">
-                        <i class="bi bi-gift-fill text-warning me-1 animate-bounce"></i>Get Exclusive Offers & Updates!
-                    </h6>
-                    <p class="xxs-text text-muted mb-2.5">Join our community and follow us to stay updated.</p>
-                    
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <a href="https://chat.whatsapp.com/CjsuRAf3g1EHUbzMVU4VpE" target="_blank" class="btn btn-whatsapp rounded-pill py-2 fw-bold text-white d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-decoration-none" style="font-size: 0.76rem;">
-                                <i class="bi bi-whatsapp fs-6"></i> WhatsApp Group
-                            </a>
-                        </div>
-                        <div class="col-6">
-                            <a href="https://www.instagram.com/aaron_garments?igsh=YWpkdWE0emkyZjNv" target="_blank" class="btn btn-instagram rounded-pill py-2 fw-bold text-white d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-decoration-none" style="font-size: 0.76rem;">
-                                <i class="bi bi-instagram fs-6"></i> Instagram
-                            </a>
-                        </div>
-                    </div>
-                </div>
 
                 <div class="text-center mt-3 pt-1">
                     <p class="text-muted small mb-0">Thank you for your purchase!</p>
