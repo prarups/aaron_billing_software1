@@ -35,7 +35,7 @@ def pos_index(request):
             is_active=True, branches=request.user.active_branch
         ).prefetch_related('products', 'tiers')
         for grp in active_groups:
-            tiers = [{'quantity': t.quantity, 'price': float(t.price)} for t in grp.tiers.all()]
+            tiers = [{'quantity': t.quantity, 'price': int(t.price)} for t in grp.tiers.all()]
             if not tiers:
                 continue
             combo_groups_data.append({
@@ -71,9 +71,9 @@ def get_product_by_barcode(request):
             'id': product.id,
             'name': product.name,
             'barcode': product.barcode,
-            'price': float(product.price),
+            'price': int(product.price),
             'stock': stock,
-            'combos': [{'quantity': c.quantity, 'price': float(c.price)} for c in combos_qs],
+            'combos': [{'quantity': c.quantity, 'price': int(c.price)} for c in combos_qs],
         })
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'}, status=404)
@@ -90,10 +90,18 @@ def process_bill(request):
             customer_name = data.get('customer_name', '')
             customer_phone = data.get('customer_phone', '')
             payment_method = data.get('payment_method', 'cash')
-            cash_amount = data.get('cash_amount', 0)
-            online_amount = data.get('online_amount', 0)
-
-            retail_price = data.get('retail_price', 0)
+            try:
+                cash_amount = int(round(float(data.get('cash_amount', 0))))
+            except (ValueError, TypeError):
+                cash_amount = 0
+            try:
+                online_amount = int(round(float(data.get('online_amount', 0))))
+            except (ValueError, TypeError):
+                online_amount = 0
+            try:
+                retail_price = max(0, int(round(float(data.get('retail_price', 0)))))
+            except (ValueError, TypeError):
+                retail_price = 0
             
             if not items:
                 return JsonResponse({'error': 'Cart is empty'}, status=400)
@@ -230,7 +238,7 @@ def process_bill(request):
                         sub = allocated_subtotals[idx]
                         qty = r_item['quantity']
                         r_item['subtotal'] = Decimal(str(sub))
-                        r_item['unit_price'] = float(sub / qty) if qty > 0 else 0
+                        r_item['unit_price'] = int(round(float(sub / qty))) if qty > 0 else 0
                         processed_items.add(r_item['product'].id)
                 
                 # Fallback for remaining items
@@ -251,7 +259,7 @@ def process_bill(request):
                     subtotal += qty_remaining * p.price
                     
                     r_item['subtotal'] = subtotal
-                    r_item['unit_price'] = float(subtotal / qty) if qty > 0 else 0
+                    r_item['unit_price'] = int(round(float(subtotal / qty))) if qty > 0 else 0
 
 
                 # Phase 3: Create BillItems, log StockTransactions, and sum subtotals
@@ -281,7 +289,7 @@ def process_bill(request):
                     
                     subtotal_amount += bill_item.subtotal
                 
-                total_amount = float(subtotal_amount) + float(bill.retail_price)
+                total_amount = int(round(float(subtotal_amount) + float(bill.retail_price)))
                 if total_amount < 0:
                     total_amount = 0
                     
@@ -296,10 +304,10 @@ def process_bill(request):
                     bill.cash_amount = 0
                 elif payment_method == 'split':
                     # Validate split amounts sum to total and assign them
-                    if float(cash_amount) + float(online_amount) != float(total_amount):
+                    if cash_amount + online_amount != total_amount:
                         raise ValueError(f"Split amounts (₹{cash_amount} + ₹{online_amount}) do not match total ₹{total_amount}")
-                    bill.cash_amount = float(cash_amount)
-                    bill.online_amount = float(online_amount)
+                    bill.cash_amount = cash_amount
+                    bill.online_amount = online_amount
                 
                 bill.save()
                 
@@ -361,13 +369,13 @@ def edit_bill_back(request, bill_id):
 
         # Fetch combos
         combos_qs = item.product.combos.filter(branch=bill.branch).order_by('-quantity')
-        combos_list = [{'quantity': c.quantity, 'price': float(c.price)} for c in combos_qs]
+        combos_list = [{'quantity': c.quantity, 'price': int(c.price)} for c in combos_qs]
 
         items_data.append({
             'id': str(item.product.id),
             'name': item.product.name,
             'barcode': item.product.barcode,
-            'price': float(item.product.price),
+            'price': int(item.product.price),
             'quantity': item.quantity,
             'stock': current_stock + item.quantity, # virtual stock including this bill's items
             'combos': combos_list,
@@ -381,9 +389,9 @@ def edit_bill_back(request, bill_id):
         'customer_name': bill.customer_name or '',
         'customer_phone': bill.customer_phone or '',
         'payment_method': bill.payment_method,
-        'retail_price': float(bill.retail_price),
-        'cash_amount': float(bill.cash_amount),
-        'online_amount': float(bill.online_amount),
+        'retail_price': int(bill.retail_price),
+        'cash_amount': int(bill.cash_amount),
+        'online_amount': int(bill.online_amount),
     }
     
     return redirect('pos_index')

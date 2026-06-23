@@ -358,7 +358,7 @@
                         <label class="form-label x-small text-muted text-uppercase fw-bold mb-2">Retail Price</label>
                         <div class="input-group input-group-sm">
                             <span class="input-group-text bg-white border-0 small">₹</span>
-                            <input type="number" id="retail-price" class="form-control form-control-sm border-0 px-2" placeholder="0" oninput="renderCart()">
+                            <input type="number" id="retail-price" class="form-control form-control-sm border-0 px-2" placeholder="0" min="0" oninput="if(this.value < 0) this.value = 0; renderCart()">
                         </div>
                     </div>
                     
@@ -586,6 +586,14 @@
             countEl.innerText = "0 Items";
             if (badgeEl) badgeEl.innerText = "0";
             checkoutBtn.disabled = true;
+            
+            // Reset split values and warnings
+            const cashInput = document.getElementById('split-cash');
+            const onlineInput = document.getElementById('split-online');
+            if (cashInput) cashInput.value = '0';
+            if (onlineInput) onlineInput.value = '0';
+            const warning = document.getElementById('split-warning');
+            if (warning) warning.classList.add('d-none');
             return;
         }
 
@@ -619,7 +627,7 @@
         });
 
         const totals = getCartTotals();
-        const retailPrice = parseFloat(document.getElementById('retail-price')?.value) || 0;
+        const retailPrice = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price')?.value)) || 0);
         let total = Math.max(0, totals.discountedSubtotal + retailPrice);
 
         totalEl.innerText = `₹${Math.round(total)}`;
@@ -829,9 +837,9 @@ if (isScannerOpen) {
             const splitInputs = document.getElementById('split-inputs');
             if (e.target.value === 'split') {
                 splitInputs.classList.remove('d-none');
-                const subtotal = getCartSubtotal();
-                const retailPrice = parseFloat(document.getElementById('retail-price').value) || 0;
-                const total = Math.max(0, Math.round(subtotal + retailPrice));
+                const subtotal = Math.round(getCartSubtotal());
+                const retailPrice = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price').value)) || 0);
+                const total = Math.max(0, subtotal + retailPrice);
                 document.getElementById('split-cash').value = total;
                 document.getElementById('split-online').value = 0;
             } else {
@@ -842,22 +850,32 @@ if (isScannerOpen) {
 
     function calculateSplit(source) {
         if (document.getElementById('pay-split') && !document.getElementById('pay-split').checked) return;
-        const subtotal = getCartSubtotal();
-        const retailPrice = parseFloat(document.getElementById('retail-price').value) || 0;
+        const subtotal = Math.round(getCartSubtotal());
+        const retailPrice = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price').value)) || 0);
         // Compute total as integer (rounded)
-        const rawTotal = Math.max(0, subtotal + retailPrice);
-        const total = Math.round(rawTotal);
+        const total = Math.max(0, subtotal + retailPrice);
         const cashInput = document.getElementById('split-cash');
         const onlineInput = document.getElementById('split-online');
         const warning = document.getElementById('split-warning');
 
         if (!source) {
-            cashInput.value = total;
-            onlineInput.value = 0;
+            let currentCash = Math.round(parseFloat(cashInput.value)) || 0;
+            let currentOnline = Math.round(parseFloat(onlineInput.value)) || 0;
+            if (currentCash + currentOnline === total) {
+                // Keep loaded/entered splits intact
+            } else {
+                if (currentCash <= total) {
+                    cashInput.value = currentCash;
+                    onlineInput.value = total - currentCash;
+                } else {
+                    cashInput.value = total;
+                    onlineInput.value = 0;
+                }
+            }
         }
 
-        let cash = parseFloat(cashInput.value) || 0;
-        let online = parseFloat(onlineInput.value) || 0;
+        let cash = Math.round(parseFloat(cashInput.value)) || 0;
+        let online = Math.round(parseFloat(onlineInput.value)) || 0;
 
         if (source === 'cash') {
             online = Math.max(0, total - cash);
@@ -867,8 +885,11 @@ if (isScannerOpen) {
             cashInput.value = cash;
         }
 
-        // Allow small tolerance for rounding errors
-        if (Math.abs(cash + online - total) > 0.01) {
+        // Enforce integer representation in fields
+        cashInput.value = cash;
+        onlineInput.value = online;
+
+        if (cash + online !== total) {
             warning.classList.remove('d-none');
         } else {
             warning.classList.add('d-none');
@@ -887,21 +908,18 @@ if (isScannerOpen) {
         
         let cash_amount = 0;
         let online_amount = 0;
-        const retailPrice = parseFloat(document.getElementById('retail-price').value) || 0;
-        const subtotal = getCartSubtotal();
-        // Use precise total with two decimals
-        const rawTotal = Math.max(0, subtotal + retailPrice);
-        const total = Math.round(rawTotal);
+        const retailPrice = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price').value)) || 0);
+        const subtotal = Math.round(getCartSubtotal());
+        const total = Math.max(0, subtotal + retailPrice);
         
         if (paymentMethod === 'cash') {
             cash_amount = total;
         } else if (paymentMethod === 'online') {
             online_amount = total;
         } else {
-            cash_amount = parseFloat(document.getElementById('split-cash').value) || 0;
-            online_amount = parseFloat(document.getElementById('split-online').value) || 0;
-            // Allow small tolerance for floating point errors
-            if (Math.abs(cash_amount + online_amount - total) > 0.01) {
+            cash_amount = Math.round(parseFloat(document.getElementById('split-cash').value)) || 0;
+            online_amount = Math.round(parseFloat(document.getElementById('split-online').value)) || 0;
+            if (cash_amount + online_amount !== total) {
                 alert("Error: Split amounts must equal the total bill value: " + total);
                 btn.disabled = false;
                 btn.innerHTML = '<i class="bi bi-check-all fs-4 me-2"></i> COMPLETE BILLING';
@@ -959,6 +977,23 @@ if (isScannerOpen) {
             document.getElementById('customer-name').value = '';
             document.getElementById('customer-phone').value = '';
             document.getElementById('retail-price').value = '0';
+            
+            // Reset payment method selection to CASH
+            const payCash = document.getElementById('pay-cash');
+            if (payCash) payCash.checked = true;
+            
+            // Clear and hide split inputs
+            const cashInput = document.getElementById('split-cash');
+            const onlineInput = document.getElementById('split-online');
+            if (cashInput) cashInput.value = '0';
+            if (onlineInput) onlineInput.value = '0';
+            
+            const splitInputs = document.getElementById('split-inputs');
+            if (splitInputs) splitInputs.classList.add('d-none');
+            
+            const warning = document.getElementById('split-warning');
+            if (warning) warning.classList.add('d-none');
+
             renderCart();
             showScanToast('Editing cancelled', 'success');
         }
@@ -1022,8 +1057,8 @@ if (isScannerOpen) {
         const splitInputs = document.getElementById('split-inputs');
         if (editCartData.payment_method === 'split') {
             splitInputs.classList.remove('d-none');
-            document.getElementById('split-cash').value = editCartData.cash_amount;
-            document.getElementById('split-online').value = editCartData.online_amount;
+            document.getElementById('split-cash').value = Math.round(editCartData.cash_amount);
+            document.getElementById('split-online').value = Math.round(editCartData.online_amount);
         } else {
             splitInputs.classList.add('d-none');
         }
