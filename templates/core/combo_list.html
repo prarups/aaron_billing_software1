@@ -121,7 +121,11 @@
                     <td>
                         <div class="d-flex flex-wrap gap-1">
                             {% if combo.branches.count >= total_branches_count %}
-                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-semibold">All Branches</span>
+                                {% if request.user.role == 'sales_staff' %}
+                                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-semibold">{{ request.user.active_branch.name|default:"Active Branch" }}</span>
+                                {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-semibold">All Branches</span>
+                                {% endif %}
                             {% else %}
                             {% for branch in combo.branches.all %}
                             <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-semibold">{{ branch.name }}</span>
@@ -198,7 +202,11 @@
             <div class="mb-3">
                 <div class="text-muted text-xxs mb-1.5"><i class="bi bi-shop me-1"></i>Branches: 
                     {% if combo.branches.count >= total_branches_count %}
-                    <span class="badge bg-secondary-subtle text-secondary rounded-pill text-xxs">All Branches</span>
+                        {% if request.user.role == 'sales_staff' %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill text-xxs">{{ request.user.active_branch.name|default:"Active Branch" }}</span>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill text-xxs">All Branches</span>
+                        {% endif %}
                     {% else %}
                     {% for branch in combo.branches.all %}
                     <span class="badge bg-secondary-subtle text-secondary rounded-pill text-xxs">{{ branch.name }}</span>

@@ -200,6 +200,8 @@ class MultiProductComboTestCase(TestCase):
         bill = Bill.objects.get(id=data['bill_id'])
         self.assertEqual(bill.total_amount, Decimal('500'))
         self.assertEqual(bill.total_savings, Decimal('250'))
+        self.assertEqual(len(list(bill.applied_combos)), 1)
+        self.assertEqual(list(bill.applied_combos)[0].combo_id, self.group.combo_id)
 
     def test_process_bill_with_overlapping_combo_groups_shared_barcode(self):
         from django.urls import reverse

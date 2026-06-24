@@ -48,6 +48,14 @@ class User(AbstractUser):
     has_bill_edit_rights = models.BooleanField(default=False)
     mobile_number = models.CharField(max_length=15, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
+    last_activity = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def is_online(self):
+        if self.last_activity:
+            from django.utils import timezone
+            return (timezone.now() - self.last_activity).total_seconds() < 300
+        return False
 
     def is_owner(self):
         return self.role == 'owner'

@@ -261,6 +261,33 @@
     .hover-actions .btn:hover {
         opacity:1; transform:scale(1.08);
     }
+    
+    /* Premium Button Enhancements */
+    .btn-premium-export {
+        color: #059669 !important;
+        background: rgba(16, 185, 129, 0.06) !important;
+        border: 1px solid rgba(16, 185, 129, 0.25) !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+    .btn-premium-export:hover {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: #ffffff !important;
+        border-color: transparent !important;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25) !important;
+        transform: translateY(-1.5px);
+    }
+    .btn-premium-add {
+        background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2) !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+    .btn-premium-add:hover {
+        background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%) !important;
+        box-shadow: 0 6px 18px rgba(99, 102, 241, 0.3) !important;
+        transform: translateY(-1.5px);
+    }
 </style>
 {% endblock %}
 
@@ -408,9 +435,17 @@
                                     </td>
                                     <td class="text-muted">{{ branch.active_staff_count }} Assigned</td>
                                     <td>
-                                        <div class="progress" style="height: 6px;">
-                                            <div class="progress-bar bg-success" style="width: 25%;"></div>
-                                        </div>
+                                        {% if branch.current_goal > 0 %}
+                                            <div class="d-flex justify-content-between align-items-center mb-1 text-xxs">
+                                                <span class="text-muted">₹{{ branch.current_month_sales|default:"0" }} / ₹{{ branch.current_goal }}</span>
+                                                <span class="fw-bold text-success">{{ branch.current_goal_percent_exact }}%</span>
+                                            </div>
+                                            <div class="progress" style="height: 6px;" title="{{ branch.current_goal_percent_exact }}% achieved">
+                                                <div class="progress-bar {% if branch.current_goal_percent >= 100 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ branch.current_goal_percent }}%;"></div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted text-xxs">Not Set</span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -436,11 +471,17 @@
                             </div>
                             <div class="d-flex justify-content-between align-items-center text-xxs text-muted mt-2 border-top pt-2">
                                 <span><i class="bi bi-people me-1"></i>{{ branch.active_staff_count }} Sales Staff</span>
-                                <span class="text-success fw-bold">Goal: 25%</span>
+                                {% if branch.current_goal > 0 %}
+                                    <span class="text-success fw-bold">Goal: {{ branch.current_goal_percent_exact }}%</span>
+                                {% else %}
+                                    <span class="text-muted">Goal: Not Set</span>
+                                {% endif %}
                             </div>
-                            <div class="progress mt-1.5" style="height: 4px;">
-                                <div class="progress-bar bg-success" style="width: 25%;"></div>
-                            </div>
+                            {% if branch.current_goal > 0 %}
+                                <div class="progress mt-1.5" style="height: 4px;" title="₹{{ branch.current_month_sales }} / ₹{{ branch.current_goal }}">
+                                    <div class="progress-bar {% if branch.current_goal_percent >= 100 %}bg-success{% else %}bg-primary{% endif %}" style="width: {{ branch.current_goal_percent }}%;"></div>
+                                </div>
+                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>
@@ -513,8 +554,9 @@
                             <th>Location</th>
                             <th>Contact</th>
                             <th>Prefix</th>
-                            <th>Sales Staff Count</th>
-                            <th class="text-center" style="width: 100px;">Actions</th>
+                             <th>Sales Staff Count</th>
+                             <th>Monthly Goal</th>
+                             <th class="text-center" style="width: 130px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -525,23 +567,44 @@
                             <td class="text-xs">{{ branch.location }}</td>
                             <td class="text-xs">{{ branch.contact_number|default:"-" }}</td>
                             <td><span class="badge bg-light text-dark border text-xxs">{{ branch.invoice_prefix }}</span></td>
-                            <td><span class="badge bg-primary bg-opacity-10 text-primary text-xxs">{{ branch.active_staff_count }} staff</span></td>
-                            <td class="text-center hover-actions">
-                                <button class="btn btn-outline-primary btn-xs rounded-circle me-1 p-1" 
-                                        onclick="openEditBranchModal('{{ branch.id }}', '{{ branch.name }}', '{{ branch.location }}', '{{ branch.contact_number }}', '{{ branch.invoice_prefix }}')" 
-                                        title="Edit Branch" style="width: 24px; height: 24px; line-height: 1;">
-                                    <i class="bi bi-pencil" style="font-size: 10px; display: block;"></i>
-                                </button>
-                                <button class="btn btn-outline-danger btn-xs rounded-circle p-1" 
-                                        onclick="confirmDelete('{% url 'branch_delete' branch.id %}', 'Branch &quot;{{ branch.name }}&quot;')" 
-                                        title="Delete Branch" style="width: 24px; height: 24px; line-height: 1;">
-                                    <i class="bi bi-trash" style="font-size: 10px; display: block;"></i>
-                                </button>
-                            </td>
+                             <td><span class="badge bg-primary bg-opacity-10 text-primary text-xxs">{{ branch.active_staff_count }} staff</span></td>
+                             <td>
+                                 <div class="d-flex align-items-center gap-1.5">
+                                     <span id="branch-goal-val-{{ branch.id }}" class="fw-semibold text-xs text-dark">
+                                         {% if branch.current_goal > 0 %}
+                                             ₹{{ branch.current_goal }}
+                                         {% else %}
+                                             Not Set
+                                         {% endif %}
+                                     </span>
+                                     <button class="btn btn-link p-0 text-decoration-none text-success" 
+                                             onclick="quickAutoSetGoal('{{ branch.id }}')" 
+                                             title="1-Click Auto Goal (110% of last month)" style="font-size: 14px;">
+                                         <i class="bi bi-lightning-charge-fill"></i>
+                                     </button>
+                                 </div>
+                             </td>
+                             <td class="text-center hover-actions">
+                                 <button class="btn btn-outline-success btn-xs rounded-circle me-1 p-1" 
+                                         onclick="openSetGoalModal('{{ branch.id }}', '{{ branch.name }}', '{{ branch.current_goal }}')" 
+                                         title="Set Monthly Goal" style="width: 24px; height: 24px; line-height: 1;">
+                                     <i class="bi bi-target" style="font-size: 10px; display: block;"></i>
+                                 </button>
+                                 <button class="btn btn-outline-primary btn-xs rounded-circle me-1 p-1" 
+                                         onclick="openEditBranchModal('{{ branch.id }}', '{{ branch.name }}', '{{ branch.location }}', '{{ branch.contact_number }}', '{{ branch.invoice_prefix }}')" 
+                                         title="Edit Branch" style="width: 24px; height: 24px; line-height: 1;">
+                                     <i class="bi bi-pencil" style="font-size: 10px; display: block;"></i>
+                                 </button>
+                                 <button class="btn btn-outline-danger btn-xs rounded-circle p-1" 
+                                         onclick="confirmDelete('{% url 'branch_delete' branch.id %}', 'Branch &quot;{{ branch.name }}&quot;')" 
+                                         title="Delete Branch" style="width: 24px; height: 24px; line-height: 1;">
+                                     <i class="bi bi-trash" style="font-size: 10px; display: block;"></i>
+                                 </button>
+                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="text-center py-4 text-muted">No branches created yet.</td>
+                            <td colspan="8" class="text-center py-4 text-muted">No branches created yet.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -564,6 +627,15 @@
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
                 <div class="d-flex align-items-center flex-wrap gap-2">
                     <h6 class="fw-bold text-primary mb-0 me-2"><i class="bi bi-people-fill me-1.5"></i>Sales Staff accounts</h6>
+                    <div class="d-flex align-items-center gap-1.5 me-2 text-xxs bg-light rounded-pill p-0.5 border" id="staff-online-offline-summary" style="height: 24px; padding: 2px 8px !important;">
+                        <span class="text-success fw-semibold d-flex align-items-center me-1.5">
+                            <i class="bi bi-circle-fill me-1" style="font-size: 5px; vertical-align: middle;"></i>Online: <span id="onlineStaffCount" class="ms-1 fw-bold">0</span>
+                        </span>
+                        <span class="text-muted">|</span>
+                        <span class="text-secondary fw-semibold d-flex align-items-center ms-1.5">
+                            <i class="bi bi-circle-fill me-1" style="font-size: 5px; vertical-align: middle;"></i>Offline: <span id="offlineStaffCount" class="ms-1 fw-bold">0</span>
+                        </span>
+                    </div>
                     <div class="input-group input-group-sm" style="max-width: 170px;">
                         <input type="text" id="staffSearchInput" class="form-control border-0 bg-light rounded-start-pill text-xs py-1" placeholder="Search staff..." oninput="filterStaff()">
                         <script>document.addEventListener('DOMContentLoaded', function() {
@@ -597,11 +669,11 @@
                     </div>
                 </div>
                 <div class="d-flex gap-2 align-self-start align-self-md-auto">
-                    <a href="{% url 'export_staff_csv' %}" class="btn btn-outline-success btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm">
-                        <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i>Export CSV
+                    <a href="{% url 'export_staff_csv' %}" class="btn btn-premium-export btn-sm rounded-pill px-3.5 py-1.5 text-xs fw-bold shadow-sm d-inline-flex align-items-center">
+                        <i class="bi bi-file-earmark-spreadsheet me-1.5"></i>Export CSV
                     </a>
-                    <button class="btn btn-primary btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#addStaffModal">
-                        <i class="bi bi-person-plus me-1"></i>Add Sales Staff
+                    <button class="btn btn-premium-add btn-sm rounded-pill px-3.5 py-1.5 text-xs fw-bold shadow-sm d-inline-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+                        <i class="bi bi-person-plus-fill me-1.5"></i>Add Sales Staff
                     </button>
                 </div>
             </div>
@@ -615,6 +687,7 @@
                             <th>Name</th>
                             <th>Joined</th>
                             <th>Role</th>
+                            <th class="text-center">Activity</th>
                             <th class="text-center">Status</th>
                             <th class="text-center">Products</th>
                             
@@ -624,8 +697,8 @@
                     </thead>
                     <tbody>
                         {% for staff in staff_list %}
-                        <tr id="staff-row-{{ staff.id }}" class="staff-row" data-branches="{% for b in staff.branches.all %}branch-{{ b.id }} {% endfor %}" data-role="{{ staff.role }}">
-                            <td data-label="Emp. ID" class="fw-bold text-muted text-xs">{{ staff.employee_id|default:"-" }}</td>
+                        <tr id="staff-row-{{ staff.id }}" class="staff-row" data-branches="{% for b in staff.branches.all %}branch-{{ b.id }} {% endfor %}" data-role="{{ staff.role }}" data-online="{% if staff.is_online %}true{% else %}false{% endif %}">
+                            <td data-label="Emp. ID" class="fw-bold text-muted text-xs staff-emp-id">{{ staff.employee_id|default:"-" }}</td>
                             <td data-label="Login" class="fw-bold text-primary text-xs staff-username">@{{ staff.username }}</td>
                             <td data-label="Name" class="text-xs staff-name">{{ staff.first_name }} {{ staff.last_name }}</td>
                             <td data-label="Joined" class="text-xs">{{ staff.date_of_joining|default:staff.date_joined|date:"Y-m-d" }}</td>
@@ -638,6 +711,17 @@
                                  <span class="badge badge-role-staff rounded-pill px-2.5 py-0.5 text-uppercase text-xxs">Sales Staff</span>
                                  {% endif %}
                              </td>
+                            <td data-label="Activity" class="text-center">
+                                {% if staff.is_online %}
+                                <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-0.5 text-xxs">
+                                    <i class="bi bi-circle-fill me-1" style="font-size: 6px; vertical-align: middle;"></i>Online
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5 py-0.5 text-xxs">
+                                    <i class="bi bi-circle-fill me-1" style="font-size: 6px; vertical-align: middle;"></i>Offline
+                                </span>
+                                {% endif %}
+                            </td>
                             <td data-label="Status" class="text-center">
                                 <div class="form-check form-switch d-inline-block">
                                     <input class="form-check-input" type="checkbox" id="activeSwitch{{ staff.id }}" {% if staff.is_active %}checked{% endif %} onchange="toggleStaffActive('{{ staff.id }}', this.checked)" {% if staff == request.user %}disabled title="You cannot deactivate your own account"{% endif %} style="transform: scale(0.85);">
@@ -676,7 +760,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center py-4 text-muted">No staff accounts registered yet.</td>
+                            <td colspan="10" class="text-center py-4 text-muted">No staff accounts registered yet.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -696,6 +780,52 @@
 <!-- ============================================== -->
 <!--                  MODALS SECTION                -->
 <!-- ============================================== -->
+
+<!-- Set Goal Modal -->
+<div class="modal fade" id="setBranchGoalModal" tabindex="-1" aria-labelledby="setBranchGoalModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold" id="setBranchGoalModalLabel"><i class="bi bi-target text-success me-2"></i>Set Branch Monthly Goal</h5>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="branchGoalForm" onsubmit="saveBranchGoal(event)">
+                {% csrf_token %}
+                <input type="hidden" name="branch_id" id="goalBranchId">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Branch Name</label>
+                        <input type="text" id="goalBranchName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" disabled>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label x-small text-muted fw-bold text-uppercase">Month</label>
+                            <input type="month" name="month" id="goalMonth" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required onchange="fetchGoalSuggestion()">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label x-small text-muted fw-bold text-uppercase">Target Sales (₹)</label>
+                            <input type="number" name="target_sales" id="goalTargetSales" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
+                        </div>
+                    </div>
+                    <div class="card bg-light border-0 p-3 mt-2">
+                        <div class="d-flex justify-content-between text-xs">
+                            <span class="text-muted">Previous Month Sales:</span>
+                            <span id="goalPrevSales" class="fw-bold">₹0</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-xs mt-1">
+                            <span class="text-muted">Suggested Goal (110%):</span>
+                            <span id="goalSuggestedVal" class="text-success fw-bold" onclick="applyGoalSuggestion()" style="cursor: pointer;" title="Click to use this value">₹0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success rounded-pill px-4">Save Goal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <!-- 1. Add Branch Modal -->
 <div class="modal fade" id="addBranchModal" tabindex="-1" aria-labelledby="addBranchModalLabel" aria-hidden="true">
@@ -1236,7 +1366,8 @@
         document.querySelectorAll('.staff-row').forEach(function(row) {
             const username = row.querySelector('.staff-username').textContent.toLowerCase();
             const name = row.querySelector('.staff-name').textContent.toLowerCase();
-            const matchesSearch = (searchVal === '') || username.includes(searchVal) || name.includes(searchVal);
+            const empId = row.querySelector('.staff-emp-id').textContent.toLowerCase();
+            const matchesSearch = (searchVal === '') || username.includes(searchVal) || name.includes(searchVal) || empId.includes(searchVal);
             const matchesBranch = (branchVal === 'all') || row.dataset.branches.includes(branchVal);
             const matchesRole = (roleVal === 'all') || (row.dataset.role === roleVal);
             
@@ -1246,6 +1377,22 @@
                 row.style.display = 'none';
             }
         });
+
+        // Count online and offline staff from matched rows
+        let onlineCount = 0;
+        let offlineCount = 0;
+        matchedRows.forEach(function(row) {
+            if (row.dataset.online === 'true') {
+                onlineCount++;
+            } else {
+                offlineCount++;
+            }
+        });
+        
+        const onlineEl = document.getElementById('onlineStaffCount');
+        const offlineEl = document.getElementById('offlineStaffCount');
+        if (onlineEl) onlineEl.textContent = onlineCount;
+        if (offlineEl) offlineEl.textContent = offlineCount;
 
         const totalItems = matchedRows.length;
         const startIndex = totalItems === 0 ? 0 : (currentStaffPage - 1) * rowsPerPage;
@@ -1492,6 +1639,134 @@
         enforceSingleBranchForStaff('addStaffModal', 'id_role', 'branchPickerAdd');
         // Apply rules to Edit modal
         enforceSingleBranchForStaff('editStaffModal', 'editStaffRole', 'branchPickerEdit');
+    }
+
+    // Branch Goal helper functions
+    function openSetGoalModal(branchId, branchName, currentGoal) {
+        document.getElementById('goalBranchId').value = branchId;
+        document.getElementById('goalBranchName').value = branchName;
+        
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const currentMonthStr = `${year}-${month}`;
+        document.getElementById('goalMonth').value = currentMonthStr;
+        document.getElementById('goalTargetSales').value = currentGoal > 0 ? currentGoal : '';
+        
+        fetchGoalSuggestion();
+        
+        const modal = new bootstrap.Modal(document.getElementById('setBranchGoalModal'));
+        modal.show();
+    }
+
+    function fetchGoalSuggestion() {
+        const branchId = document.getElementById('goalBranchId').value;
+        const monthStr = document.getElementById('goalMonth').value;
+        if (!branchId || !monthStr) return;
+        
+        document.getElementById('goalSuggestedVal').textContent = 'Loading...';
+        document.getElementById('goalPrevSales').textContent = 'Loading...';
+        
+        fetch("{% url 'get_suggested_goal_ajax' %}?branch_id=" + branchId + "&month=" + monthStr)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('goalSuggestedVal').textContent = data.suggested_sales;
+                    document.getElementById('goalPrevSales').textContent = '₹' + data.previous_sales;
+                    document.getElementById('goalSuggestedVal').dataset.val = data.suggested_sales;
+                } else {
+                    document.getElementById('goalSuggestedVal').textContent = 'Error';
+                    document.getElementById('goalPrevSales').textContent = 'Error';
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching suggestions:', err);
+                document.getElementById('goalSuggestedVal').textContent = 'Error';
+                document.getElementById('goalPrevSales').textContent = 'Error';
+            });
+    }
+
+    function applyGoalSuggestion() {
+        const val = document.getElementById('goalSuggestedVal').dataset.val;
+        if (val) {
+            document.getElementById('goalTargetSales').value = val;
+        }
+    }
+
+    function saveBranchGoal(event) {
+        event.preventDefault();
+        const form = document.getElementById('branchGoalForm');
+        const formData = new FormData(form);
+        
+        fetch("{% url 'set_branch_goal_ajax' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Error saving branch goal: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(err => {
+            console.error('Error saving goal:', err);
+            alert('An unexpected error occurred.');
+        });
+    }
+
+    function quickAutoSetGoal(branchId) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const currentMonthStr = `${year}-${month}`;
+        
+        const btn = event.currentTarget;
+        if (btn) btn.disabled = true;
+        
+        fetch("{% url 'get_suggested_goal_ajax' %}?branch_id=" + branchId + "&month=" + currentMonthStr)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const targetVal = data.suggested_sales;
+                    
+                    const formData = new FormData();
+                    formData.append('branch_id', branchId);
+                    formData.append('month', currentMonthStr);
+                    formData.append('target_sales', targetVal);
+                    
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    formData.append('csrfmiddlewaretoken', csrfToken);
+                    
+                    return fetch("{% url 'set_branch_goal_ajax' %}", {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                } else {
+                    throw new Error(data.error || 'Failed to calculate suggestion.');
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                    if (btn) btn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error('Quick set goal failed:', err);
+                alert('Failed to set goal: ' + err.message);
+                if (btn) btn.disabled = false;
+            });
     }
 
     if (document.readyState === 'loading') {

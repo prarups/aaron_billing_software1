@@ -159,14 +159,15 @@ class StaffForm(forms.ModelForm):
         password = self.cleaned_data.get('password')
         if password:
             user.set_password(password)
-        else:
-            # Generate a temporary random password for the user
+        elif not self.instance.pk:
+            # Generate a temporary random password for the user only on creation
             from django.utils.crypto import get_random_string
             temp_password = get_random_string(12)
             user.set_password(temp_password)
             # Optionally, you could email this password to the user or log it for admin reference
             # Here we simply print it for debugging (remove in production)
             print(f'Generated temporary password for user {user.username}: {temp_password}')
+        
         if user.role == 'owner':
             user.is_superuser = True
             user.is_staff = True

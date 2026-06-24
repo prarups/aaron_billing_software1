@@ -2,42 +2,102 @@
 
 {% block title %}Daily Activity - Aaron Billing{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Premium Compact Typography and Layout */
+    .text-xs {
+        font-size: 0.78rem !important;
+    }
+    .text-xxs {
+        font-size: 0.68rem !important;
+        letter-spacing: 0.05em;
+    }
+    .table-compact th {
+        font-size: 0.72rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        color: #64748b;
+        padding: 8px 12px !important;
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0 !important;
+    }
+    .table-compact td {
+        padding: 8px 12px !important;
+        vertical-align: middle;
+        font-size: 0.8rem !important;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .stats-card-compact {
+        padding: 1.25rem !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03) !important;
+        transition: all 0.2s ease-in-out;
+    }
+    .stats-card-compact:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(99, 102, 241, 0.08) !important;
+    }
+    .icon-box-compact {
+        padding: 10px !important;
+        border-radius: 10px !important;
+        width: 42px;
+        height: 42px;
+    }
+    .icon-box-compact i {
+        font-size: 1.25rem !important;
+    }
+    .stats-title {
+        font-size: 0.72rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+        color: #64748b;
+    }
+    .stats-value {
+        font-size: 1.35rem !important;
+        font-weight: 700;
+        color: #1e293b;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="fw-bold m-0">Daily Sales Activity</h4>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold m-0 text-dark"><i class="bi bi-calendar-event text-primary me-1.5"></i>Daily Sales Activity</h5>
     <form class="d-flex gap-2">
-        <input type="date" name="date" class="form-control rounded-pill border-0 shadow-sm" value="{{ target_date }}">
-        <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm">Filter</button>
+        <input type="date" name="date" class="form-control form-control-sm rounded-pill border-0 shadow-sm px-3" value="{{ target_date }}" style="width: 140px; font-size: 0.8rem;">
+        <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" style="font-size: 0.8rem;">Filter</button>
     </form>
 </div>
 
 <!-- Stats Overview -->
-<div class="row g-4 mb-4">
+<div class="row g-3 mb-3">
     <div class="col-md-6">
-        <div class="card p-4 border-0 shadow-sm bg-white h-100">
-            <h6 class="text-muted small fw-bold mb-3">Today's Performance</h6>
+        <div class="card stats-card-compact border-0 bg-white h-100">
+            <span class="stats-title mb-2">Today's Performance</span>
             <div class="d-flex align-items-center">
-                <div class="bg-primary-subtle p-3 rounded-4 me-3">
-                    <i class="bi bi-cash-stack fs-2 text-primary"></i>
+                <div class="bg-primary-subtle text-primary icon-box-compact me-3 d-flex align-items-center justify-content-center">
+                    <i class="bi bi-cash-stack"></i>
                 </div>
                 <div>
-                    <h2 class="fw-bold mb-0">₹{{ stats.total_sales|default:"0"|floatformat:0 }}</h2>
-                    <p class="text-muted small mb-0">{{ stats.transaction_count }} Transactions</p>
+                    <h4 class="stats-value mb-0">₹{{ stats.total_sales|default:"0"|floatformat:0 }}</h4>
+                    <p class="text-muted text-xs mb-0">{{ stats.transaction_count }} Transactions</p>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-md-6">
-        <div class="card p-4 border-0 shadow-sm bg-white h-100">
-            <h6 class="text-muted small fw-bold mb-3">Items Handled</h6>
-            <div class="row x-small text-muted g-2">
+        <div class="card stats-card-compact border-0 bg-white h-100">
+            <span class="stats-title mb-2">Items Handled</span>
+            <div class="row text-muted g-2">
                 {% for item in items_sold|slice:":4" %}
-                <div class="col-6 d-flex justify-content-between">
-                    <span>{{ item.product__name }}</span>
+                <div class="col-6 d-flex justify-content-between text-xs">
+                    <span class="text-secondary">{{ item.product__name }}</span>
                     <span class="fw-bold text-dark">{{ item.total_qty }}</span>
                 </div>
                 {% empty %}
-                <div class="col-12 text-center py-2">No items sold yet.</div>
+                <div class="col-12 text-center py-1 text-xs">No items sold yet.</div>
                 {% endfor %}
             </div>
         </div>
@@ -45,15 +105,19 @@
 </div>
 
 <!-- Detailed Bills List -->
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white py-3">
-        <h6 class="fw-bold m-0">Recent Bills ({{ target_date }})</h6>
+<div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; overflow: hidden;">
+    <div class="card-header bg-white py-2.5 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+        <h6 class="fw-bold m-0 text-dark" style="font-size: 0.85rem;">Recent Bills ({{ target_date }})</h6>
+        <div class="input-group input-group-sm" style="max-width: 280px;">
+            <span class="input-group-text bg-light border-0 rounded-start-pill text-muted py-1"><i class="bi bi-search" style="font-size: 0.75rem;"></i></span>
+            <input type="text" id="billSearchInput" class="form-control border-0 bg-light rounded-end-pill text-xs py-1" placeholder="Search by customer, phone, or ID..." oninput="filterBills()">
+        </div>
     </div>
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="bg-light">
-                <tr class="x-small text-uppercase fw-bold text-muted">
-                    <th class="ps-4">Bill ID</th>
+        <table class="table table-hover table-compact align-middle mb-0">
+            <thead>
+                <tr class="text-uppercase text-muted">
+                    <th class="ps-3">Bill ID</th>
                     <th>Customer</th>
                     <th>Time</th>
                     <th>Amount</th>
@@ -62,23 +126,23 @@
             </thead>
             <tbody>
                 {% for bill in bills %}
-                <tr>
-                    <td class="ps-4 fw-bold">{{ bill.invoice_number|default:bill.id }}</td>
+                <tr class="bill-row">
+                    <td class="ps-3 fw-bold bill-invoice-number text-dark">{{ bill.invoice_number|default:bill.id }}</td>
                     <td>
-                        <div class="fw-semibold">{{ bill.customer_name|default:"Guest" }}</div>
-                        <div class="x-small text-muted">{{ bill.customer_phone|default:"N/A" }}</div>
+                        <div class="fw-semibold bill-customer-name text-dark">{{ bill.customer_name|default:"Guest" }}</div>
+                        <div class="text-muted bill-customer-phone" style="font-size: 0.7rem;">{{ bill.customer_phone|default:"N/A" }}</div>
                     </td>
-                    <td class="small">{{ bill.created_at|time }}</td>
+                    <td class="text-muted" style="font-size: 0.75rem;">{{ bill.created_at|time }}</td>
                     <td class="fw-bold text-success">₹{{ bill.total_amount|floatformat:0 }}</td>
                     <td class="text-center">
-                        <a href="{% url 'bill_detail' bill.id %}" class="btn btn-light btn-sm rounded-pill">
+                        <a href="{% url 'bill_detail' bill.id %}" class="btn btn-light btn-xs rounded-pill" style="padding: 2px 8px; font-size: 0.75rem;">
                             <i class="bi bi-file-earmark-text"></i>
                         </a>
                     </td>
                 </tr>
                 {% empty %}
-                <tr>
-                    <td colspan="5" class="text-center py-5 text-muted">
+                <tr id="default-empty-message">
+                    <td colspan="5" class="text-center py-4 text-muted text-xs">
                         No transactions found for this date.
                     </td>
                 </tr>
@@ -87,4 +151,58 @@
         </table>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function filterBills() {
+        const query = document.getElementById('billSearchInput').value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.bill-row');
+        let visibleCount = 0;
+        
+        rows.forEach(function(row) {
+            const invoice = row.querySelector('.bill-invoice-number').textContent.toLowerCase();
+            const customer = row.querySelector('.bill-customer-name').textContent.toLowerCase();
+            const phone = row.querySelector('.bill-customer-phone').textContent.toLowerCase();
+            
+            const matches = (query === '') || 
+                            invoice.includes(query) || 
+                            customer.includes(query) || 
+                            phone.includes(query);
+            
+            if (matches) {
+                row.style.setProperty('display', '', 'important');
+                visibleCount++;
+            } else {
+                row.style.setProperty('display', 'none', 'important');
+            }
+        });
+        
+        // Handle empty table placeholder dynamically
+        let noMatchRow = document.getElementById('no-matching-bills');
+        
+        if (visibleCount === 0 && query !== '') {
+            if (!noMatchRow) {
+                const tbody = document.querySelector('table tbody');
+                noMatchRow = document.createElement('tr');
+                noMatchRow.id = 'no-matching-bills';
+                noMatchRow.innerHTML = `
+                    <td colspan="5" class="text-center py-4 text-muted text-xs">
+                        No transactions found matching your search.
+                    </td>
+                `;
+                tbody.appendChild(noMatchRow);
+            }
+            noMatchRow.style.display = '';
+            // Hide the default empty message if it's there
+            const defaultEmpty = document.getElementById('default-empty-message');
+            if (defaultEmpty) defaultEmpty.style.display = 'none';
+        } else {
+            if (noMatchRow) noMatchRow.style.display = 'none';
+            // Show default empty message back if total bills is 0
+            const defaultEmpty = document.getElementById('default-empty-message');
+            if (defaultEmpty && rows.length === 0) defaultEmpty.style.display = '';
+        }
+    }
+</script>
 {% endblock %}

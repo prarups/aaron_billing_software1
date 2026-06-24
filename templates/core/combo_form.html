@@ -142,6 +142,7 @@
             <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-tag-fill me-2"></i>{{ title }}</h5>
             
             <form method="post" id="combo-form">
+                <input type="hidden" name="page" value="{{ request.GET.page|default:'' }}">
                 {% csrf_token %}
                 
                 <!-- Combo Info Section -->

@@ -470,3 +470,97 @@ class StaffFormBranchValidationTestCase(TestCase):
         form = StaffForm(data=data)
         self.assertTrue(form.is_valid())
 
+
+class StaffFormPasswordTestCase(TestCase):
+    def setUp(self):
+        Branch.objects.all().delete()
+        User.objects.all().delete()
+        self.branch = Branch.objects.create(name="Branch One", code=10001, invoice_prefix="AA")
+
+    def test_create_user_with_password(self):
+        from users.forms import StaffForm
+        data = {
+            'username': 'staff1',
+            'role': 'sales_staff',
+            'branches': [self.branch.id],
+            'mobile_number': '1234567890',
+            'password': 'mypassword123'
+        }
+        form = StaffForm(data=data)
+        self.assertTrue(form.is_valid())
+        user = form.save()
+        self.assertTrue(user.check_password('mypassword123'))
+
+    def test_create_user_without_password_generates_temp(self):
+        from users.forms import StaffForm
+        data = {
+            'username': 'staff2',
+            'role': 'sales_staff',
+            'branches': [self.branch.id],
+            'mobile_number': '1234567890',
+            'password': ''
+        }
+        form = StaffForm(data=data)
+        self.assertTrue(form.is_valid())
+        user = form.save()
+        # Since no password was provided, a random password should have been set.
+        # It shouldn't be unusable/empty.
+        self.assertTrue(user.has_usable_password())
+
+    def test_edit_user_leaving_password_blank_preserves_password(self):
+        from users.forms import StaffForm
+        # Create user first
+        user = User.objects.create_user(
+            username='staff3',
+            password='originalpassword123',
+            role='sales_staff',
+            mobile_number='1234567890'
+        )
+        user.branches.add(self.branch)
+        
+        # Form for editing
+        data = {
+            'username': 'staff3_updated',
+            'role': 'sales_staff',
+            'branches': [self.branch.id],
+            'mobile_number': '9999999999',
+            'password': '' # Leaving password blank
+        }
+        form = StaffForm(data=data, instance=user)
+        self.assertTrue(form.is_valid())
+        updated_user = form.save()
+        
+        # Verify other fields updated
+        self.assertEqual(updated_user.username, 'staff3_updated')
+        self.assertEqual(updated_user.mobile_number, '9999999999')
+        # Verify original password is still valid!
+        self.assertTrue(updated_user.check_password('originalpassword123'))
+
+    def test_edit_user_changing_password(self):
+        from users.forms import StaffForm
+        # Create user first
+        user = User.objects.create_user(
+            username='staff4',
+            password='originalpassword123',
+            role='sales_staff',
+            mobile_number='1234567890'
+        )
+        user.branches.add(self.branch)
+        
+        # Form for editing with a new password
+        data = {
+            'username': 'staff4',
+            'role': 'sales_staff',
+            'branches': [self.branch.id],
+            'mobile_number': '1234567890',
+            'password': 'newpassword123'
+        }
+        form = StaffForm(data=data, instance=user)
+        self.assertTrue(form.is_valid())
+        updated_user = form.save()
+        
+        # Verify password changed
+        self.assertTrue(updated_user.check_password('newpassword123'))
+        self.assertFalse(updated_user.check_password('originalpassword123'))
+
+

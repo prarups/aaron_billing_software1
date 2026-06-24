@@ -21,6 +21,8 @@ urlpatterns = [
     path('branch/edit/<int:pk>/', views.branch_edit, name='branch_edit'),
     path('branch/delete/<int:pk>/', views.branch_delete, name='branch_delete'),
     path('branch/export/', views.export_branches_csv, name='export_branches_csv'),
+    path('branch/set-goal/', views.set_branch_goal_ajax, name='set_branch_goal_ajax'),
+    path('branch/suggest-goal/', views.get_suggested_goal_ajax, name='get_suggested_goal_ajax'),
 
     # Staff Management URLs
     path('staff/add/', views.staff_create, name='staff_create'),

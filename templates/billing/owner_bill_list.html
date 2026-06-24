@@ -13,20 +13,20 @@
         letter-spacing: 0.05em;
     }
     .table-compact {
-        font-size: 0.82rem;
+        font-size: 0.76rem;
     }
     .table-compact th {
-        font-size: 0.74rem !important;
+        font-size: 0.70rem !important;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         font-weight: 700;
         color: #475569;
-        padding: 12px 14px !important;
+        padding: 6px 8px !important;
         background-color: #f8fafc;
-        border-bottom: 2px solid #e2e8f0 !important;
+        border-bottom: 1px solid #e2e8f0 !important;
     }
     .table-compact td {
-        padding: 12px 14px !important;
+        padding: 8px 8px !important;
         vertical-align: middle;
         border-bottom: 1px solid #f1f5f9;
     }
@@ -127,15 +127,15 @@
         border: 1px solid rgba(79, 70, 229, 0.2);
         background: rgba(79, 70, 229, 0.04);
         color: #4f46e5;
-        border-radius: 30px;
-        padding: 4px 14px;
-        font-size: 0.72rem;
+        border-radius: 20px;
+        padding: 2px 8px;
+        font-size: 0.68rem;
         font-weight: 600;
         transition: all 0.2s ease-in-out;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 2px;
     }
     .btn-view-action:hover {
         background: #4f46e5;
@@ -302,9 +302,15 @@
                     <td class="ps-4">
                         <a href="{% url 'bill_detail' bill.id %}" class="invoice-badge">#{{ bill.invoice_number|default:bill.id }}</a>
                         {% if bill.total_savings > 0 %}
+                        {% for combo in bill.applied_combos %}
+                        <span class="badge bg-purple text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle" style="background: linear-gradient(135deg, #d946ef, #8b5cf6) !important; font-size: 0.6rem; vertical-align: middle;" title="{{ combo.name }}">
+                            <i class="bi bi-tag-fill me-0.5"></i>{{ combo.combo_id }}
+                        </span>
+                        {% empty %}
                         <span class="badge bg-purple text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle" style="background: linear-gradient(135deg, #d946ef, #8b5cf6) !important; font-size: 0.6rem; vertical-align: middle;">
                             <i class="bi bi-tag-fill me-0.5"></i>Combo
                         </span>
+                        {% endfor %}
                         {% endif %}
                         {% if bill.has_returns %}
                         <button type="button" class="badge bg-success text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle border-0 info-btn-hover" style="background: linear-gradient(135deg, #10b981, #059669) !important; font-size: 0.6rem; vertical-align: middle; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#returns-modal-{{ bill.id }}">
@@ -398,9 +404,15 @@
                 <div>
                     <a href="{% url 'bill_detail' bill.id %}" class="invoice-badge">#{{ bill.invoice_number|default:bill.id }}</a>
                     {% if bill.total_savings > 0 %}
+                    {% for combo in bill.applied_combos %}
+                    <span class="badge bg-purple text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle" style="background: linear-gradient(135deg, #d946ef, #8b5cf6) !important; font-size: 0.6rem; vertical-align: middle;" title="{{ combo.name }}">
+                        <i class="bi bi-tag-fill me-0.5"></i>{{ combo.combo_id }}
+                    </span>
+                    {% empty %}
                     <span class="badge bg-purple text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle" style="background: linear-gradient(135deg, #d946ef, #8b5cf6) !important; font-size: 0.6rem; vertical-align: middle;">
                         <i class="bi bi-tag-fill me-0.5"></i>Combo
                     </span>
+                    {% endfor %}
                     {% endif %}
                     {% if bill.has_returns %}
                     <button type="button" class="badge bg-success text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle border-0 info-btn-hover" style="background: linear-gradient(135deg, #10b981, #059669) !important; font-size: 0.6rem; vertical-align: middle; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#returns-modal-{{ bill.id }}">

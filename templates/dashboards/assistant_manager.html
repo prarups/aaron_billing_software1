@@ -51,6 +51,48 @@
     </div>
 </div>
 
+{% if branch_goal_target > 0 %}
+<div class="row g-4 mb-4 animate-fade-in" style="animation-delay: 0.05s;">
+    <div class="col-12">
+        <div class="glass-card p-4 position-relative overflow-hidden">
+            {% if branch_goal_percent >= 100 %}
+                <div class="position-absolute top-0 end-0 p-3 text-success opacity-10" style="font-size: 5rem; transform: rotate(15deg); line-height: 1;">
+                    <i class="bi bi-trophy-fill"></i>
+                </div>
+            {% endif %}
+            
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h6 class="text-muted small mb-1 text-uppercase fw-bold"><i class="bi bi-target me-1.5 text-primary"></i>Monthly Branch Goal</h6>
+                    <h5 class="fw-bold mb-0 text-dark">
+                        {% if branch_goal_percent >= 100 %}
+                            Goal Achieved! 🎉
+                        {% else %}
+                            Targeting ₹{{ branch_goal_target }}
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="text-end">
+                    <span class="badge {% if branch_goal_percent >= 100 %}bg-success{% else %}bg-primary{% endif %} text-white rounded-pill px-3 py-1.5 fw-bold text-xs">
+                        {{ branch_goal_percent_exact }}% Achieved
+                    </span>
+                </div>
+            </div>
+            
+            <div class="progress mb-2" style="height: 10px; border-radius: 5px; background-color: rgba(0,0,0,0.05);">
+                <div class="progress-bar {% if branch_goal_percent >= 100 %}bg-success progress-bar-striped progress-bar-animated{% else %}bg-vibrant{% endif %}" 
+                     role="progressbar" style="width: {{ branch_goal_percent }}%;" aria-valuenow="{{ branch_goal_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center text-xxs text-muted fw-semibold">
+                <span>Month-to-Date: <strong>₹{{ branch_goal_sales }}</strong></span>
+                <span>Target: <strong>₹{{ branch_goal_target }}</strong></span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="row g-4 animate-fade-in" style="animation-delay: 0.1s;">
     <div class="col-md-6">
         <div class="glass-card p-4">

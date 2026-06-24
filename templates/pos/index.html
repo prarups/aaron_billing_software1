@@ -269,10 +269,16 @@
                     <h5 class="fw-bold m-0 text-primary"><i class="bi bi-bag-check-fill me-2"></i>Checkout</h5>
                     <span class="badge bg-vibrant rounded-pill px-3 py-2" id="cart-count">0 Items</span>
                 </div>
-                <div class="card-body flex-grow-1 overflow-auto px-4 py-0" id="cart-container" style="min-height: 300px; max-height: 60vh;">
-                    <div class="text-center py-5" id="empty-cart-msg">
-                        <i class="bi bi-cart-x fs-1 text-muted opacity-25 d-block mb-3"></i>
-                        <p class="text-muted">No items added to bill.</p>
+                <div class="card-body flex-grow-1 px-4 py-0" style="overflow: visible;">
+                    <!-- Combo Progress Tracker (shown when combo group items are in cart) -->
+                    <div id="combo-tracker" class="d-none mb-2"></div>
+
+                    <!-- Cart items list (compact height and scrollable) -->
+                    <div class="overflow-auto" id="cart-container" style="min-height: 120px; max-height: 240px;">
+                        <div class="text-center py-4" id="empty-cart-msg">
+                            <i class="bi bi-cart-x fs-1 text-muted opacity-25 d-block mb-2"></i>
+                            <p class="text-muted small">No items added to bill.</p>
+                        </div>
                     </div>
                 </div>
                 <div class="card-footer bg-transparent p-4 border-0">
@@ -336,22 +342,25 @@
 
                     <!-- Split Payment Inputs -->
                     <div id="split-inputs" class="glass-card p-3 mb-3 bg-light bg-opacity-50 border-0 d-none animate-fade-in">
-                        <label class="form-label x-small text-muted text-uppercase fw-bold mb-2">Split Amounts</label>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label x-small text-muted text-uppercase fw-bold mb-0">Split Amounts</label>
+                            <span class="badge bg-info-subtle text-info fw-bold text-xxs" id="split-remaining-label">Remaining: ₹0</span>
+                        </div>
                         <div class="row g-2">
                             <div class="col-6">
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text bg-white border-0 small">Cash</span>
-                                    <input type="number" step="1" id="split-cash" class="form-control form-control-sm border-0 px-2" placeholder="0" oninput="calculateSplit('cash')">
+                                    <input type="number" step="1" id="split-cash" class="form-control form-control-sm border-0 px-2" placeholder="0" onfocus="this.select()" oninput="calculateSplit('cash')">
                                 </div>
                             </div>
                             <div class="col-6">
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text bg-white border-0 small">Online</span>
-                                    <input type="number" step="1" id="split-online" class="form-control form-control-sm border-0 px-2" placeholder="0" oninput="calculateSplit('online')">
+                                    <input type="number" step="1" id="split-online" class="form-control form-control-sm border-0 px-2" placeholder="0" onfocus="this.select()" oninput="calculateSplit('online')">
                                 </div>
                             </div>
                         </div>
-                        <div id="split-warning" class="x-small text-danger mt-2 d-none">Sum must match total!</div>
+                        <div id="split-warning" class="x-small text-danger mt-2 d-none fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Sum must match total!</div>
                     </div>
                     
                     <div class="glass-card p-3 mb-3 bg-light bg-opacity-50 border-0 animate-fade-in">
@@ -362,16 +371,7 @@
                         </div>
                     </div>
                     
-                    <!-- Combo Progress Tracker (shown when combo group items are in cart) -->
-                    <div id="combo-tracker" class="d-none mb-3 p-2 px-3 rounded-3 animate-fade-in" style="background:#f0f4ff; border:1px solid #c7d2fe;">
-                        <div class="d-flex align-items-center mb-1">
-                            <i class="bi bi-lightning-charge-fill me-1" style="color:#6366f1; font-size:0.8rem;"></i>
-                            <span class="fw-bold" style="font-size:0.75rem; color:#3730a3;" id="combo-tracker-msg"></span>
-                        </div>
-                        <div style="position:relative; height:5px; background:#e0e7ff; border-radius:3px; margin: 0.4rem 2px 1.2rem;" id="combo-tracker-bar">
-                            <div id="combo-bar-fill" style="height:100%; background:linear-gradient(90deg,#6366f1,#8b5cf6); border-radius:3px; width:0%; transition:width 0.3s ease;"></div>
-                        </div>
-                    </div>
+                    <!-- Combo tracker placeholder moved to top -->
 
                     <div id="savings-row" class="d-none justify-content-between align-items-center mb-1 animate-fade-in">
                         <span class="text-success small fw-bold">YOU SAVE</span>
@@ -668,62 +668,83 @@
 
     function renderComboTracker() {
         const tracker = document.getElementById('combo-tracker');
-        const msg = document.getElementById('combo-tracker-msg');
-        const barFill = document.getElementById('combo-bar-fill');
+        if (!tracker) return;
 
-        // Find the first combo group that has at least one cart item
-        let activeGroup = null;
-        let groupQty = 0;
+        tracker.innerHTML = '';
+        let hasActiveCombos = false;
+
         for (let group of comboGroups) {
-            let items = cart.filter(i => group.product_ids.includes(String(i.id)));
-            if (items.length > 0) {
-                activeGroup = group;
-                groupQty = items.reduce((s, i) => s + i.quantity, 0);
-                break;
+            let groupItems = cart.filter(i => group.product_ids.includes(String(i.id)));
+            if (groupItems.length === 0) continue;
+
+            let groupQty = groupItems.reduce((s, i) => s + i.quantity, 0);
+            if (!group.tiers || group.tiers.length === 0) continue;
+
+            hasActiveCombos = true;
+
+            let sortedTiers = [...group.tiers].sort((a, b) => a.quantity - b.quantity);
+            let maxQty = sortedTiers[sortedTiers.length - 1].quantity;
+            let pct = Math.min(100, (groupQty / maxQty) * 100);
+
+            let currentUnlocked = null, nextLocked = null;
+            sortedTiers.forEach(t => {
+                if (groupQty >= t.quantity) currentUnlocked = t;
+                else if (!nextLocked) nextLocked = t;
+            });
+
+            let msgText = '';
+            if (!currentUnlocked) {
+                let diff = nextLocked.quantity - groupQty;
+                msgText = `Add ${diff} more item${diff>1?'s':''} → unlock ${nextLocked.quantity}-pc combo!`;
+            } else if (nextLocked) {
+                let diff = nextLocked.quantity - groupQty;
+                msgText = `🎉 ${currentUnlocked.quantity}-pc combo! Add ${diff} more → ${nextLocked.quantity}-pc combo!`;
+            } else {
+                msgText = `🔥 Best combo unlocked — ${currentUnlocked.quantity}-pc price applied!`;
+            }
+
+            let cardHtml = `
+                <div class="p-2 px-3 rounded-3 mb-2 animate-fade-in shadow-sm" style="background:#f0f4ff; border:1px solid #c7d2fe;">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-bold text-dark text-truncate me-2" style="font-size: 0.72rem;" title="${group.name}">
+                            <i class="bi bi-tag-fill me-1" style="color:#6366f1;"></i>${group.name}
+                        </span>
+                        <span class="badge text-white px-1.5 py-0.5 text-xxs font-monospace rounded-pill flex-shrink-0" style="background: linear-gradient(135deg, #d946ef, #8b5cf6) !important; font-size: 0.58rem; font-weight: normal;">
+                            ${group.combo_id || 'Combo'}
+                        </span>
+                    </div>
+                    <div class="d-flex align-items-center mb-1.5">
+                        <i class="bi bi-lightning-charge-fill me-1" style="color:#eab308; font-size:0.7rem;"></i>
+                        <span class="fw-semibold text-secondary" style="font-size:0.68rem;">${msgText}</span>
+                    </div>
+                    <div style="position:relative; height:4px; background:#e0e7ff; border-radius:2px; margin: 0.25rem 2px 0.8rem;" id="combo-bar-${group.id}">
+                        <div style="height:100%; background:linear-gradient(90deg,#6366f1,#8b5cf6); border-radius:2px; width:${pct}%; transition:width 0.3s ease;"></div>
+                    </div>
+                </div>
+            `;
+            tracker.insertAdjacentHTML('beforeend', cardHtml);
+
+            // Add dots
+            let bar = document.getElementById(`combo-bar-${group.id}`);
+            if (bar) {
+                sortedTiers.forEach(t => {
+                    let pos = (t.quantity / maxQty) * 100;
+                    let dot = document.createElement('div');
+                    dot.className = 'ct-dot';
+                    dot.style.cssText = `position:absolute;top:50%;left:${pos}%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;border:2px solid #fff;background:${groupQty>=t.quantity?'#6366f1':'#c7d2fe'};`;
+                    let label = document.createElement('div');
+                    label.style.cssText = `position:absolute;top:9px;left:${pos}%;transform:translateX(-50%);font-size:0.58rem;font-weight:700;color:${groupQty>=t.quantity?'#4338ca':'#94a3b8'};white-space:nowrap;`;
+                    label.textContent = t.quantity + '-pc';
+                    bar.appendChild(dot);
+                    bar.appendChild(label);
+                });
             }
         }
 
-        if (!activeGroup || !activeGroup.tiers || activeGroup.tiers.length === 0) {
-            tracker.classList.add('d-none');
-            return;
-        }
-
-        tracker.classList.remove('d-none');
-        let sortedTiers = [...activeGroup.tiers].sort((a, b) => a.quantity - b.quantity);
-        let maxQty = sortedTiers[sortedTiers.length - 1].quantity;
-        let pct = Math.min(100, (groupQty / maxQty) * 100);
-        barFill.style.width = pct + '%';
-
-        let currentUnlocked = null, nextLocked = null;
-        sortedTiers.forEach(t => {
-            if (groupQty >= t.quantity) currentUnlocked = t;
-            else if (!nextLocked) nextLocked = t;
-        });
-
-        // Render milestone dots
-        let bar = document.getElementById('combo-tracker-bar');
-        // Remove old dots
-        bar.querySelectorAll('.ct-dot').forEach(d => d.remove());
-        sortedTiers.forEach(t => {
-            let pos = (t.quantity / maxQty) * 100;
-            let dot = document.createElement('div');
-            dot.className = 'ct-dot';
-            dot.style.cssText = `position:absolute;top:50%;left:${pos}%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;border:2px solid #fff;background:${groupQty>=t.quantity?'#6366f1':'#c7d2fe'};`;
-            let label = document.createElement('div');
-            label.style.cssText = `position:absolute;top:9px;left:${pos}%;transform:translateX(-50%);font-size:0.58rem;font-weight:700;color:${groupQty>=t.quantity?'#4338ca':'#94a3b8'};white-space:nowrap;`;
-            label.textContent = t.quantity + '-pc';
-            bar.appendChild(dot);
-            bar.appendChild(label);
-        });
-
-        if (!currentUnlocked) {
-            let diff = nextLocked.quantity - groupQty;
-            msg.textContent = `Add ${diff} more item${diff>1?'s':''} → unlock ${nextLocked.quantity}-pc combo!`;
-        } else if (nextLocked) {
-            let diff = nextLocked.quantity - groupQty;
-            msg.textContent = `🎉 ${currentUnlocked.quantity}-pc combo! Add ${diff} more → ${nextLocked.quantity}-pc combo!`;
+        if (hasActiveCombos) {
+            tracker.classList.remove('d-none');
         } else {
-            msg.textContent = `🔥 Best combo unlocked — ${currentUnlocked.quantity}-pc price applied!`;
+            tracker.classList.add('d-none');
         }
     }
 
@@ -857,6 +878,7 @@ if (isScannerOpen) {
                 const total = Math.max(0, subtotal + retailPrice);
                 document.getElementById('split-cash').value = total;
                 document.getElementById('split-online').value = 0;
+                calculateSplit(null);
             } else {
                 splitInputs.classList.add('d-none');
             }
@@ -903,6 +925,21 @@ if (isScannerOpen) {
         // Enforce integer representation in fields
         cashInput.value = cash;
         onlineInput.value = online;
+
+        const remaining = total - (cash + online);
+        const remainingLabel = document.getElementById('split-remaining-label');
+        if (remainingLabel) {
+            if (remaining > 0) {
+                remainingLabel.className = "badge bg-warning-subtle text-warning fw-bold text-xxs";
+                remainingLabel.textContent = `Remaining: ₹${remaining}`;
+            } else if (remaining < 0) {
+                remainingLabel.className = "badge bg-danger-subtle text-danger fw-bold text-xxs";
+                remainingLabel.textContent = `Excess: ₹${Math.abs(remaining)}`;
+            } else {
+                remainingLabel.className = "badge bg-success-subtle text-success fw-bold text-xxs";
+                remainingLabel.textContent = `Split Balanced!`;
+            }
+        }
 
         if (cash + online !== total) {
             warning.classList.remove('d-none');
@@ -965,7 +1002,7 @@ if (isScannerOpen) {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                window.location.href = `/billing/bill/${data.bill_id}/?from_pos=true`;
+                window.location.href = `/billing/bill/${data.bill_id}/`;
             } else {
                 alert("Error: " + data.error);
                 btn.disabled = false;

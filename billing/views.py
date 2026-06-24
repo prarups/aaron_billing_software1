@@ -40,6 +40,7 @@ def pos_index(request):
                 continue
             combo_groups_data.append({
                 'id': grp.id,
+                'combo_id': grp.combo_id,
                 'name': grp.name,
                 'tiers': tiers,
                 'product_ids': [str(p.id) for p in grp.products.all()],
@@ -454,6 +455,7 @@ def bill_detail(request, bill_id):
         'wa_link': wa_link,
         'public_url': public_url,
         'allow_edit': allow_edit,
+        'first_time': request.session.get('newly_created_bill_id') == bill.id,
         'returns': returns,
         'from_pos': from_pos,
     })
@@ -554,6 +556,9 @@ def owner_bill_list(request):
     
     # Handle search
     if q:
+        # When a search query is present, ignore any date filters that may be submitted (e.g., default today values)
+        start_date = None
+        end_date = None
         from django.db.models import Q
         bills = bills.filter(
             Q(id__icontains=q) | 
@@ -585,16 +590,29 @@ def owner_bill_list(request):
         bills = bills.filter(branch_id=branch_id)
     import datetime
     from django.utils.dateparse import parse_date
+    # Determine if any other filters are applied (search query, branch, payment method)
+    has_other_filters = bool(q) or bool(branch_id and branch_id != 'None') or bool(payment_method and payment_method != 'None')
+    # Apply default date range (today) only when no other filters are present and dates are not supplied
+    if not has_other_filters and (not start_date or start_date == 'None') and (not end_date or end_date == 'None'):
+        today_iso = timezone.now().date().isoformat()
+        start_date = today_iso
+        end_date = today_iso
+    # Parse start date (if provided)
     if start_date and start_date != 'None':
         parsed_start = parse_date(start_date)
         if parsed_start:
             start_datetime = timezone.make_aware(datetime.datetime.combine(parsed_start, datetime.time.min))
             bills = bills.filter(created_at__gte=start_datetime)
+    # Parse end date (if provided)
     if end_date and end_date != 'None':
         parsed_end = parse_date(end_date)
         if parsed_end:
             end_datetime = timezone.make_aware(datetime.datetime.combine(parsed_end, datetime.time.max))
             bills = bills.filter(created_at__lte=end_datetime)
+    # If default today was applied (no other filters), clear the dates for the form UI
+    if not has_other_filters and start_date == timezone.now().date().isoformat() and end_date == timezone.now().date().isoformat():
+        start_date = ''
+        end_date = ''
     if payment_method and payment_method != 'None':
         bills = bills.filter(payment_method=payment_method)
         

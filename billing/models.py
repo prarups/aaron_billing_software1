@@ -44,6 +44,18 @@ class Bill(models.Model):
     def original_subtotal(self):
         return self.subtotal_amount + self.total_savings
 
+    @property
+    def applied_combos(self):
+        if self.total_savings <= 0:
+            return []
+        from core.models import ComboGroup
+        product_ids = [item.product_id for item in self.items.all()]
+        return ComboGroup.objects.filter(
+            products__id__in=product_ids,
+            branches=self.branch,
+            is_active=True
+        ).distinct()
+
     def save(self, *args, **kwargs):
         if not self.invoice_number:
             max_seq = Bill.objects.filter(branch=self.branch).aggregate(models.Max('sequence_number'))['sequence_number__max'] or 0
@@ -109,3 +121,18 @@ class BillItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} x {self.quantity}"
+
+
+class BranchGoal(models.Model):
+    branch = models.ForeignKey('core.Branch', on_delete=models.CASCADE, related_name='goals')
+    month = models.DateField(help_text="First day of the target month (e.g., 2026-06-01)")
+    target_sales = models.DecimalField(max_digits=12, decimal_places=0, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('branch', 'month')
+
+    def __str__(self):
+        return f"{self.branch.name} Goal - {self.month.strftime('%B %Y')}: ₹{self.target_sales}"
+

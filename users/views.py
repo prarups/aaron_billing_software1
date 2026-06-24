@@ -5,7 +5,7 @@ from django.db import models
 from django.db.models import Sum, Count, F, Q, DecimalField, ExpressionWrapper
 from django.views.generic import TemplateView
 from django.contrib import messages
-from billing.models import Bill
+from billing.models import Bill, BranchGoal
 from core.models import Branch, Product, ProductRegistry
 from .forms import BranchForm, StaffForm
 from .models import User
@@ -13,6 +13,37 @@ from django.http import JsonResponse, HttpResponse
 import json
 import csv
 from django.urls import reverse
+
+
+def add_branch_goal_context(user, context):
+    branch = user.active_branch
+    if branch:
+        today = timezone.now().date()
+        current_month_start = today.replace(day=1)
+        import datetime
+        import calendar
+        current_month_start_dt = timezone.make_aware(datetime.datetime(today.year, today.month, 1, 0, 0, 0))
+        _, last_day = calendar.monthrange(today.year, today.month)
+        current_month_end_dt = timezone.make_aware(datetime.datetime(today.year, today.month, last_day, 23, 59, 59))
+        
+        goal = BranchGoal.objects.filter(branch=branch, month=current_month_start).first()
+        monthly_sales = Bill.objects.filter(branch=branch, created_at__range=(current_month_start_dt, current_month_end_dt)).aggregate(total=Sum('total_amount'))['total'] or 0
+        
+        context['branch_goal_target'] = int(goal.target_sales) if goal else 0
+        context['branch_goal_sales'] = int(monthly_sales)
+        if context['branch_goal_target'] > 0:
+            context['branch_goal_percent'] = min(100, int((context['branch_goal_sales'] * 100) / context['branch_goal_target']))
+            context['branch_goal_percent_exact'] = round((context['branch_goal_sales'] * 100) / context['branch_goal_target'], 1)
+        else:
+            context['branch_goal_percent'] = 0
+            context['branch_goal_percent_exact'] = 0
+    else:
+        context['branch_goal_target'] = 0
+        context['branch_goal_sales'] = 0
+        context['branch_goal_percent'] = 0
+        context['branch_goal_percent_exact'] = 0
+
+
 @login_required
 def dashboard_redirect(request):
     """Redirect user to the appropriate dashboard based on role."""
@@ -172,7 +203,34 @@ class OwnerDashboardView(TemplateView):
                 output_field=models.IntegerField()
             )
         ).order_by('-today_sales', 'name')
-        context['branches'] = branches
+        # Attach current month goal and actual monthly sales
+        today = timezone.now().date()
+        current_month_start = today.replace(day=1)
+        import datetime
+        import calendar
+        current_month_start_dt = timezone.make_aware(datetime.datetime(today.year, today.month, 1, 0, 0, 0))
+        _, last_day = calendar.monthrange(today.year, today.month)
+        current_month_end_dt = timezone.make_aware(datetime.datetime(today.year, today.month, last_day, 23, 59, 59))
+
+        goals_dict = {g.branch_id: g.target_sales for g in BranchGoal.objects.filter(month=current_month_start)}
+        monthly_sales_dict = {
+            row['branch']: row['total']
+            for row in Bill.objects.filter(created_at__range=(current_month_start_dt, current_month_end_dt))
+            .values('branch')
+            .annotate(total=Sum('total_amount'))
+        }
+
+        branches_list = list(branches)
+        for b in branches_list:
+            b.current_goal = int(goals_dict.get(b.id, 0))
+            b.current_month_sales = int(monthly_sales_dict.get(b.id, 0))
+            if b.current_goal > 0:
+                b.current_goal_percent = min(100, int((b.current_month_sales * 100) / b.current_goal))
+                b.current_goal_percent_exact = round((b.current_month_sales * 100) / b.current_goal, 1)
+            else:
+                b.current_goal_percent = 0
+                b.current_goal_percent_exact = 0
+        context['branches'] = branches_list
         
         # Paginate branches_by_code (10 per page)
         from django.core.paginator import Paginator
@@ -194,7 +252,17 @@ class OwnerDashboardView(TemplateView):
             except ValueError:
                 pass
                 
-        context['branches_by_code'] = branches_by_code_qs
+        branches_by_code_list = list(branches_by_code_qs)
+        for b in branches_by_code_list:
+            b.current_goal = int(goals_dict.get(b.id, 0))
+            b.current_month_sales = int(monthly_sales_dict.get(b.id, 0))
+            if b.current_goal > 0:
+                b.current_goal_percent = min(100, int((b.current_month_sales * 100) / b.current_goal))
+                b.current_goal_percent_exact = round((b.current_month_sales * 100) / b.current_goal, 1)
+            else:
+                b.current_goal_percent = 0
+                b.current_goal_percent_exact = 0
+        context['branches_by_code'] = branches_by_code_list
         context['branch_search'] = branch_search
         
         context['recent_bills'] = Bill.objects.order_by('-created_at')[:5]
@@ -257,6 +325,7 @@ class AssistantManagerDashboardView(TemplateView):
             context['product_count'] = Product.objects.count()
             context['staff_count'] = branch.assigned_users.filter(role__in=['sales_staff', 'assistant_manager']).exclude(id=user.id).count()
             context['recent_branch_bills'] = Bill.objects.filter(branch=branch).order_by('-created_at')[:5]
+        add_branch_goal_context(user, context)
         return context
 class ManagerDashboardView(TemplateView):
     template_name = 'dashboards/manager.html'
@@ -285,6 +354,7 @@ class ManagerDashboardView(TemplateView):
             context['product_count'] = Product.objects.count()
             context['staff_count'] = branch.assigned_users.filter(role__in=['sales_staff', 'assistant_manager']).exclude(id=user.id).count()
             context['recent_branch_bills'] = Bill.objects.filter(branch=branch).order_by('-created_at')[:5]
+        add_branch_goal_context(user, context)
         # Staff performance for manager/assistant manager
         if user.role in ['manager', 'assistant_manager']:
             staff_qs = User.objects.filter(role__in=['sales_staff', 'assistant_manager'], branches__in=user.branches.all()).exclude(id=user.id).distinct()
@@ -456,6 +526,7 @@ class StaffDashboardView(TemplateView):
         context['my_bill_count'] = staff_bills.count()
         context['recent_my_bills'] = staff_bills.order_by('-created_at')[:5]
         context['today_date'] = today.isoformat()
+        add_branch_goal_context(self.request.user, context)
         return context
 
 
@@ -510,6 +581,92 @@ def branch_delete(request, pk):
         branch.delete()
         messages.success(request, f"Branch '{name}' deleted successfully.")
     return redirect(reverse('owner_dashboard') + '#branches')
+
+
+@login_required
+def set_branch_goal_ajax(request):
+    if not request.user.is_owner():
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+    if request.method == 'POST':
+        branch_id = request.POST.get('branch_id')
+        month_str = request.POST.get('month') # expected "YYYY-MM"
+        target_sales = request.POST.get('target_sales')
+        
+        if not branch_id or not month_str or not target_sales:
+            return JsonResponse({'success': False, 'error': 'Missing required fields.'}, status=400)
+            
+        try:
+            branch = get_object_or_404(Branch, pk=branch_id)
+            # Parse YYYY-MM
+            month_date = timezone.datetime.strptime(month_str, '%Y-%m').date()
+            # Normalize to first day of the month
+            month_date = month_date.replace(day=1)
+            target_sales_val = int(float(target_sales))
+            
+            goal, created = BranchGoal.objects.update_or_create(
+                branch=branch,
+                month=month_date,
+                defaults={'target_sales': target_sales_val}
+            )
+            return JsonResponse({
+                'success': True,
+                'branch_id': branch.id,
+                'month': month_str,
+                'target_sales': int(goal.target_sales)
+            })
+        except ValueError:
+            return JsonResponse({'success': False, 'error': 'Invalid format or values.'}, status=400)
+            
+    return JsonResponse({'success': False, 'error': 'POST method required.'}, status=405)
+
+
+@login_required
+def get_suggested_goal_ajax(request):
+    if not request.user.is_owner():
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+        
+    branch_id = request.GET.get('branch_id')
+    month_str = request.GET.get('month') # expected "YYYY-MM"
+    
+    if not branch_id or not month_str:
+        return JsonResponse({'success': False, 'error': 'Missing required parameters.'}, status=400)
+        
+    try:
+        branch = get_object_or_404(Branch, pk=branch_id)
+        month_date = timezone.datetime.strptime(month_str, '%Y-%m').date()
+        month_date = month_date.replace(day=1)
+        
+        # Calculate previous month
+        if month_date.month == 1:
+            prev_year = month_date.year - 1
+            prev_month = 12
+        else:
+            prev_year = month_date.year
+            prev_month = month_date.month - 1
+            
+        import datetime
+        import calendar
+        import math
+        
+        prev_start = timezone.make_aware(datetime.datetime(prev_year, prev_month, 1, 0, 0, 0))
+        _, last_day = calendar.monthrange(prev_year, prev_month)
+        prev_end = timezone.make_aware(datetime.datetime(prev_year, prev_month, last_day, 23, 59, 59))
+        
+        previous_sales = Bill.objects.filter(branch=branch, created_at__range=(prev_start, prev_end)).aggregate(total=Sum('total_amount'))['total'] or 0
+        
+        suggested = int(math.ceil((float(previous_sales) * 1.10) / 1000.0) * 1000)
+        if suggested < 10000:
+            suggested = 10000
+            
+        return JsonResponse({
+            'success': True,
+            'branch_id': branch.id,
+            'month': month_str,
+            'previous_sales': int(previous_sales),
+            'suggested_sales': suggested
+        })
+    except ValueError:
+        return JsonResponse({'success': False, 'error': 'Invalid format.'}, status=400)
 
 
 # --- STAFF CRUD VIEWS ---

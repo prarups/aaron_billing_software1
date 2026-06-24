@@ -141,7 +141,7 @@
     <div class="totals">
         {% if bill.total_savings > 0 %}
         <p>Subtotal (Original): &#8377;{{ bill.original_subtotal|floatformat:0 }}</p>
-        <p style="color: #28a745;">Total Savings: - &#8377;{{ bill.total_savings|floatformat:0 }}</p>
+        <p style="color: #28a745;">Combo Discount ({% for combo in bill.applied_combos %}{{ combo.combo_id }}{% if not forloop.last %}, {% endif %}{% empty %}Combo{% endfor %}): - &#8377;{{ bill.total_savings|floatformat:0 }}</p>
         {% endif %}
         {% if bill.retail_price > 0 %}
         <p>Retail Price: + &#8377;{{ bill.retail_price|floatformat:0 }}</p>

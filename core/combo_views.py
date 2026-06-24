@@ -251,6 +251,11 @@ def combo_edit(request, pk):
                         pass
                         
             messages.success(request, f"Combo '{combo.name}' updated successfully.")
+            # Preserve pagination page after edit
+            from urllib.parse import urlencode
+            page = request.POST.get('page') or request.GET.get('page')
+            if page:
+                return redirect(f"{reverse('combo_list')}?{urlencode({'page': page})}")
             return redirect('combo_list')
             
     return render(request, 'core/combo_form.html', {
