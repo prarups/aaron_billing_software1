@@ -46,23 +46,26 @@ class Bill(models.Model):
 
     @property
     def applied_combos(self):
-        if self.total_savings <= 0:
-            return []
         from core.models import ComboGroup
+        from django.db.models import Sum, Min
         product_ids = [item.product_id for item in self.items.all()]
-        return ComboGroup.objects.filter(
+        potential_combos = ComboGroup.objects.filter(
             products__id__in=product_ids,
             branches=self.branch,
             is_active=True
         ).distinct()
+        valid_combos = []
+        for combo in potential_combos:
+            # Minimum quantity required for this combo (fallback to 1 if not set)
+            min_qty = combo.tiers.aggregate(min_qty=Min('quantity'))['min_qty'] or 1
+            # Total quantity of items in this bill belonging to this combo group
+            total_qty = self.items.filter(product__in=combo.products.all()).aggregate(total_qty=Sum('quantity'))['total_qty'] or 0
+            if total_qty >= min_qty:
+                valid_combos.append(combo.id)
+        return ComboGroup.objects.filter(id__in=valid_combos)
 
-    def save(self, *args, **kwargs):
-        if not self.invoice_number:
-            max_seq = Bill.objects.filter(branch=self.branch).aggregate(models.Max('sequence_number'))['sequence_number__max'] or 0
-            self.sequence_number = max_seq + 1
-            prefix = self.branch.invoice_prefix or 'AG'
-            self.invoice_number = f"{prefix}-{self.sequence_number:04d}"
-        super().save(*args, **kwargs)
+    # Validation for combo pricing removed as per request
+
 
     def __str__(self):
         bill_num = self.invoice_number or f"#{self.id}"
@@ -93,7 +96,7 @@ class BillItem(models.Model):
     def is_combo_purchase(self):
         from core.models import ComboGroup
         from django.db.models import Sum, Min
-        
+
         combo_group = ComboGroup.objects.filter(
             products=self.product,
             branches=self.bill.branch,
@@ -101,17 +104,17 @@ class BillItem(models.Model):
         ).first()
         if not combo_group:
             return False
-            
+
         # Get minimum quantity required for the combo
         min_combo_qty = combo_group.tiers.aggregate(min_qty=Min('quantity'))['min_qty']
         if not min_combo_qty:
-            min_combo_qty = 1
-            
+            return False
+
         # Calculate total quantity of items in this bill belonging to this combo group
         total_group_qty = self.bill.items.filter(
             product__in=combo_group.products.all()
         ).aggregate(total_qty=Sum('quantity'))['total_qty'] or 0
-        
+
         return total_group_qty >= min_combo_qty
 
     def save(self, *args, **kwargs):

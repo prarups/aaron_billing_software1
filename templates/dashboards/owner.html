@@ -322,7 +322,7 @@
         <div class="glass-card p-3 mb-3 border-0 bg-opacity-75 shadow-sm">
             <form method="GET" class="row g-3 align-items-center">
                 <div class="col-12 col-lg-4">
-                    <span class="text-primary fw-bold text-xs"><i class="bi bi-calendar-range-fill me-1.5"></i>Performance & Sales Date Range</span>
+                    <span class="text-primary fw-bold text-xs"><i class="bi bi-calendar-range-fill me-1.5"></i>Performance &amp; Sales Date Range</span>
                 </div>
                 <div class="col-6 col-lg-3">
                     <div class="input-group input-group-sm">
@@ -336,17 +336,15 @@
                         <input type="date" name="to_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ end_date }}">
                     </div>
                 </div>
-                <div class="col-12 col-lg-2 d-flex gap-2 justify-content-lg-end">
-                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 py-1.5 text-xs fw-semibold flex-grow-1 flex-lg-grow-0">
-                        Apply
-                    </button>
+                <div class="col-12 col-lg-2 d-flex justify-content-lg-end gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 py-1.5 text-xs fw-semibold flex-grow-1 flex-lg-grow-0">Apply</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-2 py-1 text-xs fw-semibold" onclick="location.reload();">Refresh</button>
                     {% if is_filtered %}
-                    <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5 py-1.5 text-xs" title="Clear Filters">
-                        <i class="bi bi-x"></i>
-                    </a>
+                    <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5 py-1.5 text-xs" title="Clear Filters"><i class="bi bi-x"></i></a>
                     {% endif %}
                 </div>
             </form>
+
         </div>
 
         <div class="row g-2 mb-3">

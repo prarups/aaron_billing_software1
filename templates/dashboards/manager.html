@@ -4,7 +4,8 @@
 
 {% block content %}
 <div class="mb-4 animate-fade-in">
-    <h4 class="fw-bold">Manager Dashboard: <span class="bg-vibrant px-3 py-1 rounded-pill-sm small">{{ user.active_branch.name|default:"Unassigned" }}{% if user.active_branch %} ({{ user.active_branch.code }}){% endif %}</span></h4>
+<h4 class="fw-bold">Manager Dashboard: <span class="bg-vibrant px-3 py-1 rounded-pill-sm small">{{ user.active_branch.name|default:"Unassigned" }}{% if user.active_branch %} ({{ user.active_branch.code }}){% endif %}</span> <button class="btn btn-primary btn-sm rounded-pill ms-2" onclick="location.reload();"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button></h4>
+
 </div>
 <!-- Stats cards -->
 <div class="row g-4 mb-4 animate-fade-in">

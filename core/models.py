@@ -42,6 +42,18 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.barcode}"
+
+    def active_combo_ids(self, branch):
+        """Return a list of combo_id strings for active combos that include
+        this product and are available at the given branch."""
+        from core.models import ComboGroup
+        combo_qs = ComboGroup.objects.filter(
+            products=self,
+            branches=branch,
+            is_active=True
+        ).values_list('combo_id', flat=True)
+        return [cid for cid in combo_qs if cid]
+
 class ComboPrice(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='combos')
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='combos', null=True, blank=True)

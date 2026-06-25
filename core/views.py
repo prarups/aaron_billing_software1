@@ -264,16 +264,10 @@ def product_update(request, pk):
                     combo.save()
                 for obj in combo_formset.deleted_objects:
                     obj.delete()
-        elif not is_admin:
-            return render(request, 'core/product_form.html', {
-                'form': form,
-                'combo_formset': combo_formset,
-                'action': 'Edit',
-                'registration': registration,
-                'current_damaged_qty': current_damaged_qty,
-                'is_admin': is_admin,
-                'next_url': next_url
-            })
+        # For non-admin users, we still want to process stock updates (e.g., damage),
+        # so we no longer return early here. The form validation errors (if any) will be
+        # displayed after the stock processing block.
+
         
         # If we are editing stock for a specific registration
         if registration:
@@ -312,6 +306,9 @@ def product_update(request, pk):
                 if update_type == 'add':
                     if update_qty > 0:
                         new_stock = old_stock + update_qty
+                        # Update damaged quantity in registry
+                        registration.stock_quantity = new_stock
+                        registration.save()
                         StockTransaction.objects.create(
                             product=product,
                             branch=registration.branch,
@@ -328,6 +325,10 @@ def product_update(request, pk):
                             messages.error(request, f"Cannot log {update_qty} damaged items. Current stock is only {old_stock}.")
                             has_error = True
                         else:
+                            # Update registry quantities
+                            registration.stock_quantity = new_stock
+                            registration.damaged_qty = (registration.damaged_qty or 0) + update_qty
+                            registration.save()
                             StockTransaction.objects.create(
                                 product=product,
                                 branch=registration.branch,

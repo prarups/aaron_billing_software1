@@ -132,6 +132,7 @@
                         <div class="col-6">
                             <label class="form-label x-small fw-bold text-muted" id="stock_qty_label">Quantity</label>
                             <input type="number" name="stock_update_qty" id="stock_update_qty" class="form-control rounded-pill text-xs{% if stock_update_error %} is-invalid{% endif %}" placeholder="Enter amount..." min="0" value="{{ request.POST.stock_update_qty }}" {% if not request.POST.stock_update_type or request.POST.stock_update_type == 'none' %}disabled{% endif %}>
+                            <div class="form-text text-muted">This will log new damaged items, reducing sellable stock.</div>
                             <div id="stock_update_help" class="form-text x-small text-muted mt-1"></div>
                             {% if stock_update_error %}
                             <div class="text-danger x-small mt-1 error-message fw-bold">{{ stock_update_error }}</div>

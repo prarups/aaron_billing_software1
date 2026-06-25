@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+  <h2 class="fw-bold text-primary mb-4">Sales Dashboard</h2>
+  <p class="text-muted">This is a placeholder sales dashboard. It currently mirrors the Owner dashboard stats.</p>
+  <!-- Reuse owner dashboard components for now -->
+  {% include 'dashboards/owner.html' %}
+</div>
+{% endblock %}

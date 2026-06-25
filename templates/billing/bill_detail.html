@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 
+{# product_extras tag removed #}
+
 {% block title %}Bill {{ bill.invoice_number|default:bill.id }} - Aaron Billing{% endblock %}
 
 {% block content %}
@@ -73,11 +75,11 @@
                         <tr>
                             <td class="small">{{ forloop.counter }}</td>
                             <td class="fw-semibold">
-                                <div>{{ item.product.name }}</div>
-                                {% if item.product.barcode %}
-                                <div class="text-muted font-monospace" style="font-size: 0.72rem; font-weight: normal;">{{ item.product.barcode }}</div>
-                                {% endif %}
-                            </td>
+                            <div>{{ item.product.name }}</div>
+                            {% if item.product.barcode %}
+                            <div class="text-muted font-monospace" style="font-size: 0.72rem; font-weight: normal;">{{ item.product.barcode }}</div>
+                            {% endif %}
+                        </td>
                             <td class="text-center">{{ item.quantity }}</td>
                             <td class="text-end small">₹{{ item.product.price|floatformat:0 }}</td>
                             <td class="text-end fw-bold">₹{{ item.regular_total|floatformat:0 }}</td>
