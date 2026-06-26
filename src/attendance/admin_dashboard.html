@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Attendance Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../shared/theme.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body class="dark-theme">
+  <header class="admin-header glass">
+    <h1 class="logo">Attendance Admin</h1>
+    <nav class="admin-nav">
+      <a href="admin_dashboard.html" class="active">Dashboard</a>
+      <a href="attendance.html">Attendance</a>
+      <a href="leaves.html">Leaves</a>
+      <a href="payroll.html">Payroll</a>
+      <button id="logoutBtn" class="logout-btn">Logout</button>
+    </nav>
+  </header>
+
+  <main class="admin-main">
+    <!-- Overview Cards -->
+    <section class="overview-cards">
+      <div class="card glass">
+        <h3>Total Employees</h3>
+        <p id="totalEmployees">--</p>
+      </div>
+      <div class="card glass">
+        <h3>Today Punch‑Ins</h3>
+        <p id="todayPunchIns">--</p>
+      </div>
+      <div class="card glass">
+        <h3>Pending Leaves</h3>
+        <p id="pendingLeaves">--</p>
+      </div>
+    </section>
+
+    <!-- Admin Tables -->
+    <section class="admin-tables">
+      <div class="table-card glass" id="attendanceTableCard">
+        <h2>Attendance Records</h2>
+        <button class="add-btn" onclick="openModal('attendance')">Add New</button>
+        <table class="admin-table" id="attendanceTable">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Date</th>
+              <th>In</th>
+              <th>Out</th>
+              <th>Location</th>
+              <th>Photo</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody><!-- rows injected by admin.js --></tbody>
+        </table>
+      </div>
+
+      <div class="table-card glass" id="leavesTableCard">
+        <h2>Leave Requests</h2>
+        <button class="add-btn" onclick="openModal('leaves')">Add New</button>
+        <table class="admin-table" id="leavesTable">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Type</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody><!-- rows injected by admin.js --></tbody>
+        </table>
+      </div>
+
+      <div class="table-card glass" id="payrollTableCard">
+        <h2>Payroll Summary</h2>
+        <button class="add-btn" onclick="openModal('payroll')">Add New</button>
+        <table class="admin-table" id="payrollTable">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Base</th>
+              <th>Bonus</th>
+              <th>Deductions</th>
+              <th>Net Pay</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody><!-- rows injected by admin.js --></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Generic Modal for Add/Edit -->
+  <div id="modal" class="modal glass" style="display:none;">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h3 id="modalTitle">Edit</h3>
+      <form id="modalForm" onsubmit="handleSubmit(event)">
+        <!-- Dynamic fields injected by admin.js based on entity type -->
+      </form>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

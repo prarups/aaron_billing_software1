@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Max
 from django.conf import settings
 import uuid
 # Import additional models defined in separate file
@@ -70,6 +71,16 @@ class Bill(models.Model):
     def __str__(self):
         bill_num = self.invoice_number or f"#{self.id}"
         return f"Bill {bill_num} - {self.branch.name} - {self.total_amount}"
+
+    def save(self, *args, **kwargs):
+        from django.db.models import Max
+        if not self.sequence_number:
+            max_seq = Bill.objects.filter(branch=self.branch).aggregate(max_seq=Max('sequence_number'))['max_seq'] or 0
+            self.sequence_number = max_seq + 1
+        if not self.invoice_number:
+            prefix = getattr(self.branch, 'invoice_prefix', None) or 'AG'
+            self.invoice_number = f"{prefix}-{self.sequence_number:04d}"
+        super().save(*args, **kwargs)
 
 class BillItem(models.Model):
     bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='items')

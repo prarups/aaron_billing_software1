@@ -1,0 +1,74 @@
+/* login.css – premium dark glass‑morphism login page */
+
+body.login-bg {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 2rem;
+  width: 320px;
+  text-align: center;
+  color: #e2e8f0;
+}
+
+.logo {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  color: #38bdf8; /* teal accent */
+}
+
+form label {
+  display: block;
+  text-align: left;
+  margin-top: 0.8rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+form input {
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.3rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.04);
+  color: #e2e8f0;
+}
+
+.login-btn {
+  margin-top: 1.5rem;
+  width: 100%;
+  padding: 0.6rem;
+  background: #38bdf8;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background .2s;
+}
+
+.login-btn:hover {
+  background: #0ea5e9;
+}
+
+.error-msg {
+  margin-top: 1rem;
+  color: #ef4444;
+  font-weight: 500;
+}
+
+@media (max-width: 480px) {
+  .glass { width: 90%; }
+}
