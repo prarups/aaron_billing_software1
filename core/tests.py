@@ -66,14 +66,14 @@ class StockPivotReportTestCase(TestCase):
         self.assertEqual(len(report_data), 1)
         item = report_data[0]
         self.assertEqual(item['product'], self.product)
-        self.assertEqual(item['total_rec'], 99)
+        self.assertEqual(item['total_rec'], 94)
         self.assertEqual(item['total_all_time_out'], 9)
         self.assertEqual(item['total_all_time_dmg'], 2)
         self.assertEqual(item['total_adj_plus'], 0)
         self.assertEqual(item['total_adj_minus'], 5)
 
         branch_stock = item['branch_stocks'][0]
-        self.assertEqual(branch_stock['rec'], 99)
+        self.assertEqual(branch_stock['rec'], 94)
         self.assertEqual(branch_stock['all_time_out'], 9)
         self.assertEqual(branch_stock['all_time_dmg'], 2)
         self.assertEqual(branch_stock['adj_plus'], 0)

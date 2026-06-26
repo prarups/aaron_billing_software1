@@ -386,6 +386,7 @@ class ExchangePolicyTests(TestCase):
         self.combo_group = ComboGroup.objects.create(name="Summer Mix", is_active=True)
         self.combo_group.branches.add(self.branch)
         self.combo_group.products.add(self.product_combo1, self.product_combo2)
+        ComboTier.objects.create(combo_group=self.combo_group, quantity=1, price=900)
 
         # Create a Bill
         self.bill = Bill.objects.create(

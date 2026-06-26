@@ -18,15 +18,18 @@ def return_create_view(request):
     bill = None
 
     # ---------- POST handling ----------
+    return_confirmed = False
+    redirect_url = ""
+    success_message = ""
     if request.method == "POST":
         form = ReturnCreateForm(request.POST)
         if form.is_valid():
             returns = form.save(request.user)
-            messages.success(request, f"Processed {len(returns)} returned item(s).")
-            if request.user.role == 'sales_staff':
-                return redirect("staff_activity")
-            else:
-                return redirect("owner_bill_list")
+            return_confirmed = True
+            success_message = f"Processed {len(returns)} returned item(s) successfully."
+            redirect_url_name = "staff_activity" if request.user.role == 'sales_staff' else "owner_bill_list"
+            from django.urls import reverse
+            redirect_url = reverse(redirect_url_name)
         else:
             print(f"DEBUG return_create_view form errors: {form.errors.as_data()}")
             messages.error(request, "Please correct the errors below.")
@@ -137,6 +140,9 @@ def return_create_view(request):
         "selected_quantity": selected_quantity,
         "selected_condition": selected_condition,
         "selected_action_type": selected_action_type,
+        "return_confirmed": return_confirmed,
+        "redirect_url": redirect_url,
+        "success_message": success_message,
     })
 
 

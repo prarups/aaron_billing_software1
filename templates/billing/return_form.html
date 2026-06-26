@@ -2,6 +2,8 @@
 
 {% block title %}Process Return & Exchange – Aaron Billing{% endblock %}
 
+{% block messages %}{% endblock %}
+
 {% block content %}
 <div class="container py-4" style="max-width: 720px;">
 
@@ -24,7 +26,10 @@
     {% endif %}
 
     {% for msg in messages %}
-    <div class="alert alert-{{ msg.tags }} border-0 rounded-4 shadow-sm">{{ msg }}</div>
+    <div class="alert {% if msg.tags == 'error' %}alert-danger{% else %}alert-{{ msg.tags }}{% endif %} border-0 rounded-4 shadow-sm">
+        <i class="bi {% if msg.tags == 'error' %}bi-exclamation-triangle{% elif msg.tags == 'success' %}bi-check-circle{% else %}bi-info-circle{% endif %} me-1"></i>
+        {{ msg }}
+    </div>
     {% endfor %}
 
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
@@ -70,13 +75,7 @@
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <label class="form-label small fw-bold text-muted mb-0">Product to Return</label>
                     </div>
-                    <!-- Barcode Search for Return Product -->
-                    <div class="mb-2" id="returnBarcodeSearchGroup" style="display:none;">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text border-0 bg-light ps-3 text-muted"><i class="bi bi-upc-scan"></i></span>
-                            <input type="text" id="returnBarcodeSearch" class="form-control border-0 bg-light py-1.5 text-xs shadow-none" placeholder="Scan or Enter barcode to select return item..." style="border-radius: 0 2rem 2rem 0;">
-                        </div>
-                    </div>
+
                     <select name="bill_item" id="id_bill_item" class="form-select rounded-pill border-0 bg-light" data-no-search="true">
                         <option value="">-- Load bill first --</option>
                     </select>
@@ -255,6 +254,26 @@
     </div>
 </div>
 
+{% if return_confirmed %}
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
+        <div class="modal-content rounded-4 border-0 shadow-lg text-center p-4">
+            <div class="modal-body py-4">
+                <div class="d-inline-flex align-items-center justify-content-center bg-success bg-opacity-10 rounded-circle mb-3" style="width:72px;height:72px;">
+                    <i class="bi bi-check-circle-fill fs-1 text-success"></i>
+                </div>
+                <h5 class="fw-bold mb-2">Return Confirmed</h5>
+                <p class="text-muted small mb-0">{{ success_message }}</p>
+                <div class="mt-4">
+                    <button type="button" class="btn btn-success px-5 rounded-pill fw-semibold" id="btnConfirmRedirect">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <script>
 (function(){
     const invoiceInput = document.getElementById('id_invoice_id');
@@ -286,8 +305,7 @@
     const addReturnBtn = document.getElementById('addReturnBtn');
     const addExtraReplacementBtn = document.getElementById('addExtraReplacementBtn');
     const returnItemsField = document.getElementById('id_return_items');
-    const returnBarcodeSearchGroup = document.getElementById('returnBarcodeSearchGroup');
-    const returnBarcodeSearch = document.getElementById('returnBarcodeSearch');
+
 
     // Preloaded branch products catalog
     let allProducts = {{ all_products_json|safe }};
@@ -391,9 +409,7 @@
         currentItems = items;
         itemSelect.innerHTML = '<option value="">-- Select product --</option>';
         
-        // No special replacement_only option needed in dropdown anymore
-        if (returnBarcodeSearchGroup) returnBarcodeSearchGroup.style.display = 'block';
-        if (returnBarcodeSearch) returnBarcodeSearch.value = '';
+
         
         const tbody = document.getElementById('purchasedProductsBody');
         tbody.innerHTML = '';
@@ -501,8 +517,7 @@
         replacementSection.style.display = 'none';
         document.getElementById('purchasedProductsContainer').style.display = 'none';
         if (addExtraReplacementBtn) addExtraReplacementBtn.style.display = 'none';
-        if (returnBarcodeSearchGroup) returnBarcodeSearchGroup.style.display = 'none';
-        if (returnBarcodeSearch) returnBarcodeSearch.value = '';
+
     }
 
     // Item selected
@@ -791,7 +806,11 @@
             condition: i.condition,
             action_type: i.action_type,
             replacement_product_id: i.replacement_product_id,
-            replacement_quantity: i.replacement_quantity
+            replacement_product_name: i.replacement_product_name,
+            replacement_product_price: i.replacement_product_price,
+            replacement_quantity: i.replacement_quantity,
+            price_difference: i.price_difference,
+            is_combo: i.is_combo
         })));
         
         updateSummary();
@@ -953,35 +972,7 @@
         });
     }
 
-    if (returnBarcodeSearch) {
-        returnBarcodeSearch.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const barcode = this.value.trim();
-                if (!barcode) return;
-                
-                // Find matching item in currentItems by barcode
-                const foundItem = currentItems.find(item => item.product_barcode === barcode);
-                if (foundItem) {
-                    if (foundItem.remaining_quantity <= 0) {
-                        alert(`Product "${foundItem.product_name}" has already been fully returned.`);
-                        return;
-                    }
-                    itemSelect.value = foundItem.id;
-                    itemSelect.dispatchEvent(new Event('change'));
-                    this.value = ''; // clear input
-                    
-                    // Focus qty or replacement barcode search
-                    setTimeout(() => {
-                        const repBarcodeSearch = document.getElementById('replacementBarcodeSearch');
-                        if (repBarcodeSearch) repBarcodeSearch.focus();
-                    }, 100);
-                } else {
-                    alert('Product with this barcode not found in this bill.');
-                }
-            }
-        });
-    }
+
     if (barcodeSearchBtn) {
         barcodeSearchBtn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -1024,6 +1015,34 @@
     // Page initialization
     updateConditionInfo();
     refreshReturnListUI();
+
+    // Scroll to the first error on page load and focus the corresponding input element
+    const firstError = document.querySelector('.alert-danger, #returnForm .text-danger');
+    if (firstError) {
+        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const parentContainer = firstError.closest('.mb-3, .mb-4, .row, .mb-2');
+        if (parentContainer) {
+            const input = parentContainer.querySelector('input, textarea, select');
+            if (input) {
+                input.focus();
+            }
+        }
+    }
+
+    {% if return_confirmed %}
+    const successModalEl = document.getElementById('successModal');
+    if (successModalEl) {
+        const successModal = new bootstrap.Modal(successModalEl);
+        successModal.show();
+        
+        const btnConfirmRedirect = document.getElementById('btnConfirmRedirect');
+        if (btnConfirmRedirect) {
+            btnConfirmRedirect.addEventListener('click', function() {
+                window.location.href = "{{ redirect_url }}";
+            });
+        }
+    }
+    {% endif %}
 })();
 </script>
 {% endblock %}

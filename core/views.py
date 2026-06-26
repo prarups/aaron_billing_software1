@@ -277,6 +277,24 @@ def product_update(request, pk):
             update_qty_str = request.POST.get('stock_update_qty', '').strip()
             update_reason = request.POST.get('stock_update_reason', '').strip()
             
+            # --- TODAY'S SNAPSHOT CALCULATION ---
+            import datetime
+            from django.utils import timezone
+            from django.db.models import Sum
+            
+            today = timezone.now().date()
+            start_datetime_today = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+            
+            txns_today = StockTransaction.objects.filter(
+                product=product,
+                branch=registration.branch,
+                created_at__gte=start_datetime_today
+            )
+            period_in = txns_today.filter(transaction_type__in=['IN', 'ADJ']).aggregate(t=Sum('quantity'))['t'] or 0
+            period_out = txns_today.filter(transaction_type='OUT').aggregate(t=Sum('quantity'))['t'] or 0
+            opening_balance = old_stock - period_in + period_out
+            # -----------------------------------
+            
             has_error = False
             stock_update_error = None
             if new_low < 0:
@@ -317,6 +335,19 @@ def product_update(request, pk):
                             reference=f"Stock Added: {update_reason}" if update_reason else "Stock Added",
                             user=request.user
                         )
+                        from core.models import StockAdjustment
+                        StockAdjustment.objects.create(
+                            product=product,
+                            branch=registration.branch,
+                            opening_balance=opening_balance,
+                            stock_in=period_in,
+                            stock_out=period_out,
+                            correction_amount=update_qty,
+                            closing_stock=new_stock,
+                            is_in_stock=(new_stock > 0),
+                            reason=f"Stock Added: {update_reason}" if update_reason else "Stock Added",
+                            user=request.user
+                        )
                         messages.success(request, f"Added {update_qty} items to stock.")
                 elif update_type == 'damage':
                     if update_qty > 0:
@@ -339,12 +370,6 @@ def product_update(request, pk):
                             )
                             
                             from core.models import StockAdjustment
-                            from django.db.models import Sum
-                            txns = StockTransaction.objects.filter(product=product, branch=registration.branch)
-                            period_in = txns.filter(transaction_type__in=['IN', 'ADJ']).aggregate(t=Sum('quantity'))['t'] or 0
-                            period_out = txns.filter(transaction_type='OUT').aggregate(t=Sum('quantity'))['t'] or 0
-                            opening_balance = old_stock - period_in + period_out
-                            
                             StockAdjustment.objects.create(
                                 product=product,
                                 branch=registration.branch,
@@ -457,12 +482,6 @@ def product_update(request, pk):
                                         )
                                 
                                 from core.models import StockAdjustment
-                                from django.db.models import Sum
-                                txns = StockTransaction.objects.filter(product=product, branch=registration.branch)
-                                period_in = txns.filter(transaction_type__in=['IN', 'ADJ']).aggregate(t=Sum('quantity'))['t'] or 0
-                                period_out = txns.filter(transaction_type='OUT').aggregate(t=Sum('quantity'))['t'] or 0
-                                opening_balance = old_stock - period_in + period_out
-                                
                                 StockAdjustment.objects.create(
                                     product=product,
                                     branch=registration.branch,
@@ -564,12 +583,6 @@ def product_update(request, pk):
                                     
                                     # Log StockAdjustment audit record
                                     from core.models import StockAdjustment
-                                    txns = StockTransaction.objects.filter(product=product, branch=registration.branch)
-                                    period_in = txns.filter(transaction_type__in=['IN', 'ADJ']).aggregate(t=Sum('quantity'))['t'] or 0
-                                    period_out = txns.filter(transaction_type='OUT').aggregate(t=Sum('quantity'))['t'] or 0
-                                    # StockAdjustment represents sellable stock correction, which is -diff
-                                    opening_balance = old_stock - period_in + period_out
-                                    
                                     StockAdjustment.objects.create(
                                         product=product,
                                         branch=registration.branch,
@@ -653,12 +666,46 @@ def update_product_stock_ajax(request, pk):
                 
                 if reg.stock_quantity != old_stock:
                     diff = reg.stock_quantity - old_stock
+                    
+                    # --- TODAY'S SNAPSHOT CALCULATION ---
+                    import datetime
+                    from django.utils import timezone
+                    from django.db.models import Sum
+                    from core.models import StockAdjustment
+                    
+                    today = timezone.now().date()
+                    start_datetime_today = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+                    
+                    txns_today = StockTransaction.objects.filter(
+                        product=reg.product,
+                        branch=reg.branch,
+                        created_at__gte=start_datetime_today
+                    )
+                    period_in = txns_today.filter(transaction_type__in=['IN', 'ADJ']).aggregate(t=Sum('quantity'))['t'] or 0
+                    period_out = txns_today.filter(transaction_type='OUT').aggregate(t=Sum('quantity'))['t'] or 0
+                    opening_balance = old_stock - period_in + period_out
+                    # -----------------------------------
+                    
                     StockTransaction.objects.create(
                         product=reg.product,
                         branch=reg.branch,
                         transaction_type='IN' if diff > 0 else 'OUT',
                         quantity=abs(diff),
                         reference='Ajax Update',
+                        user=request.user
+                    )
+                    
+                    # Create audit log record
+                    StockAdjustment.objects.create(
+                        product=reg.product,
+                        branch=reg.branch,
+                        opening_balance=opening_balance,
+                        stock_in=period_in,
+                        stock_out=period_out,
+                        correction_amount=diff,
+                        closing_stock=reg.stock_quantity,
+                        is_in_stock=(reg.stock_quantity > 0),
+                        reason='Ajax Update',
                         user=request.user
                     )
                     
@@ -1054,8 +1101,8 @@ def stock_pivot_report(request):
             
             # Net sold all-time = gross sold all-time - good returns all-time - damaged returns all-time
             all_time_out_net = all_time_out_gross - all_time_ret - all_time_ret_dmg
-            # Cumulative received till now = current stock + all-time gross out + all-time standard damaged - all-time good returns - all-time adj
-            total_rec = curr_stock + all_time_out_gross + all_time_dmg_std - all_time_ret - all_time_adj
+            # Cumulative received till now = current stock + all-time gross out + all-time standard damaged - all-time good returns
+            total_rec = curr_stock + all_time_out_gross + all_time_dmg_std - all_time_ret
             
             # Calculate closing stock at end_date if in the past
             if end_date < today:
@@ -1294,8 +1341,8 @@ def export_stock_pivot_excel(request):
             
             # Net sold all-time = gross sold all-time - good returns all-time - damaged returns all-time
             all_time_out_net = all_time_out_gross - all_time_ret - all_time_ret_dmg
-            # Cumulative received till now = current stock + all-time gross out + all-time standard damaged - all-time good returns - all-time adj
-            total_rec = curr_stock + all_time_out_gross + all_time_dmg_std - all_time_ret - all_time_adj
+            # Cumulative received till now = current stock + all-time gross out + all-time standard damaged - all-time good returns
+            total_rec = curr_stock + all_time_out_gross + all_time_dmg_std - all_time_ret
             
             # Calculate closing stock at end_date if in the past
             if end_date < today:

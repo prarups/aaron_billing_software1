@@ -10,7 +10,7 @@
             <h4 class="fw-bold m-0 text-primary"><i class="bi bi-history me-2"></i>Stock Correction History</h4>
             <p class="text-muted small mb-0">Read-only audit log of manual adjustments and damage corrections</p>
         </div>
-        <a href="{% url 'stock_pivot_report' %}" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm btn-sm mt-3 mt-md-0">
+        <a href="{% url 'stock_pivot_report' %}" onclick="if (window.history.length > 1) { window.history.back(); return false; }" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm btn-sm mt-3 mt-md-0">
             <i class="bi bi-arrow-left me-1"></i> Back to Report
         </a>
     </div>

@@ -145,7 +145,7 @@
                 <tr class="border-bottom text-center">
                     <th class="ps-3 text-start" style="width: 8%;">Branch</th>
                     <th class="text-start" style="width: 16%;">Product Name</th>
-                    <th style="width: 7%;">Barcode</th>
+                    <th style="width: 10%;">Barcode</th>
                     <th style="width: 5%;">Price</th>
                     <th style="width: 4%; background: #f8fafc;">Op</th>
                     <th style="width: 4%; background: #f8fafc;">In</th>
@@ -168,7 +168,7 @@
                         <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-semibold">{{ stock_info.branch.name }}</span>
                     </td>
                     <td class="text-start fw-bold text-dark">{{ item.product.name }}</td>
-                    <td><code class="bg-light text-muted px-1.5 py-0.5 rounded-pill font-monospace border border-light text-xxs">{{ item.product.barcode }}</code></td>
+                    <td class="text-nowrap"><code class="bg-light text-muted px-1.5 py-0.5 rounded-pill font-monospace border border-light text-xxs text-nowrap">{{ item.product.barcode }}</code></td>
                     <td class="fw-bold text-primary">₹{{ item.product.price|floatformat:0 }}</td>
                     <td class="bg-light bg-opacity-25">{{ stock_info.op }}</td>
                     <td class="bg-light bg-opacity-25 fw-semibold text-success">{{ stock_info.in }}</td>
