@@ -626,11 +626,11 @@
                 <div class="d-flex align-items-center flex-wrap gap-2">
                     <h6 class="fw-bold text-primary mb-0 me-2"><i class="bi bi-people-fill me-1.5"></i>Sales Staff accounts</h6>
                     <div class="d-flex align-items-center gap-1.5 me-2 text-xxs bg-light rounded-pill p-0.5 border" id="staff-online-offline-summary" style="height: 24px; padding: 2px 8px !important;">
-                        <span class="text-success fw-semibold d-flex align-items-center me-1.5">
+                        <span class="text-success fw-semibold d-flex align-items-center me-1.5" style="cursor: pointer;" onclick="showStaffStatusModal('online')" title="View online staff members">
                             <i class="bi bi-circle-fill me-1" style="font-size: 5px; vertical-align: middle;"></i>Online: <span id="onlineStaffCount" class="ms-1 fw-bold">0</span>
                         </span>
                         <span class="text-muted">|</span>
-                        <span class="text-secondary fw-semibold d-flex align-items-center ms-1.5">
+                        <span class="text-secondary fw-semibold d-flex align-items-center ms-1.5" style="cursor: pointer;" onclick="showStaffStatusModal('offline')" title="View offline staff members">
                             <i class="bi bi-circle-fill me-1" style="font-size: 5px; vertical-align: middle;"></i>Offline: <span id="offlineStaffCount" class="ms-1 fw-bold">0</span>
                         </span>
                     </div>
@@ -1091,6 +1091,38 @@
     </div>
 </div>
 
+<!-- Staff Status Details Modal -->
+<div class="modal fade" id="staffStatusDetailsModal" tabindex="-1" aria-labelledby="staffStatusDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-primary text-white border-0 py-2.5">
+                <h6 class="modal-title fw-bold" id="staffStatusModalTitle"><i class="bi bi-people-fill me-2"></i>Staff Members</h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive" style="max-height: 400px;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light sticky-top">
+                            <tr class="text-muted text-xxs text-uppercase">
+                                <th class="ps-3" style="width: 15%;">Emp. ID</th>
+                                <th style="width: 35%;">Staff Member</th>
+                                <th style="width: 25%;">Designation</th>
+                                <th class="pe-3" style="width: 25%;">Branches</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staffStatusModalTableBody">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0 p-2">
+                <button type="button" class="btn btn-secondary btn-xs rounded-pill px-3 py-1" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 5. Delete Confirmation Modal -->
 <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-sm">
@@ -1117,6 +1149,60 @@
 
 {% block extra_js %}
 <script>
+    function showStaffStatusModal(status) {
+        const modalTitle = document.getElementById('staffStatusModalTitle');
+        const modalBody = document.getElementById('staffStatusModalTableBody');
+        if (!modalTitle || !modalBody) return;
+
+        modalTitle.innerHTML = status === 'online' ? '<i class="bi bi-people-fill me-2"></i>Online Staff Members' : '<i class="bi bi-people-fill me-2"></i>Offline Staff Members';
+        modalBody.innerHTML = '';
+
+        const isOnlineTarget = (status === 'online');
+        const rows = document.querySelectorAll('.staff-row');
+        let count = 0;
+
+        rows.forEach(row => {
+            const isOnline = row.dataset.online === 'true';
+            if (isOnline === isOnlineTarget) {
+                count++;
+                const empId = row.querySelector('.staff-emp-id').textContent.trim();
+                const username = row.querySelector('.staff-username').textContent.trim();
+                const name = row.querySelector('.staff-name').textContent.trim();
+                
+                // Get role badge text
+                const roleBadge = row.querySelector('[data-label="Role"] span');
+                const roleText = roleBadge ? roleBadge.textContent.trim() : 'Sales Staff';
+                
+                // Get branches
+                const branchBadges = row.querySelectorAll('[data-label="Branches"] span');
+                let branchesList = [];
+                branchBadges.forEach(badge => {
+                    branchesList.push(badge.textContent.trim());
+                });
+                const branchesText = branchesList.length > 0 ? branchesList.join(', ') : 'None';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-xs fw-bold text-muted ps-3">${empId}</td>
+                    <td class="text-xs">
+                        <span class="fw-bold text-primary">${username}</span><br>
+                        <small class="text-secondary">${name}</small>
+                    </td>
+                    <td class="text-xs"><span class="badge bg-light text-dark border rounded-pill px-2 py-0.5">${roleText}</span></td>
+                    <td class="text-xs text-wrap pe-3">${branchesText}</td>
+                `;
+                modalBody.appendChild(tr);
+            }
+        });
+
+        if (count === 0) {
+            modalBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted text-xs p-3">No staff members are currently ${status}.</td></tr>`;
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('staffStatusDetailsModal'));
+        modal.show();
+    }
+
     // Toggle password visibility helper
     function togglePasswordVisibility(inputId, btn) {
         const input = document.getElementById(inputId);
