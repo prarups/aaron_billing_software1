@@ -198,8 +198,8 @@ class MultiProductComboTestCase(TestCase):
         self.assertTrue(data['success'])
 
         bill = Bill.objects.get(id=data['bill_id'])
-        self.assertEqual(bill.total_amount, Decimal('500'))
-        self.assertEqual(bill.total_savings, Decimal('250'))
+        self.assertEqual(bill.total_amount, Decimal('480'))
+        self.assertEqual(bill.total_savings, Decimal('270'))
         self.assertEqual(len(list(bill.applied_combos)), 1)
         self.assertEqual(list(bill.applied_combos)[0].combo_id, self.group.combo_id)
 

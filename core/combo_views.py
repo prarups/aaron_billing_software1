@@ -38,38 +38,31 @@ def calculate_optimal_combo_price(item_prices, tiers_list):
     """
     item_prices: list of floats/Decimals representing base prices of items in the combo.
     tiers_list: list of tuples/dicts with quantity and price, e.g. [(2, 180), (5, 400)]
-    Returns the cost to buy all these items, forcing combo tier application when quantity milestone is met.
+    Returns the cost to buy all these items, applying the pro-rated unit price of the highest achieved tier.
     """
-    prices = sorted([float(p) for p in item_prices], reverse=True)
+    prices = [float(p) for p in item_prices]
     n = len(prices)
+    if n == 0:
+        return 0.0
+
     # Sort tiers by quantity descending
     sorted_tiers = sorted(tiers_list, key=lambda t: t[0], reverse=True)
-    memo = {}
 
-    min_qty = min(qty for qty, _ in sorted_tiers) if sorted_tiers else None
+    # Find the highest achieved tier
+    achieved_tier = None
+    for qty, tier_price in sorted_tiers:
+        if n >= qty:
+            achieved_tier = (qty, float(tier_price))
+            break
 
-    def solve(index):
-        if index >= n:
-            return 0.0
-        if index in memo:
-            return memo[index]
-
-        # Force applying combo tier if remaining quantity satisfies the minimum milestone
-        if min_qty is not None and (n - index) >= min_qty:
-            best = float('inf')
-            for qty, tier_price in sorted_tiers:
-                if qty <= n - index:
-                    cost = float(tier_price) + solve(index + qty)
-                    if cost < best:
-                        best = cost
-        else:
-            # Only fallback to single pricing for leftovers
-            best = prices[index] + solve(index + 1)
-
-        memo[index] = best
-        return best
-
-    return solve(0)
+    if achieved_tier:
+        qty, tier_price = achieved_tier
+        unit_price = tier_price / qty
+        combo_total = n * unit_price
+        regular_total = sum(prices)
+        return min(combo_total, regular_total)
+    else:
+        return sum(prices)
 
 @login_required
 def combo_list(request):

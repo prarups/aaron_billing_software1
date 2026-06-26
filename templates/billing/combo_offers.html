@@ -407,33 +407,26 @@
 
     // ── DP Optimal Price Calculation ──
     function calculateOptimalPrice(items, tiers) {
-        if (items.length === 0) return 0;
-        let prices = [...items].sort((a, b) => b - a);
-        let n = prices.length;
-        let memo = {};
+        let n = items.length;
+        if (n === 0) return 0;
+        
         let sortedTiers = [...tiers].sort((a, b) => b.quantity - a.quantity);
-        let minQty = tiers.length > 0 ? Math.min(...tiers.map(t => t.quantity)) : null;
-
-        function solve(index) {
-            if (index >= n) return 0;
-            if (memo[index] !== undefined) return memo[index];
-            
-            let best;
-            if (minQty !== null && (n - index) >= minQty) {
-                best = Infinity;
-                for (let tier of sortedTiers) {
-                    if (tier.quantity <= n - index) {
-                        let cost = tier.price + solve(index + tier.quantity);
-                        if (cost < best) best = cost;
-                    }
-                }
-            } else {
-                best = prices[index] + solve(index + 1);
+        let achievedTier = null;
+        for (let t of sortedTiers) {
+            if (n >= t.quantity) {
+                achievedTier = t;
+                break;
             }
-            memo[index] = best;
-            return best;
         }
-        return solve(0);
+        
+        if (achievedTier) {
+            let unitPrice = achievedTier.price / achievedTier.quantity;
+            let comboTotal = n * unitPrice;
+            let regularTotal = items.reduce((sum, p) => sum + p, 0);
+            return Math.min(comboTotal, regularTotal);
+        } else {
+            return items.reduce((sum, p) => sum + p, 0);
+        }
     }
 
     // ── Load combo data from backend ──

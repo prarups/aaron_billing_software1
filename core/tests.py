@@ -1433,21 +1433,22 @@ class ComboMultiBranchTestCase(TestCase):
 class ComboForcedMilestoneTestCase(TestCase):
     def test_forced_milestone_application(self):
         from core.combo_views import calculate_optimal_combo_price
-        # 4 items at 299 each (total 1196 without combo), combo tier is 4 items -> 2000
-        # It must force the combo price of 2000 to apply since milestone quantity is reached
-        prices = [299, 299, 299, 299]
+        # 4 items at 600 each (total 2400 without combo), combo tier is 4 items -> 2000
+        # Since combo price (2000) is cheaper than regular price (2400), it should apply.
+        prices = [600, 600, 600, 600]
         tiers = [(4, 2000)]
         optimal = calculate_optimal_combo_price(prices, tiers)
         self.assertEqual(optimal, 2000.0)
 
     def test_forced_milestone_application_with_leftover(self):
         from core.combo_views import calculate_optimal_combo_price
-        # 5 items at 299 each (total 1495 without combo), combo tier is 4 items -> 2000
-        # It must apply combo tier once (2000) and fallback to single price for the 5th item (299)
-        prices = [299, 299, 299, 299, 299]
+        # 5 items at 600 each (total 3000 without combo), combo tier is 4 items -> 2000
+        # Under pro-rated flat unit price: highest achieved tier (4 items -> 2000) unit price is 500.
+        # Total cost for 5 items = 5 * 500 = 2500 (which is cheaper than 3000).
+        prices = [600, 600, 600, 600, 600]
         tiers = [(4, 2000)]
         optimal = calculate_optimal_combo_price(prices, tiers)
-        self.assertEqual(optimal, 2299.0)
+        self.assertEqual(optimal, 2500.0)
 
     def test_no_milestone_met(self):
         from core.combo_views import calculate_optimal_combo_price
@@ -1457,6 +1458,16 @@ class ComboForcedMilestoneTestCase(TestCase):
         tiers = [(4, 2000)]
         optimal = calculate_optimal_combo_price(prices, tiers)
         self.assertEqual(optimal, 897.0)
+
+    def test_better_price_rule_applied(self):
+        from core.combo_views import calculate_optimal_combo_price
+        # 4 items at 299 each (total 1196 without combo), combo tier is 4 items -> 2000
+        # Under Better Price rule, since regular total (1196) is cheaper than combo price (2000),
+        # regular total should be returned.
+        prices = [299, 299, 299, 299]
+        tiers = [(4, 2000)]
+        optimal = calculate_optimal_combo_price(prices, tiers)
+        self.assertEqual(optimal, 1196.0)
 
 
 class ComboBarcodeOverlapValidationTestCase(TestCase):

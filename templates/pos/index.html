@@ -419,33 +419,30 @@
 
     // DP optimal combo pricing (same algorithm as backend)
     function calculateOptimalPrice(prices, tiers) {
-        if (prices.length === 0) return 0;
-        let sorted = [...prices].sort((a, b) => b - a);
-        let n = sorted.length;
-        let memo = {};
+        let n = prices.length;
+        if (n === 0) return 0;
+        
+        // Sort tiers by quantity descending
         let sortedTiers = [...tiers].sort((a, b) => b.quantity - a.quantity);
-        let minQty = tiers.length > 0 ? Math.min(...tiers.map(t => t.quantity)) : null;
-
-        function solve(i) {
-            if (i >= n) return 0;
-            if (memo[i] !== undefined) return memo[i];
-            
-            let best;
-            if (minQty !== null && (n - i) >= minQty) {
-                best = Infinity;
-                for (let t of sortedTiers) {
-                    if (t.quantity <= n - i) {
-                        let c = t.price + solve(i + t.quantity);
-                        if (c < best) best = c;
-                    }
-                }
-            } else {
-                best = sorted[i] + solve(i + 1);
+        
+        // Find highest achieved tier
+        let achievedTier = null;
+        for (let t of sortedTiers) {
+            if (n >= t.quantity) {
+                achievedTier = t;
+                break;
             }
-            memo[i] = best;
-            return best;
         }
-        return solve(0);
+        
+        if (achievedTier) {
+            let unitPrice = achievedTier.price / achievedTier.quantity;
+            let comboTotal = n * unitPrice;
+            let regularTotal = prices.reduce((sum, p) => sum + p, 0);
+            return Math.min(comboTotal, regularTotal);
+        } else {
+            // Fallback to sum of base prices
+            return prices.reduce((sum, p) => sum + p, 0);
+        }
     }
 
     function showScanToast(message, type) {
@@ -558,18 +555,26 @@
         cart.forEach(item => {
             if (processedIds.has(item.id)) return;
             originalSubtotal += item.price * item.quantity;
-            let qtyRemaining = item.quantity;
-            let subtotal = 0;
             let combos = item.combos || [];
             let sortedCombos = [...combos].sort((a, b) => b.quantity - a.quantity);
+            
+            let achievedCombo = null;
             for (let c of sortedCombos) {
-                if (qtyRemaining >= c.quantity && c.quantity > 0) {
-                    let numCombos = Math.floor(qtyRemaining / c.quantity);
-                    subtotal += numCombos * c.price;
-                    qtyRemaining %= c.quantity;
+                if (item.quantity >= c.quantity) {
+                    achievedCombo = c;
+                    break;
                 }
             }
-            subtotal += qtyRemaining * item.price;
+            
+            let subtotal = 0;
+            if (achievedCombo) {
+                let unitPrice = achievedCombo.price / achievedCombo.quantity;
+                let comboSubtotal = item.quantity * unitPrice;
+                let regularSubtotal = item.quantity * item.price;
+                subtotal = Math.min(comboSubtotal, regularSubtotal);
+            } else {
+                subtotal = item.quantity * item.price;
+            }
             discountedSubtotal += subtotal;
         });
 

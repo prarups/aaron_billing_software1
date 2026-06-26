@@ -256,18 +256,24 @@ def process_bill(request):
                         continue
                         
                     qty = r_item['quantity']
-                    qty_remaining = qty
-                    subtotal = 0
                     combos = p.combos.filter(branch=bill.branch).order_by('-quantity')
-                    for combo in combos:
-                        if qty_remaining >= combo.quantity and combo.quantity > 0:
-                            num_combos = qty_remaining // combo.quantity
-                            subtotal += num_combos * combo.price
-                            qty_remaining %= combo.quantity
-                    subtotal += qty_remaining * p.price
                     
-                    r_item['subtotal'] = subtotal
-                    r_item['unit_price'] = int(round(float(subtotal / qty))) if qty > 0 else 0
+                    achieved_combo = None
+                    for combo in combos:
+                        if qty >= combo.quantity:
+                            achieved_combo = combo
+                            break
+                            
+                    if achieved_combo:
+                        unit_price = float(achieved_combo.price) / achieved_combo.quantity
+                        combo_subtotal = qty * unit_price
+                        regular_subtotal = qty * float(p.price)
+                        subtotal = min(combo_subtotal, regular_subtotal)
+                    else:
+                        subtotal = qty * float(p.price)
+                        
+                    r_item['subtotal'] = Decimal(str(round(subtotal)))
+                    r_item['unit_price'] = int(round(subtotal / qty)) if qty > 0 else 0
 
 
                 # Phase 3: Create BillItems, log StockTransactions, and sum subtotals
