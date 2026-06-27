@@ -666,7 +666,7 @@ def export_sales_csv(request):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     
     writer = csv.writer(response)
-    writer.writerow(['Invoice Number', 'Branch Name', 'Branch Code', 'Staff', 'Customer', 'Phone', 'Original Total', 'Retail Price', 'Cash', 'Online', 'Payment Method', 'Purchased Items', 'Return Reason', 'Returned Items', 'Replacement Items', 'Exchange Pay Difference', 'Date & Time'])
+    writer.writerow(['Invoice Number', 'Branch Name', 'Branch Code', 'Staff', 'Customer', 'Phone', 'Original Total', 'Retail Price', 'Cash', 'Online', 'Payment Method', 'Purchased Items', 'Total Quantity', 'HSN Codes', 'Return Reason', 'Returned Items', 'Replacement Items', 'Exchange Pay Difference', 'Date & Time'])
     
     # Build base queryset
     accessible_branches = request.user.get_accessible_branches()
@@ -716,7 +716,7 @@ def export_sales_csv(request):
     from .return_models import ReturnRequest
     from core.models import ComboGroup
     for bill in bills.select_related('branch', 'staff'):
-        purchased_items = ", ".join([f"{item.product.name} ({item.product.barcode}) x{item.quantity}" for item in bill.items.all()])
+        purchased_items = ", ".join([f"{item.product.name} ({item.product.barcode}) [HSN: {item.product.size or '-'}] x{item.quantity}" for item in bill.items.all()])
         
         returns_qs = bill.return_requests.filter(status=ReturnRequest.Status.APPROVED)
         reasons = []
@@ -755,6 +755,8 @@ def export_sales_csv(request):
             bill.online_amount,
             bill.get_payment_method_display(),
             purchased_items,
+            bill.total_quantity,
+            bill.hsn_codes,
             return_reason,
             returned_items,
             replacement_items,
@@ -769,3 +771,75 @@ def clear_exchange_session(request):
     """AJAX endpoint to clear the exchange_customer session state."""
     request.session.pop('exchange_customer', None)
     return JsonResponse({'success': True})
+
+@login_required
+def export_gst_mis_csv(request):
+    # Only Owners and Managers can export
+    if request.user.role == 'sales_staff':
+        return HttpResponse("Unauthorized", status=403)
+        
+    filename = "monthlygstmis_to_date.csv"
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Date', 'Invoice Number', 'Branch Name', 'Branch Code', 'Total Quantity', 'HSN Codes', 'Total Amount'])
+    
+    # Build base queryset
+    accessible_branches = request.user.get_accessible_branches()
+    bills = Bill.objects.filter(branch__in=accessible_branches).order_by('-created_at').select_related('branch', 'staff').prefetch_related('items__product')
+    
+    q = request.GET.get('q', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    branch_id = request.GET.get('branch', '')
+    payment_method = request.GET.get('payment_method', '')
+
+    if q:
+        from django.db.models import Q
+        bills = bills.filter(
+            Q(id__icontains=q) | 
+            Q(invoice_number__icontains=q) | 
+            Q(customer_name__icontains=q) | 
+            Q(customer_phone__icontains=q)
+        )
+        
+    if request.user.role in ['manager', 'assistant_manager']:
+        branches = request.user.get_accessible_branches()
+        if branch_id and branch_id != 'None':
+            if not branches.filter(id=branch_id).exists():
+                branch_id = str(request.user.active_branch.id)
+        else:
+            branch_id = str(request.user.active_branch.id)
+            
+    if branch_id and branch_id != 'None':
+        bills = bills.filter(branch_id=branch_id)
+        
+    import datetime
+    from django.utils.dateparse import parse_date
+    if start_date and start_date != 'None':
+        parsed_start = parse_date(start_date)
+        if parsed_start:
+            start_datetime = timezone.make_aware(datetime.datetime.combine(parsed_start, datetime.time.min))
+            bills = bills.filter(created_at__gte=start_datetime)
+    if end_date and end_date != 'None':
+        parsed_end = parse_date(end_date)
+        if parsed_end:
+            end_datetime = timezone.make_aware(datetime.datetime.combine(parsed_end, datetime.time.max))
+            bills = bills.filter(created_at__lte=end_datetime)
+    if payment_method and payment_method != 'None':
+        bills = bills.filter(payment_method=payment_method)
+        
+    for bill in bills:
+        writer.writerow([
+            bill.created_at.strftime('%Y-%m-%d'),
+            bill.invoice_number,
+            bill.branch.name if bill.branch else 'N/A',
+            bill.branch.code if bill.branch else 'N/A',
+            bill.total_quantity,
+            bill.hsn_codes,
+            bill.total_amount
+        ])
+        
+    return response

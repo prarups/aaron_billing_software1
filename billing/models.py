@@ -46,6 +46,15 @@ class Bill(models.Model):
         return self.subtotal_amount + self.total_savings
 
     @property
+    def total_quantity(self):
+        return sum(item.quantity for item in self.items.all())
+
+    @property
+    def hsn_codes(self):
+        codes = [item.product.size for item in self.items.all() if item.product.size]
+        return ", ".join(sorted(list(set(codes))))
+
+    @property
     def applied_combos(self):
         from core.models import ComboGroup
         from django.db.models import Sum, Min

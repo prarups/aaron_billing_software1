@@ -195,13 +195,19 @@
 
 {% block content %}
 <div class="mb-3">
-    <div class="d-flex flex-row justify-content-between align-items-center gap-3">
-        <h5 class="fw-bold m-0 text-primary">Sales Report</h5>
-        <div class="d-flex gap-2">
-            <a href="{% url 'export_sales_csv' %}?q={{ query|urlencode }}&branch={{ selected_branch|urlencode }}&payment_method={{ selected_payment|urlencode }}&start_date={{ start_date|urlencode }}&end_date={{ end_date|urlencode }}" class="btn btn-outline-success rounded-pill px-3 shadow-sm btn-sm text-xs fw-semibold">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+        <div class="d-flex justify-content-between align-items-center w-100 w-md-auto">
+            <h5 class="fw-bold m-0 text-primary">Sales Report</h5>
+            <a href="{% url 'owner_bill_list' %}" class="btn btn-light rounded-pill px-3 shadow-sm btn-sm text-xs d-md-none">Clear</a>
+        </div>
+        <div class="d-flex gap-2 w-100 w-md-auto justify-content-md-end">
+            <a href="{% url 'export_sales_csv' %}?q={{ query|urlencode }}&branch={{ selected_branch|urlencode }}&payment_method={{ selected_payment|urlencode }}&start_date={{ start_date|urlencode }}&end_date={{ end_date|urlencode }}" class="btn btn-outline-success rounded-pill px-3 shadow-sm btn-sm text-xs fw-semibold flex-grow-1 flex-md-grow-0 text-center">
                 <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
             </a>
-            <a href="{% url 'owner_bill_list' %}" class="btn btn-light rounded-pill px-3 shadow-sm btn-sm text-xs">Clear</a>
+            <a href="{% url 'export_gst_mis_csv' %}?q={{ query|urlencode }}&branch={{ selected_branch|urlencode }}&payment_method={{ selected_payment|urlencode }}&start_date={{ start_date|urlencode }}&end_date={{ end_date|urlencode }}" class="btn btn-outline-primary rounded-pill px-3 shadow-sm btn-sm text-xs fw-semibold flex-grow-1 flex-md-grow-0 text-center">
+                <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> Export GST MIS
+            </a>
+            <a href="{% url 'owner_bill_list' %}" class="btn btn-light rounded-pill px-3 shadow-sm btn-sm text-xs d-none d-md-inline-block">Clear</a>
         </div>
     </div>
 </div>
@@ -287,10 +293,11 @@
         <table class="table align-middle mb-0 table-compact">
             <thead>
                 <tr class="border-bottom">
-                    <th class="ps-4" style="width: 14%; min-width: 110px;"><i class="bi bi-receipt me-1 text-primary"></i>Invoice / Date</th>
-                    <th style="width: 13%; min-width: 120px;"><i class="bi bi-shop me-1 text-primary"></i>Branch & Staff</th>
-                    <th style="width: 13%; min-width: 120px;"><i class="bi bi-person me-1 text-primary"></i>Customer</th>
-                    <th style="width: 34%; min-width: 240px;"><i class="bi bi-cart3 me-1 text-primary"></i>Purchased Items</th>
+                    <th class="ps-4" style="width: 12%; min-width: 110px;"><i class="bi bi-receipt me-1 text-primary"></i>Invoice / Date</th>
+                    <th style="width: 12%; min-width: 120px;"><i class="bi bi-shop me-1 text-primary"></i>Branch & Staff</th>
+                    <th style="width: 12%; min-width: 120px;"><i class="bi bi-person me-1 text-primary"></i>Customer</th>
+                    <th style="width: 30%; min-width: 240px;"><i class="bi bi-cart3 me-1 text-primary"></i>Purchased Items</th>
+                    <th class="text-center" style="width: 8%; min-width: 80px;"><i class="bi bi-hash me-1 text-primary"></i>Total Qty</th>
                     <th style="width: 16%; min-width: 120px;"><i class="bi bi-credit-card me-1 text-primary"></i>Total & Pay</th>
                     <th class="text-end pe-4" style="width: 10%; min-width: 80px;"><i class="bi bi-lightning me-1 text-primary"></i>Actions</th>
                 </tr>
@@ -343,17 +350,25 @@
                         <div class="item-scroll-list">
                             {% for item in bill.items.all %}
                             <div class="scrollable-item-row d-flex align-items-center justify-content-between">
-                                <span class="fw-semibold text-truncate text-dark text-xxs me-2" style="max-width: calc(100% - 100px);" title="{{ item.product.name }}">
+                                <span class="fw-semibold text-truncate text-dark text-xxs me-2" style="max-width: calc(100% - 140px);" title="{{ item.product.name }}">
                                     <i class="bi bi-dot text-primary me-0.5"></i>{{ item.product.name }}
                                 </span>
                                 <div class="d-flex align-items-center gap-1">
                                     <span class="badge bg-light text-muted border-0 px-1 py-0.5 text-xxs font-monospace" style="font-size: 8px;">{{ item.product.barcode }}</span>
+                                    {% if item.product.size %}
+                                    <span class="badge bg-info bg-opacity-10 text-info border-0 px-1 py-0.5 text-xxs font-monospace" style="font-size: 8px;" title="HSN Code">HSN: {{ item.product.size }}</span>
+                                    {% endif %}
                                     <span class="badge bg-primary text-white border-0 px-1.5 py-0.5 rounded-pill text-xxs font-monospace" style="font-size: 9px; min-width: 20px; text-align: center;">x{{ item.quantity }}</span>
                                 </div>
                             </div>
                             {% endfor %}
                         </div>
                         {# return details are in the popup modal triggered by Exchanged badge #}
+                    </td>
+
+                    <!-- Total Qty -->
+                    <td class="text-center">
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary border-0 px-2.5 py-1 text-xs font-monospace fw-bold" style="border-radius: 6px;">{{ bill.total_quantity }}</span>
                     </td>
                     
                     <!-- Total & Pay -->
@@ -389,7 +404,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center py-4 text-muted">No sales data found.</td>
+                    <td colspan="7" class="text-center py-4 text-muted">No sales data found.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -427,7 +442,7 @@
             </div>
             
             <div class="row g-2 mb-2.5">
-                <div class="col-6">
+                <div class="col-4">
                     <span class="text-xxs text-uppercase fw-bold text-muted-plus d-block mb-1">Customer</span>
                     {% if bill.customer_name and bill.customer_name != "Guest" %}
                     <span class="fw-semibold text-dark text-xs d-block">{{ bill.customer_name }}</span>
@@ -438,7 +453,11 @@
                     <span class="badge bg-light text-muted border px-2 py-0.5 text-xxs fw-semibold rounded-pill"><i class="bi bi-person me-0.5"></i>Walk-in</span>
                     {% endif %}
                 </div>
-                <div class="col-6 text-end">
+                <div class="col-4 text-center">
+                    <span class="text-xxs text-uppercase fw-bold text-muted-plus d-block mb-1">Total Qty</span>
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary border-0 px-2.5 py-1 text-xs font-monospace fw-bold" style="border-radius: 6px;">{{ bill.total_quantity }}</span>
+                </div>
+                <div class="col-4 text-end">
                     <span class="text-xxs text-uppercase fw-bold text-muted-plus d-block mb-1">Total & Pay</span>
                     <span class="fw-bold text-dark text-xs d-block" style="font-weight: 800; font-size: 0.85rem;">₹{{ bill.total_amount }}</span>
                     <div class="mt-1">
@@ -458,9 +477,12 @@
                 <div class="d-flex flex-column gap-1">
                     {% for item in bill.items.all %}
                     <div class="scrollable-item-row d-flex justify-content-between align-items-center">
-                        <span class="fw-semibold text-truncate text-dark text-xxs me-2" style="max-width: calc(100% - 90px);">{{ item.product.name }}</span>
+                        <span class="fw-semibold text-truncate text-dark text-xxs me-2" style="max-width: calc(100% - 130px);">{{ item.product.name }}</span>
                         <div class="d-flex align-items-center gap-1">
                             <span class="badge bg-light text-muted border-0 px-1 py-0.5 text-xxs font-monospace" style="font-size: 8px;">{{ item.product.barcode }}</span>
+                            {% if item.product.size %}
+                            <span class="badge bg-info bg-opacity-10 text-info border-0 px-1 py-0.5 text-xxs font-monospace" style="font-size: 8px;" title="HSN Code">H: {{ item.product.size }}</span>
+                            {% endif %}
                             <span class="badge bg-primary text-white border-0 px-1.5 py-0.5 rounded-pill text-xxs font-monospace" style="font-size: 8px;">x{{ item.quantity }}</span>
                         </div>
                     </div>

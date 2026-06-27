@@ -12,6 +12,7 @@ urlpatterns = [
     path('activity/', views.staff_activity, name='staff_activity'),
     path('all-bills/', views.owner_bill_list, name='owner_bill_list'),
     path('export/', views.export_sales_csv, name='export_sales_csv'),
+    path('export-gst-mis/', views.export_gst_mis_csv, name='export_gst_mis_csv'),
     path('clear-exchange-session/', views.clear_exchange_session, name='clear_exchange_session'),
     # Return endpoints
     path('return/', return_views.return_create_view, name='return_create'),
