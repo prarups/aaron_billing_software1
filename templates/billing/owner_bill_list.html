@@ -355,9 +355,6 @@
                                 </span>
                                 <div class="d-flex align-items-center gap-1">
                                     <span class="badge bg-light text-muted border-0 px-1 py-0.5 text-xxs font-monospace" style="font-size: 8px;">{{ item.product.barcode }}</span>
-                                    {% if item.product.size %}
-                                    <span class="badge bg-info bg-opacity-10 text-info border-0 px-1 py-0.5 text-xxs font-monospace" style="font-size: 8px;" title="HSN Code">HSN: {{ item.product.size }}</span>
-                                    {% endif %}
                                     <span class="badge bg-primary text-white border-0 px-1.5 py-0.5 rounded-pill text-xxs font-monospace" style="font-size: 9px; min-width: 20px; text-align: center;">x{{ item.quantity }}</span>
                                 </div>
                             </div>
@@ -480,9 +477,6 @@
                         <span class="fw-semibold text-truncate text-dark text-xxs me-2" style="max-width: calc(100% - 130px);">{{ item.product.name }}</span>
                         <div class="d-flex align-items-center gap-1">
                             <span class="badge bg-light text-muted border-0 px-1 py-0.5 text-xxs font-monospace" style="font-size: 8px;">{{ item.product.barcode }}</span>
-                            {% if item.product.size %}
-                            <span class="badge bg-info bg-opacity-10 text-info border-0 px-1 py-0.5 text-xxs font-monospace" style="font-size: 8px;" title="HSN Code">H: {{ item.product.size }}</span>
-                            {% endif %}
                             <span class="badge bg-primary text-white border-0 px-1.5 py-0.5 rounded-pill text-xxs font-monospace" style="font-size: 8px;">x{{ item.quantity }}</span>
                         </div>
                     </div>
