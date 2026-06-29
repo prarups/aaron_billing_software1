@@ -540,3 +540,106 @@ class ExchangePolicyTests(TestCase):
         self.assertTrue(tx_in.exists())
         tx_out = StockTransaction.objects.filter(product=self.product_normal_expensive, transaction_type='OUT')
         self.assertTrue(tx_out.exists())
+
+
+from django.utils import timezone
+from django.urls import reverse
+
+class OwnerBillListFilterTestCase(TestCase):
+    def setUp(self):
+        self.branch1 = Branch.objects.create(name='Branch 1', location='Loc 1', invoice_prefix='B1')
+        self.branch2 = Branch.objects.create(name='Branch 2', location='Loc 2', invoice_prefix='B2')
+        self.owner = User.objects.create_user(username='owner_user', password='password123', role='owner')
+        self.owner.branches.add(self.branch1, self.branch2)
+        self.owner.active_branch = self.branch1
+        self.owner.save()
+
+        # Create some bills on different dates and for different branches/payment methods
+        # Today's bill for branch1 cash
+        self.bill_today_b1_cash = Bill.objects.create(
+            branch=self.branch1,
+            staff=self.owner,
+            customer_name='Cust 1',
+            payment_method='cash',
+            total_amount=100
+        )
+        
+        # Today's bill for branch2 online
+        self.bill_today_b2_online = Bill.objects.create(
+            branch=self.branch2,
+            staff=self.owner,
+            customer_name='Cust 2',
+            payment_method='online',
+            total_amount=200
+        )
+
+        # Yesterday's bill for branch1 cash
+        yesterday = timezone.now() - timezone.timedelta(days=1)
+        self.bill_yesterday_b1_cash = Bill.objects.create(
+            branch=self.branch1,
+            staff=self.owner,
+            customer_name='Cust 3',
+            payment_method='cash',
+            total_amount=300
+        )
+        # Manually override created_at since auto_now_add is set
+        Bill.objects.filter(id=self.bill_yesterday_b1_cash.id).update(created_at=yesterday)
+        self.bill_yesterday_b1_cash.refresh_from_db()
+
+    def test_default_filter_shows_today_only(self):
+        self.client.force_login(self.owner)
+        response = self.client.get(reverse('owner_bill_list'))
+        self.assertEqual(response.status_code, 200)
+        # Should include both today's bills, but not yesterday's
+        bills = response.context['page_obj'].object_list
+        self.assertIn(self.bill_today_b1_cash, bills)
+        self.assertIn(self.bill_today_b2_online, bills)
+        self.assertNotIn(self.bill_yesterday_b1_cash, bills)
+
+    def test_branch_filter_shows_today_bills_only_by_default(self):
+        self.client.force_login(self.owner)
+        response = self.client.get(reverse('owner_bill_list'), {'branch': self.branch1.id})
+        self.assertEqual(response.status_code, 200)
+        # Should include branch1's today's bill, but NOT branch1's yesterday's bill
+        bills = response.context['page_obj'].object_list
+        self.assertIn(self.bill_today_b1_cash, bills)
+        self.assertNotIn(self.bill_yesterday_b1_cash, bills)
+        self.assertNotIn(self.bill_today_b2_online, bills)
+
+    def test_payment_filter_shows_today_bills_only_by_default(self):
+        self.client.force_login(self.owner)
+        response = self.client.get(reverse('owner_bill_list'), {'payment_method': 'cash'})
+        self.assertEqual(response.status_code, 200)
+        # Should include today's cash bill, but NOT yesterday's cash bill
+        bills = response.context['page_obj'].object_list
+        self.assertIn(self.bill_today_b1_cash, bills)
+        self.assertNotIn(self.bill_yesterday_b1_cash, bills)
+        self.assertNotIn(self.bill_today_b2_online, bills)
+
+    def test_date_filter_overrides_today_default(self):
+        self.client.force_login(self.owner)
+        # Filter for yesterday
+        yesterday_str = (timezone.now() - timezone.timedelta(days=1)).date().isoformat()
+        response = self.client.get(reverse('owner_bill_list'), {
+            'start_date': yesterday_str,
+            'end_date': yesterday_str
+        })
+        self.assertEqual(response.status_code, 200)
+        # Should include yesterday's bill only
+        bills = response.context['page_obj'].object_list
+        self.assertIn(self.bill_yesterday_b1_cash, bills)
+        self.assertNotIn(self.bill_today_b1_cash, bills)
+        self.assertNotIn(self.bill_today_b2_online, bills)
+
+    def test_date_and_branch_filter(self):
+        self.client.force_login(self.owner)
+        yesterday_str = (timezone.now() - timezone.timedelta(days=1)).date().isoformat()
+        response = self.client.get(reverse('owner_bill_list'), {
+            'branch': self.branch1.id,
+            'start_date': yesterday_str,
+            'end_date': yesterday_str
+        })
+        self.assertEqual(response.status_code, 200)
+        bills = response.context['page_obj'].object_list
+        self.assertIn(self.bill_yesterday_b1_cash, bills)
+        self.assertNotIn(self.bill_today_b1_cash, bills)

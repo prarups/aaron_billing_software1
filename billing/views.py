@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction, models
 from django.utils import timezone
 from django.db.models import Sum, Count, F, Subquery, OuterRef
-from core.models import Product, ProductRegistry, StockTransaction
+from core.models import Product, ProductRegistry, StockTransaction, ComboPrice
 from .models import Bill, BillItem
 import json
 import csv
@@ -118,14 +118,23 @@ def process_bill(request):
                     is_newly_created = request.session.get('newly_created_bill_id') == bill.id
                     if not (can_edit or is_newly_created):
                         return JsonResponse({'error': 'Unauthorized to edit this bill.'}, status=403)
-                    # Revert stock quantities of old items
-                    for old_item in bill.items.all():
-                        try:
-                            reg = ProductRegistry.objects.get(product=old_item.product, branch=bill.branch)
-                            reg.stock_quantity += old_item.quantity
-                            reg.save()
-                        except ProductRegistry.DoesNotExist:
-                            pass
+                    
+                    # Revert stock quantities of old items in bulk
+                    old_items = list(bill.items.all())
+                    if old_items:
+                        old_product_ids = [item.product_id for item in old_items]
+                        old_registries = ProductRegistry.objects.filter(product_id__in=old_product_ids, branch=bill.branch)
+                        old_regs_dict = {r.product_id: r for r in old_registries}
+                        
+                        regs_to_revert = {}
+                        for old_item in old_items:
+                            reg = old_regs_dict.get(old_item.product_id)
+                            if reg:
+                                reg.stock_quantity += old_item.quantity
+                                regs_to_revert[reg.id] = reg
+                        if regs_to_revert:
+                            ProductRegistry.objects.bulk_update(list(regs_to_revert.values()), ['stock_quantity'])
+
                     # Delete old stock transactions
                     StockTransaction.objects.filter(
                         branch=bill.branch,
@@ -158,25 +167,46 @@ def process_bill(request):
                     )
                 
                 subtotal_amount = 0
-                retail_price_total = 0
                 resolved_items = []
+                
+                product_ids = [int(item['id']) for item in items]
+                
+                # Fetch all products in bulk
+                products_dict = Product.objects.in_bulk(product_ids)
+                
+                # Fetch all registries in bulk
+                registries = ProductRegistry.objects.filter(product_id__in=product_ids, branch=request.user.active_branch)
+                registries_dict = {r.product_id: r for r in registries}
+                
+                regs_to_update = {}
                 for item in items:
-                    product = get_object_or_404(Product, id=item['id'])
+                    pid = int(item['id'])
                     quantity = int(item['quantity'])
                     
-                    # Stock logic - restored
-                    registry = get_object_or_404(ProductRegistry, product=product, branch=request.user.active_branch)
+                    product = products_dict.get(pid)
+                    if not product:
+                        raise ValueError(f"Product not found for ID: {pid}")
+                        
+                    # Stock logic
+                    registry = registries_dict.get(pid)
+                    if not registry:
+                        raise ValueError(f"Stock registry not found for product: {product.name}")
+                        
                     if registry.stock_quantity < quantity:
                         raise ValueError(f"Insufficient stock for {product.name} at {request.user.active_branch.name}. Available: {registry.stock_quantity}")
                     
-                    # Decrement stock
+                    # Decrement stock in memory
                     registry.stock_quantity -= quantity
-                    registry.save()
+                    regs_to_update[registry.id] = registry
                     
                     resolved_items.append({
                         'product': product,
                         'quantity': quantity,
                     })
+                
+                # Bulk update registry stock quantities
+                if regs_to_update:
+                    ProductRegistry.objects.bulk_update(list(regs_to_update.values()), ['stock_quantity'])
 
                 # Now calculate subtotals and unit prices using multi-product combo groups first, then fallback to individual combos
                 from core.combo_views import calculate_optimal_combo_price, ComboGroup
@@ -191,11 +221,14 @@ def process_bill(request):
                     if not group_tiers:
                         continue
                     
+                    # Cache the barcodes of products in the combo group in memory to avoid N+1 queries
+                    group_barcodes = {p.barcode for p in group.products.all()}
+                    
                     # Find resolved items belonging to this combo group that haven't been processed
                     group_cart_items = []
                     for r_item in resolved_items:
                         p = r_item['product']
-                        if p.id not in processed_items and group.products.filter(barcode=p.barcode).exists():
+                        if p.id not in processed_items and p.barcode in group_barcodes:
                             group_cart_items.append(r_item)
                             
                     if not group_cart_items:
@@ -249,6 +282,12 @@ def process_bill(request):
                         r_item['unit_price'] = int(round(float(sub / qty))) if qty > 0 else 0
                         processed_items.add(r_item['product'].id)
                 
+                # Fetch all fallback combos in a single query to avoid N+1 queries
+                combo_prices = ComboPrice.objects.filter(product_id__in=product_ids, branch=bill.branch).order_by('-quantity')
+                combos_by_product = {}
+                for cp in combo_prices:
+                    combos_by_product.setdefault(cp.product_id, []).append(cp)
+
                 # Fallback for remaining items
                 for r_item in resolved_items:
                     p = r_item['product']
@@ -256,7 +295,7 @@ def process_bill(request):
                         continue
                         
                     qty = r_item['quantity']
-                    combos = p.combos.filter(branch=bill.branch).order_by('-quantity')
+                    combos = combos_by_product.get(p.id, [])
                     
                     achieved_combo = None
                     for combo in combos:
@@ -275,33 +314,38 @@ def process_bill(request):
                     r_item['subtotal'] = Decimal(str(round(subtotal)))
                     r_item['unit_price'] = int(round(subtotal / qty)) if qty > 0 else 0
 
-
-                # Phase 3: Create BillItems, log StockTransactions, and sum subtotals
+                # Phase 3: Create BillItems, log StockTransactions, and sum subtotals in bulk
+                bill_items_to_create = []
+                stock_transactions_to_create = []
                 for r_item in resolved_items:
                     product = r_item['product']
                     quantity = r_item['quantity']
                     subtotal = r_item['subtotal']
                     effective_unit_price = r_item['unit_price']
                     
-                    bill_item = BillItem.objects.create(
+                    bill_items_to_create.append(BillItem(
                         bill=bill,
                         product=product,
                         quantity=quantity,
                         unit_price=effective_unit_price,
                         subtotal=subtotal,
-                    )
+                    ))
                     
-                    # Log Stock Transaction
-                    StockTransaction.objects.create(
+                    stock_transactions_to_create.append(StockTransaction(
                         product=product,
                         branch=request.user.active_branch,
                         transaction_type='OUT',
                         quantity=quantity,
                         reference=f"Bill {bill.invoice_number}",
                         user=request.user
-                    )
+                    ))
                     
-                    subtotal_amount += bill_item.subtotal
+                    subtotal_amount += subtotal
+                
+                if bill_items_to_create:
+                    BillItem.objects.bulk_create(bill_items_to_create)
+                if stock_transactions_to_create:
+                    StockTransaction.objects.bulk_create(stock_transactions_to_create)
                 
                 total_amount = int(round(float(subtotal_amount) + float(bill.retail_price)))
                 if total_amount < 0:
@@ -333,6 +377,7 @@ def process_bill(request):
             return JsonResponse({'error': str(e)}, status=400)
             
     return JsonResponse({'error': 'Invalid request'}, status=405)
+
 
 @login_required
 @transaction.atomic
@@ -596,10 +641,12 @@ def owner_bill_list(request):
         bills = bills.filter(branch_id=branch_id)
     import datetime
     from django.utils.dateparse import parse_date
-    # Determine if any other filters are applied (search query, branch, payment method)
-    has_other_filters = bool(q) or bool(branch_id and branch_id != 'None') or bool(payment_method and payment_method != 'None')
-    # Apply default date range (today) only when no other filters are present and dates are not supplied
-    if not has_other_filters and (not start_date or start_date == 'None') and (not end_date or end_date == 'None'):
+    # Determine if default date range (today) should be applied.
+    # The user requested that branch and payment filters should still default to showing today's bills,
+    # unless a date range is explicitly selected, while a search query 'q' searches all-time.
+    # Therefore, we default to today's date if 'q' is not set and no date filters are supplied.
+    is_default_today = not q and (not start_date or start_date == 'None') and (not end_date or end_date == 'None')
+    if is_default_today:
         today_iso = timezone.now().date().isoformat()
         start_date = today_iso
         end_date = today_iso
@@ -615,8 +662,8 @@ def owner_bill_list(request):
         if parsed_end:
             end_datetime = timezone.make_aware(datetime.datetime.combine(parsed_end, datetime.time.max))
             bills = bills.filter(created_at__lte=end_datetime)
-    # If default today was applied (no other filters), clear the dates for the form UI
-    if not has_other_filters and start_date == timezone.now().date().isoformat() and end_date == timezone.now().date().isoformat():
+    # If default today was applied, clear the dates for the form UI so inputs appear clean/default
+    if is_default_today:
         start_date = ''
         end_date = ''
     if payment_method and payment_method != 'None':
@@ -629,10 +676,14 @@ def owner_bill_list(request):
         invoice__in=bills,
         status=ReturnRequest.Status.APPROVED
     ).aggregate(total=Sum('price_difference'))['total'] or 0
+    total_cash = bills.aggregate(total=Sum('cash_amount'))['total'] or 0
+    total_online = bills.aggregate(total=Sum('online_amount'))['total'] or 0
 
     stats = {
         'total_revenue': total_bill_amount + total_exchange_diff,
-        'bill_count': bills.count()
+        'bill_count': bills.count(),
+        'total_cash': total_cash,
+        'total_online': total_online,
     }
     
     from django.core.paginator import Paginator
@@ -668,9 +719,13 @@ def export_sales_csv(request):
     writer = csv.writer(response)
     writer.writerow(['Invoice Number', 'Branch Name', 'Branch Code', 'Staff', 'Customer', 'Phone', 'Original Total', 'Retail Price', 'Cash', 'Online', 'Payment Method', 'Purchased Items', 'Total Quantity', 'HSN Codes', 'Return Reason', 'Returned Items', 'Replacement Items', 'Exchange Pay Difference', 'Date & Time'])
     
-    # Build base queryset
+    # Build base queryset with prefetched relations to avoid N+1 queries
     accessible_branches = request.user.get_accessible_branches()
-    bills = Bill.objects.filter(branch__in=accessible_branches).order_by('-created_at').select_related('branch', 'staff').prefetch_related('items__product')
+    bills = Bill.objects.filter(branch__in=accessible_branches).order_by('-created_at').select_related('branch', 'staff').prefetch_related(
+        'items__product',
+        'return_requests__replacement_product',
+        'return_requests__bill_item'
+    )
     
     q = request.GET.get('q', '')
     start_date = request.GET.get('start_date', '')
@@ -700,25 +755,40 @@ def export_sales_csv(request):
         
     import datetime
     from django.utils.dateparse import parse_date
-    if start_date and start_date != 'None':
-        parsed_start = parse_date(start_date)
-        if parsed_start:
-            start_datetime = timezone.make_aware(datetime.datetime.combine(parsed_start, datetime.time.min))
-            bills = bills.filter(created_at__gte=start_datetime)
-    if end_date and end_date != 'None':
-        parsed_end = parse_date(end_date)
-        if parsed_end:
-            end_datetime = timezone.make_aware(datetime.datetime.combine(parsed_end, datetime.time.max))
-            bills = bills.filter(created_at__lte=end_datetime)
+    
+    # Default to today if no date range is provided
+    if (not start_date or start_date == 'None') and (not end_date or end_date == 'None'):
+        today = timezone.localtime(timezone.now()).date()
+        parsed_start = today
+        parsed_end = today
+    else:
+        parsed_start = parse_date(start_date) if (start_date and start_date != 'None') else None
+        parsed_end = parse_date(end_date) if (end_date and end_date != 'None') else None
+
+    if parsed_start:
+        start_datetime = timezone.make_aware(datetime.datetime.combine(parsed_start, datetime.time.min))
+        bills = bills.filter(created_at__gte=start_datetime)
+    if parsed_end:
+        end_datetime = timezone.make_aware(datetime.datetime.combine(parsed_end, datetime.time.max))
+        bills = bills.filter(created_at__lte=end_datetime)
     if payment_method and payment_method != 'None':
         bills = bills.filter(payment_method=payment_method)
         
     from .return_models import ReturnRequest
     from core.models import ComboGroup
-    for bill in bills.select_related('branch', 'staff'):
+    
+    # Cache all active combo groups for these branches in memory to avoid N+1 queries during is_combo_purchase checks
+    active_combos_by_branch = {}
+    combo_groups = ComboGroup.objects.filter(is_active=True, branches__in=accessible_branches).prefetch_related('products', 'tiers')
+    for cg in combo_groups:
+        for branch in cg.branches.all():
+            active_combos_by_branch.setdefault(branch.id, []).append(cg)
+            
+    for bill in bills:
         purchased_items = ", ".join([f"{item.product.name} ({item.product.barcode}) [HSN: {item.product.size or '-'}] x{item.quantity}" for item in bill.items.all()])
         
-        returns_qs = bill.return_requests.filter(status=ReturnRequest.Status.APPROVED)
+        # Filter return requests in memory since they are prefetched
+        returns_qs = [ret for ret in bill.return_requests.all() if ret.status == ReturnRequest.Status.APPROVED]
         reasons = []
         ret_items_list = []
         rep_items_list = []
@@ -729,8 +799,26 @@ def export_sales_csv(request):
             if ret.replacement_product:
                 rep_items_list.append(f"{ret.replacement_product.name} x{ret.replacement_quantity}")
             
-            # Show diff only for normal products, not combo products
-            is_combo = ret.bill_item.is_combo_purchase if ret.bill_item else False
+            # Show diff only for normal products, not combo products (calculate in-memory)
+            is_combo = False
+            if ret.bill_item:
+                # Find matching combo group for this product at this branch in memory
+                branch_combos = active_combos_by_branch.get(bill.branch_id, [])
+                matching_combo = None
+                for combo in branch_combos:
+                    if any(p.barcode == ret.bill_item.product.barcode for p in combo.products.all()):
+                        matching_combo = combo
+                        break
+                
+                if matching_combo:
+                    tiers = list(matching_combo.tiers.all())
+                    if tiers:
+                        min_combo_qty = min(t.quantity for t in tiers)
+                        # Check total quantity of items in this bill belonging to this combo group
+                        combo_barcodes = {p.barcode for p in matching_combo.products.all()}
+                        total_group_qty = sum(item.quantity for item in bill.items.all() if item.product.barcode in combo_barcodes)
+                        if total_group_qty >= min_combo_qty:
+                            is_combo = True
             
             if not is_combo:
                 exchange_pay_diff += ret.price_difference
@@ -818,16 +906,22 @@ def export_gst_mis_csv(request):
         
     import datetime
     from django.utils.dateparse import parse_date
-    if start_date and start_date != 'None':
-        parsed_start = parse_date(start_date)
-        if parsed_start:
-            start_datetime = timezone.make_aware(datetime.datetime.combine(parsed_start, datetime.time.min))
-            bills = bills.filter(created_at__gte=start_datetime)
-    if end_date and end_date != 'None':
-        parsed_end = parse_date(end_date)
-        if parsed_end:
-            end_datetime = timezone.make_aware(datetime.datetime.combine(parsed_end, datetime.time.max))
-            bills = bills.filter(created_at__lte=end_datetime)
+    
+    # Default to today if no date range is provided
+    if (not start_date or start_date == 'None') and (not end_date or end_date == 'None'):
+        today = timezone.localtime(timezone.now()).date()
+        parsed_start = today
+        parsed_end = today
+    else:
+        parsed_start = parse_date(start_date) if (start_date and start_date != 'None') else None
+        parsed_end = parse_date(end_date) if (end_date and end_date != 'None') else None
+
+    if parsed_start:
+        start_datetime = timezone.make_aware(datetime.datetime.combine(parsed_start, datetime.time.min))
+        bills = bills.filter(created_at__gte=start_datetime)
+    if parsed_end:
+        end_datetime = timezone.make_aware(datetime.datetime.combine(parsed_end, datetime.time.max))
+        bills = bills.filter(created_at__lte=end_datetime)
     if payment_method and payment_method != 'None':
         bills = bills.filter(payment_method=payment_method)
         

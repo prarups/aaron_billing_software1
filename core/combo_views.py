@@ -295,17 +295,8 @@ def branch_products_ajax(request):
     return JsonResponse({'products': product_list})
 
 @login_required
-@transaction.atomic
 def combo_delete(request, pk):
-    if request.user.role != 'owner':
-        messages.error(request, "Access denied. Only Owners can manage combos.")
-        return redirect('combo_list')
-    
-    combo = get_object_or_404(ComboGroup, pk=pk)
-    if request.method == 'POST':
-        name = combo.name
-        combo.delete()
-        messages.success(request, f"Combo '{name}' deleted successfully.")
+    messages.error(request, "Combo deletion is disabled. Please toggle the combo active status to deactivate instead.")
     return redirect('combo_list')
 
 def combo_offers_public(request):

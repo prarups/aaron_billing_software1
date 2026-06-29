@@ -573,13 +573,7 @@ def branch_edit(request, pk):
 
 @login_required
 def branch_delete(request, pk):
-    if not request.user.is_owner():
-        return redirect('dashboard')
-    branch = get_object_or_404(Branch, pk=pk)
-    if request.method == 'POST':
-        name = branch.name
-        branch.delete()
-        messages.success(request, f"Branch '{name}' deleted successfully.")
+    messages.error(request, "Branch deletion is disabled to protect historical sales data. Please archive or rename instead.")
     return redirect(reverse('owner_dashboard') + '#branches')
 
 
@@ -717,13 +711,7 @@ def staff_edit(request, pk):
 
 @login_required
 def staff_delete(request, pk):
-    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
-        return redirect('dashboard')
-    user = get_object_or_404(User, pk=pk)
-    if request.method == 'POST':
-        username = user.username
-        user.delete()
-        messages.success(request, f"Staff account '{username}' deleted successfully.")
+    messages.error(request, "Staff account deletion is disabled to protect transaction history. Please toggle their active status to Deactivate instead.")
     return redirect(reverse('owner_dashboard') + '#staff')
 
 # --- TOGGLE STAFF ACTIVE STATUS ---

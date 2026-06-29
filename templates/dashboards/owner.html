@@ -588,15 +588,10 @@
                                          title="Set Monthly Goal" style="width: 24px; height: 24px; line-height: 1;">
                                      <i class="bi bi-target" style="font-size: 10px; display: block;"></i>
                                  </button>
-                                 <button class="btn btn-outline-primary btn-xs rounded-circle me-1 p-1" 
+                                 <button class="btn btn-outline-primary btn-xs rounded-circle p-1" 
                                          onclick="openEditBranchModal('{{ branch.id }}', '{{ branch.name }}', '{{ branch.location }}', '{{ branch.contact_number }}', '{{ branch.invoice_prefix }}')" 
                                          title="Edit Branch" style="width: 24px; height: 24px; line-height: 1;">
                                      <i class="bi bi-pencil" style="font-size: 10px; display: block;"></i>
-                                 </button>
-                                 <button class="btn btn-outline-danger btn-xs rounded-circle p-1" 
-                                         onclick="confirmDelete('{% url 'branch_delete' branch.id %}', 'Branch &quot;{{ branch.name }}&quot;')" 
-                                         title="Delete Branch" style="width: 24px; height: 24px; line-height: 1;">
-                                     <i class="bi bi-trash" style="font-size: 10px; display: block;"></i>
                                  </button>
                              </td>
                         </tr>
@@ -744,15 +739,10 @@
                                 </div>
                             </td>
                             <td data-label="Actions" class="text-center hover-actions d-flex justify-content-center gap-2">
-                                <button class="btn btn-outline-primary btn-xs rounded-circle me-1 p-1" 
-                                        onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}', '{{ staff.date_of_joining|date:"Y-m-d"|default:'' }}')" 
-                                        title="Edit Staff / Assign Branch" style="width: 24px; height: 24px; line-height: 1;">
+                                <button class="btn btn-outline-primary btn-xs rounded-circle p-1" 
+                                         onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}', '{{ staff.date_of_joining|date:"Y-m-d"|default:'' }}')" 
+                                         title="Edit Staff / Assign Branch" style="width: 24px; height: 24px; line-height: 1;">
                                     <i class="bi bi-pencil-square" style="font-size: 10px; display: block;"></i>
-                                </button>
-                                <button class="btn btn-outline-danger btn-xs rounded-circle p-1" 
-                                        onclick="confirmDelete('{% url 'staff_delete' staff.id %}', 'Staff account &quot;{{ staff.username }}&quot;')" 
-                                        title="Delete Account" style="width: 24px; height: 24px; line-height: 1;">
-                                    <i class="bi bi-trash" style="font-size: 10px; display: block;"></i>
                                 </button>
                             </td>
                         </tr>

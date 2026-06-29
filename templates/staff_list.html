@@ -43,11 +43,8 @@
                     {% endfor %}
                 </td>
                 <td class="text-center hover-actions">
-                    <button class="btn btn-outline-primary btn-sm rounded-circle me-1 px-2 py-1" onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}')" title="Edit Staff / Assign Branch">
+                    <button class="btn btn-outline-primary btn-sm rounded-circle px-2 py-1" onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}')" title="Edit Staff / Assign Branch">
                         <i class="bi bi-pencil-square"></i>
-                    </button>
-                    <button class="btn btn-outline-danger btn-sm rounded-circle px-2 py-1" onclick="confirmDelete('{% url 'staff_delete' staff.id %}', 'Staff account \"{{ staff.username }}\"')" title="Delete Account">
-                        <i class="bi bi-trash"></i>
                     </button>
                 </td>
             </tr>
