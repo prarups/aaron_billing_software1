@@ -710,17 +710,29 @@
                             <div class="border-top border-light my-2"></div>
                             
                             <div class="d-flex align-items-center justify-content-between text-xxs">
-                                <span class="text-muted">Price Difference:</span>
-                                <span>
-                                    {% if ret.price_difference > 0 %}
-                                    <strong class="text-success">+₹{{ ret.price_difference|floatformat:0 }}</strong>
-                                    {% elif ret.price_difference < 0 %}
-                                    <strong class="text-danger">-₹{{ ret.price_difference|floatformat:0|cut:"-" }}</strong>
-                                    {% else %}
-                                    <strong class="text-muted">₹0</strong>
-                                    {% endif %}
-                                </span>
-                            </div>
+                                 <span class="text-muted">Price Difference:</span>
+                                 <span>
+                                     {% if ret.price_difference > 0 %}
+                                     <strong class="text-success">+₹{{ ret.price_difference|floatformat:0 }}</strong>
+                                     {% elif ret.price_difference < 0 %}
+                                     <strong class="text-danger">-₹{{ ret.price_difference|floatformat:0|cut:"-" }}</strong>
+                                     {% else %}
+                                     <strong class="text-muted">₹0</strong>
+                                     {% endif %}
+                                 </span>
+                             </div>
+
+                             {% if ret.price_difference > 0 %}
+                             <div class="d-flex align-items-start justify-content-between text-xxs mt-1">
+                                 <span class="text-muted">Paid Diff via:</span>
+                                 <span class="text-dark fw-semibold text-end">
+                                     {{ ret.get_payment_method_display }}
+                                     {% if ret.payment_method == 'split' %}
+                                     <br><span class="text-muted fw-normal" style="font-size: 9px;">(Cash: ₹{{ ret.cash_amount|floatformat:0 }}, Online: ₹{{ ret.online_amount|floatformat:0 }})</span>
+                                     {% endif %}
+                                 </span>
+                             </div>
+                             {% endif %}
                             
                             {% if ret.status != 'A' %}
                             <div class="d-flex align-items-center justify-content-between text-xxs mt-1">
@@ -737,6 +749,7 @@
                 </div>
             </div>
         </div>
+    </div>
     {% endif %}
 {% endfor %}
 {% endblock %}

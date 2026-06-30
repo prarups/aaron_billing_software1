@@ -5,7 +5,7 @@ from django.db import models
 from django.db.models import Sum, Count, F, Q, DecimalField, ExpressionWrapper
 from django.views.generic import TemplateView
 from django.contrib import messages
-from billing.models import Bill, BranchGoal
+from billing.models import Bill, BranchGoal, BillItem
 from core.models import Branch, Product, ProductRegistry
 from .forms import BranchForm, StaffForm
 from .models import User
@@ -133,6 +133,22 @@ class OwnerDashboardView(TemplateView):
         
         # Low Stock Alerts
         context['low_stock_count'] = ProductRegistry.objects.filter(stock_quantity__lte=F('low_stock_threshold')).count()
+        
+        # Stock Summary stats
+        total_current_stock = ProductRegistry.objects.aggregate(Sum('stock_quantity'))['stock_quantity__sum'] or 0
+        if is_filtered:
+            total_items_sold = BillItem.objects.filter(
+                bill__created_at__range=(start_datetime, end_datetime)
+            ).aggregate(Sum('quantity'))['quantity__sum'] or 0
+        else:
+            today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+            today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+            total_items_sold = BillItem.objects.filter(
+                bill__created_at__range=(today_start, today_end)
+            ).aggregate(Sum('quantity'))['quantity__sum'] or 0
+            
+        context['total_current_stock'] = total_current_stock
+        context['total_items_sold'] = total_items_sold
         
         # Branch performance - optimized with Subqueries to avoid cartesian join duplication
         from django.db.models import OuterRef, Subquery

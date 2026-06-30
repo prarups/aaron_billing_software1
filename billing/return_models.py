@@ -29,6 +29,17 @@ class ReturnRequest(models.Model):
     replacement_product = models.ForeignKey('core.Product', on_delete=models.SET_NULL, null=True, blank=True, related_name='replacement_returns')
     replacement_quantity = models.PositiveIntegerField(default=1)
     price_difference = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    payment_method = models.CharField(
+        max_length=10,
+        choices=(
+            ('cash', 'Cash'),
+            ('online', 'Online'),
+            ('split', 'Split Payment'),
+        ),
+        default='cash'
+    )
+    cash_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    online_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     product_name = models.CharField(max_length=120, blank=True)
     reason = models.TextField(blank=True)

@@ -64,6 +64,27 @@ class ReturnCreateForm(forms.Form):
         }),
         required=False,
     )
+    payment_method = forms.CharField(
+        required=False,
+        widget=forms.HiddenInput(attrs={
+            'id': 'id_payment_method',
+        }),
+        initial='cash'
+    )
+    cash_amount = forms.DecimalField(
+        required=False,
+        widget=forms.HiddenInput(attrs={
+            'id': 'id_cash_amount',
+        }),
+        initial=0.00
+    )
+    online_amount = forms.DecimalField(
+        required=False,
+        widget=forms.HiddenInput(attrs={
+            'id': 'id_online_amount',
+        }),
+        initial=0.00
+    )
 
     def clean_invoice_id(self):
         invoice_val = self.cleaned_data['invoice_id'].strip()
@@ -233,6 +254,31 @@ class ReturnCreateForm(forms.Form):
                 f'Total replacement value (₹{total_replacement_value:.0f}) must be equal or greater than total returned value (₹{total_returned_value:.0f}).'
             )
 
+        total_difference = total_replacement_value - total_returned_value
+        if total_difference > 0:
+            payment_method = cleaned.get('payment_method', 'cash') or 'cash'
+            cash_amount = cleaned.get('cash_amount', 0) or 0
+            online_amount = cleaned.get('online_amount', 0) or 0
+
+            if payment_method not in ('cash', 'online', 'split'):
+                raise forms.ValidationError('Invalid payment method selected for difference.')
+
+            if payment_method == 'split':
+                if abs((cash_amount + online_amount) - total_difference) > 0.01:
+                    raise forms.ValidationError(
+                        f'For split payment, the sum of cash (₹{cash_amount:.0f}) and online (₹{online_amount:.0f}) must equal the total difference of ₹{total_difference:.0f}.'
+                    )
+            elif payment_method == 'cash':
+                cleaned['cash_amount'] = total_difference
+                cleaned['online_amount'] = 0
+            elif payment_method == 'online':
+                cleaned['online_amount'] = total_difference
+                cleaned['cash_amount'] = 0
+        else:
+            cleaned['payment_method'] = 'cash'
+            cleaned['cash_amount'] = 0
+            cleaned['online_amount'] = 0
+
         cleaned['validated_return_items'] = validated_items
         return cleaned
 
@@ -240,6 +286,30 @@ class ReturnCreateForm(forms.Form):
         bill = self.cleaned_data['invoice_id']
         reason = self.cleaned_data['reason']
         validated_items = self.cleaned_data['validated_return_items']
+
+        # Pre-calculate positive difference totals for payment allocation
+        total_positive_difference = 0
+        positive_diff_items_count = 0
+        for vi in validated_items:
+            item = vi['bill_item']
+            qty = vi['quantity']
+            rep_product = vi['replacement_product']
+            rep_qty = vi['replacement_quantity']
+            is_combo = item.is_combo_purchase if item else False
+            if not is_combo:
+                unit_price = item.unit_price if item else 0
+                price_diff = (rep_product.price * rep_qty) - (unit_price * qty)
+                if price_diff > 0:
+                    total_positive_difference += price_diff
+                    positive_diff_items_count += 1
+
+        payment_method = self.cleaned_data.get('payment_method', 'cash') or 'cash'
+        total_cash_amount = float(self.cleaned_data.get('cash_amount', 0) or 0)
+        total_online_amount = float(self.cleaned_data.get('online_amount', 0) or 0)
+
+        assigned_cash = 0.0
+        assigned_online = 0.0
+        positive_diff_processed = 0
 
         from core.models import ProductRegistry, StockTransaction, ComboGroup
         returns = []
@@ -260,6 +330,22 @@ class ReturnCreateForm(forms.Form):
                 unit_price = item.unit_price if item else 0
                 price_diff = (rep_product.price * rep_qty) - (unit_price * qty)
 
+            # Apportion cash and online amounts
+            if price_diff > 0 and total_positive_difference > 0:
+                positive_diff_processed += 1
+                if positive_diff_processed == positive_diff_items_count:
+                    req_cash = total_cash_amount - assigned_cash
+                    req_online = total_online_amount - assigned_online
+                else:
+                    proportion = float(price_diff) / float(total_positive_difference)
+                    req_cash = round(total_cash_amount * proportion, 2)
+                    req_online = round(total_online_amount * proportion, 2)
+                    assigned_cash += req_cash
+                    assigned_online += req_online
+            else:
+                req_cash = 0.00
+                req_online = 0.00
+
             # Create approved ReturnRequest
             ret = ReturnRequest.objects.create(
                 invoice=bill,
@@ -271,6 +357,9 @@ class ReturnCreateForm(forms.Form):
                 replacement_product=rep_product,
                 replacement_quantity=rep_qty,
                 price_difference=price_diff,
+                payment_method=payment_method,
+                cash_amount=req_cash,
+                online_amount=req_online,
                 requested_by=user,
                 product_name=item.product.name if item else f"Replacement: {rep_product.name}",
                 reason=reason,

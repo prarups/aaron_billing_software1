@@ -486,6 +486,27 @@
                 </div>
             </div>
             <div class="col-md-4">
+                <!-- Stock Summary Card -->
+                <div class="glass-card p-3 mb-3 border-0 bg-opacity-75 shadow-sm">
+                    <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-box-seam me-1.5"></i>Stock Summary</h6>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="p-2.5 rounded-3 bg-light bg-opacity-50 border border-light">
+                                <span class="text-xxs text-uppercase fw-bold text-muted d-block mb-1">Total Stock</span>
+                                <span class="fw-bold text-dark fs-5 font-monospace">{{ total_current_stock }}</span>
+                                <span class="text-muted d-block mt-0.5" style="font-size: 0.65rem;">All Branches</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2.5 rounded-3 bg-light bg-opacity-50 border border-light">
+                                <span class="text-xxs text-uppercase fw-bold text-muted d-block mb-1">{% if is_filtered %}Period Out{% else %}Today Out{% endif %}</span>
+                                <span class="fw-bold text-danger fs-5 font-monospace">{{ total_items_sold }}</span>
+                                <span class="text-muted d-block mt-0.5" style="font-size: 0.65rem;">Items Sold</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="glass-card p-3">
                     <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-clock-history me-1.5"></i>Recent Sales</h6>
                     <div class="list-group list-group-flush">

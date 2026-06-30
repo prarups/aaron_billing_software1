@@ -222,9 +222,14 @@
                                     </div>
                                     <div class="text-end">
                                         <div class="text-xxs text-muted">Qty: {{ ret.replacement_quantity }}</div>
-                                        {% if ret.price_difference > 0 %}
-                                        <div class="text-xxs fw-bold text-primary mt-1">Paid Diff: ₹{{ ret.price_difference|floatformat:0 }}</div>
-                                        {% endif %}
+                                         {% if ret.price_difference > 0 %}
+                                         <div class="text-xxs fw-bold text-primary mt-1">
+                                             Paid Diff: ₹{{ ret.price_difference|floatformat:0 }} via {{ ret.get_payment_method_display }}
+                                             {% if ret.payment_method == 'split' %}
+                                             <span class="text-muted fw-normal d-block mt-0.5" style="font-size: 9px;">(Cash: ₹{{ ret.cash_amount|floatformat:0 }}, Online: ₹{{ ret.online_amount|floatformat:0 }})</span>
+                                             {% endif %}
+                                         </div>
+                                         {% endif %}
                                     </div>
                                 </div>
                             </div>

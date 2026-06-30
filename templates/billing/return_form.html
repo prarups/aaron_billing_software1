@@ -97,6 +97,9 @@
                 </div>
                 <!-- Hidden field for return items JSON -->
                 {{ form.return_items }}
+                {{ form.payment_method }}
+                {{ form.cash_amount }}
+                {{ form.online_amount }}
 
                 <!-- Condition & Action (side by side) -->
                 <div class="row g-3 mb-3">
@@ -237,6 +240,46 @@
                     </div>
                 </div>
 
+                <!-- Difference Payment Method Section -->
+                <div class="card border-0 rounded-4 mb-4 shadow-sm bg-warning bg-opacity-10" id="paymentSection" style="display:none; border: 1px solid rgba(255, 193, 7, 0.25) !important;">
+                    <div class="card-body p-4">
+                        <div class="small fw-bold text-indigo-900 mb-3" style="color: #312e81;"><i class="bi bi-credit-card me-1"></i> Difference Payment Method</div>
+                        <div class="btn-group w-100 mb-3" role="group">
+                            <input type="radio" class="btn-check" name="temp_payment_method" id="ret-pay-cash" value="cash" checked autocomplete="off">
+                            <label class="btn btn-outline-secondary py-2 text-xs fw-semibold rounded-start-pill" for="ret-pay-cash" style="border-radius: 50px 0 0 50px; font-size: 0.8rem;">CASH</label>
+
+                            <input type="radio" class="btn-check" name="temp_payment_method" id="ret-pay-online" value="online" autocomplete="off">
+                            <label class="btn btn-outline-secondary py-2 text-xs fw-semibold border-start-0 border-end-0" for="ret-pay-online" style="font-size: 0.8rem;">ONLINE</label>
+
+                            <input type="radio" class="btn-check" name="temp_payment_method" id="ret-pay-split" value="split" autocomplete="off">
+                            <label class="btn btn-outline-secondary py-2 text-xs fw-semibold rounded-end-pill" for="ret-pay-split" style="border-radius: 0 50px 50px 0; font-size: 0.8rem;">SPLIT</label>
+                        </div>
+
+                        <!-- Split Payment Inputs -->
+                        <div id="ret-split-inputs" class="card bg-white border-0 shadow-sm rounded-3 p-3 mb-1 d-none animate-fade-in">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label x-small text-muted text-uppercase fw-bold mb-0">Split Amounts</label>
+                                <span class="badge bg-info-subtle text-info fw-bold text-xxs" id="ret-split-remaining-label">Remaining: ₹0</span>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text border-0 bg-light text-muted small" style="border-radius: 2rem 0 0 2rem;"><i class="bi bi-cash"></i></span>
+                                        <input type="number" step="0.01" id="ret-split-cash" class="form-control form-control-sm border-0 bg-light py-1.5 text-xs shadow-none" placeholder="Cash Amount" style="border-radius: 0 2rem 2rem 0;" onfocus="this.select()">
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text border-0 bg-light text-muted small" style="border-radius: 2rem 0 0 2rem;"><i class="bi bi-globe"></i></span>
+                                        <input type="number" step="0.01" id="ret-split-online" class="form-control form-control-sm border-0 bg-light py-1.5 text-xs shadow-none" placeholder="Online Amount" style="border-radius: 0 2rem 2rem 0;" onfocus="this.select()">
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="ret-split-warning" class="x-small text-danger mt-2 d-none fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Sum must match difference!</div>
+                        </div>
+                    </div>
+                </div>
+
                 <button type="submit" class="btn btn-warning w-100 rounded-pill py-2 fw-bold shadow-sm" id="submitBtn">
                     <i class="bi bi-check-circle me-1"></i> Confirm Return & Exchange
                 </button>
@@ -255,21 +298,41 @@
 </div>
 
 {% if return_confirmed %}
-<!-- Success Modal -->
-<div class="modal fade" id="successModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
-        <div class="modal-content rounded-4 border-0 shadow-lg text-center p-4">
-            <div class="modal-body py-4">
-                <div class="d-inline-flex align-items-center justify-content-center bg-success bg-opacity-10 rounded-circle mb-3" style="width:72px;height:72px;">
-                    <i class="bi bi-check-circle-fill fs-1 text-success"></i>
-                </div>
-                <h5 class="fw-bold mb-2">Return Confirmed</h5>
+<style>
+    @keyframes toastProgress {
+        from { width: 100%; }
+        to { width: 0%; }
+    }
+    @keyframes bounceIn {
+        from, 20%, 40%, 60%, 80%, to { animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000); }
+        0% { opacity: 0; transform: translate3d(-50%, -20px, 0) scale3d(.3, .3, .3); }
+        20% { transform: translate3d(-50%, 0, 0) scale3d(1.1, 1.1, 1.1); }
+        40% { transform: translate3d(-50%, 0, 0) scale3d(.9, .9, .9); }
+        60% { opacity: 1; transform: translate3d(-50%, 0, 0) scale3d(1.03, 1.03, 1.03); }
+        80% { transform: translate3d(-50%, 0, 0) scale3d(.97, .97, .97); }
+        to { opacity: 1; transform: translate3d(-50%, 0, 0) scale3d(1, 1, 1); }
+    }
+    .animate-bounce-in {
+        animation: bounceIn 0.6s ease-out forwards;
+    }
+</style>
+<!-- Success Message Toast -->
+<div class="position-fixed top-0 start-50 translate-middle-x mt-4 animate-bounce-in" style="z-index: 9999; max-width: 400px; width: 90%;">
+    <div id="successToast" class="card border-0 shadow-lg text-center p-3" style="background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.5); cursor: pointer;" title="Click to redirect immediately">
+        <div class="card-body p-2 d-flex align-items-center gap-3">
+            <div class="d-inline-flex align-items-center justify-content-center bg-success bg-opacity-10 rounded-circle flex-shrink-0" style="width:48px;height:48px;">
+                <i class="bi bi-check-circle-fill fs-4 text-success"></i>
+            </div>
+            <div class="text-start flex-grow-1">
+                <h6 class="fw-bold mb-1" style="color: #312e81; font-size: 0.95rem;">Return Confirmed</h6>
                 <p class="text-muted small mb-0">{{ success_message }}</p>
-                <div class="mt-4">
-                    <button type="button" class="btn btn-success px-5 rounded-pill fw-semibold" id="btnConfirmRedirect">OK</button>
-                </div>
+            </div>
+            <div class="flex-shrink-0 text-muted x-small me-1">
+                <span id="countdownSecs" class="fw-semibold">2s</span>
             </div>
         </div>
+        <!-- Progress Bar for visual countdown -->
+        <div class="position-absolute bottom-0 start-0 bg-success" id="toastProgressBar" style="height: 3px; width: 100%; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; animation: toastProgress 2s linear forwards;"></div>
     </div>
 </div>
 {% endif %}
@@ -770,6 +833,149 @@
         summaryBody.appendChild(totalRow);
 
         summaryCard.style.display = 'block';
+
+        // Show/hide payment method section
+        const paymentSection = document.getElementById('paymentSection');
+        const hiddenPaymentMethod = document.getElementById('id_payment_method');
+        const hiddenCashAmount = document.getElementById('id_cash_amount');
+        const hiddenOnlineAmount = document.getElementById('id_online_amount');
+        
+        if (balance > 0) {
+            if (paymentSection) paymentSection.style.display = 'block';
+            
+            // Get currently selected payment method
+            const selectedMethod = document.querySelector('input[name="temp_payment_method"]:checked') ? document.querySelector('input[name="temp_payment_method"]:checked').value : 'cash';
+            if (hiddenPaymentMethod) hiddenPaymentMethod.value = selectedMethod;
+            
+            if (selectedMethod === 'split') {
+                calculateRetSplit(balance);
+            } else if (selectedMethod === 'cash') {
+                if (hiddenCashAmount) hiddenCashAmount.value = balance.toFixed(0);
+                if (hiddenOnlineAmount) hiddenOnlineAmount.value = '0';
+            } else if (selectedMethod === 'online') {
+                if (hiddenCashAmount) hiddenCashAmount.value = '0';
+                if (hiddenOnlineAmount) hiddenOnlineAmount.value = balance.toFixed(0);
+            }
+        } else {
+            if (paymentSection) paymentSection.style.display = 'none';
+            if (hiddenPaymentMethod) hiddenPaymentMethod.value = 'cash';
+            if (hiddenCashAmount) hiddenCashAmount.value = '0';
+            if (hiddenOnlineAmount) hiddenOnlineAmount.value = '0';
+        }
+    }
+
+    // Payment method split calculations and listeners
+    function calculateRetSplit(totalDiff) {
+        if (totalDiff <= 0) return;
+        
+        const cashInput = document.getElementById('ret-split-cash');
+        const onlineInput = document.getElementById('ret-split-online');
+        const remainingLabel = document.getElementById('ret-split-remaining-label');
+        const warning = document.getElementById('ret-split-warning');
+        
+        let cashVal = Math.round(parseFloat(cashInput.value)) || 0;
+        let onlineVal = Math.round(parseFloat(onlineInput.value)) || 0;
+        
+        const sum = cashVal + onlineVal;
+        const remaining = totalDiff - sum;
+        
+        if (remainingLabel) {
+            if (Math.abs(remaining) < 0.01) {
+                remainingLabel.textContent = 'Split Balanced!';
+                remainingLabel.className = 'badge bg-success text-white fw-bold text-xxs';
+                if (warning) warning.classList.add('d-none');
+            } else if (remaining > 0) {
+                remainingLabel.textContent = `Remaining: ₹${remaining.toFixed(0)}`;
+                remainingLabel.className = 'badge bg-warning text-dark fw-bold text-xxs';
+            } else {
+                remainingLabel.textContent = `Overpaid: ₹${Math.abs(remaining).toFixed(0)}`;
+                remainingLabel.className = 'badge bg-danger text-white fw-bold text-xxs';
+            }
+        }
+        
+        // Sync values to hidden inputs
+        const hiddenCashAmount = document.getElementById('id_cash_amount');
+        const hiddenOnlineAmount = document.getElementById('id_online_amount');
+        if (hiddenCashAmount) hiddenCashAmount.value = cashVal.toFixed(0);
+        if (hiddenOnlineAmount) hiddenOnlineAmount.value = onlineVal.toFixed(0);
+    }
+
+    const tempPaymentRadios = document.querySelectorAll('input[name="temp_payment_method"]');
+    const retSplitInputs = document.getElementById('ret-split-inputs');
+    const retSplitCash = document.getElementById('ret-split-cash');
+    const retSplitOnline = document.getElementById('ret-split-online');
+
+    tempPaymentRadios.forEach(radio => {
+        radio.addEventListener('change', function(e) {
+            const method = e.target.value;
+            const hiddenPaymentMethod = document.getElementById('id_payment_method');
+            const hiddenCashAmount = document.getElementById('id_cash_amount');
+            const hiddenOnlineAmount = document.getElementById('id_online_amount');
+            if (hiddenPaymentMethod) hiddenPaymentMethod.value = method;
+            
+            const totalDiff = getOverallDifference();
+            
+            if (method === 'split') {
+                if (retSplitInputs) retSplitInputs.classList.remove('d-none');
+                if (retSplitCash) retSplitCash.value = totalDiff.toFixed(0);
+                if (retSplitOnline) retSplitOnline.value = '0';
+                calculateRetSplit(totalDiff);
+            } else {
+                if (retSplitInputs) retSplitInputs.classList.add('d-none');
+                if (method === 'cash') {
+                    if (hiddenCashAmount) hiddenCashAmount.value = totalDiff.toFixed(0);
+                    if (hiddenOnlineAmount) hiddenOnlineAmount.value = '0';
+                } else if (method === 'online') {
+                    if (hiddenCashAmount) hiddenCashAmount.value = '0';
+                    if (hiddenOnlineAmount) hiddenOnlineAmount.value = totalDiff.toFixed(0);
+                }
+            }
+        });
+    });
+
+    if (retSplitCash && retSplitOnline) {
+        retSplitCash.addEventListener('input', function() {
+            const totalDiff = getOverallDifference();
+            let cashVal = Math.round(parseFloat(this.value)) || 0;
+            if (cashVal > totalDiff) {
+                cashVal = totalDiff;
+                this.value = cashVal.toFixed(0);
+            }
+            retSplitOnline.value = (totalDiff - cashVal).toFixed(0);
+            calculateRetSplit(totalDiff);
+        });
+        
+        retSplitOnline.addEventListener('input', function() {
+            const totalDiff = getOverallDifference();
+            let onlineVal = Math.round(parseFloat(this.value)) || 0;
+            if (onlineVal > totalDiff) {
+                onlineVal = totalDiff;
+                this.value = onlineVal.toFixed(0);
+            }
+            retSplitCash.value = (totalDiff - onlineVal).toFixed(0);
+            calculateRetSplit(totalDiff);
+        });
+    }
+
+    function getOverallDifference() {
+        let totalReturned = 0;
+        let totalReplacement = 0;
+
+        returnList.forEach(item => {
+            let rowRetPrice = 0;
+            let rowRepPrice = item.replacement_product_price * item.replacement_quantity;
+
+            if (item.is_combo) {
+                rowRetPrice = rowRepPrice;
+            } else {
+                rowRetPrice = item.price * item.quantity;
+            }
+
+            totalReturned += rowRetPrice;
+            totalReplacement += rowRepPrice;
+        });
+
+        return Math.max(0, totalReplacement - totalReturned);
     }
 
     function refreshReturnListUI() {
@@ -1007,6 +1213,19 @@
                 alert(`Cannot complete return: Total replacement value (₹${totalReplacementVal}) must be equal or greater than total returned value (₹${totalReturnedVal}). Please add more replacement items.`);
                 return;
             }
+
+            // Validation for split payment sum
+            const selectedMethod = document.querySelector('input[name="temp_payment_method"]:checked') ? document.querySelector('input[name="temp_payment_method"]:checked').value : 'cash';
+            if (totalReplacementVal > totalReturnedVal && selectedMethod === 'split') {
+                const totalDiff = totalReplacementVal - totalReturnedVal;
+                const cashVal = parseFloat(document.getElementById('ret-split-cash').value) || 0;
+                const onlineVal = parseFloat(document.getElementById('ret-split-online').value) || 0;
+                if (Math.abs((cashVal + onlineVal) - totalDiff) > 0.01) {
+                    e.preventDefault();
+                    alert(`Split payment amounts (Cash: ₹${cashVal}, Online: ₹${onlineVal}) must equal the total difference of ₹${totalDiff}.`);
+                    return;
+                }
+            }
         });
     }
 
@@ -1030,17 +1249,34 @@
     }
 
     {% if return_confirmed %}
-    const successModalEl = document.getElementById('successModal');
-    if (successModalEl) {
-        const successModal = new bootstrap.Modal(successModalEl);
-        successModal.show();
-        
-        const btnConfirmRedirect = document.getElementById('btnConfirmRedirect');
-        if (btnConfirmRedirect) {
-            btnConfirmRedirect.addEventListener('click', function() {
-                window.location.href = "{{ redirect_url }}";
-            });
-        }
+    const successToastEl = document.getElementById('successToast');
+    if (successToastEl) {
+        let secondsLeft = 2;
+        const countdownSecs = document.getElementById('countdownSecs');
+        const redirectUrl = "{{ redirect_url }}";
+
+        const interval = setInterval(() => {
+            secondsLeft -= 1;
+            if (countdownSecs) {
+                countdownSecs.textContent = secondsLeft + 's';
+            }
+            if (secondsLeft <= 0) {
+                clearInterval(interval);
+                window.location.href = redirectUrl;
+            }
+        }, 1000);
+
+        // Click to redirect immediately
+        successToastEl.addEventListener('click', function() {
+            clearInterval(interval);
+            window.location.href = redirectUrl;
+        });
+
+        // Fallback timeout to ensure redirect
+        setTimeout(() => {
+            clearInterval(interval);
+            window.location.href = redirectUrl;
+        }, 2000);
     }
     {% endif %}
 })();

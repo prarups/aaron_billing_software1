@@ -368,6 +368,7 @@
                             <i class="bi bi-receipt"></i>
                             <span>Sales Report</span>
                         </a>
+                    </li>
                     {% endif %}
                     <li class="sidebar-item">
                         <a class="sidebar-link" href="{% url 'combo_list' %}">
@@ -455,6 +456,7 @@
                             <i class="bi bi-receipt"></i>
                             <span>Sales Report</span>
                         </a>
+                    </li>
                     {% endif %}
                     <li class="sidebar-item">
                         <a class="sidebar-link" href="{% url 'combo_list' %}">
@@ -610,7 +612,9 @@
                 const linkPath = new URL(link.href, window.location.origin).pathname;
                 if (link.classList.contains('btn-vibrant')) return;
                 
-                if (currentPath === linkPath || (linkPath !== '/' && currentPath.startsWith(linkPath))) {
+                // For POS Billing page, avoid prefix matching other sub-folders like /billing/all-bills/
+                const isExactMatchOnly = (linkPath === '/billing/');
+                if (currentPath === linkPath || (!isExactMatchOnly && linkPath !== '/' && currentPath.startsWith(linkPath))) {
                     link.classList.add('active');
                 }
             });
