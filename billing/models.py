@@ -57,21 +57,27 @@ class Bill(models.Model):
     @property
     def applied_combos(self):
         from core.models import ComboGroup
-        from django.db.models import Sum, Min
-        product_ids = [item.product_id for item in self.items.all()]
+        
+        bill_items = list(self.items.all())
+        product_ids = [item.product_id for item in bill_items]
+        
         potential_combos = ComboGroup.objects.filter(
             products__id__in=product_ids,
             branches=self.branch,
             is_active=True
-        ).distinct()
+        ).prefetch_related('products', 'tiers').distinct()
+        
         valid_combos = []
         for combo in potential_combos:
-            # Minimum quantity required for this combo (fallback to 1 if not set)
-            min_qty = combo.tiers.aggregate(min_qty=Min('quantity'))['min_qty'] or 1
-            # Total quantity of items in this bill belonging to this combo group
-            total_qty = self.items.filter(product__in=combo.products.all()).aggregate(total_qty=Sum('quantity'))['total_qty'] or 0
+            tiers = list(combo.tiers.all())
+            min_qty = min(t.quantity for t in tiers) if tiers else 1
+            
+            cg_product_ids = {p.id for p in combo.products.all()}
+            total_qty = sum(item.quantity for item in bill_items if item.product_id in cg_product_ids)
+            
             if total_qty >= min_qty:
                 valid_combos.append(combo.id)
+                
         return ComboGroup.objects.filter(id__in=valid_combos)
 
     # Validation for combo pricing removed as per request
@@ -121,19 +127,20 @@ class BillItem(models.Model):
             products=self.product,
             branches=self.bill.branch,
             is_active=True
-        ).first()
+        ).prefetch_related('tiers', 'products').first()
+        
         if not combo_group:
             return False
 
-        # Get minimum quantity required for the combo
-        min_combo_qty = combo_group.tiers.aggregate(min_qty=Min('quantity'))['min_qty']
-        if not min_combo_qty:
+        # Get minimum quantity required for the combo using prefetched tiers
+        tiers = list(combo_group.tiers.all())
+        if not tiers:
             return False
+        min_combo_qty = min(t.quantity for t in tiers)
 
-        # Calculate total quantity of items in this bill belonging to this combo group
-        total_group_qty = self.bill.items.filter(
-            product__in=combo_group.products.all()
-        ).aggregate(total_qty=Sum('quantity'))['total_qty'] or 0
+        # Calculate total quantity of items in this bill belonging to this combo group using prefetched items
+        cg_product_ids = {p.id for p in combo_group.products.all()}
+        total_group_qty = sum(item.quantity for item in self.bill.items.all() if item.product_id in cg_product_ids)
 
         return total_group_qty >= min_combo_qty
 

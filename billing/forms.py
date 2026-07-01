@@ -140,6 +140,29 @@ class ReturnCreateForm(forms.Form):
         total_returned_value = 0
         total_replacement_value = 0
 
+        # Pre-cache combo information for the bill to avoid N+1 queries in the loop
+        bill_combos = ComboGroup.objects.filter(
+            branches=bill.branch,
+            is_active=True
+        ).prefetch_related('products', 'tiers')
+        
+        bill_items_cache = list(bill.items.select_related('product').all())
+        bill_item_quantities = {item.product_id: item.quantity for item in bill_items_cache}
+        
+        combo_map = {} # item.id -> bool
+        combo_group_map = {} # item.id -> ComboGroup
+        
+        for cg in bill_combos:
+            cg_product_ids = {p.id for p in cg.products.all()}
+            min_qty = min((t.quantity for t in cg.tiers.all()), default=1)
+            total_group_qty = sum(qty for pid, qty in bill_item_quantities.items() if pid in cg_product_ids)
+            
+            for item in bill_items_cache:
+                if item.product_id in cg_product_ids:
+                    combo_group_map[item.id] = cg
+                    if total_group_qty >= min_qty:
+                        combo_map[item.id] = True
+
         for ri in return_items:
             try:
                 # Support nullable item ID for replacement-only items
@@ -159,9 +182,9 @@ class ReturnCreateForm(forms.Form):
                 if qty < 1:
                     raise forms.ValidationError('Return quantity must be at least 1.')
 
-                try:
-                    item = BillItem.objects.select_related('product').get(id=item_id)
-                except BillItem.DoesNotExist:
+                # Fetch from cache instead of DB to save queries
+                item = next((i for i in bill_items_cache if i.id == item_id), None)
+                if not item:
                     raise forms.ValidationError('Product item not found.')
 
                 if item.bill_id != bill.id:
@@ -219,22 +242,20 @@ class ReturnCreateForm(forms.Form):
             simulated_stock[rep_product.id] -= rep_qty
 
             # Validate Combo Group constraints vs Normal constraints
-            if item:
-                # Check if returned item was purchased as part of a combo
-                if item.is_combo_purchase:
-                    combo_group = ComboGroup.objects.filter(
-                        products=item.product,
-                        branches=bill.branch,
-                        is_active=True
-                    ).first()
+            is_combo = combo_map.get(item.id, False) if item else False
+            if item and is_combo:
+                combo_group = combo_group_map.get(item.id)
+                if combo_group:
                     # Replacement must belong to the same combo group
-                    if not combo_group.products.filter(id=rep_product.id).exists():
+                    # We can use the prefetched products to avoid another query
+                    cg_product_ids = {p.id for p in combo_group.products.all()}
+                    if rep_product.id not in cg_product_ids:
                         raise forms.ValidationError(
                             f'Product {item.product.name} was sold as part of combo "{combo_group.name}". '
                             f'It can only be exchanged for products in the same combo group. '
                             f'{rep_product.name} is not in that combo group.'
                         )
-            is_combo = item.is_combo_purchase if item else False
+
             if is_combo:
                 # Balanced combo swap: add replacement price to both totals so they cancel out
                 total_returned_value += rep_product.price * rep_qty

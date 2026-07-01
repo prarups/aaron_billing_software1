@@ -1646,8 +1646,8 @@ def pos_view(request):
 @login_required
 def api_recent_bills(request):
     """Return recent bills as JSON for auto-refresh on dashboard."""
-    # Optionally limit to recent 5 bills
-    recent = Bill.objects.order_by('-created_at')[:5]
+    # Optionally limit to recent 5 bills, select_related to avoid N+1 query for b.branch
+    recent = Bill.objects.select_related('branch').order_by('-created_at')[:5]
     bills = []
     for b in recent:
         bills.append({
