@@ -136,6 +136,7 @@ class ReturnCreateForm(forms.Form):
         validated_items = []
         from core.models import Product, ComboGroup, ProductRegistry
         simulated_stock = {}
+        item_qty_tracker = {}
         total_returned_value = 0
         total_replacement_value = 0
 
@@ -166,6 +167,10 @@ class ReturnCreateForm(forms.Form):
                 if item.bill_id != bill.id:
                     raise forms.ValidationError(f'Product {item.product.name} does not belong to this bill.')
 
+                # Track cumulative quantity for this item across multiple entries in the same return
+                current_qty = item_qty_tracker.get(item_id, 0) + qty
+                item_qty_tracker[item_id] = current_qty
+
                 # Check remaining returnable quantity
                 from .return_models import ReturnRequest
                 from django.db.models import Sum
@@ -175,9 +180,9 @@ class ReturnCreateForm(forms.Form):
                 ).aggregate(total=Sum('quantity'))['total'] or 0
 
                 remaining_qty = max(0, item.quantity - returned_qty)
-                if qty > remaining_qty:
+                if current_qty > remaining_qty:
                     raise forms.ValidationError(
-                        f'Return quantity ({qty}) for {item.product.name} exceeds remaining returnable quantity ({remaining_qty}).'
+                        f'Total return quantity ({current_qty}) for {item.product.name} exceeds remaining returnable quantity ({remaining_qty}).'
                     )
             else:
                 item = None

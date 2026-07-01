@@ -347,7 +347,11 @@ def process_bill(request):
                 if stock_transactions_to_create:
                     StockTransaction.objects.bulk_create(stock_transactions_to_create)
                 
-                total_amount = int(round(float(subtotal_amount) + float(bill.retail_price)))
+                # Match JavaScript logic exactly: round subtotal and retail_price individually before adding
+                subtotal_rounded = int(float(subtotal_amount) + 0.5)
+                retail_rounded = int(float(bill.retail_price) + 0.5)
+                total_amount = subtotal_rounded + retail_rounded
+                
                 if total_amount < 0:
                     total_amount = 0
                     

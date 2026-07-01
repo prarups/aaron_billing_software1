@@ -211,15 +211,6 @@
                     </div>
                 </div>
 
-                <!-- Reason -->
-                <div class="mb-4">
-                    <label class="form-label small fw-bold text-muted">{{ form.reason.label }}</label>
-                    {{ form.reason }}
-                    {% if form.reason.errors %}
-                    <div class="text-danger small mt-1">{{ form.reason.errors.0 }}</div>
-                    {% endif %}
-                </div>
-
                 <!-- Summary Card -->
                 <div class="card bg-light border-0 rounded-4 mb-4" id="summaryCard" style="display:none;">
                     <div class="card-body p-3">
@@ -278,6 +269,15 @@
                             <div id="ret-split-warning" class="x-small text-danger mt-2 d-none fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Sum must match difference!</div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Reason -->
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-muted">{{ form.reason.label }}</label>
+                    {{ form.reason }}
+                    {% if form.reason.errors %}
+                    <div class="text-danger small mt-1">{{ form.reason.errors.0 }}</div>
+                    {% endif %}
                 </div>
 
                 <button type="submit" class="btn btn-warning w-100 rounded-pill py-2 fw-bold shadow-sm" id="submitBtn">
@@ -686,6 +686,11 @@
     function calculateExchangeDifference() {
         const returnedOpt = itemSelect.options[itemSelect.selectedIndex];
         const replacementOpt = replacementProductSelect.options[replacementProductSelect.selectedIndex];
+        const isCombo = returnedOpt && returnedOpt.getAttribute('data-is-combo') === 'true';
+        
+        if (addExtraReplacementBtn) {
+            addExtraReplacementBtn.style.display = isCombo ? 'none' : 'block';
+        }
         
         if (!replacementOpt || !replacementOpt.value) {
             priceDiffLabel.textContent = 'Diff: ₹0';
@@ -697,7 +702,6 @@
 
         const returnedPrice = (returnedOpt && returnedOpt.value && returnedOpt.value !== 'replacement_only') ? parseFloat(returnedOpt.getAttribute('data-price')) : 0;
         const replacementPrice = parseFloat(replacementOpt.getAttribute('data-price'));
-        const isCombo = returnedOpt && returnedOpt.getAttribute('data-is-combo') === 'true';
 
         const retQty = (returnedOpt && returnedOpt.value && returnedOpt.value !== 'replacement_only') ? (parseInt(qtyInput.value) || 0) : 0;
         const repQty = parseInt(replacementQtyInput.value) || 1;
@@ -718,6 +722,14 @@
         }
 
         if (isCombo) {
+            if (repQty !== retQty) {
+                priceDiffLabel.textContent = 'Error: Qty Mismatch';
+                priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-danger bg-opacity-10 text-center fw-bold text-danger small';
+                replacementProductInfo.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> Combo exchange must be exactly 1-to-1. Please match returned quantity.</span>`;
+                addReturnBtn.disabled = true;
+                if (addExtraReplacementBtn) addExtraReplacementBtn.disabled = true;
+                return;
+            }
             priceDiffLabel.textContent = 'Diff: ₹0 (Combo Direct Swap)';
             priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-white text-center fw-semibold text-success small';
             addReturnBtn.disabled = false;
@@ -1029,15 +1041,19 @@
         if (!opt || !opt.value || opt.value === 'replacement_only') { alert('Select a valid product to return first.'); return; }
         if (!repOpt || !repOpt.value) { alert('Select a replacement product for exchange.'); return; }
         
-        // Prevent duplicates
-        const alreadyInList = returnList.some(item => item.id == opt.value);
-        if (alreadyInList) {
-            alert('This product is already in the return list.');
-            return;
-        }
-
         const maxQty = parseInt(opt.getAttribute('data-qty'));
         const qty = parseInt(qtyInput.value) || 1;
+        
+        // Prevent exceeding max quantity across multiple entries
+        const currentAddedQty = returnList
+            .filter(item => item.id == opt.value)
+            .reduce((sum, item) => sum + item.quantity, 0);
+            
+        if (currentAddedQty + qty > maxQty) {
+            alert(`You have already added ${currentAddedQty} of this item. You can only add ${maxQty - currentAddedQty} more.`);
+            return;
+        }
+        
         if (qty < 1 || qty > maxQty) { alert(`Quantity must be between 1 and ${maxQty} (remaining).`); return; }
         const retPrice = parseFloat(opt.getAttribute('data-price'));
         
