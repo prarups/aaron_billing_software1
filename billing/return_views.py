@@ -9,7 +9,7 @@ from core.models import ProductRegistry, StockTransaction, StockAdjustment
 def _get_bill_items_data(bill, max_items=None):
     from .return_models import ReturnRequest
     from django.db.models import Sum
-    from core.models import ComboGroup, ProductRegistry
+    from core.models import ComboGroup, ProductRegistry, Product
 
     bill_items = []
     too_many_items = False
