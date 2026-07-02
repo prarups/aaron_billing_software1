@@ -5,7 +5,10 @@ from .models import Product, Branch, ProductRegistry, StockTransaction, StockAdj
 from django import forms
 from .forms import ProductForm
 from django.http import JsonResponse
-from billing.models import Bill
+from billing.models import Bill, BillItem
+from django.utils import timezone
+import datetime
+from django.db.models import Sum, F
 
 
 @login_required
@@ -1660,4 +1663,56 @@ def api_recent_bills(request):
             'total_amount': float(b.total_amount),
         })
     return JsonResponse({'bills': bills})
+
+@login_required
+def api_dashboard_stats(request):
+    """Return dashboard statistics as JSON for polling updates.
+    Optional query parameters: from_date, to_date (YYYY-MM-DD).
+    """
+    from django.utils import timezone
+    import datetime
+    from .models import Bill, BillItem, ProductRegistry, Branch, Product
+    from django.db.models import Sum, F
+
+    from_date_str = request.GET.get('from_date')
+    to_date_str = request.GET.get('to_date')
+    today = timezone.now().date()
+    if from_date_str and to_date_str:
+        try:
+            start_date = datetime.datetime.strptime(from_date_str, '%Y-%m-%d').date()
+            end_date = datetime.datetime.strptime(to_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            start_date = today
+            end_date = today
+    else:
+        start_date = today
+        end_date = today
+
+    start_dt = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
+    end_dt = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
+
+    bills_qs = Bill.objects.filter(created_at__range=(start_dt, end_dt))
+    total_sales = bills_qs.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_cash = bills_qs.aggregate(Sum('cash_amount'))['cash_amount__sum'] or 0
+    total_online = bills_qs.aggregate(Sum('online_amount'))['online_amount__sum'] or 0
+    transaction_count = bills_qs.count()
+    low_stock = ProductRegistry.objects.filter(stock_quantity__lte=F('low_stock_threshold')).count()
+    total_current_stock = ProductRegistry.objects.aggregate(Sum('stock_quantity'))['stock_quantity__sum'] or 0
+    total_items_sold = BillItem.objects.filter(bill__created_at__range=(start_dt, end_dt)).aggregate(Sum('quantity'))['quantity__sum'] or 0
+    branch_cnt = Branch.objects.count()
+    product_cnt = Product.objects.count()
+
+    data = {
+        'total_sales_today': float(total_sales),
+        'total_cash_today': float(total_cash),
+        'total_online_today': float(total_online),
+        'transaction_count_today': transaction_count,
+        'low_stock_count': low_stock,
+        'total_current_stock': total_current_stock,
+        'total_items_sold': total_items_sold,
+        'branch_count': branch_cnt,
+        'total_product_count': product_cnt,
+    }
+    return JsonResponse(data)
+
 

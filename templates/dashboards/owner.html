@@ -354,12 +354,12 @@
                         <span class="text-white-50 text-xxs text-uppercase fw-bold mb-0">{{ stats_label }}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="fs-5 fw-bold mb-0 text-white">₹{{ total_sales_today|default:"0"|floatformat:0 }}</span>
+                        <span id="total-sales-today" class="fs-5 fw-bold mb-0 text-white">₹{{ total_sales_today|default:"0"|floatformat:0 }}</span>
                         <i class="bi bi-wallet2 fs-4 text-white-50"></i>
                     </div>
                     <div class="border-top border-white-10 mt-2 pt-1.5 d-flex justify-content-between text-white-50 small" style="font-size: 0.72rem;">
-                        <span>Cash: <strong>₹{{ total_cash_today|default:"0"|floatformat:0 }}</strong></span>
-                        <span>Online: <strong>₹{{ total_online_today|default:"0"|floatformat:0 }}</strong></span>
+                        <span>Cash: <strong id="total-cash-today">₹{{ total_cash_today|default:"0"|floatformat:0 }}</strong></span>
+                        <span>Online: <strong id="total-online-today">₹{{ total_online_today|default:"0"|floatformat:0 }}</strong></span>
                     </div>
                 </div>
             </div>
@@ -380,7 +380,7 @@
                         <span class="text-white-50 text-xxs text-uppercase fw-bold mb-0">{{ trans_label }}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="fs-5 fw-bold mb-0 text-white">{{ transaction_count_today }}</span>
+                        <span id="transaction-count-today" class="fs-5 fw-bold mb-0 text-white">{{ transaction_count_today }}</span>
                         <i class="bi bi-receipt fs-4 text-white-50"></i>
                     </div>
                 </div>
@@ -392,7 +392,7 @@
                             <span class="text-white-50 text-xxs text-uppercase fw-bold mb-0">Low Stock Alerts</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
-                            <span class="fs-5 fw-bold mb-0 text-white {% if low_stock_count > 0 %}animate-pulse{% endif %}">{{ low_stock_count }}</span>
+                            <span id="low-stock-count" class="fs-5 fw-bold mb-0 text-white {% if low_stock_count > 0 %}animate-pulse{% endif %}">{{ low_stock_count }}</span>
                             <i class="bi bi-exclamation-triangle-fill fs-4 text-white-50"></i>
                         </div>
                     </div>
@@ -493,14 +493,14 @@
                         <div class="col-6">
                             <div class="p-2.5 rounded-3 bg-light bg-opacity-50 border border-light">
                                 <span class="text-xxs text-uppercase fw-bold text-muted d-block mb-1">Total Stock</span>
-                                <span class="fw-bold text-dark fs-5 font-monospace">{{ total_current_stock }}</span>
+                                <span id="total-current-stock" class="fw-bold text-dark fs-5 font-monospace">{{ total_current_stock }}</span>
                                 <span class="text-muted d-block mt-0.5" style="font-size: 0.65rem;">All Branches</span>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="p-2.5 rounded-3 bg-light bg-opacity-50 border border-light">
                                 <span class="text-xxs text-uppercase fw-bold text-muted d-block mb-1">{% if is_filtered %}Period Out{% else %}Today Out{% endif %}</span>
-                                <span class="fw-bold text-danger fs-5 font-monospace">{{ total_items_sold }}</span>
+                                <span id="total-items-sold" class="fw-bold text-danger fs-5 font-monospace">{{ total_items_sold }}</span>
                                 <span class="text-muted d-block mt-0.5" style="font-size: 0.65rem;">Items Sold</span>
                             </div>
                         </div>

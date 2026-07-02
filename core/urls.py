@@ -26,4 +26,5 @@ urlpatterns = [
     path('combos/ajax-data/', combo_views.get_branch_combo_data, name='ajax_combo_data'),
     path('combos/branch-products-ajax/', combo_views.branch_products_ajax, name='branch_products_ajax'),
     path('combos/global-products-ajax/', combo_views.global_products_ajax, name='global_products_ajax'),
+    path('api/dashboard-stats/', views.api_dashboard_stats, name='api_dashboard_stats'),
 ]

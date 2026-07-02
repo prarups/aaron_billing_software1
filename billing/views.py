@@ -9,6 +9,7 @@ from core.models import Product, ProductRegistry, StockTransaction, ComboPrice
 from .models import Bill, BillItem
 import json
 import csv
+from decimal import Decimal, ROUND_HALF_UP
 
 @login_required
 def pos_index(request):
@@ -347,17 +348,19 @@ def process_bill(request):
                 if stock_transactions_to_create:
                     StockTransaction.objects.bulk_create(stock_transactions_to_create)
                 
-                # Match JavaScript logic exactly: round subtotal and retail_price individually before adding
-                subtotal_rounded = int(float(subtotal_amount) + 0.5)
-                retail_rounded = int(float(bill.retail_price) + 0.5)
-                total_amount = subtotal_rounded + retail_rounded
-                
+                # Compute total amount by rounding each component (subtotal, retail) like the UI does
+                subtotal_rounded = Decimal(subtotal_amount).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+                retail_rounded   = Decimal(bill.retail_price).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+                total_amount = int(subtotal_rounded + retail_rounded)
+                # Ensure non‑negative total
                 if total_amount < 0:
                     total_amount = 0
-                    
-                bill.total_amount = total_amount
-                
-                # Validation for payment amounts
+
+                # Validation for split payment – exact match after rounding
+                if payment_method == 'split' and cash_amount + online_amount != total_amount:
+                    raise ValueError(f"Split amounts (₹{cash_amount} + ₹{online_amount}) do not match total ₹{total_amount}")
+
+                # Assign amounts based on payment method
                 if payment_method == 'cash':
                     bill.cash_amount = total_amount
                     bill.online_amount = 0
@@ -365,9 +368,6 @@ def process_bill(request):
                     bill.online_amount = total_amount
                     bill.cash_amount = 0
                 elif payment_method == 'split':
-                    # Validate split amounts sum to total and assign them
-                    if cash_amount + online_amount != total_amount:
-                        raise ValueError(f"Split amounts (₹{cash_amount} + ₹{online_amount}) do not match total ₹{total_amount}")
                     bill.cash_amount = cash_amount
                     bill.online_amount = online_amount
                 

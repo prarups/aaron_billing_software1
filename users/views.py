@@ -293,11 +293,15 @@ class OwnerDashboardView(TemplateView):
         import datetime
         today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
         today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+        # Pre-calculate sales for all staff for today to avoid N+1 queries
+        sales_data = Bill.objects.filter(created_at__range=(today_start, today_end)).values('staff').annotate(total=Sum('total_amount'))
+        staff_sales_dict = {item['staff']: item['total'] or 0 for item in sales_data}
+
         for mgr in managers:
             staff_qs = User.objects.filter(role='sales_staff', branches__in=mgr.branches.all()).distinct()
             staff_info = []
             for staff in staff_qs:
-                daily_sales = Bill.objects.filter(staff=staff, created_at__range=(today_start, today_end)).aggregate(total=Sum('total_amount'))['total'] or 0
+                daily_sales = staff_sales_dict.get(staff.id, 0)
                 staff_info.append({
                     'employee_id': staff.employee_id,
                     'date_of_joining': staff.date_of_joining,
@@ -374,9 +378,14 @@ class ManagerDashboardView(TemplateView):
         # Staff performance for manager/assistant manager
         if user.role in ['manager', 'assistant_manager']:
             staff_qs = User.objects.filter(role__in=['sales_staff', 'assistant_manager'], branches__in=user.branches.all()).exclude(id=user.id).distinct()
+            
+            # Pre-calculate sales for all staff for today to avoid N+1 queries
+            sales_data = Bill.objects.filter(staff__in=staff_qs, created_at__range=(today_start, today_end)).values('staff').annotate(total=Sum('total_amount'))
+            staff_sales_dict = {item['staff']: item['total'] or 0 for item in sales_data}
+
             staff_info = []
             for staff in staff_qs:
-                daily_sales = Bill.objects.filter(staff=staff, created_at__range=(today_start, today_end)).aggregate(total=Sum('total_amount'))['total'] or 0
+                daily_sales = staff_sales_dict.get(staff.id, 0)
                 staff_info.append({
                     'employee_id': staff.employee_id,
                     'name': staff.get_full_name() or staff.username,
@@ -417,9 +426,14 @@ class ManagerStaffPerformanceView(TemplateView):
         from_datetime = timezone.make_aware(datetime.datetime.combine(from_date, datetime.time.min))
         to_datetime = timezone.make_aware(datetime.datetime.combine(to_date, datetime.time.max))
         staff_qs = User.objects.filter(role__in=['sales_staff', 'manager', 'assistant_manager'], branches__in=user.branches.all()).distinct()
+        
+        # Pre-calculate sales for all staff for date range to avoid N+1 queries
+        sales_data = Bill.objects.filter(staff__in=staff_qs, created_at__range=(from_datetime, to_datetime)).values('staff').annotate(total=Sum('total_amount'))
+        staff_sales_dict = {item['staff']: item['total'] or 0 for item in sales_data}
+
         staff_info = []
         for staff in staff_qs:
-            sales = Bill.objects.filter(staff=staff, created_at__range=(from_datetime, to_datetime)).aggregate(total=Sum('total_amount'))['total'] or 0
+            sales = staff_sales_dict.get(staff.id, 0)
             staff_info.append({
                 'employee_id': staff.employee_id,
                 'name': staff.get_full_name() or staff.username,

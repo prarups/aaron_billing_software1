@@ -104,7 +104,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 use_postgres = os.environ.get('USE_POSTGRES', 'False').lower() in ('true', '1', 'yes')
 is_render = 'RENDER' in os.environ
 
-if DEBUG and not use_postgres and not is_render:
+if DEBUG:
     # Use SQLite for local development to avoid external DB dependencies
     DATABASES = {
         'default': {
