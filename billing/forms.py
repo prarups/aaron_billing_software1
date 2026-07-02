@@ -222,7 +222,12 @@ class ReturnCreateForm(forms.Form):
                     rep_registry = ProductRegistry.objects.get(product=rep_product, branch=bill.branch)
                     simulated_stock[rep_product.id] = rep_registry.stock_quantity
                 except ProductRegistry.DoesNotExist:
-                    simulated_stock[rep_product.id] = 0
+                    # Fallback to barcode lookup if the branch has a duplicate product instance
+                    try:
+                        rep_registry = ProductRegistry.objects.get(product__barcode=rep_product.barcode, branch=bill.branch)
+                        simulated_stock[rep_product.id] = rep_registry.stock_quantity
+                    except ProductRegistry.DoesNotExist:
+                        simulated_stock[rep_product.id] = 0
 
             cond = ri.get('condition', 'GOOD')
             # If exchanging same product and condition is GOOD, returning adds to stock before swap
@@ -404,16 +409,24 @@ class ReturnCreateForm(forms.Form):
             # Process stock updates directly here in a single transaction context
             # 1. Update returned product stock
             if item:
-                ret_registry, _ = ProductRegistry.objects.get_or_create(
-                    product=item.product,
-                    branch=bill.branch,
-                    defaults={'stock_quantity': 0, 'damaged_qty': 0}
-                )
+                try:
+                    ret_registry = ProductRegistry.objects.get(product=item.product, branch=bill.branch)
+                except ProductRegistry.DoesNotExist:
+                    try:
+                        ret_registry = ProductRegistry.objects.get(product__barcode=item.product.barcode, branch=bill.branch)
+                    except ProductRegistry.DoesNotExist:
+                        ret_registry = ProductRegistry.objects.create(
+                            product=item.product,
+                            branch=bill.branch,
+                            stock_quantity=0,
+                            damaged_qty=0
+                        )
+
                 if condition == 'GOOD':
                     ret_registry.stock_quantity += qty
                     ret_registry.save()
                     StockTransaction.objects.create(
-                        product=item.product,
+                        product=ret_registry.product,
                         branch=bill.branch,
                         transaction_type='IN',
                         quantity=qty,
@@ -424,7 +437,7 @@ class ReturnCreateForm(forms.Form):
                     ret_registry.damaged_qty += qty
                     ret_registry.save()
                     StockTransaction.objects.create(
-                        product=item.product,
+                        product=ret_registry.product,
                         branch=bill.branch,
                         transaction_type='DMG',
                         quantity=qty,
@@ -434,15 +447,23 @@ class ReturnCreateForm(forms.Form):
 
             # 2. Update replacement product stock
             if rep_product:
-                rep_registry, _ = ProductRegistry.objects.get_or_create(
-                    product=rep_product,
-                    branch=bill.branch,
-                    defaults={'stock_quantity': 0, 'damaged_qty': 0}
-                )
+                try:
+                    rep_registry = ProductRegistry.objects.get(product=rep_product, branch=bill.branch)
+                except ProductRegistry.DoesNotExist:
+                    try:
+                        rep_registry = ProductRegistry.objects.get(product__barcode=rep_product.barcode, branch=bill.branch)
+                    except ProductRegistry.DoesNotExist:
+                        rep_registry = ProductRegistry.objects.create(
+                            product=rep_product,
+                            branch=bill.branch,
+                            stock_quantity=0,
+                            damaged_qty=0
+                        )
+
                 rep_registry.stock_quantity -= rep_qty
                 rep_registry.save()
                 StockTransaction.objects.create(
-                    product=rep_product,
+                    product=rep_registry.product,
                     branch=bill.branch,
                     transaction_type='OUT',
                     quantity=rep_qty,

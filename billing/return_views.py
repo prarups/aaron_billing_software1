@@ -48,11 +48,21 @@ def _get_bill_items_data(bill, max_items=None):
                 combo_map[p.id] = cg
 
     if combo_product_ids:
+        # Combo groups might link to Product instances from other branches.
+        # We need to find the stock for the equivalent barcode at the bill's branch.
+        combo_products = Product.objects.filter(id__in=combo_product_ids)
+        barcodes = [p.barcode for p in combo_products if p.barcode]
+        
         registries = ProductRegistry.objects.filter(
-            product_id__in=combo_product_ids,
+            product__barcode__in=barcodes,
             branch=bill.branch
-        )
-        stock_map = {reg.product_id: reg.stock_quantity for reg in registries}
+        ).select_related('product')
+        
+        barcode_stock_map = {reg.product.barcode: reg.stock_quantity for reg in registries}
+        
+        stock_map = {}
+        for p in combo_products:
+            stock_map[p.id] = barcode_stock_map.get(p.barcode, 0)
     else:
         stock_map = {}
         
