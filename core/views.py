@@ -315,6 +315,9 @@ def product_update(request, pk):
                         update_qty = int(float(update_qty_str))
                         if update_qty < 0:
                             raise ValueError()
+                        if update_qty > 2147483647:
+                            stock_update_error = "Stock update quantity is too large."
+                            has_error = True
                     except ValueError:
                         stock_update_error = "Stock update quantity must be a non-negative whole number."
                         has_error = True

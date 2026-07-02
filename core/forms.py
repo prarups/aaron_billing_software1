@@ -52,6 +52,7 @@ class ProductForm(forms.ModelForm):
         required=False,
         initial=0,
         min_value=0,
+        max_value=2147483647,
         label="Initial Stock Quantity",
         widget=forms.NumberInput(attrs={'class': 'form-control rounded-pill', 'min': '0'})
     )
@@ -59,6 +60,7 @@ class ProductForm(forms.ModelForm):
         required=False,
         initial=10,
         min_value=0,
+        max_value=2147483647,
         label="Low Stock Alert Level",
         widget=forms.NumberInput(attrs={'class': 'form-control rounded-pill', 'min': '0'})
     )
