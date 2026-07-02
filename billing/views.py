@@ -168,6 +168,8 @@ def process_bill(request):
                     )
                 
                 subtotal_amount = 0
+                # Track the regular (non‑discounted) total for all items before any combo pricing is applied
+                regular_total_sum = 0
                 resolved_items = []
                 
                 product_ids = [int(item['id']) for item in items]
@@ -204,6 +206,8 @@ def process_bill(request):
                         'product': product,
                         'quantity': quantity,
                     })
+                    # Accumulate regular total (price before any combo discount)
+                    regular_total_sum += float(product.price) * quantity
                 
                 # Bulk update registry stock quantities
                 if regs_to_update:
@@ -355,6 +359,9 @@ def process_bill(request):
                 # Ensure non‑negative total
                 if total_amount < 0:
                     total_amount = 0
+                # Guard: if discounts have zeroed the total but there are priced items, fall back to the regular total
+                if total_amount == 0 and regular_total_sum > 0:
+                    total_amount = int(Decimal(regular_total_sum).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
 
                 # Validation for split payment – exact match after rounding
                 if payment_method == 'split' and cash_amount + online_amount != total_amount:
@@ -371,6 +378,8 @@ def process_bill(request):
                     bill.cash_amount = cash_amount
                     bill.online_amount = online_amount
                 
+                # Persist total amount on the Bill
+                bill.total_amount = total_amount
                 bill.save()
                 
             request.session['newly_created_bill_id'] = bill.id
