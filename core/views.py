@@ -809,7 +809,23 @@ def bulk_insert(request):
             error_count = 0
             errors = []
             seen_barcodes = set()
-            seen_names = set()
+            products_to_create = []
+            
+            # Pre-query branches to avoid N+1 queries in the loop
+            branches_by_code = {b.code: b for b in Branch.objects.exclude(code__isnull=True)}
+            branches_by_name = {b.name.lower().strip(): b for b in Branch.objects.all()}
+            
+            # Pre-query products matching the barcodes to avoid duplicate queries in the loop
+            barcodes_in_file = set()
+            for row in reader_data:
+                bc = (row.get('Barcode') or '').strip()
+                if bc:
+                    barcodes_in_file.add(bc.lower())
+            
+            existing_products = Product.objects.filter(barcode__in=list(barcodes_in_file))
+            existing_product_map = {}
+            for p in existing_products:
+                existing_product_map[(p.branch_id, p.barcode.lower())] = p
             
             with transaction.atomic():
                 for row_num, row in enumerate(reader_data, start=2):
@@ -843,15 +859,36 @@ def bulk_insert(request):
                         except ValueError:
                             raise ValidationError(f"Row {row_num}: Price must be a non-negative number.")
                         
+                        try:
+                            parsed_stock = int(float(stock))
+                            if parsed_stock < 0:
+                                raise ValueError()
+                        except ValueError:
+                            raise ValidationError(f"Row {row_num}: Initial Stock must be a non-negative integer.")
+                        
+                        try:
+                            parsed_low_stock = max(0, int(float(low_stock)) if low_stock else 10)
+                        except ValueError:
+                            raise ValidationError(f"Row {row_num}: Low Stock Alert must be an integer.")
+                        
                         # Find or create branch (by code first, then by name)
                         branch = None
                         if branch_code:
                             try:
-                                branch = Branch.objects.get(code=int(float(branch_code)))
-                            except (Branch.DoesNotExist, ValueError):
-                                raise ValidationError(f"Row {row_num}: Branch with code '{branch_code}' not found.")
+                                b_code = int(float(branch_code))
+                                branch = branches_by_code.get(b_code)
+                                if not branch:
+                                    raise ValidationError(f"Row {row_num}: Branch with code '{branch_code}' not found.")
+                            except ValueError:
+                                raise ValidationError(f"Row {row_num}: Branch code '{branch_code}' must be a valid number.")
                         elif branch_name:
-                            branch, _ = Branch.objects.get_or_create(name=branch_name)
+                            b_name_key = branch_name.lower().strip()
+                            branch = branches_by_name.get(b_name_key)
+                            if not branch:
+                                branch, _ = Branch.objects.get_or_create(name=branch_name)
+                                branches_by_name[b_name_key] = branch
+                                if branch.code:
+                                    branches_by_code[branch.code] = branch
                         
                         branch_id = branch.id if branch else None
                         
@@ -862,49 +899,21 @@ def bulk_insert(request):
                         seen_barcodes.add(barcode_key)
                         
                         # 3. Check for Duplicates in the Database for this branch
-                        existing_product = Product.objects.filter(branch=branch, barcode__iexact=barcode).first()
-                        if existing_product:
+                        if barcode_key in existing_product_map:
                             raise ValidationError(f"Row {row_num}: Product with barcode '{barcode}' already exists for branch '{branch.name}' in the database.")
                         
-                        # Create product scoped to this branch
-                        product = Product.objects.create(
+                        # Instantiate product instance in memory
+                        product = Product(
                             barcode=barcode,
                             name=product_name,
                             price=parsed_price,
                             size=size if size else '',
                             branch=branch
                         )
-                        
-                        # Create registry entry if branch is provided
-                        if branch:
-                            try:
-                                parsed_stock = int(float(stock))
-                                if parsed_stock < 0:
-                                    raise ValueError()
-                            except ValueError:
-                                raise ValidationError(f"Row {row_num}: Initial Stock must be a non-negative integer.")
-                            
-                            try:
-                                parsed_low_stock = max(0, int(float(low_stock)) if low_stock else 10)
-                            except ValueError:
-                                raise ValidationError(f"Row {row_num}: Low Stock Alert must be an integer.")
-                            
-                            reg = ProductRegistry.objects.create(
-                                branch=branch,
-                                product=product,
-                                stock_quantity=parsed_stock,
-                                low_stock_threshold=parsed_low_stock
-                            )
-                            
-                            if reg.stock_quantity > 0:
-                                StockTransaction.objects.create(
-                                    product=product,
-                                    branch=branch,
-                                    transaction_type='IN',
-                                    quantity=reg.stock_quantity,
-                                    reference='Bulk Insert',
-                                    user=request.user
-                                )
+                        # Store temporary attributes for use after bulk_create
+                        product._temp_stock = parsed_stock
+                        product._temp_low_stock = parsed_low_stock
+                        products_to_create.append(product)
                         
                         success_count += 1
                         
@@ -918,6 +927,40 @@ def bulk_insert(request):
                 if error_count > 0:
                     # Raise to trigger transaction rollback and show detailed errors
                     raise ValidationError(f"Bulk insert failed with {error_count} error(s). Details: {', '.join(errors)}")
+                
+                # Execute bulk operations only if all rows are valid
+                if products_to_create:
+                    # 1. Bulk create products
+                    created_products = Product.objects.bulk_create(products_to_create)
+                    
+                    # 2. Bulk create registries
+                    registries_to_create = []
+                    for p in created_products:
+                        if p.branch:
+                            registries_to_create.append(ProductRegistry(
+                                branch=p.branch,
+                                product=p,
+                                stock_quantity=p._temp_stock,
+                                low_stock_threshold=p._temp_low_stock
+                            ))
+                    if registries_to_create:
+                        ProductRegistry.objects.bulk_create(registries_to_create)
+                    
+                    # 3. Bulk create stock transactions
+                    transactions_to_create = []
+                    for p in created_products:
+                        if p.branch and p._temp_stock > 0:
+                            transactions_to_create.append(StockTransaction(
+                                product=p,
+                                branch=p.branch,
+                                transaction_type='IN',
+                                quantity=p._temp_stock,
+                                reference='Bulk Insert',
+                                user=request.user
+                            ))
+                    if transactions_to_create:
+                        StockTransaction.objects.bulk_create(transactions_to_create)
+            
             results = {
                 'success_count': success_count,
                 'error_count': error_count,
