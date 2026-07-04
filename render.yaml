@@ -3,7 +3,7 @@ services:
     name: aaron-billing-software
     runtime: python
     buildCommand: ./build.sh
-    startCommand: gunicorn config.wsgi:application
+    startCommand: uvicorn config.asgi:application --host 0.0.0.0 --port $PORT
     envVars:
       - key: DEBUG
         value: "False"
