@@ -32,5 +32,6 @@ urlpatterns = [
     path('staff/toggle-product-rights/<int:staff_id>/', views.toggle_product_rights, name='toggle_product_rights'),
     path('staff/toggle-bill-edit-rights/<int:staff_id>/', views.toggle_bill_edit_rights, name='toggle_bill_edit_rights'),
     path('staff/export/', views.export_staff_csv, name='export_staff_csv'),
+    path('staff/online-status/', views.get_staff_online_status, name='staff_online_status'),
 ]
 

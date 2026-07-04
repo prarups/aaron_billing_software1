@@ -1864,10 +1864,50 @@
             });
     }
 
+    function pollStaffOnlineStatus() {
+        fetch("{% url 'staff_online_status' %}")
+            .then(res => res.json())
+            .then(data => {
+                for (const [staffId, isOnline] of Object.entries(data)) {
+                    const row = document.getElementById(`staff-row-${staffId}`);
+                    if (!row) continue;
+                    
+                    row.setAttribute('data-online', isOnline ? 'true' : 'false');
+                    
+                    const activityCell = row.querySelector('td[data-label="Activity"]');
+                    if (activityCell) {
+                        const currentlyOnline = activityCell.querySelector('.bg-success-subtle') !== null;
+                        if (isOnline !== currentlyOnline) {
+                            if (isOnline) {
+                                activityCell.innerHTML = `
+                                    <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-0.5 text-xxs">
+                                        <i class="bi bi-circle-fill me-1" style="font-size: 6px; vertical-align: middle;"></i>Online
+                                    </span>
+                                `;
+                            } else {
+                                activityCell.innerHTML = `
+                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5 py-0.5 text-xxs">
+                                        <i class="bi bi-circle-fill me-1" style="font-size: 6px; vertical-align: middle;"></i>Offline
+                                    </span>
+                                `;
+                            }
+                        }
+                    }
+                }
+            })
+            .catch(err => console.error("Error polling staff status:", err));
+    }
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initOwnerDashboard);
+        document.addEventListener('DOMContentLoaded', () => {
+            initOwnerDashboard();
+            pollStaffOnlineStatus();
+            setInterval(pollStaffOnlineStatus, 10000); // Check every 10 seconds
+        });
     } else {
         initOwnerDashboard();
+        pollStaffOnlineStatus();
+        setInterval(pollStaffOnlineStatus, 10000);
     }
 </script>
 

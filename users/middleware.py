@@ -14,4 +14,11 @@ class UserActivityMiddleware:
                 request.user.save(update_fields=['last_activity'])
         
         response = self.get_response(request)
+        
+        # Prevent browsers from caching dynamic HTML pages (fixes refresh issues on login/logout)
+        if response.has_header('Content-Type') and 'text/html' in response['Content-Type']:
+            response['Cache-Control'] = 'no-cache, no-store, must-revalidate, private'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
+            
         return response

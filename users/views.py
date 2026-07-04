@@ -989,3 +989,20 @@ def export_staff_csv(request):
         
     return response
 
+
+@login_required
+def get_staff_online_status(request):
+    """API endpoint to get the online/offline status of all staff members."""
+    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+        
+    staff_qs = User.objects.filter(
+        role__in=['owner', 'manager', 'assistant_manager', 'sales_staff']
+    ).only('id', 'last_activity')
+    
+    status_data = {}
+    for staff in staff_qs:
+        status_data[staff.id] = staff.is_online
+        
+    return JsonResponse(status_data)
+
