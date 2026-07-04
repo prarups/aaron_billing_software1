@@ -105,15 +105,21 @@ class OwnerDashboardView(TemplateView):
         context['end_date'] = end_date.strftime('%Y-%m-%d') if end_date else ''
         context['is_filtered'] = is_filtered
 
-        # Overall Stats (either today, or for the specified date range)
+        # Overall Stats (optimized to fetch all sums in a single query)
         import datetime
         if is_filtered:
             start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
             end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
             range_bills = Bill.objects.filter(created_at__range=(start_datetime, end_datetime))
-            context['total_sales_today'] = range_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-            context['total_cash_today'] = range_bills.aggregate(Sum('cash_amount'))['cash_amount__sum'] or 0
-            context['total_online_today'] = range_bills.aggregate(Sum('online_amount'))['online_amount__sum'] or 0
+            
+            aggs = range_bills.aggregate(
+                sales=Sum('total_amount'),
+                cash=Sum('cash_amount'),
+                online=Sum('online_amount')
+            )
+            context['total_sales_today'] = aggs['sales'] or 0
+            context['total_cash_today'] = aggs['cash'] or 0
+            context['total_online_today'] = aggs['online'] or 0
             context['transaction_count_today'] = range_bills.count()
             context['stats_label'] = f"Sales ({start_date.strftime('%d %b')} - {end_date.strftime('%d %b')})"
             context['trans_label'] = "Transactions (Period)"
@@ -121,9 +127,15 @@ class OwnerDashboardView(TemplateView):
             today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
             today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
             today_bills = Bill.objects.filter(created_at__range=(today_start, today_end))
-            context['total_sales_today'] = today_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-            context['total_cash_today'] = today_bills.aggregate(Sum('cash_amount'))['cash_amount__sum'] or 0
-            context['total_online_today'] = today_bills.aggregate(Sum('online_amount'))['online_amount__sum'] or 0
+            
+            aggs = today_bills.aggregate(
+                sales=Sum('total_amount'),
+                cash=Sum('cash_amount'),
+                online=Sum('online_amount')
+            )
+            context['total_sales_today'] = aggs['sales'] or 0
+            context['total_cash_today'] = aggs['cash'] or 0
+            context['total_online_today'] = aggs['online'] or 0
             context['transaction_count_today'] = today_bills.count()
             context['stats_label'] = "Total Sales (Today)"
             context['trans_label'] = "Transactions"
@@ -219,6 +231,7 @@ class OwnerDashboardView(TemplateView):
                 output_field=models.IntegerField()
             )
         ).order_by('-today_sales', 'name')
+        
         # Attach current month goal and actual monthly sales
         today = timezone.now().date()
         current_month_start = today.replace(day=1)
@@ -248,27 +261,23 @@ class OwnerDashboardView(TemplateView):
                 b.current_goal_percent_exact = 0
         context['branches'] = branches_list
         
-        # Paginate branches_by_code (10 per page)
-        from django.core.paginator import Paginator
-        from django.db.models import Q
-        branches_by_code_qs = branches.order_by('code', 'id')
-        
+        # Filter and sort branches_by_code in memory to avoid running the heavy Subquery annotations query twice
         branch_search = self.request.GET.get('branch_search', '').strip()
         if branch_search:
-            # Cast code to string or search on code directly
-            branches_by_code_qs = branches_by_code_qs.filter(
-                Q(name__icontains=branch_search) |
-                Q(location__icontains=branch_search) |
-                Q(invoice_prefix__icontains=branch_search)
-            )
-            # Try parsing search query as integer to search on code
-            try:
-                code_val = int(branch_search)
-                branches_by_code_qs = branches_by_code_qs | branches.filter(code=code_val)
-            except ValueError:
-                pass
-                
-        branches_by_code_list = list(branches_by_code_qs)
+            search_lower = branch_search.lower()
+            branches_by_code_list = [
+                b for b in branches_list
+                if search_lower in b.name.lower() or 
+                   (b.location and search_lower in b.location.lower()) or 
+                   (b.invoice_prefix and search_lower in b.invoice_prefix.lower()) or 
+                   (b.code and str(b.code) == branch_search)
+            ]
+        else:
+            branches_by_code_list = list(branches_list)
+            
+        # Sort in memory by code, fallback to ID
+        branches_by_code_list.sort(key=lambda b: (b.code or 0, b.id))
+        
         for b in branches_by_code_list:
             b.current_goal = int(goals_dict.get(b.id, 0))
             b.current_month_sales = int(monthly_sales_dict.get(b.id, 0))
@@ -297,16 +306,36 @@ class OwnerDashboardView(TemplateView):
         sales_data = Bill.objects.filter(created_at__range=(today_start, today_end)).values('staff').annotate(total=Sum('total_amount'))
         staff_sales_dict = {item['staff']: item['total'] or 0 for item in sales_data}
 
+        # Prefetch sales_staff to avoid N+1 database hits in managers loop
+        managed_branch_ids = set()
         for mgr in managers:
-            staff_qs = User.objects.filter(role='sales_staff', branches__in=mgr.branches.all()).distinct()
+            for b in mgr.branches.all():
+                managed_branch_ids.add(b.id)
+                
+        all_sales_staff = User.objects.filter(
+            role='sales_staff',
+            branches__in=managed_branch_ids
+        ).prefetch_related('branches').distinct()
+        
+        # Map branch_id -> list of staff
+        branch_staff_map = {}
+        for staff in all_sales_staff:
+            for b in staff.branches.all():
+                branch_staff_map.setdefault(b.id, []).append(staff)
+
+        for mgr in managers:
+            staff_seen = set()
             staff_info = []
-            for staff in staff_qs:
-                daily_sales = staff_sales_dict.get(staff.id, 0)
-                staff_info.append({
-                    'employee_id': staff.employee_id,
-                    'date_of_joining': staff.date_of_joining,
-                    'sales': daily_sales,
-                })
+            for b in mgr.branches.all():
+                for staff in branch_staff_map.get(b.id, []):
+                    if staff.id not in staff_seen:
+                        staff_seen.add(staff.id)
+                        daily_sales = staff_sales_dict.get(staff.id, 0)
+                        staff_info.append({
+                            'employee_id': staff.employee_id,
+                            'date_of_joining': staff.date_of_joining,
+                            'sales': daily_sales,
+                        })
             manager_data.append({
                 'manager': mgr,
                 'staff': staff_info,
@@ -339,14 +368,20 @@ class AssistantManagerDashboardView(TemplateView):
         today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
         if branch:
             branch_bills = Bill.objects.filter(branch=branch, created_at__range=(today_start, today_end))
-            context['branch_sales_today'] = branch_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-            context['branch_cash_today'] = branch_bills.aggregate(Sum('cash_amount'))['cash_amount__sum'] or 0
-            context['branch_online_today'] = branch_bills.aggregate(Sum('online_amount'))['online_amount__sum'] or 0
+            aggs = branch_bills.aggregate(
+                sales=Sum('total_amount'),
+                cash=Sum('cash_amount'),
+                online=Sum('online_amount')
+            )
+            context['branch_sales_today'] = aggs['sales'] or 0
+            context['branch_cash_today'] = aggs['cash'] or 0
+            context['branch_online_today'] = aggs['online'] or 0
             context['product_count'] = Product.objects.count()
             context['staff_count'] = branch.assigned_users.filter(role__in=['sales_staff', 'assistant_manager']).exclude(id=user.id).count()
             context['recent_branch_bills'] = Bill.objects.filter(branch=branch).order_by('-created_at')[:5]
         add_branch_goal_context(user, context)
         return context
+
 class ManagerDashboardView(TemplateView):
     template_name = 'dashboards/manager.html'
 
@@ -368,9 +403,14 @@ class ManagerDashboardView(TemplateView):
         # Branch-specific stats (same as AssistantManagerDashboardView)
         if branch:
             branch_bills = Bill.objects.filter(branch=branch, created_at__range=(today_start, today_end))
-            context['branch_sales_today'] = branch_bills.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-            context['branch_cash_today'] = branch_bills.aggregate(Sum('cash_amount'))['cash_amount__sum'] or 0
-            context['branch_online_today'] = branch_bills.aggregate(Sum('online_amount'))['online_amount__sum'] or 0
+            aggs = branch_bills.aggregate(
+                sales=Sum('total_amount'),
+                cash=Sum('cash_amount'),
+                online=Sum('online_amount')
+            )
+            context['branch_sales_today'] = aggs['sales'] or 0
+            context['branch_cash_today'] = aggs['cash'] or 0
+            context['branch_online_today'] = aggs['online'] or 0
             context['product_count'] = Product.objects.count()
             context['staff_count'] = branch.assigned_users.filter(role__in=['sales_staff', 'assistant_manager']).exclude(id=user.id).count()
             context['recent_branch_bills'] = Bill.objects.filter(branch=branch).order_by('-created_at')[:5]
