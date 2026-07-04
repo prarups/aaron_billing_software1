@@ -234,7 +234,7 @@
                 </div>
                 <div class="row g-2 product-grid catalog-scroll">
                     {% for reg in registrations %}
-                    <div class="col-4 col-sm-3 col-md-2 product-card-col">
+                    <div class="col-4 col-sm-3 col-md-2 product-card-col initial-card">
                         <div class="pos-item-card glass-card p-2 text-center h-100 border-0 bg-white" 
                              id="product-{{ reg.product.id }}"
                              data-product-id="{{ reg.product.id }}"
@@ -416,6 +416,15 @@
 
     // Multi-product combo groups from backend
     const comboGroups = {{ combo_groups_json|safe }};
+    const allProducts = {{ products_json|default:"[]"|safe }};
+    
+    // Set of barcodes in active combos for highlighting
+    const comboBarcodes = new Set();
+    comboGroups.forEach(g => {
+        if (g.barcodes) {
+            g.barcodes.forEach(bc => comboBarcodes.add(String(bc)));
+        }
+    });
 
     // DP optimal combo pricing (same algorithm as backend)
     function calculateOptimalPrice(prices, tiers) {
@@ -753,9 +762,53 @@
         }
     }
 
-    // Barcode Search
+    // Helper to dynamically render a product card for search results
+    function renderProductCard(product) {
+        const isLowStock = product.stock <= product.low_stock_threshold;
+        const stockClass = isLowStock ? 'bg-danger' : 'bg-success';
+        const comboData = JSON.stringify(product.combos || []);
+        
+        // Check if product barcode is in active combos
+        const isCombo = comboBarcodes.has(String(product.barcode));
+        const comboTagClass = isCombo ? '' : 'd-none';
+        const borderStyle = isCombo ? 'style="border-top: 2px solid #c7d2fe;"' : '';
+
+        return `
+            <div class="col-4 col-sm-3 col-md-2 product-card-col search-card">
+                <div class="pos-item-card glass-card p-2 text-center h-100 border-0 bg-white" 
+                     id="product-${product.id}"
+                     data-product-id="${product.id}"
+                     data-product-name="${escapeHtml(product.name)}"
+                     data-product-barcode="${product.barcode}"
+                     data-combos='${comboData}'
+                     ${borderStyle}
+                     onclick="addToCart('${product.id}', '${escapeHtml(product.name)}', '${product.price}', '${product.stock}', this.getAttribute('data-combos'), '${product.barcode}')">
+                    <div class="stock-badge ${stockClass}">
+                        S: ${product.stock}
+                    </div>
+                    <div class="fw-bold x-small text-truncate text-dark mb-1" title="${escapeHtml(product.name)}">${product.name}</div>
+                    <div class="text-muted font-monospace mb-1" style="font-size: 10px;">${product.barcode}</div>
+                    <div class="text-primary fw-bold small">₹${product.price}</div>
+                    <div class="combo-tag ${comboTagClass}" style="font-size:0.58rem; color:#6366f1; font-weight:700; margin-top:2px;">
+                        <i class="bi bi-lightning-charge-fill"></i> Combo
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function escapeHtml(text) {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    // Barcode Search (Fallback API call)
     document.getElementById('add-by-barcode').addEventListener('click', () => {
-        const barcode = document.getElementById('barcode-input').value;
+        const barcode = document.getElementById('barcode-input').value.trim();
         if (!barcode) return;
         
         fetch(`/billing/get-product/?barcode=${barcode}`)
@@ -767,7 +820,6 @@
                     addToCart(data.id.toString(), data.name, data.price, data.stock, JSON.stringify(data.combos || []), data.barcode);
                     showScanToast('✅ ' + data.name, 'success');
                     document.getElementById('barcode-input').value = '';
-                    // Clear search filter by dispatching input event
                     document.getElementById('barcode-input').dispatchEvent(new Event('input'));
                 }
             });
@@ -776,50 +828,48 @@
     // Live Search & Instant Add on Enter
     const barcodeInput = document.getElementById('barcode-input');
     if (barcodeInput) {
-        // 1. Live Filter Search
+        // 1. Live Filter Search using in-memory list
         barcodeInput.addEventListener('input', function() {
             const query = this.value.trim().toLowerCase();
-            const cards = document.querySelectorAll('.pos-item-card');
+            const grid = document.querySelector('.product-grid');
             
-            cards.forEach(card => {
-                const name = (card.getAttribute('data-product-name') || '').toLowerCase();
-                const barcode = (card.getAttribute('data-product-barcode') || '').toLowerCase();
-                const col = card.closest('.product-card-col') || card.parentElement;
-                
-                if (!query || name.includes(query) || barcode.includes(query)) {
-                    col.classList.remove('d-none');
-                } else {
-                    col.classList.add('d-none');
-                }
+            // Remove existing dynamic search cards
+            grid.querySelectorAll('.search-card').forEach(el => el.remove());
+            
+            if (!query) {
+                // Show all initial cards
+                grid.querySelectorAll('.initial-card').forEach(col => col.classList.remove('d-none'));
+                return;
+            }
+            
+            // Hide all initial cards
+            grid.querySelectorAll('.initial-card').forEach(col => col.classList.add('d-none'));
+            
+            // Filter allProducts and render matches (limit to 50 results to prevent DOM lag)
+            const matches = allProducts.filter(p => 
+                (p.name && p.name.toLowerCase().includes(query)) || 
+                (p.barcode && p.barcode.toLowerCase().includes(query))
+            ).slice(0, 50);
+            
+            matches.forEach(product => {
+                grid.insertAdjacentHTML('beforeend', renderProductCard(product));
             });
         });
 
-        // 2. Instant Add on Enter key
+        // 2. Instant Add on Enter key (using allProducts first, fallback to API)
         barcodeInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                const barcode = this.value.trim();
+                const barcode = this.value.trim().toLowerCase();
                 if (!barcode) return;
 
-                // First check if there is an exact barcode match locally in our DOM
-                const cards = document.querySelectorAll('.pos-item-card');
-                let matchedCard = null;
-                
-                for (let card of cards) {
-                    const cardBarcode = (card.getAttribute('data-product-barcode') || '').trim();
-                    if (cardBarcode && cardBarcode.toLowerCase() === barcode.toLowerCase()) {
-                        matchedCard = card;
-                        break;
-                    }
-                }
+                // Search in allProducts memory list first for instant scanning speed
+                const matchedProduct = allProducts.find(p => p.barcode && p.barcode.toLowerCase() === barcode);
 
-                if (matchedCard) {
-                    // Instantly add using click trigger
-                    matchedCard.click();
-                    const productName = matchedCard.getAttribute('data-product-name') || '';
-                    showScanToast('✅ ' + productName, 'success');
+                if (matchedProduct) {
+                    addToCart(matchedProduct.id.toString(), matchedProduct.name, matchedProduct.price.toString(), matchedProduct.stock.toString(), JSON.stringify(matchedProduct.combos || []), matchedProduct.barcode);
+                    showScanToast('✅ ' + matchedProduct.name, 'success');
                     this.value = '';
-                    // Trigger input event to clear the search filter as well
                     this.dispatchEvent(new Event('input'));
                 } else {
                     // Fallback to AJAX lookup if not found locally

@@ -1680,9 +1680,25 @@ def pos_view(request):
 
     branches = accessible_branches
 
+    # Serialize all products to JSON for client-side search
+    products_list = []
+    for reg in registrations:
+        products_list.append({
+            'id': reg.product.id,
+            'name': reg.product.name,
+            'barcode': reg.product.barcode,
+            'price': int(reg.product.price),
+            'stock': reg.stock_quantity,
+            'low_stock_threshold': reg.low_stock_threshold,
+            'combos': []
+        })
+    import json
+    products_json = json.dumps(products_list)
+
     return render(request, 'pos/index.html', {
         'page_obj': page_obj,
-        'registrations': page_obj.object_list,  # iterable for loop
+        'registrations': page_obj.object_list[:50],  # limit to 50 items
+        'products_json': products_json,
         'products': registrations,  # original queryset for count
         'stats': stats,
         'q': q,

@@ -21,9 +21,27 @@ def pos_index(request):
             request.user.save()
 
     # Fetch registry for active branch
-    registrations = ProductRegistry.objects.filter(
+    registrations_all = ProductRegistry.objects.filter(
         branch=request.user.active_branch
     ).select_related('product').prefetch_related('product__combos')
+    
+    # Serialize all products as a list of dicts for client-side search
+    products_list = []
+    for reg in registrations_all:
+        combos = [{'quantity': c.quantity, 'price': int(c.price)} for c in reg.product.combos.all()]
+        products_list.append({
+            'id': reg.product.id,
+            'name': reg.product.name,
+            'barcode': reg.product.barcode,
+            'price': int(reg.product.price),
+            'stock': reg.stock_quantity,
+            'low_stock_threshold': reg.low_stock_threshold,
+            'combos': combos
+        })
+    products_json = json.dumps(products_list)
+    
+    # Slice registrations to show only first 50 items initially in Quick Select
+    registrations = registrations_all[:50]
     
     # Check for edit cart data in session
     edit_cart_data = request.session.pop('pos_edit_cart', None)
@@ -50,6 +68,7 @@ def pos_index(request):
     
     return render(request, 'pos/index.html', {
         'registrations': registrations,
+        'products_json': products_json,
         'edit_cart_data_json': json.dumps(edit_cart_data) if edit_cart_data else 'null',
         'combo_groups_json': json.dumps(combo_groups_data),
     })
