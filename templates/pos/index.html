@@ -229,7 +229,7 @@
                         {% if combo_groups_json != '[]' %}
                         <span class="badge rounded-pill px-2 py-1" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; font-size:0.65rem;"><i class="bi bi-lightning-charge-fill me-1"></i>Combo pricing active</span>
                         {% endif %}
-                        <span class="text-primary small fw-bold">{{ registrations.count }} Items</span>
+                        <span class="text-primary small fw-bold">{{ total_products_count|default:registrations.count }} Items</span>
                     </div>
                 </div>
                 <div class="row g-2 product-grid catalog-scroll">
@@ -828,16 +828,20 @@
     // Live Search & Instant Add on Enter
     const barcodeInput = document.getElementById('barcode-input');
     if (barcodeInput) {
-        // 1. Live Filter Search using in-memory list
+        let searchTimeout = null;
+
+        // 1. Live Filter Search via AJAX (highly optimized for 5000+ products)
         barcodeInput.addEventListener('input', function() {
-            const query = this.value.trim().toLowerCase();
+            const query = this.value.trim();
             const grid = document.querySelector('.product-grid');
             
             // Remove existing dynamic search cards
             grid.querySelectorAll('.search-card').forEach(el => el.remove());
             
+            if (searchTimeout) clearTimeout(searchTimeout);
+            
             if (!query) {
-                // Show all initial cards
+                // Show all initial 50 cards
                 grid.querySelectorAll('.initial-card').forEach(col => col.classList.remove('d-none'));
                 return;
             }
@@ -845,36 +849,34 @@
             // Hide all initial cards
             grid.querySelectorAll('.initial-card').forEach(col => col.classList.add('d-none'));
             
-            // Filter allProducts and render matches (limit to 50 results to prevent DOM lag)
-            const matches = allProducts.filter(p => 
-                (p.name && p.name.toLowerCase().includes(query)) || 
-                (p.barcode && p.barcode.toLowerCase().includes(query))
-            ).slice(0, 50);
-            
-            matches.forEach(product => {
-                grid.insertAdjacentHTML('beforeend', renderProductCard(product));
-            });
+            // Debounce fetch query by 200ms to avoid hammering the server
+            searchTimeout = setTimeout(() => {
+                fetch(`/billing/search-products/?q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(matches => {
+                        // Ensure input wasn't cleared during the request
+                        if (!barcodeInput.value.trim()) return;
+                        
+                        // Clear search-card elements again in case of race condition
+                        grid.querySelectorAll('.search-card').forEach(el => el.remove());
+                        
+                        matches.forEach(product => {
+                            grid.insertAdjacentHTML('beforeend', renderProductCard(product));
+                        });
+                    })
+                    .catch(err => console.error("Error fetching search results:", err));
+            }, 200);
         });
 
-        // 2. Instant Add on Enter key (using allProducts first, fallback to API)
+        // 2. Instant Add on Enter key (using fast barcode lookup API)
         barcodeInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                const barcode = this.value.trim().toLowerCase();
+                const barcode = this.value.trim();
                 if (!barcode) return;
 
-                // Search in allProducts memory list first for instant scanning speed
-                const matchedProduct = allProducts.find(p => p.barcode && p.barcode.toLowerCase() === barcode);
-
-                if (matchedProduct) {
-                    addToCart(matchedProduct.id.toString(), matchedProduct.name, matchedProduct.price.toString(), matchedProduct.stock.toString(), JSON.stringify(matchedProduct.combos || []), matchedProduct.barcode);
-                    showScanToast('✅ ' + matchedProduct.name, 'success');
-                    this.value = '';
-                    this.dispatchEvent(new Event('input'));
-                } else {
-                    // Fallback to AJAX lookup if not found locally
-                    document.getElementById('add-by-barcode').click();
-                }
+                // Trigger barcode lookup API directly for scan-to-add
+                document.getElementById('add-by-barcode').click();
             }
         });
     }

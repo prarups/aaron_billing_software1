@@ -1695,9 +1695,12 @@ def pos_view(request):
     import json
     products_json = json.dumps(products_list)
 
+    total_products_count = registrations.count()
+
     return render(request, 'pos/index.html', {
         'page_obj': page_obj,
         'registrations': page_obj.object_list[:50],  # limit to 50 items
+        'total_products_count': total_products_count,
         'products_json': products_json,
         'products': registrations,  # original queryset for count
         'stats': stats,
