@@ -460,6 +460,32 @@ class ExchangePolicyTests(TestCase):
         form_expensive = ReturnCreateForm(data=data_expensive)
         self.assertTrue(form_expensive.is_valid())
 
+    def test_same_product_exchange_zero_stock(self):
+        from billing.forms import ReturnCreateForm
+        from core.models import ProductRegistry
+        import json
+
+        # Set stock of self.product_normal to 0
+        registry = ProductRegistry.objects.get(product=self.product_normal, branch=self.branch)
+        registry.stock_quantity = 0
+        registry.save()
+
+        # Exchange with same product normal (GOOD condition) should fail validation because shelf stock is 0
+        data_same_zero_stock = {
+            'invoice_id': self.bill.invoice_number,
+            'reason': 'Size exchange',
+            'return_items': json.dumps([{
+                'id': self.item_normal.id,
+                'quantity': 1,
+                'condition': 'GOOD',
+                'replacement_product_id': self.product_normal.id,
+                'replacement_quantity': 1
+            }])
+        }
+        form = ReturnCreateForm(data=data_same_zero_stock)
+        self.assertFalse(form.is_valid())
+        self.assertIn('Insufficient stock for replacement product', form.errors['__all__'][0])
+
     def test_combo_item_exchange_validation(self):
         from billing.forms import ReturnCreateForm
         import json

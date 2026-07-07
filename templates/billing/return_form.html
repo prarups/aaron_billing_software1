@@ -710,7 +710,7 @@
         const repStock = parseInt(replacementOpt.getAttribute('data-stock')) || 0;
         const isSameProduct = (returnedOpt && returnedOpt.value && returnedOpt.value !== 'replacement_only') ? (returnedOpt.getAttribute('data-product-id') == replacementOpt.value) : false;
         const isGoodCondition = conditionSelect.value === 'GOOD';
-        const effectiveStock = (isSameProduct && isGoodCondition) ? (repStock + retQty) : repStock;
+        const effectiveStock = repStock;
 
         if (repQty > effectiveStock) {
             priceDiffLabel.textContent = 'Error: No Stock';

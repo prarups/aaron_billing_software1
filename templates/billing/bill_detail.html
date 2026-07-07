@@ -201,6 +201,7 @@
                         </h6>
                         {% for ret in returns %}
                         <div class="p-2.5 bg-white rounded-3 shadow-sm mb-2 border border-light-subtle">
+                            {% if ret.quantity > 0 %}
                             <div class="d-flex justify-content-between align-items-start mb-1.5">
                                 <div>
                                     <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-0.5 text-xxs fw-bold text-uppercase">Returned</span>
@@ -212,8 +213,9 @@
                                     <div class="badge bg-secondary-subtle text-secondary px-1.5 py-0.5 text-xxs mt-1">{{ ret.get_condition_display }}</div>
                                 </div>
                             </div>
+                            {% endif %}
                             {% if ret.replacement_product %}
-                            <div class="pt-2 border-top border-light-subtle mt-2">
+                            <div class="pt-2 {% if ret.quantity > 0 %}border-top border-light-subtle mt-2{% endif %}">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-0.5 text-xxs fw-bold text-uppercase">Exchanged With</span>
@@ -222,20 +224,52 @@
                                     </div>
                                     <div class="text-end">
                                         <div class="text-xxs text-muted">Qty: {{ ret.replacement_quantity }}</div>
-                                         {% if ret.price_difference > 0 %}
-                                         <div class="text-xxs fw-bold text-primary mt-1">
-                                             Paid Diff: ₹{{ ret.price_difference|floatformat:0 }} via {{ ret.get_payment_method_display }}
-                                             {% if ret.payment_method == 'split' %}
-                                             <span class="text-muted fw-normal d-block mt-0.5" style="font-size: 9px;">(Cash: ₹{{ ret.cash_amount|floatformat:0 }}, Online: ₹{{ ret.online_amount|floatformat:0 }})</span>
-                                             {% endif %}
-                                         </div>
-                                         {% endif %}
                                     </div>
                                 </div>
                             </div>
                             {% endif %}
                         </div>
                         {% endfor %}
+
+                        <!-- Consolidated Return Summary -->
+                        {% with summary=bill.return_summary %}
+                        {% if summary %}
+                        <div class="mt-3 pt-2.5 border-top border-warning border-opacity-25" style="font-size: 0.8rem;">
+                            <div class="d-flex justify-content-between mb-1.5">
+                                <span class="text-muted fw-semibold">Total Returned Value:</span>
+                                <span class="text-dark fw-bold">₹{{ summary.total_returned_value|floatformat:0 }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2.5">
+                                <span class="text-muted fw-semibold">Total Replacement Value:</span>
+                                <span class="text-dark fw-bold">₹{{ summary.total_replacement_value|floatformat:0 }}</span>
+                            </div>
+                            
+                            {% if summary.has_positive_diff %}
+                            <div class="p-2.5 bg-warning bg-opacity-10 rounded-3 border border-warning border-opacity-20 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="d-block text-warning-emphasis fw-bold text-xs">Total Extra Paid:</span>
+                                    {% if summary.payment_method == 'split' %}
+                                    <span class="text-muted" style="font-size: 9px;">(Cash: ₹{{ summary.cash_paid|floatformat:0 }}, Online: ₹{{ summary.online_paid|floatformat:0 }})</span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-warning text-warning-emphasis fw-bold fs-6">₹{{ summary.net_difference|floatformat:0 }}</span>
+                                    <span class="text-xxs text-muted d-block mt-0.5">via {{ summary.payment_method_display }}</span>
+                                </div>
+                            </div>
+                            {% elif summary.has_negative_diff %}
+                            <div class="p-2.5 bg-success bg-opacity-10 rounded-3 border border-success border-opacity-20 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="d-block text-success-emphasis fw-bold text-xs">Refund / Credit Note Value:</span>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-success text-success-emphasis fw-bold fs-6">₹{{ summary.net_difference|floatformat:0 }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% endwith %}
                     </div>
                 </div>
                 {% endif %}

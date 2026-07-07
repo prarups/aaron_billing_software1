@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aaron-billing-v2';
+const CACHE_NAME = 'aaron-billing-v3';
 const ASSETS = [
   '/static/css/style.css',
   '/static/images/aronlogonow.png',

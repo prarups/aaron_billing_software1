@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import never_cache
 from django.http import JsonResponse
 from .forms import ReturnCreateForm
 from .models import Bill, BillItem
@@ -120,6 +121,7 @@ def _get_bill_items_data(bill, max_items=None):
 
 
 @login_required
+@never_cache
 def return_create_view(request):
     """Handle product return creation.
     GET: display form with optional pre‑filled invoice ID and bill items.
@@ -135,7 +137,7 @@ def return_create_view(request):
     redirect_url = ""
     success_message = ""
     if request.method == "POST":
-        form = ReturnCreateForm(request.POST)
+        form = ReturnCreateForm(request.POST, user=request.user)
         if form.is_valid():
             returns = form.save(request.user)
             return_confirmed = True
@@ -156,13 +158,15 @@ def return_create_view(request):
                 bill = Bill.objects.filter(invoice_number__iexact=invoice_id_str).first()
                 if not bill and invoice_id_str.isdigit():
                     bill = Bill.objects.get(id=int(invoice_id_str))
+                if bill and not request.user.is_superuser and bill.branch != request.user.active_branch:
+                    bill = None
                 if bill:
                     initial["invoice_id"] = bill.invoice_number or str(bill.id)
                 else:
                     initial["invoice_id"] = invoice_id
             except Bill.DoesNotExist:
                 initial["invoice_id"] = invoice_id
-        form = ReturnCreateForm(initial=initial)
+        form = ReturnCreateForm(initial=initial, user=request.user)
 
     # ---------- Prepare bill items JSON for the template ----------
     import json
@@ -175,9 +179,15 @@ def return_create_view(request):
             if not bill and invoice_id_str.isdigit():
                 bill = Bill.objects.get(id=int(invoice_id_str))
             
-            bill_items, too_many_items = _get_bill_items_data(bill, max_items=200)
-            bill_items_json = json.dumps(bill_items)
-            request.session['too_many_items'] = too_many_items
+            if bill and not request.user.is_superuser and bill.branch != request.user.active_branch:
+                bill = None
+            
+            if bill:
+                bill_items, too_many_items = _get_bill_items_data(bill, max_items=200)
+                bill_items_json = json.dumps(bill_items)
+                request.session['too_many_items'] = too_many_items
+            else:
+                bill_items_json = "[]"
         except (Bill.DoesNotExist, ValueError):
             pass
 
@@ -210,6 +220,7 @@ def return_create_view(request):
 
 
 @login_required
+@never_cache
 def get_bill_items_api(request):
     """AJAX endpoint: returns bill items for a given invoice ID including return history details."""
     from .return_models import ReturnRequest
@@ -229,6 +240,9 @@ def get_bill_items_api(request):
     if not bill:
         return JsonResponse({"items": [], "error": "Bill not found"})
 
+    if not request.user.is_superuser and bill.branch != request.user.active_branch:
+        return JsonResponse({"items": [], "error": "This invoice does not belong to your active branch."})
+
     items, _ = _get_bill_items_data(bill)
 
     return JsonResponse({
@@ -239,6 +253,7 @@ def get_bill_items_api(request):
 
 
 @login_required
+@never_cache
 def get_replacement_product_api(request):
     """AJAX endpoint: returns product details by barcode and branch ID for exchange replacement lookup."""
     from core.models import Branch, ProductRegistry

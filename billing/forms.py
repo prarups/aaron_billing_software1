@@ -4,6 +4,10 @@ from .return_models import ReturnRequest, CreditNote
 from .models import Bill, BillItem
 
 class ReturnCreateForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
     invoice_id = forms.CharField(
         label='Invoice / Bill ID',
         widget=forms.TextInput(attrs={
@@ -97,6 +101,9 @@ class ReturnCreateForm(forms.Form):
                     bill = Bill.objects.get(id=int(invoice_val))
                 else:
                     raise Bill.DoesNotExist()
+            
+            if self.user and not self.user.is_superuser and bill.branch != self.user.active_branch:
+                raise forms.ValidationError('This invoice does not belong to your active branch.')
         except (Bill.DoesNotExist, ValueError):
             raise forms.ValidationError('Invoice not found.')
         return bill
@@ -230,17 +237,12 @@ class ReturnCreateForm(forms.Form):
                         simulated_stock[rep_product.id] = 0
 
             cond = ri.get('condition', 'GOOD')
-            # If exchanging same product and condition is GOOD, returning adds to stock before swap
-            if item and item.product.id == rep_product.id and cond == 'GOOD':
-                simulated_stock[rep_product.id] += qty
-
+            # Ensure there is sufficient stock already available on the shelf
+            # (excluding the returned item itself) so a replacement can actually be provided.
             if simulated_stock[rep_product.id] < rep_qty:
-                actual_available = simulated_stock[rep_product.id]
-                if item and item.product.id == rep_product.id and cond == 'GOOD':
-                    actual_available -= qty
                 raise forms.ValidationError(
                     f'Insufficient stock for replacement product "{rep_product.name}" at this branch. '
-                    f'Available stock: {actual_available}, requested: {rep_qty}.'
+                    f'Available stock: {simulated_stock[rep_product.id]}, requested: {rep_qty}.'
                 )
 
             # Deduct replacement from simulated stock

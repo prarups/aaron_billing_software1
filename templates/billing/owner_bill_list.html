@@ -678,7 +678,8 @@
                     </div>
                     <div class="d-flex flex-column gap-2">
                         {% for ret in bill.return_requests.all %}
-                        <div class="p-2.5 rounded-3 bg-light border border-light" style="font-size: 0.75rem;">
+                        <div class="p-2.5 rounded-3 bg-light border border-light mb-2" style="font-size: 0.75rem;">
+                            {% if ret.quantity > 0 %}
                             <div class="d-flex align-items-center justify-content-between mb-1">
                                 <span class="text-xxs text-danger fw-bold"><i class="bi bi-dash-circle me-0.5"></i>RETURNED</span>
                                 <span class="badge bg-danger-subtle text-danger px-1.5 py-0.5 rounded-pill text-xxs font-monospace" style="font-size: 8px;">x{{ ret.quantity }}</span>
@@ -692,9 +693,12 @@
                             <div class="text-xxs text-muted mb-2">
                                 Condition: <span class="badge {% if ret.condition == 'GOOD' %}bg-success-subtle text-success{% else %}bg-danger-subtle text-danger{% endif %}" style="font-size: 8px;">{{ ret.get_condition_display }}</span>
                             </div>
-                            
                             {% if ret.replacement_product %}
                             <div class="border-top border-light my-2"></div>
+                            {% endif %}
+                            {% endif %}
+                            
+                            {% if ret.replacement_product %}
                             <div class="d-flex align-items-center justify-content-between mb-1">
                                 <span class="text-xxs text-success fw-bold"><i class="bi bi-plus-circle me-0.5"></i>EXCHANGED WITH</span>
                                 <span class="badge bg-success-subtle text-success px-1.5 py-0.5 rounded-pill text-xxs font-monospace" style="font-size: 8px;">x{{ ret.replacement_quantity }}</span>
@@ -707,41 +711,52 @@
                             </div>
                             {% endif %}
                             
-                            <div class="border-top border-light my-2"></div>
-                            
-                            <div class="d-flex align-items-center justify-content-between text-xxs">
-                                 <span class="text-muted">Price Difference:</span>
-                                 <span>
-                                     {% if ret.price_difference > 0 %}
-                                     <strong class="text-success">+₹{{ ret.price_difference|floatformat:0 }}</strong>
-                                     {% elif ret.price_difference < 0 %}
-                                     <strong class="text-danger">-₹{{ ret.price_difference|floatformat:0|cut:"-" }}</strong>
-                                     {% else %}
-                                     <strong class="text-muted">₹0</strong>
-                                     {% endif %}
-                                 </span>
-                             </div>
-
-                             {% if ret.price_difference > 0 %}
-                             <div class="d-flex align-items-start justify-content-between text-xxs mt-1">
-                                 <span class="text-muted">Paid Diff via:</span>
-                                 <span class="text-dark fw-semibold text-end">
-                                     {{ ret.get_payment_method_display }}
-                                     {% if ret.payment_method == 'split' %}
-                                     <br><span class="text-muted fw-normal" style="font-size: 9px;">(Cash: ₹{{ ret.cash_amount|floatformat:0 }}, Online: ₹{{ ret.online_amount|floatformat:0 }})</span>
-                                     {% endif %}
-                                 </span>
-                             </div>
-                             {% endif %}
-                            
                             {% if ret.status != 'A' %}
-                            <div class="d-flex align-items-center justify-content-between text-xxs mt-1">
+                            <div class="border-top border-light my-2"></div>
+                            <div class="d-flex align-items-center justify-content-between text-xxs">
                                 <span class="text-muted">Status:</span>
                                 <span class="badge {% if ret.status == 'P' %}bg-warning{% elif ret.status == 'R' %}bg-danger{% else %}bg-secondary{% endif %} text-white px-1 py-0.5" style="font-size: 7px;">{{ ret.get_status_display }}</span>
                             </div>
                             {% endif %}
                         </div>
                         {% endfor %}
+
+                        <!-- Consolidated Return Summary for Owner View -->
+                        {% with summary=bill.return_summary %}
+                        {% if summary %}
+                        <div class="p-2.5 rounded-3 bg-warning bg-opacity-10 border border-warning border-opacity-20 mt-2" style="font-size: 0.75rem;">
+                            <div class="d-flex justify-content-between text-xxs mb-1">
+                                <span class="text-muted fw-semibold">Total Returned:</span>
+                                <span class="text-dark fw-bold">₹{{ summary.total_returned_value|floatformat:0 }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between text-xxs mb-1.5">
+                                <span class="text-muted fw-semibold">Total Exchanged:</span>
+                                <span class="text-dark fw-bold">₹{{ summary.total_replacement_value|floatformat:0 }}</span>
+                            </div>
+                            <div class="border-top border-warning border-opacity-20 my-1.5"></div>
+                            
+                            {% if summary.has_positive_diff %}
+                            <div class="d-flex justify-content-between align-items-start text-xxs">
+                                <div>
+                                    <span class="text-warning-emphasis fw-bold">Paid Extra:</span>
+                                    {% if summary.payment_method == 'split' %}
+                                    <span class="text-muted d-block" style="font-size: 8px;">(Cash: ₹{{ summary.cash_paid|floatformat:0 }}, Online: ₹{{ summary.online_paid|floatformat:0 }})</span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-end">
+                                    <span class="text-warning-emphasis fw-bold">₹{{ summary.net_difference|floatformat:0 }}</span>
+                                    <span class="text-xxs text-muted d-block" style="font-size: 8px;">via {{ summary.payment_method_display }}</span>
+                                </div>
+                            </div>
+                            {% elif summary.has_negative_diff %}
+                            <div class="d-flex justify-content-between align-items-center text-xxs">
+                                <span class="text-success-emphasis fw-bold">Refund Value:</span>
+                                <span class="text-success-emphasis fw-bold">₹{{ summary.net_difference|floatformat:0 }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% endwith %}
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">

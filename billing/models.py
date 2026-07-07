@@ -82,6 +82,48 @@ class Bill(models.Model):
 
     # Validation for combo pricing removed as per request
 
+    @property
+    def return_summary(self):
+        approved_returns = self.return_requests.filter(status="A").select_related('replacement_product')
+        if not approved_returns.exists():
+            return None
+            
+        total_returned_value = 0
+        total_replacement_value = 0
+        total_net_difference = 0
+        total_cash_paid = 0
+        total_online_paid = 0
+        return_payment_method = None
+        
+        for ret in approved_returns:
+            if ret.quantity > 0 and ret.bill_item:
+                total_returned_value += ret.bill_item.unit_price * ret.quantity
+            if ret.replacement_product:
+                total_replacement_value += ret.replacement_product.price * ret.replacement_quantity
+            
+            total_net_difference += ret.price_difference
+            total_cash_paid += ret.cash_amount
+            total_online_paid += ret.online_amount
+            if ret.payment_method:
+                return_payment_method = ret.payment_method
+                
+        payment_method_display = {
+            'cash': 'Cash',
+            'online': 'Online',
+            'split': 'Split Payment'
+        }.get(return_payment_method, 'Cash')
+        
+        return {
+            'total_returned_value': total_returned_value,
+            'total_replacement_value': total_replacement_value,
+            'net_difference': abs(total_net_difference),
+            'cash_paid': total_cash_paid,
+            'online_paid': total_online_paid,
+            'has_positive_diff': total_net_difference > 0,
+            'has_negative_diff': total_net_difference < 0,
+            'payment_method_display': payment_method_display,
+            'payment_method': return_payment_method,
+        }
 
     def __str__(self):
         bill_num = self.invoice_number or f"#{self.id}"
