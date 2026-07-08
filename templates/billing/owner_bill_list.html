@@ -384,12 +384,11 @@
                     <th class="ps-4" style="width: 10%;">Invoice</th>
                     <th class="text-nowrap" style="width: 12%;">Date & Time</th>
                     <th style="width: 10%;">Branch</th>
-                    <th style="width: 10%;">Staff</th>
-                    <th style="width: 15%;">Customer</th>
-                    <th style="width: 20%;">Purchased Items</th>
-                    <th class="text-center text-nowrap" style="width: 6%;">Qty</th>
-                    <th class="text-nowrap" style="width: 8%;">Pay Mode</th>
-                    <th class="text-nowrap" style="width: 9%;">Net Paid</th>
+                    <th style="width: 12%;">Staff</th>
+                    <th style="width: 18%;">Customer</th>
+                    <th class="text-center text-nowrap" style="width: 8%;">Qty</th>
+                    <th class="text-nowrap" style="width: 10%;">Pay Mode</th>
+                    <th class="text-nowrap" style="width: 10%;">Net Paid</th>
                     <th class="text-end pe-4" style="width: 10%;">Actions</th>
                 </tr>
             </thead>
@@ -438,47 +437,7 @@
                         {% endif %}
                     </td>
                     
-                    <!-- Purchased Items -->
-                    <td>
-                        {% with items_count=bill.items.all|length %}
-                        {% if items_count > 0 %}
-                            {% with first_item=bill.items.all|first %}
-                            <div class="d-flex align-items-center justify-content-between p-1 rounded bg-light bg-opacity-50 border border-light">
-                                <span class="fw-semibold text-truncate text-dark text-xxs me-2" style="max-width: calc(100% - 90px);" title="{{ first_item.product.name }}">
-                                    {{ first_item.product.name }}
-                                </span>
-                                <div class="d-flex align-items-center gap-1">
-                                    <span class="badge bg-light text-muted border-0 px-1 py-0.5 text-xxs font-monospace" style="font-size: 8px;">{{ first_item.product.barcode }}</span>
-                                    <span class="badge bg-primary text-white border-0 px-1.5 py-0.5 rounded-pill text-xxs font-monospace" style="font-size: 8px;">x{{ first_item.quantity }}</span>
-                                </div>
-                            </div>
-                            {% endwith %}
-                            
-                            {% if items_count > 1 %}
-                            <div class="mt-1">
-                                <a href="javascript:void(0);" class="text-xxs text-primary fw-bold text-decoration-none d-inline-flex align-items-center gap-0.5" onclick="toggleItems('{{ bill.id }}', this)">
-                                    <span>Show {{ items_count|add:"-1" }} more item{{ items_count|pluralize }}</span>
-                                </a>
-                                <div id="items-list-{{ bill.id }}" class="d-none mt-1.5 item-scroll-list border-top pt-1.5">
-                                    {% for item in bill.items.all|slice:"1:" %}
-                                    <div class="scrollable-item-row d-flex align-items-center justify-content-between">
-                                        <span class="fw-semibold text-truncate text-dark text-xxs me-2" style="max-width: calc(100% - 90px);" title="{{ item.product.name }}">
-                                            {{ item.product.name }}
-                                        </span>
-                                        <div class="d-flex align-items-center gap-1">
-                                            <span class="badge bg-light text-muted border-0 px-1 py-0.5 text-xxs font-monospace" style="font-size: 8px;">{{ item.product.barcode }}</span>
-                                            <span class="badge bg-primary text-white border-0 px-1.5 py-0.5 rounded-pill text-xxs font-monospace" style="font-size: 8px;">x{{ item.quantity }}</span>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% endif %}
-                        {% else %}
-                            <span class="text-muted text-xxs">No items</span>
-                        {% endif %}
-                        {% endwith %}
-                    </td>
+
 
                     <!-- Total Qty -->
                     <td class="text-center">
@@ -578,43 +537,7 @@
                 </div>
             </div>
             
-            <div class="mb-2 bg-light bg-opacity-50 p-2 rounded-3">
-                <span class="text-xxs text-uppercase fw-bold text-muted-plus d-block mb-1.5">Purchased Items</span>
-                {% with items_count=bill.items.all|length %}
-                {% if items_count > 0 %}
-                    {% with first_item=bill.items.all|first %}
-                    <div class="scrollable-item-row d-flex justify-content-between align-items-center">
-                        <span class="fw-semibold text-truncate text-dark text-xxs me-2" style="max-width: calc(100% - 130px);">{{ first_item.product.name }}</span>
-                        <div class="d-flex align-items-center gap-1">
-                            <span class="badge bg-light text-muted border-0 px-1 py-0.5 text-xxs font-monospace" style="font-size: 8px;">{{ first_item.product.barcode }}</span>
-                            <span class="badge bg-primary text-white border-0 px-1.5 py-0.5 rounded-pill text-xxs font-monospace" style="font-size: 8px;">x{{ first_item.quantity }}</span>
-                        </div>
-                    </div>
-                    {% endwith %}
-                    
-                    {% if items_count > 1 %}
-                    <div class="mt-1">
-                        <a href="javascript:void(0);" class="text-xxs text-primary fw-bold text-decoration-none d-inline-flex align-items-center gap-0.5" onclick="toggleItemsMobile('{{ bill.id }}', this)">
-                            <span>Show {{ items_count|add:"-1" }} more item{{ items_count|pluralize }}</span>
-                        </a>
-                        <div id="items-list-mobile-{{ bill.id }}" class="d-none mt-1.5 border-top pt-1.5 d-flex flex-column gap-1">
-                            {% for item in bill.items.all|slice:"1:" %}
-                            <div class="scrollable-item-row d-flex justify-content-between align-items-center">
-                                <span class="fw-semibold text-truncate text-dark text-xxs me-2" style="max-width: calc(100% - 130px);">{{ item.product.name }}</span>
-                                <div class="d-flex align-items-center gap-1">
-                                    <span class="badge bg-light text-muted border-0 px-1 py-0.5 text-xxs font-monospace" style="font-size: 8px;">{{ item.product.barcode }}</span>
-                                    <span class="badge bg-primary text-white border-0 px-1.5 py-0.5 rounded-pill text-xxs font-monospace" style="font-size: 8px;">x{{ item.quantity }}</span>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
-                {% else %}
-                    <span class="text-muted text-xxs">No items</span>
-                {% endif %}
-                {% endwith %}
-            </div>
+
             
             {# return details are in the popup modal triggered by Exchanged badge #}
             
