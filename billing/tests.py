@@ -275,6 +275,53 @@ class MultiProductComboTestCase(TestCase):
         self.assertEqual(bill.customer_name, '')
         self.assertEqual(bill.customer_phone, '')
 
+    def test_process_bill_with_split_payment_validation(self):
+        from django.urls import reverse
+        import json
+        self.client.force_login(self.user)
+
+        # 3 of p1 and 3 of p2 (total 6 items) -> total_amount = 480
+        # Valid split payment matching total: cash_amount=200, online_amount=280
+        payload_valid = {
+            'items': [
+                {'id': self.p1.id, 'quantity': 3},
+                {'id': self.p2.id, 'quantity': 3}
+            ],
+            'customer_name': 'Jane Doe',
+            'customer_phone': '1234567890',
+            'payment_method': 'split',
+            'cash_amount': 200,
+            'online_amount': 280
+        }
+
+        response = self.client.post(
+            reverse('process_bill'),
+            data=json.dumps(payload_valid),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+
+        bill = Bill.objects.get(id=data['bill_id'])
+        self.assertEqual(bill.total_amount, 480)
+        self.assertEqual(bill.cash_amount, 200)
+        self.assertEqual(bill.online_amount, 280)
+
+        # Invalid split payment not matching total: cash_amount=200, online_amount=279
+        payload_invalid = payload_valid.copy()
+        payload_invalid['online_amount'] = 279
+
+        response_invalid = self.client.post(
+            reverse('process_bill'),
+            data=json.dumps(payload_invalid),
+            content_type='application/json'
+        )
+        self.assertEqual(response_invalid.status_code, 400)
+        data_invalid = response_invalid.json()
+        self.assertIn('error', data_invalid)
+        self.assertIn('Split amounts', data_invalid['error'])
+
 
 
 class BillDetailNavigationTestCase(TestCase):

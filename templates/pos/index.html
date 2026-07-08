@@ -557,7 +557,7 @@
                 processedIds.add(item.id);
             });
 
-            discountedSubtotal += calculateOptimalPrice(groupPrices, group.tiers);
+            discountedSubtotal += Math.round(calculateOptimalPrice(groupPrices, group.tiers));
         });
 
         // Step 2: remaining items use individual combo pricing
@@ -584,7 +584,7 @@
             } else {
                 subtotal = item.quantity * item.price;
             }
-            discountedSubtotal += subtotal;
+            discountedSubtotal += Math.round(subtotal);
         });
 
         let savings = originalSubtotal - discountedSubtotal;
@@ -597,6 +597,16 @@
 
     function getCartSubtotal() {
         return getCartTotals().discountedSubtotal;
+    }
+
+    function getCartFinalTotal() {
+        const totals = getCartTotals();
+        const retailPrice = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price')?.value)) || 0);
+        let total = Math.max(0, totals.discountedSubtotal + retailPrice);
+        if (total === 0 && totals.originalSubtotal > 0) {
+            total = Math.round(totals.originalSubtotal);
+        }
+        return total;
     }
 
     function renderCart() {
@@ -656,10 +666,9 @@
         });
 
         const totals = getCartTotals();
-        const retailPrice = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price')?.value)) || 0);
-        let total = Math.max(0, totals.discountedSubtotal + retailPrice);
+        const total = getCartFinalTotal();
 
-        totalEl.innerText = `₹${Math.round(total)}`;
+        totalEl.innerText = `₹${total}`;
         
         const savingsRow = document.getElementById('savings-row');
         const savingsEl = document.getElementById('cart-savings');
@@ -945,9 +954,7 @@ if (isScannerOpen) {
             const splitInputs = document.getElementById('split-inputs');
             if (e.target.value === 'split') {
                 splitInputs.classList.remove('d-none');
-                const subtotal = Math.round(getCartSubtotal());
-                const retailPrice = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price').value)) || 0);
-                const total = Math.max(0, subtotal + retailPrice);
+                const total = getCartFinalTotal();
                 document.getElementById('split-cash').value = total;
                 document.getElementById('split-online').value = 0;
                 calculateSplit(null);
@@ -959,10 +966,7 @@ if (isScannerOpen) {
 
     function calculateSplit(source) {
         if (document.getElementById('pay-split') && !document.getElementById('pay-split').checked) return;
-        const subtotal = Math.round(getCartSubtotal());
-        const retailPrice = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price').value)) || 0);
-        // Compute total as integer (rounded)
-        const total = Math.max(0, subtotal + retailPrice);
+        const total = getCartFinalTotal();
         const cashInput = document.getElementById('split-cash');
         const onlineInput = document.getElementById('split-online');
         const warning = document.getElementById('split-warning');
@@ -1033,8 +1037,7 @@ if (isScannerOpen) {
         let cash_amount = 0;
         let online_amount = 0;
         const retailPrice = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price').value)) || 0);
-        const subtotal = Math.round(getCartSubtotal());
-        const total = Math.max(0, subtotal + retailPrice);
+        const total = getCartFinalTotal();
         
         if (paymentMethod === 'cash') {
             cash_amount = total;
