@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Aaron Management Portal{% endblock %}</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts: Outfit & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Custom Styles -->
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <!-- Tom Select Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #10b981; /* Green theme for Management */
+            --primary-light: #34d399;
+            --secondary-color: #059669;
+            --accent-color: #f59e0b;
+            --bg-color: #f0fdf4;
+            --sidebar-bg: rgba(255, 255, 255, 0.45);
+            --card-shadow: 0 10px 30px -10px rgba(5, 150, 105, 0.08);
+            --header-height: 64px;
+            --sidebar-width: 260px;
+            --sidebar-active-bg: rgba(5, 150, 105, 0.08);
+            --sidebar-active-color: #059669;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #1f2937;
+            background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #f0fdfa 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Topbar Header styling */
+        .navbar-header {
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(5, 150, 105, 0.1);
+            padding: 0 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 1038;
+            box-shadow: 0 4px 30px rgba(5, 150, 105, 0.03);
+        }
+
+        .dropdown-menu {
+            z-index: 1039 !important;
+            border: 1px solid rgba(5, 150, 105, 0.08) !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05) !important;
+            border-radius: 0.75rem !important;
+        }
+
+        .navbar-brand {
+            font-weight: 800;
+            background: linear-gradient(135deg, #10b981, #0ea5e9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.5rem;
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: -0.5px;
+        }
+
+        /* Sidebar container styles */
+        .app-sidebar {
+            width: var(--sidebar-width);
+            flex-shrink: 0;
+            height: calc(100vh - var(--header-height));
+            position: sticky;
+            top: var(--header-height);
+            z-index: 1020;
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(5, 150, 105, 0.08);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-nav {
+            padding: 0.75rem 0.75rem;
+            list-style: none;
+            margin: 0;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .sidebar-footer {
+            background: rgba(248, 250, 252, 0.5);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border-top: 1px solid rgba(5, 150, 105, 0.05);
+        }
+
+        .text-xxs {
+            font-size: 0.7rem !important;
+        }
+
+        .sidebar-item {
+            margin-bottom: 0.25rem;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.45rem 0.75rem;
+            color: #4b5563;
+            text-decoration: none;
+            font-weight: 500;
+            border-radius: 0.5rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.8rem;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .sidebar-link i {
+            font-size: 1.15rem;
+            color: #10b981;
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+
+        .sidebar-link:hover {
+            color: var(--primary-color);
+            background-color: rgba(5, 150, 105, 0.05);
+            transform: translateX(3px);
+        }
+
+        .sidebar-link:hover i {
+            transform: scale(1.1) rotate(3deg);
+            color: var(--primary-color);
+        }
+
+        .sidebar-link.active {
+            color: var(--sidebar-active-color);
+            background-color: var(--sidebar-active-bg);
+            font-weight: 600;
+            border-left: 4px solid var(--primary-color);
+            border-top-left-radius: 0px;
+            border-bottom-left-radius: 0px;
+            box-shadow: 0 4px 15px -3px rgba(5, 150, 105, 0.05);
+        }
+
+        .sidebar-link.active i {
+            color: var(--sidebar-active-color);
+        }
+
+        /* Sidebar Toggle classes */
+        .sidebar-collapsed .app-sidebar {
+            width: 0;
+            overflow: hidden;
+            border-right-width: 0;
+        }
+
+        /* Main Wrapper layout */
+        .main-wrapper {
+            flex-grow: 1;
+            min-width: 0;
+            min-height: calc(100vh - var(--header-height));
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-x: hidden;
+        }
+
+        /* Colorful Headers */
+        h1, h2, h3, h4, h5, h6 {
+            color: #065f46;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+        }
+        
+        .text-primary {
+            color: #059669 !important;
+        }
+
+        /* Premium Emerald Gradient Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, #059669, #10b981);
+            border: none;
+            color: white;
+            box-shadow: 0 4px 15px rgba(5, 150, 105, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #047857, #059669);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(5, 150, 105, 0.3);
+            color: white;
+        }
+        
+        .btn-outline-primary {
+            border-color: #059669;
+            color: #059669;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-outline-primary:hover {
+            background: linear-gradient(135deg, #059669, #10b981);
+            border-color: transparent;
+            color: white;
+            box-shadow: 0 4px 15px rgba(5, 150, 105, 0.2);
+        }
+
+        /* Glassmorphic card styling */
+        .card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5) !important;
+            border-radius: 1.25rem;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px -5px rgba(5, 150, 105, 0.12);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(5, 150, 105, 0.02);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(5, 150, 105, 0.15);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(5, 150, 105, 0.3);
+        }
+
+        /* Global animations */
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 767.98px) {
+            .app-sidebar {
+                display: none !important;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Header -->
+    <header class="navbar-header d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-3">
+            <!-- Mobile Toggle -->
+            <button class="btn btn-link text-dark p-0 border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+                <i class="bi bi-list fs-2 text-primary"></i>
+            </button>
+
+            <!-- Brand Logo -->
+            <a class="navbar-brand d-flex align-items-center m-0 me-2" href="{% url 'branch_staff_management' %}">
+                <img src="{% static 'images/aronlogonow.png' %}" alt="Aaron Management" style="height:28px; width:auto;" class="align-self-center me-2"/>
+                <span class="fw-bold tracking-tight">Aaron<span class="text-success">Admin</span></span>
+            </a>
+
+
+        </div>
+
+        <!-- Right side user menu and login/guest option -->
+        <div class="d-flex align-items-center">
+            {% if not user.is_authenticated %}
+                <a href="{% url 'login' %}" class="btn btn-primary rounded-pill px-4 shadow-sm">Login</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Mobile Sidebar (Offcanvas) -->
+    <div class="offcanvas offcanvas-start border-0 shadow" tabindex="-1" id="mobileSidebar" style="width: 280px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);">
+        <div class="offcanvas-header border-bottom py-3">
+            <h5 class="offcanvas-title fw-bold text-success d-flex align-items-center" id="mobileSidebarLabel">
+                <img src="{% static 'images/aronlogonow.png' %}" alt="Aaron Management" style="height:24px; width:auto;" class="me-2"/>
+                <span>Aaron<span class="text-success">Admin</span></span>
+            </h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-0 d-flex flex-column">
+            <ul class="sidebar-nav">
+                {% if user.is_authenticated %}
+                    {% if user.role == 'owner' %}
+                    <li class="sidebar-item">
+                        <a class="sidebar-link {% if active_tab == 'branches' %}active{% endif %}" href="{% url 'branch_staff_management' %}?tab=branches">
+                            <i class="bi bi-shop"></i>
+                            <span>Manage Branches</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="sidebar-item">
+                        <a class="sidebar-link {% if active_tab == 'staff' %}active{% endif %}" href="{% url 'branch_staff_management' %}?tab=staff">
+                            <i class="bi bi-people-fill"></i>
+                            <span>Staff & Assigning</span>
+                        </a>
+                    </li>
+                    {% if user.role == 'owner' %}
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'admin:core_branch_changelist' %}">
+                            <i class="bi bi-shield-lock-fill"></i>
+                            <span>Adminpage</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    <!-- Switch Portal Button -->
+                    <li class="sidebar-item mt-3 pt-3 border-top">
+                        <a class="sidebar-link text-primary fw-bold" href="{% url 'portal_choice' %}">
+                            <i class="bi bi-arrow-left-right text-primary"></i>
+                            <span>Switch Portal</span>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+            {% if user.is_authenticated %}
+            <div class="sidebar-footer p-3 border-top mt-auto">
+                <div class="d-flex align-items-center gap-2 mb-2 overflow-hidden">
+                    <i class="bi bi-person-circle fs-4 text-success flex-shrink-0"></i>
+                    <div class="lh-sm overflow-hidden">
+                        <div class="fw-semibold text-dark text-truncate small">{{ user.username }}</div>
+                        {% if user.active_branch %}
+                        <div class="text-muted text-xxs text-truncate"><i class="bi bi-shop me-0.5"></i>{{ user.active_branch.name }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <form method="post" action="{% url 'logout' %}" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill w-100 py-1.5 d-flex align-items-center justify-content-center gap-2">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Main Container Layout -->
+    <div class="d-flex flex-grow-1">
+        <!-- Desktop Sidebar -->
+        <aside class="app-sidebar d-none d-md-block">
+            <ul class="sidebar-nav">
+                {% if user.is_authenticated %}
+                    {% if user.role == 'owner' %}
+                    <li class="sidebar-item">
+                        <a class="sidebar-link {% if active_tab == 'branches' %}active{% endif %}" href="{% url 'branch_staff_management' %}?tab=branches">
+                            <i class="bi bi-shop"></i>
+                            <span>Manage Branches</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="sidebar-item">
+                        <a class="sidebar-link {% if active_tab == 'staff' %}active{% endif %}" href="{% url 'branch_staff_management' %}?tab=staff">
+                            <i class="bi bi-people-fill"></i>
+                            <span>Staff & Assigning</span>
+                        </a>
+                    </li>
+                    {% if user.role == 'owner' %}
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" href="{% url 'admin:core_branch_changelist' %}">
+                            <i class="bi bi-shield-lock-fill"></i>
+                            <span>Adminpage</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    <!-- Switch Portal Button -->
+                    <li class="sidebar-item mt-3 pt-3 border-top">
+                        <a class="sidebar-link text-primary fw-bold" href="{% url 'portal_choice' %}">
+                            <i class="bi bi-arrow-left-right text-primary"></i>
+                            <span>Switch Portal</span>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+            {% if user.is_authenticated %}
+            <div class="sidebar-footer p-3 border-top mt-auto">
+                <div class="d-flex align-items-center gap-2 mb-2 overflow-hidden">
+                    <i class="bi bi-person-circle fs-4 text-success flex-shrink-0"></i>
+                    <div class="lh-sm overflow-hidden">
+                        <div class="fw-semibold text-dark text-truncate small">{{ user.username }}</div>
+                        {% if user.active_branch %}
+                        <div class="text-muted text-xxs text-truncate"><i class="bi bi-shop me-0.5"></i>{{ user.active_branch.name }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <form method="post" action="{% url 'logout' %}" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill w-100 py-1.5 d-flex align-items-center justify-content-center gap-2">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </aside>
+
+        <!-- Main Wrapper -->
+        <div class="main-wrapper">
+            <main class="container-fluid py-4">
+                {% block messages %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-4 rounded-3" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                {% endblock %}
+
+                {% block content %}{% endblock %}
+            </main>
+
+            <footer class="footer mt-auto py-3 bg-white border-top shadow-sm text-center">
+                <div class="container-fluid">
+                    <span class="text-muted small">Build version: <strong class="text-success">1.0.1-stable</strong> | Release Date: <strong>2026-06-20</strong></span>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Tom Select JS & Global Searchable Dropdown Initializer -->
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            function initTomSelect(el) {
+                if (el.tagName === 'SELECT' && !el.classList.contains('tomselected')) {
+                    if (el.dataset.noSearch !== undefined) return;
+                    try {
+                        const settings = {
+                            placeholder: el.getAttribute('placeholder') || 'Select...',
+                            create: false,
+                            allowEmptyOption: false,
+                            plugins: ['dropdown_input'],
+                            onInitialize: function() {
+                                const wrapper = this.wrapper;
+                                el.classList.forEach(cls => {
+                                    if (
+                                        cls.includes('bg-') || 
+                                        cls.includes('border-') || 
+                                        cls.includes('form-select') ||
+                                        cls.includes('shadow-')
+                                    ) {
+                                        wrapper.classList.add(cls);
+                                    }
+                                });
+                            }
+                        };
+                        new TomSelect(el, settings);
+                        const hasPreSelected = Array.from(el.options).some(opt => opt.selected);
+                        if (el.tomselect && !hasPreSelected) { el.tomselect.clear(); }
+                    } catch (e) {
+                        console.error('Error initializing Tom Select:', e);
+                    }
+                }
+            }
+
+            document.querySelectorAll("select").forEach(initTomSelect);
+
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1) {
+                            if (node.tagName === 'SELECT') {
+                                initTomSelect(node);
+                            } else {
+                                node.querySelectorAll('select').forEach(initTomSelect);
+                            }
+                        }
+                    });
+                });
+            });
+
+            observer.observe(document.body, { childList: true, subtree: true });
+
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                const linkPath = new URL(link.href, window.location.origin).pathname;
+                if (currentPath === linkPath || (linkPath !== '/' && currentPath.startsWith(linkPath))) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

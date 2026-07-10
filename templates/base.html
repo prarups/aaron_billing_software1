@@ -246,7 +246,7 @@
 <body>
     <!-- Header -->
     <header class="navbar-header d-flex align-items-center justify-content-between">
-        {% if request.resolver_match.url_name == 'pos_index' %}
+        {% if request.resolver_match.url_name == 'pos_index' or request.resolver_match.url_name == 'pos_view' %}
             <!-- On POS billing page: show mobile toggle, Brand Logo, and branch switcher/details -->
             <div class="d-flex align-items-center gap-3 w-100">
                 <!-- Mobile Toggle -->
@@ -255,13 +255,13 @@
                 </button>
 
                 <!-- Brand Logo -->
-                <a class="navbar-brand d-flex align-items-center m-0 me-2" href="/">
+                <a class="navbar-brand d-flex align-items-center m-0 me-2" href="{% url 'billing_redirect' %}">
                     <img src="{% static 'images/aronlogonow.png' %}" alt="Aaron Billing" style="height:24px; width:auto;" class="align-self-center me-2"/>
                     <span class="fw-bold tracking-tight">Aaron<span class="text-secondary">Billing</span></span>
                 </a>
                 
                 {% if user.is_authenticated %}
-                    {% if user.get_accessible_branches.count > 1 or user.is_owner %}
+                    {% if user.is_owner or user.role == 'regional_manager' or user.get_accessible_branches.count > 1 %}
                         <form method="post" action="{% url 'switch_branch' %}" class="m-0">
                             {% csrf_token %}
                             <div class="input-group input-group-sm" style="max-width: 250px;">
@@ -275,10 +275,17 @@
                                 </select>
                             </div>
                         </form>
-                    {% else %}
+                    {% elif user.active_branch %}
                         <span class="navbar-text fw-bold text-primary"><i class="bi bi-shop me-1"></i>{{ user.active_branch.name }}</span>
                     {% endif %}
                 {% endif %}
+
+                <!-- Exit POS Button -->
+                <div class="ms-auto d-flex align-items-center gap-2">
+                    <a href="{% url 'billing_redirect' %}" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                        <i class="bi bi-box-arrow-left me-1"></i> Exit POS
+                    </a>
+                </div>
             </div>
         {% else %}
             <!-- On normal pages: show full header controls -->
@@ -289,29 +296,12 @@
                 </button>
 
                 <!-- Brand Logo -->
-                <a class="navbar-brand d-flex align-items-center m-0 me-2" href="/">
+                <a class="navbar-brand d-flex align-items-center m-0 me-2" href="{% url 'billing_redirect' %}">
                     <img src="{% static 'images/aronlogonow.png' %}" alt="Aaron Billing" style="height:24px; width:auto;" class="align-self-center me-2"/>
                     <span class="fw-bold tracking-tight">Aaron<span class="text-secondary">Billing</span></span>
                 </a>
 
-                <!-- Branch Switcher directly next to Logo on desktop/larger screens -->
-                {% if user.is_authenticated %}
-                    {% if user.get_accessible_branches.count > 1 or user.is_owner %}
-                        <form method="post" action="{% url 'switch_branch' %}" class="m-0">
-                            {% csrf_token %}
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-light border-0 rounded-start-pill"><i class="bi bi-shop"></i></span>
-                                <select name="branch_id" class="form-select border-0 bg-light rounded-end-pill" data-no-search onchange="this.form.submit()">
-                                    {% for b in user.get_accessible_branches %}
-                                    <option value="{{ b.id }}" {% if b == user.active_branch %}selected{% endif %}>
-                                        {{ b.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </form>
-                    {% endif %}
-                {% endif %}
+
             </div>
 
             <!-- Right side user menu and login/guest option -->
@@ -335,57 +325,57 @@
         <div class="offcanvas-body p-0 d-flex flex-column">
             <ul class="sidebar-nav">
                 {% if user.is_authenticated %}
+                    <!-- Billing & POS Portal Sidebars -->
                     <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'dashboard' %}">
+                        <a class="sidebar-link {% if 'dashboard' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'dashboard' %}">
                             <i class="bi bi-grid-1x2-fill"></i>
                             <span>Dashboard</span>
                         </a>
                     </li>
-                    
-                    {% if user.role == 'owner' %}
-                    <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'admin:core_branch_changelist' %}">
-                            <i class="bi bi-shield-lock-fill"></i>
-                            <span>Adminpage</span>
-                        </a>
-                    </li>
-                    {% endif %}
                     {% if user.role != 'sales_staff' %}
                     <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'product_list' %}">
+                        <a class="sidebar-link {% if 'product' in request.resolver_match.url_name and 'combo' not in request.resolver_match.url_name %}active{% endif %}" href="{% url 'product_list' %}">
                             <i class="bi bi-box-seam-fill"></i>
                             <span>Products</span>
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'stock_pivot_report' %}">
+                        <a class="sidebar-link {% if 'stock' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'stock_pivot_report' %}">
                             <i class="bi bi-clipboard-data-fill"></i>
                             <span>Stock Ledger</span>
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'owner_bill_list' %}">
+                        <a class="sidebar-link {% if 'bill' in request.resolver_match.url_name and 'pos' not in request.resolver_match.url_name %}active{% endif %}" href="{% url 'owner_bill_list' %}">
                             <i class="bi bi-receipt"></i>
                             <span>Sales Report</span>
                         </a>
                     </li>
                     {% endif %}
                     <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'combo_list' %}">
+                        <a class="sidebar-link {% if 'combo' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'combo_list' %}">
                             <i class="bi bi-tags-fill"></i>
                             <span>{% if user.role == 'owner' %}Manage Combos{% else %}Combo Offers{% endif %}</span>
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'pos_index' %}">
+                        <a class="sidebar-link {% if 'pos' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'pos_index' %}">
                             <i class="bi bi-cpu-fill"></i>
                             <span>POS Billing</span>
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'return_create' %}">
+                        <a class="sidebar-link {% if request.resolver_match.url_name == 'return_create' %}active{% endif %}" href="{% url 'return_create' %}">
                             <i class="bi bi-arrow-return-left"></i>
                             <span>Process Return</span>
+                        </a>
+                    </li>
+                    
+                    <!-- Switch Portal Button -->
+                    <li class="sidebar-item mt-3 pt-3 border-top">
+                        <a class="sidebar-link text-primary fw-bold" href="{% url 'portal_choice' %}">
+                            <i class="bi bi-arrow-left-right text-primary"></i>
+                            <span>Switch Portal</span>
                         </a>
                     </li>
                 {% endif %}
@@ -420,60 +410,61 @@
     <!-- Main Container Layout -->
     <div class="d-flex flex-grow-1">
         <!-- Desktop Sidebar -->
+        {% if request.resolver_match.url_name != 'pos_index' and request.resolver_match.url_name != 'pos_view' %}
         <aside class="app-sidebar d-none d-md-block">
             <ul class="sidebar-nav">
                 {% if user.is_authenticated %}
+                    <!-- Billing & POS Portal Sidebars -->
                     <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'dashboard' %}">
+                        <a class="sidebar-link {% if 'dashboard' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'dashboard' %}">
                             <i class="bi bi-grid-1x2-fill"></i>
                             <span>Dashboard</span>
                         </a>
                     </li>
-                    
-                    {% if user.role == 'owner' %}
-                    <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'admin:core_branch_changelist' %}">
-                            <i class="bi bi-shield-lock-fill"></i>
-                            <span>Adminpage</span>
-                        </a>
-                    </li>
-                    {% endif %}
                     {% if user.role != 'sales_staff' %}
                     <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'product_list' %}">
+                        <a class="sidebar-link {% if 'product' in request.resolver_match.url_name and 'combo' not in request.resolver_match.url_name %}active{% endif %}" href="{% url 'product_list' %}">
                             <i class="bi bi-box-seam-fill"></i>
                             <span>Products</span>
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'stock_pivot_report' %}">
+                        <a class="sidebar-link {% if 'stock' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'stock_pivot_report' %}">
                             <i class="bi bi-clipboard-data-fill"></i>
                             <span>Stock Ledger</span>
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'owner_bill_list' %}">
+                        <a class="sidebar-link {% if 'bill' in request.resolver_match.url_name and 'pos' not in request.resolver_match.url_name %}active{% endif %}" href="{% url 'owner_bill_list' %}">
                             <i class="bi bi-receipt"></i>
                             <span>Sales Report</span>
                         </a>
                     </li>
                     {% endif %}
                     <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'combo_list' %}">
+                        <a class="sidebar-link {% if 'combo' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'combo_list' %}">
                             <i class="bi bi-tags-fill"></i>
                             <span>{% if user.role == 'owner' %}Manage Combos{% else %}Combo Offers{% endif %}</span>
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'pos_index' %}">
+                        <a class="sidebar-link {% if 'pos' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'pos_index' %}">
                             <i class="bi bi-cpu-fill"></i>
                             <span>POS Billing</span>
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a class="sidebar-link" href="{% url 'return_create' %}">
+                        <a class="sidebar-link {% if request.resolver_match.url_name == 'return_create' %}active{% endif %}" href="{% url 'return_create' %}">
                             <i class="bi bi-arrow-return-left"></i>
                             <span>Process Return</span>
+                        </a>
+                    </li>
+                    
+                    <!-- Switch Portal Button -->
+                    <li class="sidebar-item mt-3 pt-3 border-top">
+                        <a class="sidebar-link text-primary fw-bold" href="{% url 'portal_choice' %}">
+                            <i class="bi bi-arrow-left-right text-primary"></i>
+                            <span>Switch Portal</span>
                         </a>
                     </li>
                 {% endif %}
@@ -502,6 +493,7 @@
             </div>
             {% endif %}
         </aside>
+        {% endif %}
 
         <!-- Main Wrapper -->
         <div class="main-wrapper">

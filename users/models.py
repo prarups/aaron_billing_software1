@@ -30,14 +30,50 @@ def generate_employee_id_for_user(user):
     return candidate
 
 
+class CustomRole(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    code = models.SlugField(max_length=50, unique=True, blank=True)
+    
+    has_pos_access = models.BooleanField(default=True)
+    has_attendance_access = models.BooleanField(default=True)
+    has_all_branches_access = models.BooleanField(default=False)
+    
+    has_product_rights = models.BooleanField(default=False)
+    has_bill_edit_rights = models.BooleanField(default=False)
+    
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            from django.utils.text import slugify
+            self.code = slugify(self.name).replace('-', '_')
+            
+        super().save(*args, **kwargs)
+        
+        # Propagate changes to all users assigned to this role
+        try:
+            from django.apps import apps
+            User = apps.get_model('users', 'User')
+            User.objects.filter(role=self.code).update(
+                has_pos_access=self.has_pos_access,
+                has_attendance_access=self.has_attendance_access,
+                has_product_rights=self.has_product_rights,
+                has_bill_edit_rights=self.has_bill_edit_rights
+            )
+        except Exception:
+            pass
+
+
 class User(AbstractUser):
     ROLE_CHOICES = (
         ('owner', 'Admin'),
+        ('regional_manager', 'Regional Manager'),
         ('manager', 'Manager'),
         ('assistant_manager', 'Assistant Manager'),
         ('sales_staff', 'Sales Staff'),
     )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='sales_staff', db_index=True)
+    role = models.CharField(max_length=50, choices=ROLE_CHOICES, default='sales_staff', db_index=True)
     # Managers and Staff can be assigned to multiple branches
     branches = models.ManyToManyField('core.Branch', blank=True, related_name='assigned_users')
     # The branch currently selected for the session
@@ -46,6 +82,8 @@ class User(AbstractUser):
     date_of_joining = models.DateField(null=True, blank=True)
     has_product_rights = models.BooleanField(default=False)
     has_bill_edit_rights = models.BooleanField(default=False)
+    has_pos_access = models.BooleanField(default=True)
+    has_attendance_access = models.BooleanField(default=True)
     mobile_number = models.CharField(max_length=15, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     last_activity = models.DateTimeField(null=True, blank=True)
@@ -66,16 +104,45 @@ class User(AbstractUser):
     def is_staff_role(self):
         return self.role == 'sales_staff'
 
+    @property
+    def role_display(self):
+        choices_dict = dict(self.ROLE_CHOICES)
+        if self.role in choices_dict:
+            return choices_dict[self.role]
+        try:
+            return CustomRole.objects.get(code=self.role).name
+        except Exception:
+            return self.role.replace('_', ' ').title()
+
     def get_accessible_branches(self):
         """Returns the branches this user is authorized to work in."""
         from core.models import Branch
-        if self.is_owner():
+        if self.is_owner() or self.role == 'regional_manager':
             return Branch.objects.all()
+        if self.role:
+            try:
+                crole = CustomRole.objects.get(code=self.role)
+                if crole.has_all_branches_access:
+                    return Branch.objects.all()
+            except CustomRole.DoesNotExist:
+                pass
         return self.branches.all()
 
     def save(self, *args, **kwargs):
         if not self.employee_id:
             self.employee_id = generate_employee_id_for_user(self)
+        
+        # Sync permissions if role is custom
+        if self.role and self.role not in ['owner', 'regional_manager', 'manager', 'assistant_manager', 'sales_staff']:
+            try:
+                crole = CustomRole.objects.get(code=self.role)
+                self.has_pos_access = crole.has_pos_access
+                self.has_attendance_access = crole.has_attendance_access
+                self.has_product_rights = crole.has_product_rights
+                self.has_bill_edit_rights = crole.has_bill_edit_rights
+            except CustomRole.DoesNotExist:
+                pass
+                
         super().save(*args, **kwargs)
 
 

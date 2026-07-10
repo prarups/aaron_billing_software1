@@ -1,0 +1,156 @@
+{% extends "base_attendance.html" %}
+
+{% block title %}Short Permissions - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); border-radius: 1rem;">
+                <div class="card-body p-4 text-white">
+                    <h3 class="fw-bold mb-1"><i class="bi bi-clock-history me-2"></i>Short Permission Portal</h3>
+                    <p class="mb-0 text-white-50">Request short permissions (1-2 hours off) during work hours and manage approvals.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manager/Admin Approvals Panel -->
+    {% if pending_perms %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem; border-left: 5px solid #f59e0b;">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold text-warning mb-4"><i class="bi bi-exclamation-circle-fill me-2"></i>Pending Approvals</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Date</th>
+                                    <th>Time Duration</th>
+                                    <th>Reason</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for perm in pending_perms %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ perm.user.username }}</div>
+                                        <span class="text-muted small">ID: {{ perm.user.employee_id|default:"-" }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ perm.date|date:"d M Y" }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border rounded-pill px-3 py-1.5">{{ perm.start_time|time:"f a" }} to {{ perm.end_time|time:"f a" }}</span>
+                                    </td>
+                                    <td>
+                                        <p class="mb-0 small text-muted text-wrap" style="max-width: 300px;">{{ perm.reason }}</p>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'attendance:permission_approve' perm.pk 'approve' %}" class="btn btn-success btn-sm rounded-pill px-3 me-1">
+                                            <i class="bi bi-check-circle me-1"></i> Approve
+                                        </a>
+                                        <a href="{% url 'attendance:permission_approve' perm.pk 'reject' %}" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                                            <i class="bi bi-x-circle me-1"></i> Reject
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Apply Permission Form -->
+        <div class="col-lg-5 mb-4">
+            <div class="card border-0 shadow-sm h-100 bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-plus-circle-fill me-2"></i>Request Permission</h5>
+                    
+                    <form method="post" action="{% url 'attendance:permission_request' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">Date</label>
+                            <input type="date" name="date" class="form-control rounded-3" required>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">Start Time</label>
+                                <input type="time" name="start_time" class="form-control rounded-3" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">End Time</label>
+                                <input type="time" name="end_time" class="form-control rounded-3" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-muted">Reason</label>
+                            <textarea name="reason" rows="4" class="form-control rounded-3" placeholder="Provide reason for short permission request..." required></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill py-2.5">
+                            <i class="bi bi-send-fill me-1"></i> Submit Request
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- My Permissions History -->
+        <div class="col-lg-7 mb-4">
+            <div class="card border-0 shadow-sm h-100 bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-clock-history me-2"></i>My Permission Logs</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Duration</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for perm in my_permissions %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ perm.date|date:"d M Y" }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="small text-muted">{{ perm.start_time|time:"f a" }} - {{ perm.end_time|time:"f a" }}</span>
+                                    </td>
+                                    <td>
+                                        {% if perm.status == 'approved' %}
+                                            <span class="badge bg-success rounded-pill px-3 py-1.5"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                                        {% elif perm.status == 'rejected' %}
+                                            <span class="badge bg-danger rounded-pill px-3 py-1.5"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                                        {% else %}
+                                            <span class="badge bg-warning rounded-pill px-3 py-1.5"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center py-4 text-muted">No permission logs found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

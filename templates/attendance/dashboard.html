@@ -1,0 +1,540 @@
+{% extends "base_attendance.html" %}
+{% load static %}
+
+{% block title %}Attendance Dashboard - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-lg overflow-hidden text-white animate-fade-in" style="background: linear-gradient(135deg, #059669, #0ea5e9); border-radius: 1.25rem; position: relative;">
+                <div class="card-body p-4 position-relative" style="z-index: 1;">
+                    <div class="row align-items-center">
+                        <div class="col-md-8 mb-3 mb-md-0">
+                            <h3 class="fw-bold mb-1 text-white"><i class="bi bi-clock-fill me-2"></i>Attendance Portal</h3>
+                            <p class="mb-0" style="color: rgba(255, 255, 255, 0.88); font-size: 0.9rem;">Welcome, <strong>{{ user.username }}</strong> ({% if is_owner_or_manager %}Admin/Manager{% else %}Staff{% endif %}). Automatic Camera and GPS location logging.</p>
+                            {% if not is_owner_or_manager %}
+                                <a href="{% url 'attendance:my_summary' %}" class="btn btn-sm btn-light text-primary rounded-pill mt-2 px-3 fw-bold shadow-sm">
+                                    <i class="bi bi-person-badge-fill me-1"></i> View My Monthly Summary
+                                </a>
+                            {% else %}
+                                <a href="{% url 'attendance:management_overview' %}" class="btn btn-sm btn-light text-primary rounded-pill mt-2 px-3 fw-bold shadow-sm">
+                                    <i class="bi bi-speedometer2 me-1"></i> View Management Overview
+                                </a>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <h4 id="liveClock" class="fw-bold mb-0 text-white">--:--:-- --</h4>
+                            <span class="small" style="color: rgba(255, 255, 255, 0.75);">{{ today|date:"l, d M Y" }}</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Floating decorative shape -->
+                <div class="position-absolute bg-white rounded-circle" style="width: 150px; height: 150px; top: -50px; right: -50px; z-index: 0; opacity: 0.12;"></div>
+                <div class="position-absolute bg-white rounded-circle" style="width: 250px; height: 250px; bottom: -100px; left: -50px; z-index: 0; opacity: 0.06;"></div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- MAIN INTERACTIVE WORKSPACE (Check-in & Today's Status) -->
+    <div class="row mb-4">
+        <!-- Capture Panel -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100 bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center">
+                    <h5 class="card-title fw-bold text-primary mb-4 w-100"><i class="bi bi-camera-fill me-2"></i>Verification Camera</h5>
+                    
+                    <!-- Camera Box -->
+                    <div class="position-relative overflow-hidden bg-dark rounded-4 shadow-inner mb-4 w-100" style="max-width: 480px; aspect-ratio: 4/3;">
+                        <video id="video" class="w-100 h-100 object-fit-cover" autoplay playsinline></video>
+                        <canvas id="canvas" class="d-none"></canvas>
+                        
+                        <!-- Overlay status or placeholder -->
+                        <div id="cameraPlaceholder" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-dark text-white p-3 text-center">
+                            <i class="bi bi-camera-video-off fs-1 text-muted mb-3"></i>
+                            <p class="mb-0 small text-white-50">Camera preview is off. Grant permissions or click Check-in to initialize.</p>
+                        </div>
+                        
+                        <!-- Success Snapshot Overlay -->
+                        <div id="snapOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none bg-success bg-opacity-25 align-items-center justify-content-center">
+                            <i class="bi bi-check-circle-fill text-white fs-1 shadow"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Geolocation Status -->
+                    <div id="geoStatus" class="alert alert-secondary py-2 px-3 rounded-pill mb-4 w-100 text-center small border-0 bg-light d-flex flex-column align-items-center justify-content-center gap-1">
+                        <div class="d-flex align-items-center justify-content-center gap-2">
+                            <i class="bi bi-geo-alt-fill text-warning fs-5"></i>
+                            <span id="geoText">GPS Coordinates pending...</span>
+                        </div>
+                        <button id="btnMockLocation" class="btn btn-xxs btn-outline-secondary rounded-pill d-none py-0.5 px-3 mt-1" type="button" onclick="useMockLocation()" style="font-size: 0.7rem;">
+                            <i class="bi bi-magic"></i> Use Mock Location (For testing)
+                        </button>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex flex-wrap gap-2 justify-content-center w-100">
+                        {% if not attendance or not attendance.check_in %}
+                            <button id="btnCheckIn" class="btn btn-primary btn-lg rounded-pill px-4" onclick="triggerAttendance('check_in')">
+                                <i class="bi bi-box-arrow-in-right me-1"></i> Check In
+                            </button>
+                        {% elif not attendance.mid_day_time %}
+                            <button id="btnMidDay" class="btn btn-warning btn-lg text-white rounded-pill px-4" onclick="triggerAttendance('mid_day')">
+                                <i class="bi bi-shield-check me-1"></i> Mid-Day Verify
+                            </button>
+                        {% elif not attendance.check_out %}
+                            <button id="btnCheckOut" class="btn btn-danger btn-lg rounded-pill px-4" onclick="triggerAttendance('check_out')">
+                                <i class="bi bi-box-arrow-left me-1"></i> Check Out
+                            </button>
+                        {% else %}
+                            <div class="alert alert-success border-0 py-2 px-4 rounded-pill mb-0">
+                                <i class="bi bi-check-all me-1"></i> Today's Attendance Completed!
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Status Timeline Panel -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100 bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-calendar3 me-2"></i>Today's Log Timeline</h5>
+                    
+                    <div class="timeline-wrapper mb-4">
+                        <!-- Step 1: Check In -->
+                        <div class="d-flex align-items-start mb-3 pb-3 border-bottom">
+                            <div class="rounded-circle bg-light p-2 me-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                                <i class="bi bi-box-arrow-in-right text-success fs-4"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="fw-bold mb-0">1. Check-In</h6>
+                                <span class="small text-muted">Time: 
+                                    {% if attendance and attendance.check_in %}
+                                        <strong class="text-dark">{{ attendance.check_in|date:"I:i A" }}</strong>
+                                    {% else %}
+                                        <span class="text-warning">Pending</span>
+                                    {% endif %}
+                                </span>
+                                {% if attendance and attendance.check_in_lat %}
+                                    <div class="mt-1">
+                                        <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.check_in_lat }},{{ attendance.check_in_lng }}" target="_blank" class="badge bg-light text-primary border text-decoration-none py-1.5 rounded-pill small">
+                                            <i class="bi bi-map-fill me-1"></i> View Location <span class="gps-coord ms-1 text-muted" data-lat="{{ attendance.check_in_lat }}" data-lng="{{ attendance.check_in_lng }}"></span>
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {% if attendance and attendance.check_in_photo %}
+                                <img src="{{ attendance.check_in_photo.url }}" class="rounded-3 border object-fit-cover shadow-sm" style="width: 60px; height: 45px;" alt="Check-in Photo"/>
+                            {% endif %}
+                        </div>
+
+                        <!-- Step 2: Mid-Day -->
+                        <div class="d-flex align-items-start mb-3 pb-3 border-bottom">
+                            <div class="rounded-circle bg-light p-2 me-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                                <i class="bi bi-shield-check text-warning fs-4"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="fw-bold mb-0">2. Mid-Day Verification</h6>
+                                <span class="small text-muted">Time: 
+                                    {% if attendance and attendance.mid_day_time %}
+                                        <strong class="text-dark">{{ attendance.mid_day_time|date:"I:i A" }}</strong>
+                                    {% else %}
+                                        <span class="text-warning">Pending</span>
+                                    {% endif %}
+                                </span>
+                                {% if attendance and attendance.mid_day_lat %}
+                                    <div class="mt-1">
+                                        <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.mid_day_lat }},{{ attendance.mid_day_lng }}" target="_blank" class="badge bg-light text-primary border text-decoration-none py-1.5 rounded-pill small">
+                                            <i class="bi bi-map-fill me-1"></i> View Location <span class="gps-coord ms-1 text-muted" data-lat="{{ attendance.mid_day_lat }}" data-lng="{{ attendance.mid_day_lng }}"></span>
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {% if attendance and attendance.mid_day_photo %}
+                                <img src="{{ attendance.mid_day_photo.url }}" class="rounded-3 border object-fit-cover shadow-sm" style="width: 60px; height: 45px;" alt="Mid-day Photo"/>
+                            {% endif %}
+                        </div>
+
+                        <!-- Step 3: Check Out -->
+                        <div class="d-flex align-items-start">
+                            <div class="rounded-circle bg-light p-2 me-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                                <i class="bi bi-box-arrow-left text-danger fs-4"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="fw-bold mb-0">3. Check-Out</h6>
+                                <span class="small text-muted">Time: 
+                                    {% if attendance and attendance.check_out %}
+                                        <strong class="text-dark">{{ attendance.check_out|date:"I:i A" }}</strong>
+                                    {% else %}
+                                        <span class="text-warning">Pending</span>
+                                    {% endif %}
+                                </span>
+                                {% if attendance and attendance.check_out_lat %}
+                                    <div class="mt-1">
+                                        <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.check_out_lat }},{{ attendance.check_out_lng }}" target="_blank" class="badge bg-light text-primary border text-decoration-none py-1.5 rounded-pill small">
+                                            <i class="bi bi-map-fill me-1"></i> View Location <span class="gps-coord ms-1 text-muted" data-lat="{{ attendance.check_out_lat }}" data-lng="{{ attendance.check_out_lng }}"></span>
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {% if attendance and attendance.check_out_photo %}
+                                <img src="{{ attendance.check_out_photo.url }}" class="rounded-3 border object-fit-cover shadow-sm" style="width: 60px; height: 45px;" alt="Check-out Photo"/>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+    <!-- History Panel -->
+    <div class="row mt-2">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-clock-history me-2"></i>Recent Log History</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Mid-Day Check</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in recent_attendance %}
+                                <tr>
+                                    <td class="fw-bold text-dark">{{ item.date|date:"d M Y" }}</td>
+                                    <td>
+                                        {% if item.status == 'present' %}
+                                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-1.5">Present</span>
+                                        {% elif item.status == 'late' %}
+                                            <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3 py-1.5">Late Check-in</span>
+                                        {% elif item.status == 'on_leave' %}
+                                            <span class="badge bg-info bg-opacity-10 text-info rounded-pill px-3 py-1.5">On Leave</span>
+                                        {% elif item.status == 'half_day' %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-3 py-1.5">Half Day</span>
+                                        {% else %}
+                                            <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3 py-1.5">Absent</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.check_in %}
+                                            <span class="text-dark">{{ item.check_in|date:"I:i A" }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.check_out %}
+                                            <span class="text-dark">{{ item.check_out|date:"I:i A" }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.mid_day_time %}
+                                            <span class="text-dark">{{ item.mid_day_time|date:"I:i A" }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.notes %}
+                                            <span class="small text-muted">{{ item.notes }}</span>
+                                        {% else %}
+                                            <span class="text-muted small">No adjustments</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">No attendance logs found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Live Clock Functionality
+    function updateClock() {
+        const now = new Date();
+        let hours = now.getHours();
+        let minutes = now.getMinutes();
+        let seconds = now.getSeconds();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        minutes = minutes < 10 ? '0'+minutes : minutes;
+        seconds = seconds < 10 ? '0'+seconds : seconds;
+        
+        const strTime = hours + ':' + minutes + ':' + seconds + ' ' + ampm;
+        document.getElementById('liveClock').textContent = strTime;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Camera & Geolocation APIs
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+    const geoText = document.getElementById('geoText');
+    let stream = null;
+    let userLatitude = null;
+    let userLongitude = null;
+
+    // Robust function to retrieve GPS location
+    function fetchLocation(onSuccess = null, onFailure = null) {
+        if (!navigator.geolocation) {
+            const msg = "Geolocation is not supported by your browser.";
+            geoText.textContent = msg;
+            if (onFailure) onFailure(msg);
+            return;
+        }
+
+        geoText.textContent = "Retrieving location coordinates...";
+        document.getElementById('geoStatus').className = "alert alert-secondary py-2 px-3 rounded-pill mb-4 w-100 text-center small border-0 bg-light d-flex align-items-center justify-content-center gap-2";
+
+        // Try high accuracy first
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                userLatitude = position.coords.latitude;
+                userLongitude = position.coords.longitude;
+                geoText.textContent = `Location Captured: ${userLatitude.toFixed(5)}, ${userLongitude.toFixed(5)}`;
+                document.getElementById('geoStatus').className = "alert alert-success py-2 px-3 rounded-pill mb-4 w-100 text-center small border-0 d-flex align-items-center justify-content-center gap-2";
+                if (onSuccess) onSuccess();
+            },
+            error => {
+                console.warn("High accuracy GPS failed, trying fallback...", error);
+                // Fallback to low accuracy (resolves desktop location issues)
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        userLatitude = position.coords.latitude;
+                        userLongitude = position.coords.longitude;
+                        geoText.textContent = `Location (Approx): ${userLatitude.toFixed(5)}, ${userLongitude.toFixed(5)}`;
+                        document.getElementById('geoStatus').className = "alert alert-success py-2 px-3 rounded-pill mb-4 w-100 text-center small border-0 d-flex align-items-center justify-content-center gap-2";
+                        if (onSuccess) onSuccess();
+                    },
+                    fallbackError => {
+                        console.error("All GPS options failed:", fallbackError);
+                        let msg = "GPS Error. Please allow location access & turn on GPS.";
+                        if (fallbackError.code === 1) {
+                            msg = "Permission Denied. Please reset browser location permissions.";
+                        } else if (fallbackError.code === 2) {
+                            msg = "Position Unavailable. Check device GPS settings.";
+                        } else if (fallbackError.code === 3) {
+                            msg = "Request Timed Out. Please try again.";
+                        }
+                        geoText.textContent = msg;
+                        document.getElementById('geoStatus').className = "alert alert-danger py-2 px-3 rounded-pill mb-4 w-100 text-center small border-0 d-flex flex-column align-items-center justify-content-center gap-1";
+                        document.getElementById('btnMockLocation').classList.remove('d-none');
+                        if (onFailure) onFailure(msg);
+                    },
+                    { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
+                );
+            },
+            { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+        );
+    }
+
+    // Helper to simulate/mock location if blocked
+    function useMockLocation() {
+        userLatitude = 17.385044;
+        userLongitude = 78.486671;
+        geoText.textContent = "Location (Mocked): 17.38504, 78.48667";
+        document.getElementById('geoStatus').className = "alert alert-success py-2 px-3 rounded-pill mb-4 w-100 text-center small border-0 d-flex align-items-center justify-content-center gap-2";
+        document.getElementById('btnMockLocation').classList.add('d-none');
+    }
+
+    // Load location immediately
+    fetchLocation();
+
+    // Start video camera
+    function startCamera() {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+                .then(s => {
+                    stream = s;
+                    video.srcObject = stream;
+                    cameraPlaceholder.classList.add('d-none');
+                })
+                .catch(err => {
+                    console.error("Camera access error:", err);
+                    alert("Camera access is required. Please check your browser permission settings.");
+                });
+        }
+    }
+
+    // Trigger start camera immediately on load if anything is pending
+    {% if not attendance or not attendance.check_in or not attendance.mid_day_time or not attendance.check_out %}
+        startCamera();
+    {% endif %}
+
+    // Main action triggers
+    function triggerAttendance(type) {
+        if (!stream) {
+            alert("Waiting for camera feed. Please allow camera permissions.");
+            startCamera();
+            return;
+        }
+
+        // Helper to post attendance
+        const postData = () => {
+            // Capture snapshot from video
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataURL = canvas.toDataURL('image/png');
+
+            // Show flash overlay
+            const overlay = document.getElementById('snapOverlay');
+            overlay.classList.remove('d-none');
+            overlay.classList.add('d-flex');
+
+            // Determine URL endpoint
+            let endpoint = '';
+            if (type === 'check_in') endpoint = "{% url 'attendance:check_in' %}";
+            else if (type === 'mid_day') endpoint = "{% url 'attendance:mid_day' %}";
+            else if (type === 'check_out') endpoint = "{% url 'attendance:check_out' %}";
+
+            // POST request via fetch
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    photo: dataURL,
+                    lat: userLatitude,
+                    lng: userLongitude
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                overlay.classList.add('d-none');
+                overlay.classList.remove('d-flex');
+                
+                if (data.success) {
+                    alert(data.message);
+                    // Stop camera stream
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                    location.reload();
+                } else {
+                    alert("Error: " + data.message);
+                }
+            })
+            .catch(err => {
+                overlay.classList.add('d-none');
+                overlay.classList.remove('d-flex');
+                console.error("AJAX Error:", err);
+                alert("Verification failed due to a server connection error.");
+            });
+        };
+
+        // If coordinates are not loaded yet, fetch them inline now and then post
+        if (!userLatitude || !userLongitude) {
+            fetchLocation(
+                () => { postData(); },
+                (errorMsg) => { alert("Failed to resolve GPS coordinates: " + errorMsg); }
+            );
+        } else {
+            postData();
+        }
+    }
+
+    // Dynamic Geocoder script to show area names next to View Location
+    document.addEventListener("DOMContentLoaded", function() {
+        const coords = Array.from(document.querySelectorAll('.gps-coord'));
+        let delay = 0;
+        const cache = {};
+
+        coords.forEach(el => {
+            const lat = parseFloat(el.dataset.lat);
+            const lng = parseFloat(el.dataset.lng);
+            if (isNaN(lat) || isNaN(lng)) return;
+
+            const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+            if (cache[cacheKey]) {
+                el.textContent = cache[cacheKey];
+                return;
+            }
+
+            setTimeout(async () => {
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14`, {
+                        headers: {
+                            'User-Agent': 'AaronHR-Dashboard-Locator'
+                        }
+                    });
+                    const data = await res.json();
+                    if (data && data.address) {
+                        const addr = data.address;
+                        const area = addr.suburb || addr.neighbourhood || addr.residential || addr.commercial || addr.village || addr.subdistrict || addr.city_district || addr.city || '';
+                        if (area) {
+                            const displayText = `(${area})`;
+                            cache[cacheKey] = displayText;
+                            el.textContent = displayText;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error geocoding:", e);
+                }
+            }, delay);
+            
+            delay += 600; // 600ms spacing to respect OpenStreetMap rate limits
+        });
+    });
+</script>
+<style>
+    .btn-xxs {
+        font-size: 0.7rem !important;
+        padding: 0.15rem 0.4rem !important;
+    }
+    .btn-xs {
+        font-size: 0.75rem !important;
+        padding: 0.25rem 0.5rem !important;
+    }
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #printArea, #printArea * {
+            visibility: visible;
+        }
+        #printArea {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}

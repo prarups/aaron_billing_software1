@@ -47,20 +47,6 @@
             transform: scale(1.08);
         }
     }
-    
-    @media (max-width: 575.98px) {
-        #ownerDashboardTabs {
-            border-radius: 12px !important;
-        }
-        #ownerDashboardTabs .nav-link {
-            font-size: 0.72rem !important;
-            padding: 8px 4px !important;
-            border-radius: 8px !important;
-        }
-        #ownerDashboardTabs .nav-link.active {
-            border-radius: 8px !important;
-        }
-    }
 
     /* Premium Compact Typography and Colors */
     .text-xs {
@@ -108,1808 +94,233 @@
         background: #cbd5e1;
         border-radius: 10px;
     }
-
-    #ownerDashboardTabs {
-        border: 1px solid rgba(255, 255, 255, 0.4);
-        background: rgba(255, 255, 255, 0.5);
-        backdrop-filter: blur(10px);
-    }
-    #ownerDashboardTabs .nav-link {
-        color: #4b5563;
-        transition: all 0.3s ease;
-        border: none;
-    }
-    #ownerDashboardTabs .nav-link:hover {
-        color: var(--primary);
-    }
-    #ownerDashboardTabs .nav-link.active {
-        background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
-        color: white !important;
-        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-    }
-    .badge-role-manager {
-        background-color: rgba(79, 70, 229, 0.1) !important;
-        color: var(--primary) !important;
-    }
-    .badge-role-staff {
-        background-color: rgba(217, 70, 239, 0.1) !important;
-        color: var(--secondary) !important;
-    }
-    .badge-role-admin {
-        background-color: rgba(245, 158, 11, 0.1) !important;
-        color: #d97706 !important;
-    }
-    .hover-actions .btn {
-        opacity: 0.85;
-        transition: opacity 0.2s, transform 0.2s;
-    }
-    .hover-actions .btn:hover {
-        opacity: 1;
-        transform: scale(1.05);
-    }
-    /* Branch Picker Checkbox List */
-    .branch-picker {
-        border: 1px solid #e5e7eb;
-        border-radius: 0.75rem;
-        background: #fff;
-        max-height: 200px;
-        overflow-y: auto;
-    }
-    .branch-picker .branch-search {
-        border: none;
-        border-bottom: 1px solid #e5e7eb;
-        border-radius: 0.75rem 0.75rem 0 0;
-        padding: 10px 14px;
-        font-size: 0.875rem;
-        background: #f9fafb;
-    }
-    .branch-picker .branch-search:focus {
-        outline: none;
-        background: #fff;
-        box-shadow: none;
-    }
-    .branch-picker .branch-item {
-        display: flex;
-        align-items: center;
-        padding: 8px 14px;
-        cursor: pointer;
-        transition: background 0.15s;
-        border-bottom: 1px solid #f3f4f6;
-    }
-    .branch-picker .branch-item:last-child {
-        border-bottom: none;
-    }
-    .branch-picker .branch-item:hover {
-        background: #f0f0ff;
-    }
-    .branch-picker .branch-item input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
-        border-radius: 4px;
-        border: 2px solid #d1d5db;
-        margin-right: 10px;
-        accent-color: #6366f1;
-        cursor: pointer;
-        flex-shrink: 0;
-    }
-    .branch-picker .branch-item label {
-        cursor: pointer;
-        margin: 0;
-        font-size: 0.9rem;
-        color: #374151;
-        flex: 1;
-    }
-    .branch-picker .branch-item input[type="checkbox"]:checked + label {
-        color: #4f46e5;
-        font-weight: 600;
-    }
-    .branch-picker .no-match {
-        padding: 12px 14px;
-        text-align: center;
-        color: #9ca3af;
-        font-size: 0.85rem;
-        display: none;
-    }
-    /* Modal select/dropdown overrides — kill Tom Select backgrounds */
-    .modal .ts-wrapper .ts-control {
-        background: #fff !important;
-        border: 1px solid #dee2e6 !important;
-        border-radius: 2rem !important;
-        box-shadow: none !important;
-    }
-    .modal .ts-wrapper .ts-control .item {
-        background: none !important;
-        border: none !important;
-        box-shadow: none !important;
-        color: #212529 !important;
-    }
-    .modal .ts-dropdown {
-        border: 1px solid #dee2e6;
-        border-radius: 0.5rem;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-    .modal .ts-dropdown .option:hover,
-    .modal .ts-dropdown .option.active {
-        background: #f0f0f0 !important;
-    }
-    /* Staff table – card style rows */
-    .table-compact tbody tr {
-        background: #fff;
-        border-radius: .75rem;
-        box-shadow: 0 2px 6px rgba(0,0,0,.04);
-        transition: transform .2s, box-shadow .2s;
-        margin-bottom: .5rem;
-    }
-    .table-compact tbody tr:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 12px rgba(99,102,241,.12);
-    }
-    /* Responsive stack for mobile */
-    @media (max-width: 768px) {
-        .table-compact thead {display:none;}
-        .table-compact tbody tr {display:flex; flex-direction:column; gap:.35rem; padding:.8rem;}
-        .table-compact td::before {
-            content: attr(data-label);
-            font-weight:600; color:#64748b; margin-right:.4rem;
-        }
-        .table-compact td {display:flex; justify-content:space-between;}
-    }
-    /* Action icons */
-    .hover-actions .btn {
-        opacity:.85; transition:opacity .2s, transform .2s;
-    }
-    .hover-actions .btn:hover {
-        opacity:1; transform:scale(1.08);
-    }
-    
-    /* Premium Button Enhancements */
-    .btn-premium-export {
-        color: #059669 !important;
-        background: rgba(16, 185, 129, 0.06) !important;
-        border: 1px solid rgba(16, 185, 129, 0.25) !important;
-        transition: all 0.2s ease-in-out !important;
-    }
-    .btn-premium-export:hover {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-        color: #ffffff !important;
-        border-color: transparent !important;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25) !important;
-        transform: translateY(-1.5px);
-    }
-    .btn-premium-add {
-        background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%) !important;
-        color: #ffffff !important;
-        border: none !important;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2) !important;
-        transition: all 0.2s ease-in-out !important;
-    }
-    .btn-premium-add:hover {
-        background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%) !important;
-        box-shadow: 0 6px 18px rgba(99, 102, 241, 0.3) !important;
-        transform: translateY(-1.5px);
-    }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Premium Tab Bar -->
-<div class="row mb-4">
-    <div class="col-12">
-        <ul class="nav nav-pills nav-fill p-1 rounded-pill shadow-sm" id="ownerDashboardTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active rounded-pill py-2 fw-bold" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">
-                    <i class="bi bi-speedometer2 me-2"></i>Overview
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link rounded-pill py-2 fw-bold" id="branches-tab" data-bs-toggle="tab" data-bs-target="#branches" type="button" role="tab" aria-controls="branches" aria-selected="false">
-                    <i class="bi bi-shop me-2"></i>All Branches
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link rounded-pill py-2 fw-bold" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff" type="button" role="tab" aria-controls="staff" aria-selected="false">
-                    <i class="bi bi-people-fill me-2"></i>Staff & Assigning
-                </button>
-            </li>
-        </ul>
+<div class="container-fluid py-4 animate-fade-in">
+    <!-- Date Filters and Export -->
+    <div class="glass-card p-3 mb-3 border-0 bg-opacity-75 shadow-sm">
+        <form method="GET" class="row g-3 align-items-center">
+            <div class="col-12 col-lg-4">
+                <span class="text-primary fw-bold text-xs"><i class="bi bi-calendar-range-fill me-1.5"></i>Performance &amp; Sales Date Range</span>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2.5">From</span>
+                    <input type="date" name="from_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ start_date }}">
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2.5">To</span>
+                    <input type="date" name="to_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ end_date }}">
+                </div>
+            </div>
+            <div class="col-12 col-lg-2 d-flex justify-content-lg-end gap-2">
+                <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 py-1.5 text-xs fw-semibold flex-grow-1 flex-lg-grow-0">Apply</button>
+                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-2 py-1 text-xs fw-semibold" onclick="location.reload();">Refresh</button>
+                {% if is_filtered %}
+                <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5 py-1.5 text-xs" title="Clear Filters"><i class="bi bi-x"></i></a>
+                {% endif %}
+            </div>
+        </form>
     </div>
-</div>
 
-<div class="tab-content" id="ownerDashboardTabContent">
-    <!-- 1. OVERVIEW TAB -->
-    <div class="tab-pane fade show active animate-fade-in" id="overview" role="tabpanel" aria-labelledby="overview-tab">
-        <!-- Date Filters and Export -->
-        <div class="glass-card p-3 mb-3 border-0 bg-opacity-75 shadow-sm">
-            <form method="GET" class="row g-3 align-items-center">
-                <div class="col-12 col-lg-4">
-                    <span class="text-primary fw-bold text-xs"><i class="bi bi-calendar-range-fill me-1.5"></i>Performance &amp; Sales Date Range</span>
+    <!-- Stats Cards Row -->
+    <div class="row g-2 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="glass-card p-3 h-100 card-gradient-1 stats-card border-0">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-white-50 text-xxs text-uppercase fw-bold mb-0">{{ stats_label }}</span>
                 </div>
-                <div class="col-6 col-lg-3">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2.5">From</span>
-                        <input type="date" name="from_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ start_date }}">
-                    </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span id="total-sales-today" class="fs-5 fw-bold mb-0 text-white">₹{{ total_sales_today|default:"0"|floatformat:0 }}</span>
+                    <i class="bi bi-wallet2 fs-4 text-white-50"></i>
                 </div>
-                <div class="col-6 col-lg-3">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2.5">To</span>
-                        <input type="date" name="to_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ end_date }}">
-                    </div>
+                <div class="border-top border-white-10 mt-2 pt-1.5 d-flex justify-content-between text-white-50 small" style="font-size: 0.72rem;">
+                    <span>Cash: <strong id="total-cash-today">₹{{ total_cash_today|default:"0"|floatformat:0 }}</strong></span>
+                    <span>Online: <strong id="total-online-today">₹{{ total_online_today|default:"0"|floatformat:0 }}</strong></span>
                 </div>
-                <div class="col-12 col-lg-2 d-flex justify-content-lg-end gap-2">
-                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 py-1.5 text-xs fw-semibold flex-grow-1 flex-lg-grow-0">Apply</button>
-                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-2 py-1 text-xs fw-semibold" onclick="location.reload();">Refresh</button>
-                    {% if is_filtered %}
-                    <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-2.5 py-1.5 text-xs" title="Clear Filters"><i class="bi bi-x"></i></a>
-                    {% endif %}
-                </div>
-            </form>
-
-        </div>
-
-        <div class="row g-2 mb-3">
-            <div class="col-6 col-md-3">
-                <div class="glass-card p-3 h-100 card-gradient-1 stats-card border-0">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-white-50 text-xxs text-uppercase fw-bold mb-0">{{ stats_label }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span id="total-sales-today" class="fs-5 fw-bold mb-0 text-white">₹{{ total_sales_today|default:"0"|floatformat:0 }}</span>
-                        <i class="bi bi-wallet2 fs-4 text-white-50"></i>
-                    </div>
-                    <div class="border-top border-white-10 mt-2 pt-1.5 d-flex justify-content-between text-white-50 small" style="font-size: 0.72rem;">
-                        <span>Cash: <strong id="total-cash-today">₹{{ total_cash_today|default:"0"|floatformat:0 }}</strong></span>
-                        <span>Online: <strong id="total-online-today">₹{{ total_online_today|default:"0"|floatformat:0 }}</strong></span>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="glass-card p-3 h-100 card-gradient-2 stats-card border-0">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-white-50 text-xxs text-uppercase fw-bold mb-0">Active Branches</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="fs-5 fw-bold mb-0 text-white">{{ branch_count }}</span>
-                        <i class="bi bi-shop fs-4 text-white-50"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="glass-card p-3 h-100 card-gradient-3 stats-card border-0">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-white-50 text-xxs text-uppercase fw-bold mb-0">{{ trans_label }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span id="transaction-count-today" class="fs-5 fw-bold mb-0 text-white">{{ transaction_count_today }}</span>
-                        <i class="bi bi-receipt fs-4 text-white-50"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <a href="{% url 'product_list' %}?filter=low_stock" class="text-decoration-none">
-                    <div class="glass-card p-3 h-100 card-gradient-4 stats-card border-0">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="text-white-50 text-xxs text-uppercase fw-bold mb-0">Low Stock Alerts</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span id="low-stock-count" class="fs-5 fw-bold mb-0 text-white {% if low_stock_count > 0 %}animate-pulse{% endif %}">{{ low_stock_count }}</span>
-                            <i class="bi bi-exclamation-triangle-fill fs-4 text-white-50"></i>
-                        </div>
-                    </div>
-                </a>
             </div>
         </div>
-
-        <div class="row g-3" style="animation-delay: 0.1s;">
-            <div class="col-md-8">
-                <div class="glass-card p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-bar-chart-fill me-1.5"></i>Branch Performance</h6>
-                        <a href="{% url 'export_dashboard_sales_csv' %}?from_date={{ start_date }}&to_date={{ end_date }}" class="btn btn-outline-success btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm">
-                            <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i>Export CSV
-                        </a>
-                    </div>
-                    
-                    <!-- Desktop Table View -->
-                    <div class="table-responsive branch-scroll-list d-none d-md-block">
-                        <table class="table align-middle table-compact">
-                            <thead class="sticky-top bg-white" style="z-index: 2;">
-                                <tr class="border-bottom">
-                                    <th>Branch Name</th>
-                                    <th>Sales ({% if is_filtered %}Period{% else %}Today{% endif %})</th>
-                                    <th>Staff Count</th>
-                                    <th>Monthly Goal</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for branch in branches %}
-                                <tr>
-                                    <td class="fw-semibold text-dark">{{ branch.name }} ({{ branch.code }})</td>
-                                    <td class="fw-bold text-primary">
-                                        ₹{{ branch.today_sales|default:"0" }}
-                                        <div class="text-muted text-xxs mt-0.5" style="font-weight: 500;">
-                                            Cash: ₹{{ branch.today_cash|default:"0"|floatformat:0 }} | Online: ₹{{ branch.today_online|default:"0"|floatformat:0 }}
-                                        </div>
-                                    </td>
-                                    <td class="text-muted">{{ branch.active_staff_count }} Assigned</td>
-                                    <td>
-                                        {% if branch.current_goal > 0 %}
-                                            <div class="d-flex justify-content-between align-items-center mb-1 text-xxs">
-                                                <span class="text-muted">₹{{ branch.current_month_sales|default:"0" }} / ₹{{ branch.current_goal }}</span>
-                                                <span class="fw-bold text-success">{{ branch.current_goal_percent_exact }}%</span>
-                                            </div>
-                                            <div class="progress" style="height: 6px;" title="{{ branch.current_goal_percent_exact }}% achieved">
-                                                <div class="progress-bar {% if branch.current_goal_percent >= 100 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ branch.current_goal_percent }}%;"></div>
-                                            </div>
-                                        {% else %}
-                                            <span class="text-muted text-xxs">Not Set</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <!-- Mobile List View -->
-                    <div class="d-md-none">
-                        {% for branch in branches %}
-                        <div class="p-2.5 mb-2 bg-light bg-opacity-50 rounded-3 border border-light">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <div>
-                                    <span class="fw-bold text-dark text-xs d-block">{{ branch.name }}</span>
-                                    <span class="text-muted text-xxs">Code: {{ branch.code }}</span>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 text-xxs fw-bold">₹{{ branch.today_sales|default:"0" }}</span>
-                                    <div class="text-muted" style="font-size: 0.65rem; margin-top: 2px;">
-                                        C: ₹{{ branch.today_cash|default:"0"|floatformat:0 }} | O: ₹{{ branch.today_online|default:"0"|floatformat:0 }}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center text-xxs text-muted mt-2 border-top pt-2">
-                                <span><i class="bi bi-people me-1"></i>{{ branch.active_staff_count }} Sales Staff</span>
-                                {% if branch.current_goal > 0 %}
-                                    <span class="text-success fw-bold">Goal: {{ branch.current_goal_percent_exact }}%</span>
-                                {% else %}
-                                    <span class="text-muted">Goal: Not Set</span>
-                                {% endif %}
-                            </div>
-                            {% if branch.current_goal > 0 %}
-                                <div class="progress mt-1.5" style="height: 4px;" title="₹{{ branch.current_month_sales }} / ₹{{ branch.current_goal }}">
-                                    <div class="progress-bar {% if branch.current_goal_percent >= 100 %}bg-success{% else %}bg-primary{% endif %}" style="width: {{ branch.current_goal_percent }}%;"></div>
-                                </div>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                    </div>
+        <div class="col-6 col-md-3">
+            <div class="glass-card p-3 h-100 card-gradient-2 stats-card border-0">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-white-50 text-xxs text-uppercase fw-bold mb-0">Active Branches</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fs-5 fw-bold mb-0 text-white">{{ branch_count }}</span>
+                    <i class="bi bi-shop fs-4 text-white-50"></i>
                 </div>
             </div>
-            <div class="col-md-4">
-                <!-- Stock Summary Card -->
-                <div class="glass-card p-3 mb-3 border-0 bg-opacity-75 shadow-sm">
-                    <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-box-seam me-1.5"></i>Stock Summary</h6>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <div class="p-2.5 rounded-3 bg-light bg-opacity-50 border border-light">
-                                <span class="text-xxs text-uppercase fw-bold text-muted d-block mb-1">Total Stock</span>
-                                <span id="total-current-stock" class="fw-bold text-dark fs-5 font-monospace">{{ total_current_stock }}</span>
-                                <span class="text-muted d-block mt-0.5" style="font-size: 0.65rem;">All Branches</span>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="p-2.5 rounded-3 bg-light bg-opacity-50 border border-light">
-                                <span class="text-xxs text-uppercase fw-bold text-muted d-block mb-1">{% if is_filtered %}Period Out{% else %}Today Out{% endif %}</span>
-                                <span id="total-items-sold" class="fw-bold text-danger fs-5 font-monospace">{{ total_items_sold }}</span>
-                                <span class="text-muted d-block mt-0.5" style="font-size: 0.65rem;">Items Sold</span>
-                            </div>
-                        </div>
-                    </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="glass-card p-3 h-100 card-gradient-3 stats-card border-0">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-white-50 text-xxs text-uppercase fw-bold mb-0">{{ trans_label }}</span>
                 </div>
-
-                <div class="glass-card p-3">
-                    <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-clock-history me-1.5"></i>Recent Sales</h6>
-                    <div class="list-group list-group-flush">
-                        {% for bill in recent_bills %}
-                        <div class="list-group-item px-0 py-2 text-xs bg-transparent border-light">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <span class="fw-semibold text-dark d-block">
-                                        #{{ bill.invoice_number|default:bill.id }}
-                                        {% if bill.total_savings > 0 %}
-                                        <span class="badge bg-purple text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle" style="background: linear-gradient(135deg, #d946ef, #8b5cf6) !important; font-size: 0.55rem; font-weight: normal; vertical-align: middle;">
-                                            Combo
-                                        </span>
-                                        {% endif %}
-                                    </span>
-                                    <span class="text-muted text-xxs">{{ bill.branch.name|truncatechars:15 }}</span>
-                                </div>
-                                <span class="fw-bold text-success">₹{{ bill.total_amount }}</span>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <div class="text-center py-4">
-                            <p class="text-muted text-xs mb-0">No transactions recorded yet.</p>
-                        </div>
-                        {% endfor %}
-                    </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span id="transaction-count-today" class="fs-5 fw-bold mb-0 text-white">{{ transaction_count_today }}</span>
+                    <i class="bi bi-receipt fs-4 text-white-50"></i>
                 </div>
             </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <a href="{% url 'product_list' %}?filter=low_stock" class="text-decoration-none">
+                <div class="glass-card p-3 h-100 card-gradient-4 stats-card border-0">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-white-50 text-xxs text-uppercase fw-bold mb-0">Low Stock Alerts</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span id="low-stock-count" class="fs-5 fw-bold mb-0 text-white {% if low_stock_count > 0 %}animate-pulse{% endif %}">{{ low_stock_count }}</span>
+                        <i class="bi bi-exclamation-triangle-fill fs-4 text-white-50"></i>
+                    </div>
+                </div>
+            </a>
         </div>
     </div>
 
-    <!-- 2. BRANCHES TAB -->
-    <div class="tab-pane fade animate-fade-in" id="branches" role="tabpanel" aria-labelledby="branches-tab">
-        <div class="glass-card p-3">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
-                <div class="d-flex align-items-center flex-wrap gap-2">
-                    <h6 class="fw-bold text-primary mb-0 me-2"><i class="bi bi-shop me-1.5"></i>Overall Branches</h6>
-                    <div class="input-group input-group-sm" style="max-width: 200px;">
-                        <span class="input-group-text bg-light border-0 rounded-start-pill text-xxs"><i class="bi bi-search"></i></span>
-                        <input type="text" id="branchSearchInput" class="form-control border-0 bg-light rounded-end-pill text-xs py-1" placeholder="Search code or name..." oninput="filterBranches()">
-                        <script>document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('branchSearchInput');
-    if (searchInput) searchInput.value = '';
-    filterBranches();
-});</script>
-                    </div>
-                </div>
-                <div class="d-flex gap-2">
-                    <a href="{% url 'export_branches_csv' %}" class="btn btn-outline-success btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm">
+    <!-- Performance and Details Row -->
+    <div class="row g-3">
+        <div class="col-md-8">
+            <div class="glass-card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-bar-chart-fill me-1.5"></i>Branch Performance</h6>
+                    <a href="{% url 'export_dashboard_sales_csv' %}?from_date={{ start_date }}&to_date={{ end_date }}" class="btn btn-outline-success btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm">
                         <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i>Export CSV
                     </a>
-                    <button class="btn btn-primary btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#addBranchModal">
-                        <i class="bi bi-plus-circle me-1"></i>Create Branch
-                    </button>
                 </div>
-            </div>
-
-            <div class="table-responsive">
-                <table class="table align-middle table-compact">
-                    <thead>
-                        <tr class="border-bottom">
-                            <th>Branch ID / Code</th>
-                            <th>Branch Name</th>
-                            <th>Location</th>
-                            <th>Contact</th>
-                            <th>Prefix</th>
-                             <th>Sales Staff Count</th>
-                             <th>Monthly Goal</th>
-                             <th class="text-center" style="width: 130px;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for branch in branches_by_code %}
-                        <tr id="branch-row-{{ branch.id }}" class="branch-row">
-                            <td class="fw-bold text-muted text-xs branch-code">{{ branch.code|default:branch.id }}</td>
-                            <td class="fw-bold text-primary text-xs branch-name">{{ branch.name }}</td>
-                            <td class="text-xs">{{ branch.location }}</td>
-                            <td class="text-xs">{{ branch.contact_number|default:"-" }}</td>
-                            <td><span class="badge bg-light text-dark border text-xxs">{{ branch.invoice_prefix }}</span></td>
-                             <td><span class="badge bg-primary bg-opacity-10 text-primary text-xxs">{{ branch.active_staff_count }} staff</span></td>
-                             <td>
-                                 <div class="d-flex align-items-center gap-1.5">
-                                     <span id="branch-goal-val-{{ branch.id }}" class="fw-semibold text-xs text-dark">
-                                         {% if branch.current_goal > 0 %}
-                                             ₹{{ branch.current_goal }}
-                                         {% else %}
-                                             Not Set
-                                         {% endif %}
-                                     </span>
-                                     <button class="btn btn-link p-0 text-decoration-none text-success" 
-                                             onclick="quickAutoSetGoal('{{ branch.id }}')" 
-                                             title="1-Click Auto Goal (110% of last month)" style="font-size: 14px;">
-                                         <i class="bi bi-lightning-charge-fill"></i>
-                                     </button>
-                                 </div>
-                             </td>
-                             <td class="text-center hover-actions">
-                                 <button class="btn btn-outline-success btn-xs rounded-circle me-1 p-1" 
-                                         onclick="openSetGoalModal('{{ branch.id }}', '{{ branch.name }}', '{{ branch.current_goal }}')" 
-                                         title="Set Monthly Goal" style="width: 24px; height: 24px; line-height: 1;">
-                                     <i class="bi bi-target" style="font-size: 10px; display: block;"></i>
-                                 </button>
-                                 <button class="btn btn-outline-primary btn-xs rounded-circle p-1" 
-                                         onclick="openEditBranchModal('{{ branch.id }}', '{{ branch.name }}', '{{ branch.location }}', '{{ branch.contact_number }}', '{{ branch.invoice_prefix }}')" 
-                                         title="Edit Branch" style="width: 24px; height: 24px; line-height: 1;">
-                                     <i class="bi bi-pencil" style="font-size: 10px; display: block;"></i>
-                                 </button>
-                             </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="8" class="text-center py-4 text-muted">No branches created yet.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 gap-2">
-                <div class="text-muted text-xs" id="branch-count-info">
-                    Showing all {{ branches_by_code|length }} branches
-                </div>
-                <nav aria-label="Branch pagination" class="mb-0" id="branch-pagination-nav">
-                </nav>
-            </div>
-        </div>
-    </div>
-
-    <!-- 3. STAFF TAB -->
-    <div class="tab-pane fade animate-fade-in" id="staff" role="tabpanel" aria-labelledby="staff-tab">
-        <div class="glass-card p-3">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
-                <div class="d-flex align-items-center flex-wrap gap-2">
-                    <h6 class="fw-bold text-primary mb-0 me-2"><i class="bi bi-people-fill me-1.5"></i>Sales Staff accounts</h6>
-                    <div class="d-flex align-items-center gap-1.5 me-2 text-xxs bg-light rounded-pill p-0.5 border" id="staff-online-offline-summary" style="height: 24px; padding: 2px 8px !important;">
-                        <span class="text-success fw-semibold d-flex align-items-center me-1.5" style="cursor: pointer;" onclick="showStaffStatusModal('online')" title="View online staff members">
-                            <i class="bi bi-circle-fill me-1" style="font-size: 5px; vertical-align: middle;"></i>Online: <span id="onlineStaffCount" class="ms-1 fw-bold">0</span>
-                        </span>
-                        <span class="text-muted">|</span>
-                        <span class="text-secondary fw-semibold d-flex align-items-center ms-1.5" style="cursor: pointer;" onclick="showStaffStatusModal('offline')" title="View offline staff members">
-                            <i class="bi bi-circle-fill me-1" style="font-size: 5px; vertical-align: middle;"></i>Offline: <span id="offlineStaffCount" class="ms-1 fw-bold">0</span>
-                        </span>
-                    </div>
-                    <div class="input-group input-group-sm" style="max-width: 170px;">
-                        <input type="text" id="staffSearchInput" class="form-control border-0 bg-light rounded-start-pill text-xs py-1" placeholder="Search staff..." oninput="filterStaff()">
-                        <script>document.addEventListener('DOMContentLoaded', function() {
-    const roleSelect = document.getElementById('roleFilterSelect');
-    const branchSelect = document.getElementById('branchFilterSelect');
-    const searchInput = document.getElementById('staffSearchInput');
-    if (roleSelect) roleSelect.value = 'all';
-    if (branchSelect) branchSelect.value = 'all';
-    if (searchInput) searchInput.value = '';
-    filterStaff();
-});</script>
-                    </div>
-                    <div class="input-group input-group-sm" style="max-width: 200px;">
-                        <span class="input-group-text bg-light border-0 rounded-start-pill text-xxs"><i class="bi bi-filter"></i></span>
-                        <select id="branchFilterSelect" class="form-select border-0 bg-light rounded-end-pill text-xs py-1" onchange="filterStaff()" data-no-search>
-                            <option value="all">All Branches</option>
-                            {% for branch in branches %}
-                            <option value="branch-{{ branch.id }}">{{ branch.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="input-group input-group-sm" style="max-width: 170px;">
-                        <span class="input-group-text bg-light border-0 rounded-start-pill text-xxs"><i class="bi bi-person-badge"></i></span>
-                        <select id="roleFilterSelect" class="form-select border-0 bg-light rounded-end-pill text-xs py-1" onchange="filterStaff()" data-no-search>
-                              <option value="all">All Roles</option>
-                              <option value="owner">Admin</option>
-                              <option value="manager">Manager</option>
-                              <option value="assistant_manager">Assistant Manager</option>
-                              <option value="sales_staff">Sales Staff</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="d-flex gap-2 align-self-start align-self-md-auto">
-                    <a href="{% url 'export_staff_csv' %}" class="btn btn-premium-export btn-sm rounded-pill px-3.5 py-1.5 text-xs fw-bold shadow-sm d-inline-flex align-items-center">
-                        <i class="bi bi-file-earmark-spreadsheet me-1.5"></i>Export CSV
-                    </a>
-                    <button class="btn btn-premium-add btn-sm rounded-pill px-3.5 py-1.5 text-xs fw-bold shadow-sm d-inline-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addStaffModal">
-                        <i class="bi bi-person-plus-fill me-1.5"></i>Add Sales Staff
-                    </button>
-                </div>
-            </div>
-
-            <div class="table-responsive"><div class="bg-white rounded-3 shadow-sm p-3">
-                <table class="table align-middle table-compact" id="staffTable">
-                    <thead>
-                        <tr class="border-bottom">
-                            <th>Emp. ID</th>
-                            <th>Login</th>
-                            <th>Name</th>
-                            <th>Joined</th>
-                            <th>Role</th>
-                            <th class="text-center">Activity</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center">Products</th>
-                            
-                            <th>Location</th>
-                            <th class="text-center" style="width: 100px;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for staff in staff_list %}
-                        <tr id="staff-row-{{ staff.id }}" class="staff-row" data-branches="{% for b in staff.branches.all %}branch-{{ b.id }} {% endfor %}" data-role="{{ staff.role }}" data-online="{% if staff.is_online %}true{% else %}false{% endif %}">
-                            <td data-label="Emp. ID" class="fw-bold text-muted text-xs staff-emp-id">{{ staff.employee_id|default:"-" }}</td>
-                            <td data-label="Login" class="fw-bold text-primary text-xs staff-username">@{{ staff.username }}</td>
-                            <td data-label="Name" class="text-xs staff-name">{{ staff.first_name }} {{ staff.last_name }}</td>
-                            <td data-label="Joined" class="text-xs">{{ staff.date_of_joining|default:staff.date_joined|date:"Y-m-d" }}</td>
-                             <td data-label="Role">
-                                 {% if staff.role == 'owner' %}
-                                 <span class="badge badge-role-admin rounded-pill px-2.5 py-0.5 text-uppercase text-xxs">Admin</span>
-                                 {% elif staff.role == 'manager' or staff.role == 'assistant_manager' %}
-                                 <span class="badge badge-role-manager rounded-pill px-2.5 py-0.5 text-uppercase text-xxs">{{ staff.role|title }}</span>
-                                 {% else %}
-                                 <span class="badge badge-role-staff rounded-pill px-2.5 py-0.5 text-uppercase text-xxs">Sales Staff</span>
-                                 {% endif %}
-                             </td>
-                            <td data-label="Activity" class="text-center">
-                                {% if staff.is_online %}
-                                <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-0.5 text-xxs">
-                                    <i class="bi bi-circle-fill me-1" style="font-size: 6px; vertical-align: middle;"></i>Online
-                                </span>
-                                {% else %}
-                                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5 py-0.5 text-xxs">
-                                    <i class="bi bi-circle-fill me-1" style="font-size: 6px; vertical-align: middle;"></i>Offline
-                                </span>
-                                {% endif %}
-                            </td>
-                            <td data-label="Status" class="text-center">
-                                <div class="form-check form-switch d-inline-block">
-                                    <input class="form-check-input" type="checkbox" id="activeSwitch{{ staff.id }}" {% if staff.is_active %}checked{% endif %} onchange="toggleStaffActive('{{ staff.id }}', this.checked)" {% if staff == request.user %}disabled title="You cannot deactivate your own account"{% endif %} style="transform: scale(0.85);">
-                                </div>
-                            </td>
-                            <td data-label="Products" class="text-center">
-                                {% if staff.role == 'manager' or staff.role == 'assistant_manager' %}
-                                <div class="form-check form-switch d-inline-block">
-                                    <input class="form-check-input" type="checkbox" id="productRightsSwitch{{ staff.id }}" {% if staff.has_product_rights %}checked{% endif %} onchange="toggleProductRights('{{ staff.id }}', this.checked)" style="transform: scale(0.85);">
-                                </div>
-                                {% else %}
-                                <span class="text-muted text-xxs">-</span>
-                                {% endif %}
-                            </td>
-                            <td data-label="Branches">
-                                <div class="d-flex flex-wrap gap-1">
-                                    {% for b in staff.branches.all %}
-                                    <span class="badge bg-light text-dark border rounded-pill px-2 py-0.5 text-xxs">{{ b.name }}</span>
-                                    {% empty %}
-                                    <span class="text-muted text-xxs">None</span>
-                                    {% endfor %}
-                                </div>
-                            </td>
-                            <td data-label="Actions" class="text-center hover-actions d-flex justify-content-center gap-2">
-                                <button class="btn btn-outline-primary btn-xs rounded-circle p-1" 
-                                         onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}', '{{ staff.date_of_joining|date:"Y-m-d"|default:'' }}')" 
-                                         title="Edit Staff / Assign Branch" style="width: 24px; height: 24px; line-height: 1;">
-                                    <i class="bi bi-pencil-square" style="font-size: 10px; display: block;"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="10" class="text-center py-4 text-muted">No staff accounts registered yet.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table></div>
-            </div>
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 gap-2">
-                <div class="text-muted text-xs" id="staff-count-info">
-                    Showing all {{ staff_list|length }} staff accounts
-                </div>
-                <nav aria-label="Staff pagination" class="mb-0" id="staff-pagination-nav">
-                </nav>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================== -->
-<!--                  MODALS SECTION                -->
-<!-- ============================================== -->
-
-<!-- Set Goal Modal -->
-<div class="modal fade" id="setBranchGoalModal" tabindex="-1" aria-labelledby="setBranchGoalModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
-            <div class="modal-header bg-light border-0">
-                <h5 class="modal-title fw-bold" id="setBranchGoalModalLabel"><i class="bi bi-target text-success me-2"></i>Set Branch Monthly Goal</h5>
-                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="branchGoalForm" onsubmit="saveBranchGoal(event)">
-                {% csrf_token %}
-                <input type="hidden" name="branch_id" id="goalBranchId">
-                <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label class="form-label x-small text-muted fw-bold text-uppercase">Branch Name</label>
-                        <input type="text" id="goalBranchName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" disabled>
-                    </div>
-                    <div class="row">
-                        <div class="col-6 mb-3">
-                            <label class="form-label x-small text-muted fw-bold text-uppercase">Month</label>
-                            <input type="month" name="month" id="goalMonth" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required onchange="fetchGoalSuggestion()">
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="form-label x-small text-muted fw-bold text-uppercase">Target Sales (₹)</label>
-                            <input type="number" name="target_sales" id="goalTargetSales" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
-                        </div>
-                    </div>
-                    <div class="card bg-light border-0 p-3 mt-2">
-                        <div class="d-flex justify-content-between text-xs">
-                            <span class="text-muted">Previous Month Sales:</span>
-                            <span id="goalPrevSales" class="fw-bold">₹0</span>
-                        </div>
-                        <div class="d-flex justify-content-between text-xs mt-1">
-                            <span class="text-muted">Suggested Goal (110%):</span>
-                            <span id="goalSuggestedVal" class="text-success fw-bold" onclick="applyGoalSuggestion()" style="cursor: pointer;" title="Click to use this value">₹0</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer bg-light border-0 p-3">
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success rounded-pill px-4">Save Goal</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- 1. Add Branch Modal -->
-<div class="modal fade" id="addBranchModal" tabindex="-1" aria-labelledby="addBranchModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
-            <div class="modal-header bg-light border-0">
-                <h5 class="modal-title fw-bold" id="addBranchModalLabel"><i class="bi bi-shop text-primary me-2"></i>Create New Branch</h5>
-                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="addBranchForm" action="{% url 'branch_create' %}" method="post">
-                {% csrf_token %}
-                <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label class="form-label x-small text-muted fw-bold text-uppercase">Branch Name</label>
-                        {{ branch_form.name }}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label x-small text-muted fw-bold text-uppercase">Location</label>
-                        {{ branch_form.location }}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label x-small text-muted fw-bold text-uppercase">Contact Number</label>
-                        {{ branch_form.contact_number }}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label x-small text-muted fw-bold text-uppercase">Invoice Prefix</label>
-                        {{ branch_form.invoice_prefix }}
-                        <div class="form-text x-small">A unique prefix for invoice numbers (e.g. "AG")</div>
-                    </div>
-                </div>
-                <div class="modal-footer bg-light border-0 p-3">
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4">Create Branch</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- 2. Edit Branch Modal -->
-<div class="modal fade" id="editBranchModal" tabindex="-1" aria-labelledby="editBranchModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
-            <div class="modal-header bg-light border-0">
-                <h5 class="modal-title fw-bold" id="editBranchModalLabel"><i class="bi bi-pencil text-primary me-2"></i>Edit Branch Details</h5>
-                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="editBranchForm" method="post" action="">
-                {% csrf_token %}
-                <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label class="form-label x-small text-muted fw-bold text-uppercase">Branch Name</label>
-                        <input type="text" name="name" id="editBranchName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label x-small text-muted fw-bold text-uppercase">Location</label>
-                        <input type="text" name="location" id="editBranchLocation" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label x-small text-muted fw-bold text-uppercase">Contact Number</label>
-                        <input type="text" name="contact_number" id="editBranchContact" class="form-control rounded-pill shadow-sm border-0 bg-light px-3">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label x-small text-muted fw-bold text-uppercase">Invoice Prefix</label>
-                        <input type="text" name="invoice_prefix" id="editBranchPrefix" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
-                    </div>
-                </div>
-                <div class="modal-footer bg-light border-0 p-3">
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4">Save Changes</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- 3. Add Sales Staff Modal -->
-<div class="modal fade" id="addStaffModal" tabindex="-1" aria-labelledby="addStaffModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
-            <div class="modal-header bg-light border-0">
-                <h5 class="modal-title fw-bold" id="addStaffModalLabel"><i class="bi bi-person-plus text-primary me-2"></i>Add Sales Staff Account</h5>
-                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="addStaffForm" action="{% url 'staff_create' %}" method="post" autocomplete="off">
-                {% csrf_token %}
                 
-                <div class="modal-body p-4">
-                    <div class="row g-3">
-                        <!-- Account Details Card -->
-                        <div class="col-12">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-body">
-                                    <h6 class="card-title text-muted mb-3">Account Details</h6>
-                                    <div class="row g-2">
-                                        <div class="col-12 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Username</label>
-                                            {{ staff_form.username }}
-                                        </div>
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">First Name</label>
-                                            {{ staff_form.first_name }}
-                                        </div>
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Last Name</label>
-                                            {{ staff_form.last_name }}
-                                        </div>
-                                        <div class="col-12 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Password</label>
-                                            <div class="position-relative">
-                                                {{ staff_form.password }}
-                                                <button type="button" class="btn btn-link position-absolute top-50 end-0 translate-middle-y text-muted pe-3 shadow-none border-0" onclick="togglePasswordVisibility('addStaffPassword', this)" tabindex="-1">
-                                                    <i class="bi bi-eye-slash-fill"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Employee ID</label>
-                                            {{ staff_form.employee_id }}
-                                            <div class="form-text small">Auto-generated based on branch if left blank.</div>
-                                        </div>
-                                        <div class="col-12 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Mobile Number</label>
-                                            {{ staff_form.mobile_number }}
-                                        </div>
-                                        <div class="col-12 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Address</label>
-                                            {{ staff_form.address }}
-                                        </div>
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Role</label>
-                                            {{ staff_form.role }}
-                                        </div>
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Active</label>
-                                            {{ staff_form.is_active }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Branch Assignment Card -->
-                        <div class="col-12">
-                            <div class="card border-0 shadow-sm mt-3">
-                                <div class="card-body">
-                                    <h6 class="card-title text-muted mb-3"><i class="bi bi-shop me-1"></i>Assign Branches</h6>
-                                    <div class="branch-picker" id="branchPickerAdd">
-                                        <input type="text" class="branch-search w-100" placeholder="🔍 Search branches..." oninput="filterBranchPicker('branchPickerAdd', this.value)">
-                                        {% for branch in branches %}
-                                        <div class="branch-item">
-                                            <input type="checkbox" name="branches" value="{{ branch.id }}" id="addBranch{{ branch.id }}">
-                                            <label for="addBranch{{ branch.id }}">{{ branch.name }} <span class="text-muted small">— {{ branch.location }}</span></label>
-                                        </div>
-                                        {% endfor %}
-                                        <div class="no-match">No branches found</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer bg-light border-0 p-3">
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4">Create Account</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- 4. Edit Sales Staff Modal -->
-<div class="modal fade" id="editStaffModal" tabindex="-1" aria-labelledby="editStaffModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
-            <div class="modal-header bg-light border-0">
-                <h5 class="modal-title fw-bold" id="editStaffModalLabel"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Sales Staff / Assign Branches</h5>
-                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="editStaffForm" method="post" action="" autocomplete="off">
-                {% csrf_token %}
-                <div class="modal-body p-4">
-                    <div class="row g-3">
-                        <!-- Account Details Card -->
-                        <div class="col-12">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-body">
-                                    <h6 class="card-title text-muted mb-3">Account Details</h6>
-                                    <div class="row g-2">
-                                        <div class="col-12 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Username</label>
-                                            <input type="text" name="username" id="editStaffUsername" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" autocomplete="new-username" required>
-                                        </div>
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">First Name</label>
-                                            <input type="text" name="first_name" id="editStaffFirstName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" autocomplete="off">
-                                        </div>
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Last Name</label>
-                                            <input type="text" name="last_name" id="editStaffLastName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" autocomplete="off">
-                                        </div>
-                                        <div class="col-12 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">New Password (Leave blank to keep current)</label>
-                                            <div class="position-relative">
-                                                <input type="password" name="password" id="editStaffPassword" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" autocomplete="new-password">
-                                                <button type="button" class="btn btn-link position-absolute top-50 end-0 translate-middle-y text-muted pe-3 shadow-none border-0" onclick="togglePasswordVisibility('editStaffPassword', this)" tabindex="-1">
-                                                    <i class="bi bi-eye-slash-fill"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Employee ID</label>
-                                            <input type="text" name="employee_id" id="editStaffEmployeeId" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Employee ID (Auto-generated if blank)" autocomplete="off">
-                                        </div>
-                                        <div class="col-12 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Date of Joining</label>
-                                            <input type="date" name="date_of_joining" id="editStaffDateOfJoining" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Date of Joining" autocomplete="off">
-                                        </div>
-                                        <div class="col-12 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Mobile Number</label>
-                                            <input type="text" name="mobile_number" id="editStaffMobileNumber" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Mobile Number" autocomplete="off" required>
-                                        </div>
-                                        <div class="col-12 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Address</label>
-                                            <textarea name="address" id="editStaffAddress" class="form-control rounded-3 shadow-sm border-0 bg-light px-3" rows="2" placeholder="Address" autocomplete="off"></textarea>
-                                        </div>
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Role</label>
-                                             <select name="role" id="editStaffRole" class="form-select rounded-pill shadow-sm border-0 bg-light px-3" data-no-search="true" required>
-                                                 <option value="owner">Admin</option>
-                                                 <option value="manager">Manager</option>
-                                                 <option value="assistant_manager">Assistant Manager</option>
-                                                 <option value="sales_staff">Sales Staff</option>
-                                             </select>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Branch Assignment Card -->
-                        <div class="col-12">
-                            <div class="card border-0 shadow-sm mt-3">
-                                <div class="card-body">
-                                    <h6 class="card-title text-muted mb-3"><i class="bi bi-shop me-1"></i>Assign Branches</h6>
-                                    <div class="branch-picker" id="branchPickerEdit">
-                                        <input type="text" class="branch-search w-100" placeholder="🔍 Search branches..." oninput="filterBranchPicker('branchPickerEdit', this.value)">
-                                        {% for branch in branches %}
-                                        <div class="branch-item">
-                                            <input type="checkbox" name="branches" value="{{ branch.id }}" id="editBranch{{ branch.id }}">
-                                            <label for="editBranch{{ branch.id }}">{{ branch.name }} <span class="text-muted small">— {{ branch.location }}</span></label>
-                                        </div>
-                                        {% endfor %}
-                                        <div class="no-match">No branches found</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer bg-light border-0 p-3">
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4">Save Changes</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Staff Status Details Modal -->
-<div class="modal fade" id="staffStatusDetailsModal" tabindex="-1" aria-labelledby="staffStatusDetailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
-            <div class="modal-header bg-primary text-white border-0 py-2.5">
-                <h6 class="modal-title fw-bold" id="staffStatusModalTitle"><i class="bi bi-people-fill me-2"></i>Staff Members</h6>
-                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-0">
-                <div class="table-responsive" style="max-height: 400px;">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="bg-light sticky-top">
-                            <tr class="text-muted text-xxs text-uppercase">
-                                <th class="ps-3" style="width: 15%;">Emp. ID</th>
-                                <th style="width: 35%;">Staff Member</th>
-                                <th style="width: 25%;">Designation</th>
-                                <th class="pe-3" style="width: 25%;">Branches</th>
+                <!-- Desktop Table View -->
+                <div class="table-responsive branch-scroll-list d-none d-md-block">
+                    <table class="table align-middle table-compact">
+                        <thead class="sticky-top bg-white" style="z-index: 2;">
+                            <tr class="border-bottom">
+                                <th>Branch Name</th>
+                                <th>Sales ({% if is_filtered %}Period{% else %}Today{% endif %})</th>
+                                <th>Staff Count</th>
+                                <th>Monthly Goal</th>
                             </tr>
                         </thead>
-                        <tbody id="staffStatusModalTableBody">
-                            <!-- Populated dynamically via JS -->
+                        <tbody>
+                            {% for branch in branches %}
+                            <tr>
+                                <td class="fw-semibold text-dark">{{ branch.name }} ({{ branch.code }})</td>
+                                <td class="fw-bold text-primary">
+                                    ₹{{ branch.today_sales|default:"0" }}
+                                    <div class="text-muted text-xxs mt-0.5" style="font-weight: 500;">
+                                        Cash: ₹{{ branch.today_cash|default:"0"|floatformat:0 }} | Online: ₹{{ branch.today_online|default:"0"|floatformat:0 }}
+                                    </div>
+                                </td>
+                                <td class="text-muted">{{ branch.active_staff_count }} Assigned</td>
+                                <td>
+                                    {% if branch.current_goal > 0 %}
+                                        <div class="d-flex justify-content-between align-items-center mb-1 text-xxs">
+                                            <span class="text-muted">₹{{ branch.current_month_sales|default:"0" }} / ₹{{ branch.current_goal }}</span>
+                                            <span class="fw-bold text-success">{{ branch.current_goal_percent_exact }}%</span>
+                                        </div>
+                                        <div class="progress" style="height: 6px;" title="{{ branch.current_goal_percent_exact }}% achieved">
+                                            <div class="progress-bar {% if branch.current_goal_percent >= 100 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ branch.current_goal_percent }}%;"></div>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted text-xxs">Not Set</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
-            </div>
-            <div class="modal-footer bg-light border-0 p-2">
-                <button type="button" class="btn btn-secondary btn-xs rounded-pill px-3 py-1" data-bs-dismiss="modal">Close</button>
+                
+                <!-- Mobile List View -->
+                <div class="d-md-none">
+                    {% for branch in branches %}
+                    <div class="p-2.5 mb-2 bg-light bg-opacity-50 rounded-3 border border-light">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div>
+                                <span class="fw-bold text-dark text-xs d-block">{{ branch.name }}</span>
+                                <span class="text-muted text-xxs">Code: {{ branch.code }}</span>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 text-xxs fw-bold">₹{{ branch.today_sales|default:"0" }}</span>
+                                <div class="text-muted" style="font-size: 0.65rem; margin-top: 2px;">
+                                    C: ₹{{ branch.today_cash|default:"0"|floatformat:0 }} | O: ₹{{ branch.today_online|default:"0"|floatformat:0 }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center text-xxs text-muted mt-2 border-top pt-2">
+                            <span><i class="bi bi-people me-1"></i>{{ branch.active_staff_count }} Sales Staff</span>
+                            {% if branch.current_goal > 0 %}
+                                <span class="text-success fw-bold">Goal: {{ branch.current_goal_percent_exact }}%</span>
+                            {% else %}
+                                <span class="text-muted">Goal: Not Set</span>
+                            {% endif %}
+                        </div>
+                        {% if branch.current_goal > 0 %}
+                            <div class="progress mt-1.5" style="height: 4px;" title="₹{{ branch.current_month_sales }} / ₹{{ branch.current_goal }}">
+                                <div class="progress-bar {% if branch.current_goal_percent >= 100 %}bg-success{% else %}bg-primary{% endif %}" style="width: {{ branch.current_goal_percent }}%;"></div>
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
-    </div>
-</div>
-
-<!-- 5. Delete Confirmation Modal -->
-<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
-            <div class="modal-header bg-danger text-white border-0">
-                <h6 class="modal-title fw-bold" id="deleteConfirmModalLabel"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Delete</h6>
-                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="col-md-4">
+            <!-- Stock Summary Card -->
+            <div class="glass-card p-3 mb-3 border-0 bg-opacity-75 shadow-sm">
+                <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-box-seam me-1.5"></i>Stock Summary</h6>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="p-2.5 rounded-3 bg-light bg-opacity-50 border border-light">
+                            <span class="text-xxs text-uppercase fw-bold text-muted d-block mb-1">Total Stock</span>
+                            <span id="total-current-stock" class="fw-bold text-dark fs-5 font-monospace">{{ total_current_stock }}</span>
+                            <span class="text-muted d-block mt-0.5" style="font-size: 0.65rem;">All Branches</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2.5 rounded-3 bg-light bg-opacity-50 border border-light">
+                            <span class="text-xxs text-uppercase fw-bold text-muted d-block mb-1">{% if is_filtered %}Period Out{% else %}Today Out{% endif %}</span>
+                            <span id="total-items-sold" class="fw-bold text-danger fs-5 font-monospace">{{ total_items_sold }}</span>
+                            <span class="text-muted d-block mt-0.5" style="font-size: 0.65rem;">Items Sold</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <form id="deleteForm" method="post" action="">
-                {% csrf_token %}
-                <div class="modal-body p-4 text-center">
-                    <p class="mb-0">Are you sure you want to delete <strong id="deleteTargetName" class="text-danger"></strong>?</p>
-                    <p class="x-small text-muted mt-2">This action is permanent and cannot be undone.</p>
+
+            <!-- Recent Sales Card -->
+            <div class="glass-card p-3">
+                <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-clock-history me-1.5"></i>Recent Sales</h6>
+                <div class="list-group list-group-flush">
+                    {% for bill in recent_bills %}
+                    <div class="list-group-item px-0 py-2 text-xs bg-transparent border-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-semibold text-dark d-block">
+                                    #{{ bill.invoice_number|default:bill.id }}
+                                    {% if bill.total_savings > 0 %}
+                                    <span class="badge bg-purple text-white rounded-pill px-1.5 py-0.5 text-xxs ms-1 align-middle" style="background: linear-gradient(135deg, #d946ef, #8b5cf6) !important; font-size: 0.55rem; font-weight: normal; vertical-align: middle;">
+                                        Combo
+                                    </span>
+                                    {% endif %}
+                                </span>
+                                <span class="text-muted text-xxs">{{ bill.branch.name|truncatechars:15 }}</span>
+                            </div>
+                            <span class="fw-bold text-success">₹{{ bill.total_amount }}</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-4">
+                        <p class="text-muted text-xs mb-0">No transactions recorded yet.</p>
+                    </div>
+                    {% endfor %}
                 </div>
-                <div class="modal-footer bg-light border-0 p-3 d-flex justify-content-center">
-                    <button type="button" class="btn btn-secondary rounded-pill px-3 py-1" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger rounded-pill px-3 py-1">Delete</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    function showStaffStatusModal(status) {
-        const modalTitle = document.getElementById('staffStatusModalTitle');
-        const modalBody = document.getElementById('staffStatusModalTableBody');
-        if (!modalTitle || !modalBody) return;
-
-        modalTitle.innerHTML = status === 'online' ? '<i class="bi bi-people-fill me-2"></i>Online Staff Members' : '<i class="bi bi-people-fill me-2"></i>Offline Staff Members';
-        modalBody.innerHTML = '';
-
-        const isOnlineTarget = (status === 'online');
-        const rows = document.querySelectorAll('.staff-row');
-        let count = 0;
-
-        rows.forEach(row => {
-            const isOnline = row.dataset.online === 'true';
-            if (isOnline === isOnlineTarget) {
-                count++;
-                const empId = row.querySelector('.staff-emp-id').textContent.trim();
-                const username = row.querySelector('.staff-username').textContent.trim();
-                const name = row.querySelector('.staff-name').textContent.trim();
-                
-                // Get role badge text
-                const roleBadge = row.querySelector('[data-label="Role"] span');
-                const roleText = roleBadge ? roleBadge.textContent.trim() : 'Sales Staff';
-                
-                // Get branches
-                const branchBadges = row.querySelectorAll('[data-label="Branches"] span');
-                let branchesList = [];
-                branchBadges.forEach(badge => {
-                    branchesList.push(badge.textContent.trim());
-                });
-                const branchesText = branchesList.length > 0 ? branchesList.join(', ') : 'None';
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="text-xs fw-bold text-muted ps-3">${empId}</td>
-                    <td class="text-xs">
-                        <span class="fw-bold text-primary">${username}</span><br>
-                        <small class="text-secondary">${name}</small>
-                    </td>
-                    <td class="text-xs"><span class="badge bg-light text-dark border rounded-pill px-2 py-0.5">${roleText}</span></td>
-                    <td class="text-xs text-wrap pe-3">${branchesText}</td>
-                `;
-                modalBody.appendChild(tr);
-            }
-        });
-
-        if (count === 0) {
-            modalBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted text-xs p-3">No staff members are currently ${status}.</td></tr>`;
-        }
-
-        const modal = new bootstrap.Modal(document.getElementById('staffStatusDetailsModal'));
-        modal.show();
-    }
-
-    // Toggle password visibility helper
-    function togglePasswordVisibility(inputId, btn) {
-        const input = document.getElementById(inputId);
-        const icon = btn.querySelector('i');
-        if (input && icon) {
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.remove('bi-eye-slash-fill');
-                icon.classList.add('bi-eye-fill');
-            } else {
-                input.type = 'password';
-                icon.classList.remove('bi-eye-fill');
-                icon.classList.add('bi-eye-slash-fill');
-            }
-        }
-    }
-
-    // JS functions to open modals and inject dynamic data
-    
-    function openEditBranchModal(id, name, location, contact, prefix) {
-        document.getElementById('editBranchForm').action = `/users/branch/edit/${id}/`;
-        document.getElementById('editBranchName').value = name;
-        document.getElementById('editBranchLocation').value = location;
-        document.getElementById('editBranchContact').value = contact === 'None' ? '' : contact;
-        document.getElementById('editBranchPrefix').value = prefix;
-        
-        const modal = new bootstrap.Modal(document.getElementById('editBranchModal'));
-        modal.show();
-    }
-
-    function confirmDelete(url, name) {
-        const deleteForm = document.getElementById('deleteForm');
-        if (deleteForm) {
-            deleteForm.action = url;
-        }
-        const targetNameElem = document.getElementById('deleteTargetName');
-        if (targetNameElem) {
-            targetNameElem.textContent = name;
-        }
-        const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
-        modal.show();
-    }
-
-    function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId, mobileNumber, address, dateOfJoining) {
-        document.getElementById('editStaffForm').action = `/users/staff/edit/${id}/`;
-        document.getElementById('editStaffUsername').value = username;
-        document.getElementById('editStaffFirstName').value = firstName;
-        document.getElementById('editStaffLastName').value = lastName;
-        document.getElementById('editStaffPassword').value = '';
-        document.getElementById('editStaffEmployeeId').value = (employeeId === 'None' || !employeeId) ? '' : employeeId;
-        document.getElementById('editStaffMobileNumber').value = (mobileNumber === 'None' || !mobileNumber) ? '' : mobileNumber;
-        document.getElementById('editStaffAddress').value = (address === 'None' || !address) ? '' : address;
-        document.getElementById('editStaffDateOfJoining').value = (dateOfJoining === 'None' || !dateOfJoining) ? '' : dateOfJoining;
-
-        // Set role via Tom Select API if available, otherwise fallback to native
-        const roleEl = document.getElementById('editStaffRole');
-        if (roleEl && roleEl.tomselect) {
-            roleEl.tomselect.setValue(role, true);
-        } else if (roleEl) {
-            roleEl.value = role;
-        }
-
-        // Set branch checkboxes in the edit picker
-        const picker = document.getElementById('branchPickerEdit');
-        const checkboxes = picker.querySelectorAll('input[type="checkbox"]');
-        const assignedIds = branchIdsStr ? branchIdsStr.split(',').map(s => s.trim()) : [];
-        checkboxes.forEach(function(cb) {
-            cb.checked = assignedIds.includes(cb.value);
-        });
-        // Clear search
-        const searchInput = picker.querySelector('.branch-search');
-        if (searchInput) { searchInput.value = ''; }
-        picker.querySelectorAll('.branch-item').forEach(el => el.style.display = '');
-        const noMatch = picker.querySelector('.no-match');
-        if (noMatch) noMatch.style.display = 'none';
-
-        const modal = new bootstrap.Modal(document.getElementById('editStaffModal'));
-        modal.show();
-    }
-
-    // Toggle staff active status via AJAX
-    function toggleStaffActive(staffId, isActive) {
-        const csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
-        if (!csrfEl) { alert('CSRF token not found.'); return; }
-        fetch(`/users/staff/toggle/${staffId}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfEl.value
-            },
-            body: JSON.stringify({ is_active: isActive })
-        })
-        .then(response => {
-            if (response.redirected || response.status === 401 || response.status === 302) {
-                alert('Session expired. Please reload the page to log in again.');
-                window.location.reload();
-                return;
-            }
-            if (!response.ok) {
-                throw new Error('Server returned error status ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data && data.status !== 'success') {
-                alert('Failed to update status.');
-            }
-        })
-        .catch((err) => {
-            console.error(err);
-            alert('Failed to update status. Please check your connection or session.');
-        });
-    }
-
-    // Toggle manager product rights via AJAX
-    function toggleProductRights(staffId, hasProductRights) {
-        const csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
-        if (!csrfEl) { alert('CSRF token not found.'); return; }
-        fetch(`/users/staff/toggle-product-rights/${staffId}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfEl.value
-            },
-            body: JSON.stringify({ has_product_rights: hasProductRights })
-        })
-        .then(response => {
-            if (response.redirected || response.status === 401 || response.status === 302) {
-                alert('Session expired. Please reload the page to log in again.');
-                window.location.reload();
-                return;
-            }
-            if (!response.ok) {
-                throw new Error('Server returned error status ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data && data.status !== 'success') {
-                alert('Failed to update product rights.');
-            }
-        })
-        .catch((err) => {
-            console.error(err);
-            alert('Failed to update product rights. Please check your connection or session.');
-        });
-    }
-
-
-
-    let currentStaffPage = 1;
-    let currentBranchPage = 1;
-    const rowsPerPage = 10;
-
-    function renderPagination(navId, totalItems, currentPage, onPageChange) {
-        const nav = document.getElementById(navId);
-        if (!nav) return;
-        nav.innerHTML = '';
-        
-        const totalPages = Math.ceil(totalItems / rowsPerPage);
-        if (totalPages <= 1) {
-            return;
-        }
-        
-        const ul = document.createElement('ul');
-        ul.className = 'pagination pagination-sm justify-content-center mb-0';
-        
-        if (currentPage > 1) {
-            const li = document.createElement('li');
-            li.className = 'page-item';
-            const a = document.createElement('a');
-            a.className = 'page-link rounded-pill border-0 shadow-sm px-2.5 mx-1';
-            a.href = '#';
-            a.textContent = 'Previous';
-            a.onclick = function(e) {
-                e.preventDefault();
-                onPageChange(currentPage - 1);
-            };
-            li.appendChild(a);
-            ul.appendChild(li);
-        }
-        
-        for (let i = 1; i <= totalPages; i++) {
-            if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-                const li = document.createElement('li');
-                if (i === currentPage) {
-                    li.className = 'page-item active';
-                    const span = document.createElement('span');
-                    span.className = 'page-link rounded-pill border-0 shadow px-2.5 mx-1 bg-primary text-white';
-                    span.textContent = i;
-                    li.appendChild(span);
-                } else {
-                    li.className = 'page-item';
-                    const a = document.createElement('a');
-                    a.className = 'page-link rounded-pill border-0 shadow-sm px-2.5 mx-1';
-                    a.href = '#';
-                    a.textContent = i;
-                    a.onclick = function(e) {
-                        e.preventDefault();
-                        onPageChange(i);
-                    };
-                    li.appendChild(a);
-                }
-                ul.appendChild(li);
-            } else if (i === currentPage - 3 || i === currentPage + 3) {
-                const li = document.createElement('li');
-                li.className = 'page-item disabled';
-                const span = document.createElement('span');
-                span.className = 'page-link rounded-pill border-0 px-2 mx-1 text-muted bg-transparent';
-                span.textContent = '...';
-                li.appendChild(span);
-                ul.appendChild(li);
-            }
-        }
-        
-        if (currentPage < totalPages) {
-            const li = document.createElement('li');
-            li.className = 'page-item';
-            const a = document.createElement('a');
-            a.className = 'page-link rounded-pill border-0 shadow-sm px-2.5 mx-1';
-            a.href = '#';
-            a.textContent = 'Next';
-            a.onclick = function(e) {
-                e.preventDefault();
-                onPageChange(currentPage + 1);
-            };
-            li.appendChild(a);
-            ul.appendChild(li);
-        }
-        
-        nav.appendChild(ul);
-    }
-
-    // Staff combined branch, role, and search filter on table
-    function filterStaff(resetPage = true) {
-        if (resetPage) {
-            currentStaffPage = 1;
-        }
-        const searchVal = document.getElementById('staffSearchInput').value.toLowerCase();
-        const branchVal = document.getElementById('branchFilterSelect').value;
-        const roleVal = document.getElementById('roleFilterSelect').value;
-        
-        const matchedRows = [];
-        
-        document.querySelectorAll('.staff-row').forEach(function(row) {
-            const username = row.querySelector('.staff-username').textContent.toLowerCase();
-            const name = row.querySelector('.staff-name').textContent.toLowerCase();
-            const empId = row.querySelector('.staff-emp-id').textContent.toLowerCase();
-            const matchesSearch = (searchVal === '') || username.includes(searchVal) || name.includes(searchVal) || empId.includes(searchVal);
-            const matchesBranch = (branchVal === 'all') || row.dataset.branches.includes(branchVal);
-            const matchesRole = (roleVal === 'all') || (row.dataset.role === roleVal);
-            
-            if (matchesSearch && matchesBranch && matchesRole) {
-                matchedRows.push(row);
-            } else {
-                row.style.display = 'none';
-            }
-        });
-
-        // Count online and offline staff from matched rows
-        let onlineCount = 0;
-        let offlineCount = 0;
-        matchedRows.forEach(function(row) {
-            if (row.dataset.online === 'true') {
-                onlineCount++;
-            } else {
-                offlineCount++;
-            }
-        });
-        
-        const onlineEl = document.getElementById('onlineStaffCount');
-        const offlineEl = document.getElementById('offlineStaffCount');
-        if (onlineEl) onlineEl.textContent = onlineCount;
-        if (offlineEl) offlineEl.textContent = offlineCount;
-
-        const totalItems = matchedRows.length;
-        const startIndex = totalItems === 0 ? 0 : (currentStaffPage - 1) * rowsPerPage;
-        const endIndex = Math.min(startIndex + rowsPerPage, totalItems);
-        
-        matchedRows.forEach(function(row, index) {
-            if (index >= startIndex && index < endIndex) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-        
-        const info = document.getElementById('staff-count-info');
-        if (info) {
-            if (totalItems === 0) {
-                info.textContent = 'Showing 0 to 0 of 0 staff accounts';
-            } else {
-                info.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${totalItems} staff accounts`;
-            }
-        }
-        
-        renderPagination('staff-pagination-nav', totalItems, currentStaffPage, function(newPage) {
-            currentStaffPage = newPage;
-            filterStaff(false);
-        });
-    }
-
-    // Branch code and name filter on table
-    function filterBranches(resetPage = true) {
-        if (resetPage) {
-            currentBranchPage = 1;
-        }
-        const searchVal = document.getElementById('branchSearchInput').value.toLowerCase();
-        
-        const matchedRows = [];
-        
-        document.querySelectorAll('.branch-row').forEach(function(row) {
-            const code = row.querySelector('.branch-code').textContent.toLowerCase();
-            const name = row.querySelector('.branch-name').textContent.toLowerCase();
-            
-            const matchesSearch = (searchVal === '') || code.includes(searchVal) || name.includes(searchVal);
-            
-            if (matchesSearch) {
-                matchedRows.push(row);
-            } else {
-                row.style.display = 'none';
-            }
-        });
-
-        const totalItems = matchedRows.length;
-        const startIndex = totalItems === 0 ? 0 : (currentBranchPage - 1) * rowsPerPage;
-        const endIndex = Math.min(startIndex + rowsPerPage, totalItems);
-        
-        matchedRows.forEach(function(row, index) {
-            if (index >= startIndex && index < endIndex) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-        
-        const info = document.getElementById('branch-count-info');
-        if (info) {
-            if (totalItems === 0) {
-                info.textContent = 'Showing 0 to 0 of 0 branches';
-            } else {
-                info.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${totalItems} branches`;
-            }
-        }
-        
-        renderPagination('branch-pagination-nav', totalItems, currentBranchPage, function(newPage) {
-            currentBranchPage = newPage;
-            filterBranches(false);
-        });
-    }
-
-    // Search filter for branch checkbox pickers
-    function filterBranchPicker(pickerId, query) {
-        const picker = document.getElementById(pickerId);
-        const items = picker.querySelectorAll('.branch-item');
-        const noMatch = picker.querySelector('.no-match');
-        const q = query.toLowerCase();
-        let visible = 0;
-        items.forEach(function(item) {
-            const label = item.querySelector('label').textContent.toLowerCase();
-            if (label.includes(q)) {
-                item.style.display = '';
-                visible++;
-            } else {
-                item.style.display = 'none';
-            }
-        });
-        if (noMatch) {
-            noMatch.style.display = visible === 0 ? 'block' : 'none';
-        }
-    }
-
-    // Persist active tab and handle AJAX forms
-    function initOwnerDashboard() {
-        const hash = window.location.hash;
-        if (hash) {
-            const tabEl = document.querySelector(`button[data-bs-target="${hash}"]`);
-            if (tabEl) {
-                const tab = new bootstrap.Tab(tabEl);
-                tab.show();
-            }
-        }
-        // Update URL hash when clicking tabs
-        const tabButtons = document.querySelectorAll('#ownerDashboardTabs button');
-        tabButtons.forEach(btn => {
-            btn.addEventListener('shown.bs.tab', function(e) {
-                window.location.hash = e.target.getAttribute('data-bs-target');
-            });
-        });
-
-        // AJAX submit for forms to show field-level errors
-        function handleAjaxFormSubmit(formId) {
-            const form = document.getElementById(formId);
-            if (!form) return;
-            
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                // Clear prior error messages
-                form.querySelectorAll('.error-message').forEach(el => el.remove());
-                form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-                
-                const formData = new FormData(form);
-                formData.append('ajax', 'true');
-                
-                fetch(form.action || window.location.href, {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: formData
-                })
-                .then(response => {
-                    if (response.redirected || response.status === 401 || response.status === 302) {
-                        alert('Session expired. Please reload the page to log in again.');
-                        window.location.reload();
-                        return null;
-                    }
-                    const contentType = response.headers.get('content-type');
-                    if (!contentType || !contentType.includes('application/json')) {
-                        throw new Error('Server returned an unexpected non-JSON response.');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (!data) return;
-                    if (data.success) {
-                        window.location.reload();
-                    } else {
-                        // Display validation errors near the fields in red color
-                        for (const [field, errorList] of Object.entries(data.errors)) {
-                            const input = form.querySelector(`[name="${field}"]`);
-                            if (input) {
-                                input.classList.add('is-invalid');
-                                const errDiv = document.createElement('div');
-                                errDiv.className = 'text-danger x-small mt-1 error-message fw-bold';
-                                errDiv.textContent = errorList.join(' ');
-                                
-                                const parent = input.parentElement;
-                                if (parent.classList.contains('position-relative') || parent.classList.contains('input-group')) {
-                                    parent.after(errDiv);
-                                } else if (input.type === 'checkbox' && input.name === 'branches') {
-                                    const picker = form.querySelector('.branch-picker');
-                                    if (picker) {
-                                        picker.after(errDiv);
-                                    } else {
-                                        input.after(errDiv);
-                                    }
-                                } else {
-                                    input.after(errDiv);
-                                }
-                            } else if (field === '__all__') {
-                                const errorAlert = document.createElement('div');
-                                errorAlert.className = 'alert alert-danger x-small py-2 mt-2 error-message fw-bold';
-                                errorAlert.textContent = errorList.join(' ');
-                                form.querySelector('.modal-body').prepend(errorAlert);
-                            }
-                        }
-
-                        // Smoothly scroll the modal to the first validation error
-                        setTimeout(() => {
-                            const firstErr = form.querySelector('.error-message, .is-invalid');
-                            if (firstErr) {
-                                firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }
-                        }, 55);
-                    }
-                })
-                .catch(err => {
-                    console.error('AJAX form submission error:', err);
-                    alert('An unexpected error occurred. Please try again.');
-                });
-            });
-        }
-        
-        handleAjaxFormSubmit('addStaffForm');
-        handleAjaxFormSubmit('editStaffForm');
-        handleAjaxFormSubmit('addBranchForm');
-        handleAjaxFormSubmit('editBranchForm');
-
-        // Dynamically enforce single branch selection for Sales Staff
-        function enforceSingleBranchForStaff(modalId, roleSelectId, pickerId) {
-            const modal = document.getElementById(modalId);
-            if (!modal) return;
-            const roleSelect = modal.querySelector(`#${roleSelectId}`);
-            const picker = modal.querySelector(`#${pickerId}`);
-            if (!roleSelect || !picker) return;
-
-            function checkRules() {
-                if (roleSelect.value === 'sales_staff') {
-                    const checkedCheckboxes = picker.querySelectorAll('input[type="checkbox"]:checked');
-                    if (checkedCheckboxes.length > 1) {
-                        for (let i = 1; i < checkedCheckboxes.length; i++) {
-                            checkedCheckboxes[i].checked = false;
-                        }
-                    }
-                }
-            }
-
-            roleSelect.addEventListener('change', checkRules);
-
-            picker.addEventListener('change', function(e) {
-                if (e.target.type === 'checkbox' && roleSelect.value === 'sales_staff' && e.target.checked) {
-                    const checkboxes = picker.querySelectorAll('input[type="checkbox"]');
-                    checkboxes.forEach(cb => {
-                        if (cb !== e.target) {
-                            cb.checked = false;
-                        }
-                    });
-                }
-            });
-
-            // Initial check
-            checkRules();
-        }
-
-        // Apply rules to Add modal
-        enforceSingleBranchForStaff('addStaffModal', 'id_role', 'branchPickerAdd');
-        // Apply rules to Edit modal
-        enforceSingleBranchForStaff('editStaffModal', 'editStaffRole', 'branchPickerEdit');
-    }
-
-    // Branch Goal helper functions
-    function openSetGoalModal(branchId, branchName, currentGoal) {
-        document.getElementById('goalBranchId').value = branchId;
-        document.getElementById('goalBranchName').value = branchName;
-        
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const currentMonthStr = `${year}-${month}`;
-        document.getElementById('goalMonth').value = currentMonthStr;
-        document.getElementById('goalTargetSales').value = currentGoal > 0 ? currentGoal : '';
-        
-        fetchGoalSuggestion();
-        
-        const modal = new bootstrap.Modal(document.getElementById('setBranchGoalModal'));
-        modal.show();
-    }
-
-    function fetchGoalSuggestion() {
-        const branchId = document.getElementById('goalBranchId').value;
-        const monthStr = document.getElementById('goalMonth').value;
-        if (!branchId || !monthStr) return;
-        
-        document.getElementById('goalSuggestedVal').textContent = 'Loading...';
-        document.getElementById('goalPrevSales').textContent = 'Loading...';
-        
-        fetch("{% url 'get_suggested_goal_ajax' %}?branch_id=" + branchId + "&month=" + monthStr)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('goalSuggestedVal').textContent = data.suggested_sales;
-                    document.getElementById('goalPrevSales').textContent = '₹' + data.previous_sales;
-                    document.getElementById('goalSuggestedVal').dataset.val = data.suggested_sales;
-                } else {
-                    document.getElementById('goalSuggestedVal').textContent = 'Error';
-                    document.getElementById('goalPrevSales').textContent = 'Error';
-                }
-            })
-            .catch(err => {
-                console.error('Error fetching suggestions:', err);
-                document.getElementById('goalSuggestedVal').textContent = 'Error';
-                document.getElementById('goalPrevSales').textContent = 'Error';
-            });
-    }
-
-    function applyGoalSuggestion() {
-        const val = document.getElementById('goalSuggestedVal').dataset.val;
-        if (val) {
-            document.getElementById('goalTargetSales').value = val;
-        }
-    }
-
-    function saveBranchGoal(event) {
-        event.preventDefault();
-        const form = document.getElementById('branchGoalForm');
-        const formData = new FormData(form);
-        
-        fetch("{% url 'set_branch_goal_ajax' %}", {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                window.location.reload();
-            } else {
-                alert('Error saving branch goal: ' + (data.error || 'Unknown error'));
-            }
-        })
-        .catch(err => {
-            console.error('Error saving goal:', err);
-            alert('An unexpected error occurred.');
-        });
-    }
-
-    function quickAutoSetGoal(branchId) {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const currentMonthStr = `${year}-${month}`;
-        
-        const btn = event.currentTarget;
-        if (btn) btn.disabled = true;
-        
-        fetch("{% url 'get_suggested_goal_ajax' %}?branch_id=" + branchId + "&month=" + currentMonthStr)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const targetVal = data.suggested_sales;
-                    
-                    const formData = new FormData();
-                    formData.append('branch_id', branchId);
-                    formData.append('month', currentMonthStr);
-                    formData.append('target_sales', targetVal);
-                    
-                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-                    formData.append('csrfmiddlewaretoken', csrfToken);
-                    
-                    return fetch("{% url 'set_branch_goal_ajax' %}", {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-                } else {
-                    throw new Error(data.error || 'Failed to calculate suggestion.');
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    window.location.reload();
-                } else {
-                    alert('Error: ' + data.error);
-                    if (btn) btn.disabled = false;
-                }
-            })
-            .catch(err => {
-                console.error('Quick set goal failed:', err);
-                alert('Failed to set goal: ' + err.message);
-                if (btn) btn.disabled = false;
-            });
-    }
-
-    function pollStaffOnlineStatus() {
-        fetch("{% url 'staff_online_status' %}")
-            .then(res => res.json())
-            .then(data => {
-                for (const [staffId, isOnline] of Object.entries(data)) {
-                    const row = document.getElementById(`staff-row-${staffId}`);
-                    if (!row) continue;
-                    
-                    row.setAttribute('data-online', isOnline ? 'true' : 'false');
-                    
-                    const activityCell = row.querySelector('td[data-label="Activity"]');
-                    if (activityCell) {
-                        const currentlyOnline = activityCell.querySelector('.bg-success-subtle') !== null;
-                        if (isOnline !== currentlyOnline) {
-                            if (isOnline) {
-                                activityCell.innerHTML = `
-                                    <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-0.5 text-xxs">
-                                        <i class="bi bi-circle-fill me-1" style="font-size: 6px; vertical-align: middle;"></i>Online
-                                    </span>
-                                `;
-                            } else {
-                                activityCell.innerHTML = `
-                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5 py-0.5 text-xxs">
-                                        <i class="bi bi-circle-fill me-1" style="font-size: 6px; vertical-align: middle;"></i>Offline
-                                    </span>
-                                `;
-                            }
-                        }
-                    }
-                }
-            })
-            .catch(err => console.error("Error polling staff status:", err));
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            initOwnerDashboard();
-            pollStaffOnlineStatus();
-            setInterval(pollStaffOnlineStatus, 10000); // Check every 10 seconds
-        });
-    } else {
-        initOwnerDashboard();
-        pollStaffOnlineStatus();
-        setInterval(pollStaffOnlineStatus, 10000);
-    }
-</script>
-
 {% endblock %}
-

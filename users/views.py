@@ -8,16 +8,33 @@ from django.contrib import messages
 from billing.models import Bill, BranchGoal, BillItem
 from core.models import Branch, Product, ProductRegistry
 from .forms import BranchForm, StaffForm
-from .models import User
+from .models import User, CustomRole
 from django.http import JsonResponse, HttpResponse
 import json
 import csv
 from django.urls import reverse
+from django import forms
+
+
+class RoleForm(forms.ModelForm):
+    class Meta:
+        model = CustomRole
+        fields = ['name', 'has_pos_access', 'has_attendance_access', 'has_all_branches_access', 'has_product_rights', 'has_bill_edit_rights']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'has_pos_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'has_attendance_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'has_all_branches_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'has_product_rights': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'has_bill_edit_rights': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
 
 
 def add_branch_goal_context(user, context):
     branch = user.active_branch
     if branch:
+        today = timezone.now().date()
         today = timezone.now().date()
         current_month_start = today.replace(day=1)
         import datetime
@@ -47,7 +64,7 @@ def add_branch_goal_context(user, context):
 @login_required
 def dashboard_redirect(request):
     """Redirect user to the appropriate dashboard based on role."""
-    if request.user.role == 'owner':
+    if request.user.role in ['owner', 'regional_manager']:
         return redirect('owner_dashboard')
     elif request.user.role == 'manager':
         return redirect('manager_dashboard')
@@ -70,13 +87,33 @@ def switch_branch(request):
     
     return redirect(request.META.get('HTTP_REFERER', 'dashboard'))
 
+@login_required
+def role_create(request):
+    """Handle creation of a CustomRole.
+    POST saves and redirects back to the management page.
+    """
+    if not request.user.is_owner():
+        messages.error(request, "Only admins can create roles.")
+        return redirect('branch_staff_management')
+
+    if request.method == "POST":
+        form = RoleForm(request.POST)
+        if form.is_valid():
+            role = form.save()
+            messages.success(request, f"✅ Custom role '{role.name}' created successfully!")
+        else:
+            for field, errors in form.errors.items():
+                for err in errors:
+                    messages.error(request, f"{field}: {err}")
+    return redirect('branch_staff_management')
+
 class OwnerDashboardView(TemplateView):
     template_name = 'dashboards/owner.html'
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
-        if not request.user.is_owner():
+        if not (request.user.is_owner() or request.user.role == 'regional_manager'):
             return redirect('dashboard')
         return super().dispatch(request, *args, **kwargs)
 
@@ -619,7 +656,7 @@ def branch_create(request):
                 return JsonResponse({'success': False, 'errors': errors})
             errors_str = " ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
             messages.error(request, f"Failed to create branch. {errors_str}")
-    return redirect(reverse('owner_dashboard') + '#branches')
+    return redirect(reverse('branch_staff_management') + '?tab=branches')
 
 @login_required
 def branch_edit(request, pk):
@@ -639,12 +676,12 @@ def branch_edit(request, pk):
                 return JsonResponse({'success': False, 'errors': errors})
             errors_str = " ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
             messages.error(request, f"Failed to update branch. {errors_str}")
-    return redirect(reverse('owner_dashboard') + '#branches')
+    return redirect(reverse('branch_staff_management') + '?tab=branches')
 
 @login_required
 def branch_delete(request, pk):
     messages.error(request, "Branch deletion is disabled to protect historical sales data. Please archive or rename instead.")
-    return redirect(reverse('owner_dashboard') + '#branches')
+    return redirect(reverse('branch_staff_management') + '?tab=branches')
 
 
 @login_required
@@ -737,7 +774,7 @@ def get_suggested_goal_ajax(request):
 
 @login_required
 def staff_create(request):
-    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
+    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager', 'regional_manager']):
         return redirect('dashboard')
     if request.method == 'POST':
         form = StaffForm(request.POST)
@@ -753,11 +790,11 @@ def staff_create(request):
             errors_str = " ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
             print('Staff Create Form Errors:', form.errors)
             messages.error(request, f"Failed to create staff. {errors_str}")
-    return redirect(reverse('owner_dashboard') + '#staff')
+    return redirect(reverse('branch_staff_management') + '?tab=staff')
 
 @login_required
 def staff_edit(request, pk):
-    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
+    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager', 'regional_manager']):
         return redirect('dashboard')
     user = get_object_or_404(User, pk=pk)
     if request.method == 'POST':
@@ -777,12 +814,12 @@ def staff_edit(request, pk):
             errors_str = " ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
             print('Staff Edit Form Errors:', form.errors)
             messages.error(request, f"Failed to update staff. {errors_str}")
-    return redirect(reverse('owner_dashboard') + '#staff')
+    return redirect(reverse('branch_staff_management') + '?tab=staff')
 
 @login_required
 def staff_delete(request, pk):
     messages.error(request, "Staff account deletion is disabled to protect transaction history. Please toggle their active status to Deactivate instead.")
-    return redirect(reverse('owner_dashboard') + '#staff')
+    return redirect(reverse('branch_staff_management') + '?tab=staff')
 
 # --- TOGGLE STAFF ACTIVE STATUS ---
 @login_required
@@ -791,7 +828,7 @@ def toggle_staff_active(request, staff_id):
     Expects a POST request with a JSON payload containing `is_active` boolean.
     Only owners can perform this action.
     """
-    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
+    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager', 'regional_manager']):
         return JsonResponse({'error': 'Permission denied.'}, status=403)
     staff = get_object_or_404(User, pk=staff_id)
     if staff == request.user:
@@ -848,6 +885,48 @@ def toggle_bill_edit_rights(request, staff_id):
                 staff.has_bill_edit_rights = has_bill_edit_rights
                 staff.save()
                 return JsonResponse({'status': 'success', 'has_bill_edit_rights': staff.has_bill_edit_rights})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'error': 'Invalid request.'}, status=400)
+
+
+@login_required
+def toggle_pos_access(request, staff_id):
+    """AJAX endpoint to toggle a staff member's POS portal access."""
+    if not request.user.is_owner():
+        return JsonResponse({'error': 'Permission denied.'}, status=403)
+    staff = get_object_or_404(User, pk=staff_id)
+    if staff == request.user:
+        return JsonResponse({'error': 'You cannot restrict your own portal access.'}, status=400)
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            has_pos_access = data.get('has_pos_access')
+            if isinstance(has_pos_access, bool):
+                staff.has_pos_access = has_pos_access
+                staff.save()
+                return JsonResponse({'status': 'success', 'has_pos_access': staff.has_pos_access})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    return JsonResponse({'error': 'Invalid request.'}, status=400)
+
+
+@login_required
+def toggle_attendance_access(request, staff_id):
+    """AJAX endpoint to toggle a staff member's Attendance portal access."""
+    if not request.user.is_owner():
+        return JsonResponse({'error': 'Permission denied.'}, status=403)
+    staff = get_object_or_404(User, pk=staff_id)
+    if staff == request.user:
+        return JsonResponse({'error': 'You cannot restrict your own portal access.'}, status=400)
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            has_attendance_access = data.get('has_attendance_access')
+            if isinstance(has_attendance_access, bool):
+                staff.has_attendance_access = has_attendance_access
+                staff.save()
+                return JsonResponse({'status': 'success', 'has_attendance_access': staff.has_attendance_access})
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
     return JsonResponse({'error': 'Invalid request.'}, status=400)
@@ -1005,4 +1084,164 @@ def get_staff_online_status(request):
         status_data[staff.id] = staff.is_online
         
     return JsonResponse(status_data)
+
+
+@login_required
+def portal_choice(request):
+    """Render the portal selection screen."""
+    return render(request, 'registration/portal_choice.html')
+
+
+@login_required
+def billing_redirect(request):
+    """Redirect to the appropriate POS/Billing dashboard depending on role."""
+    if request.user.role in ['owner', 'regional_manager']:
+        return redirect('owner_dashboard')
+    elif request.user.role in ['manager', 'assistant_manager']:
+        return redirect('manager_dashboard')
+    else:
+        return redirect('staff_dashboard')
+
+
+@login_required
+def select_portal(request, portal_name):
+    """Set the active portal in user session and redirect appropriately."""
+    if portal_name == 'attendance':
+        if not request.user.is_owner() and not request.user.has_attendance_access:
+            from django.contrib import messages
+            messages.error(request, "You do not have permission to access the HR & Attendance portal.")
+            return redirect('portal_choice')
+        request.session['active_portal'] = portal_name
+        return redirect('attendance:dashboard')
+    elif portal_name == 'billing':
+        if not request.user.is_owner() and not request.user.has_pos_access:
+            from django.contrib import messages
+            messages.error(request, "You do not have permission to access the Billing & POS portal.")
+            return redirect('portal_choice')
+        request.session['active_portal'] = portal_name
+        return redirect('billing_redirect')
+    return redirect('portal_choice')
+
+
+@login_required
+def branch_staff_management(request):
+    """Manage branches and sales staff."""
+    if not (request.user.is_owner() or request.user.role == 'regional_manager'):
+        return redirect('dashboard')
+    
+    active_tab = request.GET.get('tab', 'branches')
+    if request.user.role == 'regional_manager':
+        active_tab = 'staff'
+        
+    if active_tab not in ['branches', 'staff']:
+        active_tab = 'branches'
+    
+    from django.db.models import Count, Sum, Q, F
+    from django.db.models.functions import Coalesce
+    from django.db.models import OuterRef, Subquery
+    from core.models import Branch, Product, ProductRegistry
+    from billing.models import Bill, BillItem
+    from users.models import User
+    import datetime
+    
+    today = timezone.now().date()
+    
+    # Subquery for active staff count
+    staff_subquery = User.objects.filter(
+        branches=OuterRef('pk'),
+        role__in=['sales_staff', 'assistant_manager']
+    ).order_by().values('branches').annotate(cnt=Count('id')).values('cnt')
+    
+    # Subquery for sales (today)
+    today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+    today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+    sales_subquery = Bill.objects.filter(
+        branch=OuterRef('pk'),
+        created_at__range=(today_start, today_end)
+    ).order_by().values('branch').annotate(total=Sum('total_amount')).values('total')
+    
+    cash_subquery = Bill.objects.filter(
+        branch=OuterRef('pk'),
+        created_at__range=(today_start, today_end)
+    ).order_by().values('branch').annotate(total=Sum('cash_amount')).values('total')
+    
+    online_subquery = Bill.objects.filter(
+        branch=OuterRef('pk'),
+        created_at__range=(today_start, today_end)
+    ).order_by().values('branch').annotate(total=Sum('online_amount')).values('total')
+    
+    branches = Branch.objects.annotate(
+        today_sales=Coalesce(Subquery(sales_subquery), 0, output_field=models.DecimalField()),
+        today_cash=Coalesce(Subquery(cash_subquery), 0, output_field=models.DecimalField()),
+        today_online=Coalesce(Subquery(online_subquery), 0, output_field=models.DecimalField()),
+        active_staff_count=Coalesce(Subquery(staff_subquery), 0, output_field=models.IntegerField())
+    ).order_by('-today_sales', 'name')
+    
+    current_month_start = today.replace(day=1)
+    import calendar
+    current_month_start_dt = timezone.make_aware(datetime.datetime(today.year, today.month, 1, 0, 0, 0))
+    _, last_day = calendar.monthrange(today.year, today.month)
+    current_month_end_dt = timezone.make_aware(datetime.datetime(today.year, today.month, last_day, 23, 59, 59))
+    
+    goals_dict = {g.branch_id: g.target_sales for g in BranchGoal.objects.filter(month=current_month_start)}
+    monthly_sales_dict = {
+        row['branch']: row['total']
+        for row in Bill.objects.filter(created_at__range=(current_month_start_dt, current_month_end_dt))
+        .values('branch')
+        .annotate(total=Sum('total_amount'))
+    }
+    
+    branches_list = list(branches)
+    for b in branches_list:
+        b.current_goal = int(goals_dict.get(b.id, 0))
+        b.current_month_sales = int(monthly_sales_dict.get(b.id, 0))
+        if b.current_goal > 0:
+            b.current_goal_percent = min(100, int((b.current_month_sales * 100) / b.current_goal))
+            b.current_goal_percent_exact = round((b.current_month_sales * 100) / b.current_goal, 1)
+        else:
+            b.current_goal_percent = 0
+            b.current_goal_percent_exact = 0
+            
+    branch_search = request.GET.get('branch_search', '').strip()
+    if branch_search:
+        search_lower = branch_search.lower()
+        branches_by_code_list = [
+            b for b in branches_list
+            if search_lower in b.name.lower() or 
+               (b.location and search_lower in b.location.lower()) or 
+               (b.invoice_prefix and search_lower in b.invoice_prefix.lower()) or 
+               (b.code and str(b.code) == branch_search)
+        ]
+    else:
+        branches_by_code_list = list(branches_list)
+        
+    branches_by_code_list.sort(key=lambda b: (b.code or 0, b.id))
+    for b in branches_by_code_list:
+        b.current_goal = int(goals_dict.get(b.id, 0))
+        b.current_month_sales = int(monthly_sales_dict.get(b.id, 0))
+        if b.current_goal > 0:
+            b.current_goal_percent = min(100, int((b.current_month_sales * 100) / b.current_goal))
+            b.current_goal_percent_exact = round((b.current_month_sales * 100) / b.current_goal, 1)
+        else:
+            b.current_goal_percent = 0
+            b.current_goal_percent_exact = 0
+            
+    staff_qs = User.objects.filter(role__in=['owner', 'manager', 'assistant_manager', 'sales_staff']).prefetch_related('branches').order_by('employee_id', 'username')
+    
+    from users.forms import BranchForm, StaffForm
+    branch_form = BranchForm()
+    staff_form = StaffForm()
+    
+    context = {
+        'branches': branches_list,
+        'branches_by_code': branches_by_code_list,
+        'branch_search': branch_search,
+        'staff_list': staff_qs,
+        'all_branches': Branch.objects.all(),
+        'branch_form': branch_form,
+        'staff_form': staff_form,
+        'active_tab': active_tab,
+    }
+    return render(request, 'dashboards/management.html', context)
+
 

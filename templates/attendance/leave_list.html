@@ -1,0 +1,167 @@
+{% extends "base_attendance.html" %}
+
+{% block title %}Leave Management - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); border-radius: 1rem;">
+                <div class="card-body p-4 text-white">
+                    <h3 class="fw-bold mb-1"><i class="bi bi-calendar-event-fill me-2"></i>Leave Portal</h3>
+                    <p class="mb-0 text-white-50">Apply for leaves and manage staff leave requests in one place.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manager/Admin Approvals Panel -->
+    {% if pending_leaves %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem; border-left: 5px solid #f59e0b;">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold text-warning mb-4"><i class="bi bi-exclamation-circle-fill me-2"></i>Pending Approvals</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Leave Type</th>
+                                    <th>Duration</th>
+                                    <th>Reason</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for leave in pending_leaves %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ leave.user.username }}</div>
+                                        <span class="text-muted small">ID: {{ leave.user.employee_id|default:"-" }}</span>
+                                    </td>
+                                    <td>
+                                        {% if leave.leave_type == 'emergency' %}
+                                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-1.5">Emergency Leave</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-3 py-1.5">{{ leave.leave_type|title }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold">{{ leave.start_date|date:"d M Y" }} to {{ leave.end_date|date:"d M Y" }}</div>
+                                    </td>
+                                    <td>
+                                        <p class="mb-0 small text-muted text-wrap" style="max-width: 300px;">{{ leave.reason }}</p>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'attendance:leave_approve' leave.pk 'approve' %}" class="btn btn-success btn-sm rounded-pill px-3 me-1">
+                                            <i class="bi bi-check-circle me-1"></i> Approve
+                                        </a>
+                                        <a href="{% url 'attendance:leave_approve' leave.pk 'reject' %}" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                                            <i class="bi bi-x-circle me-1"></i> Reject
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Apply Leave Form -->
+        <div class="col-lg-5 mb-4">
+            <div class="card border-0 shadow-sm h-100 bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-plus-circle-fill me-2"></i>Apply for Leave</h5>
+                    
+                    <form method="post" action="{% url 'attendance:leave_request' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">Leave Type</label>
+                            <select name="leave_type" class="form-select rounded-3" required>
+                                <option value="emergency">Emergency Leave</option>
+                            </select>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">Start Date</label>
+                                <input type="date" name="start_date" class="form-control rounded-3" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">End Date</label>
+                                <input type="date" name="end_date" class="form-control rounded-3" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-muted">Reason</label>
+                            <textarea name="reason" rows="4" class="form-control rounded-3" placeholder="State your reason for leave..." required></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill py-2.5">
+                            <i class="bi bi-send-fill me-1"></i> Submit Request
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- My Leaves Log -->
+        <div class="col-lg-7 mb-4">
+            <div class="card border-0 shadow-sm h-100 bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-clock-history me-2"></i>My Leave History</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Dates</th>
+                                    <th>Leave Type</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for leave in my_leaves %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ leave.start_date|date:"d M Y" }}</div>
+                                        <span class="small text-muted">to {{ leave.end_date|date:"d M Y" }}</span>
+                                    </td>
+                                    <td>
+                                        {% if leave.leave_type == 'emergency' %}
+                                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-1.5">Emergency Leave</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-3 py-1.5">{{ leave.leave_type|title }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if leave.status == 'approved' %}
+                                            <span class="badge bg-success rounded-pill px-3 py-1.5"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                                        {% elif leave.status == 'rejected' %}
+                                            <span class="badge bg-danger rounded-pill px-3 py-1.5"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                                        {% else %}
+                                            <span class="badge bg-warning rounded-pill px-3 py-1.5"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center py-4 text-muted">No leave applications found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

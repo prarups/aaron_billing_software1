@@ -1,0 +1,2042 @@
+{% extends 'base_management.html' %}
+
+{% block title %}Branch & Staff Management - Aaron Billing{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        border-radius: 1.25rem !important;
+        box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.15) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    .stats-card:hover {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 20px 30px -8px rgba(99, 102, 241, 0.25) !important;
+    }
+    .stats-card i {
+        font-size: 1.75rem !important;
+        opacity: 0.7;
+    }
+    
+    @media (max-width: 575.98px) {
+        #ownerDashboardTabs {
+            border-radius: 12px !important;
+        }
+        #ownerDashboardTabs .nav-link {
+            font-size: 0.72rem !important;
+            padding: 8px 4px !important;
+            border-radius: 8px !important;
+        }
+        #ownerDashboardTabs .nav-link.active {
+            border-radius: 8px !important;
+        }
+    }
+
+    /* Premium Compact Typography and Colors */
+    .text-xs {
+        font-size: 0.78rem !important;
+    }
+    .text-xxs {
+        font-size: 0.68rem !important;
+        letter-spacing: 0.05em;
+    }
+    .table-compact {
+        font-size: 0.82rem;
+    }
+    .table-compact th {
+        font-size: 0.72rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        color: #64748b;
+        padding: 8px 10px !important;
+        background-color: #f8fafc;
+        border-bottom: 2px solid #e2e8f0 !important;
+    }
+    .table-compact td {
+        padding: 8px 10px !important;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .table-compact tbody tr:hover {
+        background-color: rgba(99, 102, 241, 0.01) !important;
+    }
+
+    .branch-scroll-list {
+        max-height: 280px;
+        overflow-y: auto;
+        padding-right: 4px;
+    }
+    .branch-scroll-list::-webkit-scrollbar {
+        width: 3px;
+    }
+    .branch-scroll-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .branch-scroll-list::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+
+    #ownerDashboardTabs {
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(10px);
+    }
+    #ownerDashboardTabs .nav-link {
+        color: #4b5563;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    #ownerDashboardTabs .nav-link:hover {
+        color: var(--primary);
+    }
+    #ownerDashboardTabs .nav-link.active {
+        background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+        color: white !important;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+    .badge-role-manager {
+        background-color: rgba(79, 70, 229, 0.1) !important;
+        color: var(--primary) !important;
+    }
+    .badge-role-staff {
+        background-color: rgba(217, 70, 239, 0.1) !important;
+        color: var(--secondary) !important;
+    }
+    .badge-role-admin {
+        background-color: rgba(245, 158, 11, 0.1) !important;
+        color: #d97706 !important;
+    }
+    .hover-actions .btn {
+        opacity: 0.85;
+        transition: opacity 0.2s, transform 0.2s;
+    }
+    .hover-actions .btn:hover {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+    /* Branch Picker Checkbox List */
+    .branch-picker {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.75rem;
+        background: #fff;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .branch-picker .branch-search {
+        border: none;
+        border-bottom: 1px solid #e5e7eb;
+        border-radius: 0.75rem 0.75rem 0 0;
+        padding: 10px 14px;
+        font-size: 0.875rem;
+        background: #f9fafb;
+    }
+    .branch-picker .branch-search:focus {
+        outline: none;
+        background: #fff;
+        box-shadow: none;
+    }
+    .branch-picker .branch-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 14px;
+        cursor: pointer;
+        transition: background 0.15s;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .branch-picker .branch-item:last-child {
+        border-bottom: none;
+    }
+    .branch-picker .branch-item:hover {
+        background: #f0f0ff;
+    }
+    .branch-picker .branch-item input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        border: 2px solid #d1d5db;
+        margin-right: 10px;
+        accent-color: #6366f1;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .branch-picker .branch-item label {
+        cursor: pointer;
+        margin: 0;
+        font-size: 0.9rem;
+        color: #374151;
+        flex: 1;
+    }
+    .branch-picker .branch-item input[type="checkbox"]:checked + label {
+        color: #4f46e5;
+        font-weight: 600;
+    }
+    .branch-picker .no-match {
+        padding: 12px 14px;
+        text-align: center;
+        color: #9ca3af;
+        font-size: 0.85rem;
+        display: none;
+    }
+    /* Modal select/dropdown overrides — kill Tom Select backgrounds */
+    .modal .ts-wrapper .ts-control {
+        background: #fff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 2rem !important;
+        box-shadow: none !important;
+    }
+    .modal .ts-wrapper .ts-control .item {
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #212529 !important;
+    }
+    .modal .ts-dropdown {
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .modal .ts-dropdown .option:hover,
+    .modal .ts-dropdown .option.active {
+        background: #f0f0f0 !important;
+    }
+    /* Staff table – card style rows */
+    .table-compact tbody tr {
+        background: #fff;
+        border-radius: .75rem;
+        box-shadow: 0 2px 6px rgba(0,0,0,.04);
+        transition: transform .2s, box-shadow .2s;
+        margin-bottom: .5rem;
+    }
+    .table-compact tbody tr:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 12px rgba(99,102,241,.12);
+    }
+    /* Responsive stack for mobile */
+    @media (max-width: 768px) {
+        .table-compact thead {display:none;}
+        .table-compact tbody tr {display:flex; flex-direction:column; gap:.35rem; padding:.8rem;}
+        .table-compact td::before {
+            content: attr(data-label);
+            font-weight:600; color:#64748b; margin-right:.4rem;
+        }
+        .table-compact td {display:flex; justify-content:space-between;}
+    }
+    /* Action icons */
+    .hover-actions .btn {
+        opacity:.85; transition:opacity .2s, transform .2s;
+    }
+    .hover-actions .btn:hover {
+        opacity:1; transform:scale(1.08);
+    }
+    
+    /* Super Premium Button Enhancements with Shimmering & Shifting Gradients */
+    .btn-premium-add {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%) !important;
+        background-size: 200% auto !important;
+        color: #ffffff !important;
+        border: none !important;
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.08em !important;
+        text-transform: uppercase !important;
+        padding: 0.55rem 1.4rem !important;
+        font-size: 0.72rem !important;
+        border-radius: 50px !important;
+        box-shadow: 0 8px 25px -6px rgba(16, 185, 129, 0.4) !important;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .btn-premium-add::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -60%;
+        width: 30%;
+        height: 200%;
+        background: rgba(255, 255, 255, 0.4);
+        transform: rotate(30deg);
+        transition: none;
+        opacity: 0;
+    }
+    
+    .btn-premium-add:hover {
+        background-position: right center !important;
+        box-shadow: 0 15px 30px -5px rgba(16, 185, 129, 0.6) !important;
+        transform: translateY(-3px) scale(1.03);
+        color: #ffffff !important;
+    }
+
+    .btn-premium-add:hover::after {
+        opacity: 1;
+        left: 130%;
+        transition: all 0.8s ease-in-out;
+    }
+
+    .btn-premium-add i {
+        font-size: 0.95rem;
+        transition: transform 0.4s ease;
+    }
+    
+    .btn-premium-add:hover i {
+        transform: rotate(90deg) scale(1.1);
+    }
+
+    /* Slick Translucent Emerald Export Button */
+    .btn-premium-export {
+        position: relative;
+        overflow: hidden;
+        color: #047857 !important;
+        background: rgba(255, 255, 255, 0.85) !important;
+        backdrop-filter: blur(8px) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        border: 2px solid rgba(16, 185, 129, 0.35) !important;
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.08em !important;
+        text-transform: uppercase !important;
+        padding: 0.55rem 1.4rem !important;
+        font-size: 0.72rem !important;
+        border-radius: 50px !important;
+        box-shadow: 0 4px 15px -3px rgba(16, 185, 129, 0.08) !important;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .btn-premium-export:hover {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: #ffffff !important;
+        border-color: transparent !important;
+        box-shadow: 0 15px 30px -5px rgba(16, 185, 129, 0.5) !important;
+        transform: translateY(-3px) scale(1.03);
+    }
+    
+    .btn-premium-export i {
+        font-size: 0.95rem;
+        transition: transform 0.3s ease;
+    }
+    
+    .btn-premium-export:hover i {
+        transform: translateY(1.5px) scale(1.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+
+    {% if active_tab == 'branches' %}
+        <!-- 2. BRANCHES CONTENT -->
+        <div class="animate-fade-in" id="branches">
+            <div class="glass-card p-3">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <h6 class="fw-bold text-primary mb-0 me-2"><i class="bi bi-shop me-1.5"></i>Overall Branches</h6>
+                        <div class="input-group input-group-sm" style="max-width: 200px;">
+                            <span class="input-group-text bg-light border-0 rounded-start-pill text-xxs"><i class="bi bi-search"></i></span>
+                            <input type="text" id="branchSearchInput" class="form-control border-0 bg-light rounded-end-pill text-xs py-1" placeholder="Search code or name..." oninput="filterBranches()">
+                            <script>document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('branchSearchInput');
+        if (searchInput) searchInput.value = '';
+        filterBranches();
+    });</script>
+                        </div>
+                    </div>
+                    {% if user.role == 'owner' %}
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'export_branches_csv' %}" class="btn btn-premium-export btn-sm rounded-pill px-3.5 py-1.5 text-xs fw-bold shadow-sm d-inline-flex align-items-center">
+                            <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i>Export CSV
+                        </a>
+                        <button class="btn btn-premium-add btn-sm rounded-pill px-3.5 py-1.5 text-xs fw-bold shadow-sm d-inline-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addBranchModal">
+                            <i class="bi bi-plus-circle me-1"></i>Create Branch
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table align-middle table-compact">
+                        <thead>
+                            <tr class="border-bottom">
+                                <th>Branch ID / Code</th>
+                                <th>Branch Name</th>
+                                <th>Location</th>
+                                <th>Contact</th>
+                                <th>Prefix</th>
+                                <th>Sales Staff Count</th>
+                                <th>Monthly Goal</th>
+                                {% if user.role == 'owner' %}
+                                <th class="text-center" style="width: 130px;">Actions</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for branch in branches_by_code %}
+                            <tr id="branch-row-{{ branch.id }}" class="branch-row">
+                                <td class="fw-bold text-muted text-xs branch-code">{{ branch.code|default:branch.id }}</td>
+                                <td class="fw-bold text-primary text-xs branch-name">{{ branch.name }}</td>
+                                <td class="text-xs">{{ branch.location }}</td>
+                                <td class="text-xs">{{ branch.contact_number|default:"-" }}</td>
+                                <td><span class="badge bg-light text-dark border text-xxs">{{ branch.invoice_prefix }}</span></td>
+                                <td><span class="badge bg-primary bg-opacity-10 text-primary text-xxs">{{ branch.active_staff_count }} staff</span></td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-1.5">
+                                        <span id="branch-goal-val-{{ branch.id }}" class="fw-semibold text-xs text-dark">
+                                            {% if branch.current_goal > 0 %}
+                                                ₹{{ branch.current_goal }}
+                                            {% else %}
+                                                Not Set
+                                            {% endif %}
+                                        </span>
+                                        {% if user.role == 'owner' %}
+                                        <button class="btn btn-link p-0 text-decoration-none text-success" 
+                                                onclick="quickAutoSetGoal('{{ branch.id }}')" 
+                                                title="Quick Auto-Set 110% of last month sales" style="line-height:1;">
+                                            <i class="bi bi-lightning-charge-fill" style="font-size: 11px;"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    {% if branch.current_goal > 0 %}
+                                    <div style="width: 100px;" class="mt-1">
+                                        <div class="d-flex justify-content-between text-xxs text-muted mb-0.5">
+                                            <span>Progress:</span>
+                                            <span class="fw-bold text-dark">{{ branch.current_goal_percent }}%</span>
+                                        </div>
+                                        <div class="progress" style="height: 4px;" title="₹{{ branch.current_month_sales }} / ₹{{ branch.current_goal }} ({{ branch.current_goal_percent_exact }}%)">
+                                            <div class="progress-bar {% if branch.current_goal_percent >= 100 %}bg-success{% elif branch.current_goal_percent >= 50 %}bg-primary{% else %}bg-warning{% endif %}" 
+                                                 role="progressbar" 
+                                                 style="width: {{ branch.current_goal_percent }}%"></div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                {% if user.role == 'owner' %}
+                                <td class="text-center hover-actions d-flex justify-content-center gap-1.5">
+                                    <button class="btn btn-outline-success btn-xs rounded-circle p-1" onclick="openSetGoalModal('{{ branch.id }}', '{{ branch.name|escapejs }}', '{{ branch.current_goal }}')" title="Set Monthly Sales Target" style="width: 24px; height: 24px; line-height: 1;">
+                                        <i class="bi bi-target" style="font-size: 10px; display: block;"></i>
+                                    </button>
+                                    <button class="btn btn-outline-primary btn-xs rounded-circle p-1" onclick="openEditBranchModal('{{ branch.id }}', '{{ branch.name|escapejs }}', '{{ branch.location|escapejs }}', '{{ branch.contact_number|default:''|escapejs }}', '{{ branch.invoice_prefix|escapejs }}')" title="Edit Branch Settings" style="width: 24px; height: 24px; line-height: 1;">
+                                        <i class="bi bi-pencil" style="font-size: 10px; display: block;"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-xs rounded-circle p-1" onclick="confirmDelete('{% url 'branch_delete' branch.id %}', '{{ branch.name|escapejs }}')" title="Delete Branch" style="width: 24px; height: 24px; line-height: 1;">
+                                        <i class="bi bi-trash" style="font-size: 10px; display: block;"></i>
+                                    </button>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="{% if user.role == 'owner' %}8{% else %}7{% endif %}" class="text-center py-4 text-muted">No branches created yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 gap-2">
+                    <div class="text-muted text-xs" id="branch-count-info">
+                        Showing all {{ branches_by_code|length }} branches
+                    </div>
+                    <nav aria-label="Branch pagination" class="mb-0" id="branch-pagination-nav">
+                    </nav>
+                </div>
+            </div>
+         {% elif active_tab == 'staff' %}
+    <!-- 3. STAFF TABLE — Clean Professional Layout -->
+    <style>
+    /* ── Staff Table Styles ── */
+    .sm-wrap { white-space: normal !important; word-break: break-word; }
+    .staff-section { background:#fff; border-radius:16px; box-shadow:0 4px 24px rgba(99,102,241,0.08); overflow:hidden; }
+    .staff-toolbar { background:linear-gradient(120deg,#6366f1 0%,#8b5cf6 100%); padding:16px 20px; }
+    .staff-toolbar h6 { color:#fff; font-weight:800; font-size:1rem; margin:0; }
+    .staff-tbl-head { background:#f8fafc; }
+    .staff-tbl-head th { font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#64748b; padding:10px 14px; border:none; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+    .staff-tbl tbody tr { border-bottom:1px solid #f1f5f9; transition:background 0.15s; }
+    .staff-tbl tbody tr:hover { background:#f8f7ff; }
+    .staff-tbl tbody tr:last-child { border-bottom:none; }
+    .staff-tbl td { padding:12px 14px; vertical-align:middle; font-size:0.82rem; }
+    .s-avatar { width:38px; height:38px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.9rem; font-weight:800; flex-shrink:0; }
+    .s-av-admin   { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; }
+    .s-av-rm      { background:linear-gradient(135deg,#06b6d4,#0284c7); color:#fff; }
+    .s-av-manager { background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; }
+    .s-av-staff   { background:linear-gradient(135deg,#10b981,#059669); color:#fff; }
+    .s-av-custom  { background:linear-gradient(135deg,#7c3aed,#a855f7); color:#fff; }
+    .s-role-badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:0.63rem; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap; }
+    .s-rb-admin   { background:#ede9fe; color:#6d28d9; }
+    .s-rb-rm      { background:#e0f2fe; color:#0369a1; }
+    .s-rb-manager { background:#fef3c7; color:#b45309; }
+    .s-rb-staff   { background:#d1fae5; color:#065f46; }
+    .s-rb-custom  { background:#f3e8ff; color:#7c3aed; }
+    .s-perm { display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:999px; font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; }
+    .s-perm-on  { background:#ecfdf5; color:#059669; }
+    .s-perm-off { background:#f9fafb; color:#d1d5db; }
+    .s-online-dot { width:8px; height:8px; border-radius:50%; display:inline-block; flex-shrink:0; }
+    .s-dot-on  { background:#22c55e; box-shadow:0 0 0 2px #bbf7d0; }
+    .s-dot-off { background:#cbd5e1; }
+    .s-act-btn { width:30px; height:30px; border-radius:50%; border:1.5px solid; display:inline-flex; align-items:center; justify-content:center; font-size:0.75rem; transition:all 0.16s; background:transparent; cursor:pointer; }
+    .s-act-btn:hover { transform:scale(1.1); }
+    .s-act-edit   { border-color:#6366f1; color:#6366f1; }
+    .s-act-edit:hover   { background:#6366f1; color:#fff; }
+    .s-act-del    { border-color:#ef4444; color:#ef4444; }
+    .s-act-del:hover    { background:#ef4444; color:#fff; }
+    .s-search { border:1.5px solid rgba(255,255,255,0.35); background:rgba(255,255,255,0.15); border-radius:999px; color:#fff; padding:5px 14px; font-size:0.78rem; outline:none; }
+    .s-search::placeholder { color:rgba(255,255,255,0.65); }
+    .s-search:focus { background:rgba(255,255,255,0.25); }
+    .s-select { border:1.5px solid rgba(255,255,255,0.35); background:rgba(255,255,255,0.15); border-radius:999px; color:#fff; padding:5px 12px; font-size:0.75rem; outline:none; cursor:pointer; }
+    .s-select option { color:#333; background:#fff; }
+    .s-mini-switch { transform:scale(0.82); }
+    /* Beautiful Custom Filter Dropdown Styles */
+    .filter-dropdown-btn {
+        border: 1.5px solid rgba(255, 255, 255, 0.3) !important;
+        background: rgba(255, 255, 255, 0.12) !important;
+        color: #ffffff !important;
+        font-size: 0.76rem !important;
+        font-weight: 600 !important;
+        padding: 6px 14px !important;
+        border-radius: 999px !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+    .filter-dropdown-btn:hover, .filter-dropdown-btn:focus {
+        background: rgba(255, 255, 255, 0.22) !important;
+        border-color: rgba(255, 255, 255, 0.5) !important;
+    }
+    .filter-dropdown-menu {
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+        background: #ffffff !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+        padding: 6px !important;
+    }
+    .filter-dropdown-item {
+        border-radius: 8px !important;
+        padding: 7px 14px !important;
+        font-size: 0.8rem !important;
+        font-weight: 500 !important;
+        color: #374151 !important;
+        transition: all 0.15s ease !important;
+        cursor: pointer;
+    }
+    .filter-dropdown-item:hover {
+        background-color: rgba(99, 102, 241, 0.08) !important;
+        color: #6366f1 !important;
+    }
+    .filter-dropdown-item.active {
+        background-color: #6366f1 !important;
+        color: #ffffff !important;
+    }
+    </style>
+
+    <div class="animate-fade-in" id="staff">
+    <div class="staff-section">
+
+        <!-- ── Toolbar ── -->
+        <div class="staff-toolbar">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <!-- Left: title + counters -->
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <div>
+                        <h6><i class="bi bi-people-fill me-2"></i>Team Management</h6>
+                        <div class="d-flex align-items-center gap-3 mt-1">
+                            <span style="color:rgba(255,255,255,0.75);font-size:0.73rem;">{{ staff_list|length }} members</span>
+                            <span class="d-flex align-items-center gap-1" style="color:#86efac;font-size:0.73rem;">
+                                <span class="s-online-dot s-dot-on"></span>
+                                Online: <strong id="onlineStaffCount">0</strong>
+                            </span>
+                            <span class="d-flex align-items-center gap-1" style="color:rgba(255,255,255,0.5);font-size:0.73rem;">
+                                <span class="s-online-dot s-dot-off"></span>
+                                Offline: <strong id="offlineStaffCount">0</strong>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Right: search + filters -->
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <input type="text" id="staffSearchInput" class="s-search" placeholder="🔍 Search…" oninput="filterStaff()" style="width:180px;">
+                    <!-- Branch Filter Dropdown -->
+                    <div class="dropdown d-inline-block">
+                        <button class="btn dropdown-toggle filter-dropdown-btn" type="button" id="branchFilterBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-shop me-1"></i> All Branches
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 filter-dropdown-menu" aria-labelledby="branchFilterBtn" style="min-width: 180px; z-index: 1050;">
+                            <li><a class="dropdown-item filter-dropdown-item active" href="#" onclick="selectBranchFilter('all', 'All Branches', this); return false;">All Branches</a></li>
+                            {% for branch in branches %}
+                            <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectBranchFilter('branch-{{ branch.id }}', '{{ branch.name|escapejs }}', this); return false;">{{ branch.name }}</a></li>
+                            {% endfor %}
+                        </ul>
+                        <input type="hidden" id="branchFilterSelect" value="all">
+                    </div>
+
+                    <!-- Role Filter Dropdown -->
+                    <div class="dropdown d-inline-block">
+                        <button class="btn dropdown-toggle filter-dropdown-btn" type="button" id="roleFilterBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-badge me-1"></i> All Roles
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 filter-dropdown-menu" aria-labelledby="roleFilterBtn" style="min-width: 180px; z-index: 1050;">
+                            <li><a class="dropdown-item filter-dropdown-item active" href="#" onclick="selectRoleFilter('all', 'All Roles', this); return false;">All Roles</a></li>
+                            <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('owner', 'Admin', this); return false;">Admin</a></li>
+                            <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('regional_manager', 'Regional Manager', this); return false;">Regional Manager</a></li>
+                            <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('manager', 'Manager', this); return false;">Manager</a></li>
+                            <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('assistant_manager', 'Asst. Manager', this); return false;">Asst. Manager</a></li>
+                            <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('sales_staff', 'Sales Staff', this); return false;">Sales Staff</a></li>
+                        </ul>
+                        <input type="hidden" id="roleFilterSelect" value="all">
+                    </div>
+                </div>
+            </div>
+            <!-- Action buttons row -->
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                <a href="{% url 'export_staff_csv' %}" class="btn btn-sm btn-light fw-semibold rounded-pill px-3 d-inline-flex align-items-center gap-1" style="font-size:0.75rem;">
+                    <i class="bi bi-file-earmark-spreadsheet text-success"></i> Export CSV
+                </a>
+                <button class="btn btn-sm btn-light fw-semibold rounded-pill px-3 d-inline-flex align-items-center gap-1" style="font-size:0.75rem;" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+                    <i class="bi bi-person-plus-fill text-primary"></i> Add Staff
+                </button>
+                <button class="btn btn-sm fw-semibold rounded-pill px-3 d-inline-flex align-items-center gap-1" style="font-size:0.75rem;background:rgba(255,255,255,0.2);color:#fff;border:1.5px solid rgba(255,255,255,0.4);" data-bs-toggle="modal" data-bs-target="#createRoleModal">
+                    <i class="bi bi-shield-plus"></i> + Create Role
+                </button>
+            </div>
+        </div>
+
+        <!-- ── Table ── -->
+        <div class="table-responsive">
+            <table class="table staff-tbl mb-0" id="staffTable">
+                <thead class="staff-tbl-head">
+                    <tr>
+                        <th style="min-width:200px;">Staff Member</th>
+                        <th style="min-width:110px;">Role</th>
+                        <th style="min-width:160px;">Branches</th>
+                        <th style="min-width:200px;">Permissions</th>
+                        <th class="text-center" style="min-width:130px;">Toggles</th>
+                        <th class="text-center" style="min-width:80px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for staff in staff_list %}
+                <tr class="staff-row"
+                    id="staff-row-{{ staff.id }}"
+                    data-branches="{% if staff.role == 'owner' or staff.role == 'regional_manager' %}all{% else %}{% for b in staff.branches.all %}branch-{{ b.id }} {% endfor %}{% endif %}"
+                    data-role="{{ staff.role }}"
+                    data-online="{% if staff.is_online %}true{% else %}false{% endif %}">
+
+                    <!-- Staff Member -->
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="position-relative flex-shrink-0">
+                                {% if staff.role == 'owner' %}<span class="s-avatar s-av-admin">
+                                {% elif staff.role == 'regional_manager' %}<span class="s-avatar s-av-rm">
+                                {% elif staff.role == 'manager' or staff.role == 'assistant_manager' %}<span class="s-avatar s-av-manager">
+                                {% elif staff.role == 'sales_staff' %}<span class="s-avatar s-av-staff">
+                                {% else %}<span class="s-avatar s-av-custom">
+                                {% endif %}
+                                    {{ staff.first_name|first|upper|default:staff.username|first|upper }}{{ staff.last_name|first|upper }}
+                                </span>
+                                <span class="s-online-dot position-absolute {% if staff.is_online %}s-dot-on{% else %}s-dot-off{% endif %}" style="bottom:0;right:0;border:2px solid #fff;"></span>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size:0.84rem;line-height:1.3;">
+                                    {{ staff.first_name }} {{ staff.last_name }}
+                                    {% if not staff.first_name and not staff.last_name %}<span class="text-muted">{{ staff.username }}</span>{% endif %}
+                                </div>
+                                <div style="font-size:0.71rem;color:#94a3b8;">@{{ staff.username }} &middot; {{ staff.employee_id|default:"No ID" }}</div>
+                            </div>
+                        </div>
+                        <!-- Hidden search spans -->
+                        <span class="staff-username d-none">@{{ staff.username }}</span>
+                        <span class="staff-name d-none">{{ staff.first_name }} {{ staff.last_name }}</span>
+                        <span class="staff-emp-id d-none">{{ staff.employee_id|default:"-" }}</span>
+                    </td>
+
+                    <!-- Role -->
+                    <td>
+                        {% if staff.role == 'owner' %}
+                        <span class="s-role-badge s-rb-admin">Admin</span>
+                        {% elif staff.role == 'regional_manager' %}
+                        <span class="s-role-badge s-rb-rm">Regional Mgr</span>
+                        {% elif staff.role == 'manager' %}
+                        <span class="s-role-badge s-rb-manager">Manager</span>
+                        {% elif staff.role == 'assistant_manager' %}
+                        <span class="s-role-badge s-rb-manager">Asst. Mgr</span>
+                        {% elif staff.role == 'sales_staff' %}
+                        <span class="s-role-badge s-rb-staff">Sales Staff</span>
+                        {% else %}
+                        <span class="s-role-badge s-rb-custom">{{ staff.role_display }}</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Branches -->
+                    <td>
+                        {% if staff.role == 'owner' or staff.role == 'regional_manager' %}
+                        <span style="color:#94a3b8;font-size:0.72rem;">—</span>
+                        {% else %}
+                        <div class="d-flex flex-wrap gap-1">
+                        {% for b in staff.branches.all %}
+                        <span style="background:#ede9fe;color:#7c3aed;border-radius:999px;padding:1px 9px;font-size:0.67rem;font-weight:600;white-space:nowrap;">{{ b.name }}</span>
+                        {% empty %}
+                        <span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">None</span>
+                        {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
+
+                    <!-- Permissions -->
+                    <td>
+                        <div class="d-flex flex-wrap gap-1">
+                            <span class="s-perm {% if staff.has_pos_access %}s-perm-on{% else %}s-perm-off{% endif %}">
+                                <i class="bi bi-receipt" style="font-size:0.6rem;"></i>POS
+                            </span>
+                            <span class="s-perm {% if staff.has_attendance_access %}s-perm-on{% else %}s-perm-off{% endif %}">
+                                <i class="bi bi-clock" style="font-size:0.6rem;"></i>Att.
+                            </span>
+                            <span class="s-perm {% if staff.has_product_rights %}s-perm-on{% else %}s-perm-off{% endif %}">
+                                <i class="bi bi-box" style="font-size:0.6rem;"></i>Prod.
+                            </span>
+                            <span class="s-perm {% if staff.has_bill_edit_rights %}s-perm-on{% else %}s-perm-off{% endif %}">
+                                <i class="bi bi-pencil" style="font-size:0.6rem;"></i>Edit
+                            </span>
+                        </div>
+                    </td>
+
+                    <!-- Toggles -->
+                    <td class="text-center">
+                        <div class="d-flex align-items-center justify-content-center gap-3">
+                            <div class="d-flex flex-column align-items-center" style="gap:1px;">
+                                <span style="font-size:0.58rem;color:#94a3b8;font-weight:700;text-transform:uppercase;">Active</span>
+                                <input class="form-check-input s-mini-switch" type="checkbox"
+                                    id="activeSwitch{{ staff.id }}"
+                                    {% if staff.is_active %}checked{% endif %}
+                                    onchange="toggleStaffActive('{{ staff.id }}', this.checked)"
+                                    {% if staff == request.user %}disabled title="Cannot deactivate yourself"{% endif %}>
+                            </div>
+                            <div class="d-flex flex-column align-items-center" style="gap:1px;">
+                                <span style="font-size:0.58rem;color:#94a3b8;font-weight:700;text-transform:uppercase;">POS</span>
+                                <input class="form-check-input s-mini-switch" type="checkbox"
+                                    id="posAccessSwitch{{ staff.id }}"
+                                    {% if staff.has_pos_access %}checked{% endif %}
+                                    onchange="togglePosAccess('{{ staff.id }}', this.checked)"
+                                    {% if staff.role == 'owner' %}disabled title="Admins always have access"{% endif %}>
+                            </div>
+                            <div class="d-flex flex-column align-items-center" style="gap:1px;">
+                                <span style="font-size:0.58rem;color:#94a3b8;font-weight:700;text-transform:uppercase;">Att.</span>
+                                <input class="form-check-input s-mini-switch" type="checkbox"
+                                    id="attendanceAccessSwitch{{ staff.id }}"
+                                    {% if staff.has_attendance_access %}checked{% endif %}
+                                    onchange="toggleAttendanceAccess('{{ staff.id }}', this.checked)"
+                                    {% if staff.role == 'owner' %}disabled title="Admins always have access"{% endif %}>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Actions -->
+                    <td class="text-center">
+                        <div class="d-flex align-items-center justify-content-center gap-2">
+                            <button class="s-act-btn s-act-edit" title="Edit Staff"
+                                onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}', '{{ staff.date_of_joining|date:"Y-m-d"|default:'' }}', {% if staff.has_pos_access %}true{% else %}false{% endif %}, {% if staff.has_attendance_access %}true{% else %}false{% endif %})">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+                            {% if staff != request.user and user.role == 'owner' %}
+                            <button class="s-act-btn s-act-del" title="Delete Staff"
+                                onclick="confirmDelete('{% url 'staff_delete' staff.id %}', '{{ staff.username|escapejs }}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-5">
+                        <i class="bi bi-people" style="font-size:2.5rem;color:#cbd5e1;"></i>
+                        <p class="text-muted fw-semibold mt-2 mb-3">No staff accounts yet.</p>
+                        <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+                            <i class="bi bi-person-plus me-2"></i>Add First Member
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div class="d-flex justify-content-between align-items-center px-4 py-2" style="background:#f8fafc;border-top:1px solid #f1f5f9;">
+            <div id="staff-count-info" style="font-size:0.75rem;color:#94a3b8;">Showing all {{ staff_list|length }} staff members</div>
+            <nav id="staff-pagination-nav"></nav>
+        </div>
+
+    </div><!-- /.staff-section -->
+    </div><!-- /#staff -->
+    {% endif %}
+</div>
+
+<!-- ============================================== -->
+<!--                  MODALS SECTION                -->
+<!-- ============================================== -->
+
+<!-- Set Goal Modal -->
+<div class="modal fade" id="setBranchGoalModal" tabindex="-1" aria-labelledby="setBranchGoalModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold" id="setBranchGoalModalLabel"><i class="bi bi-target text-success me-2"></i>Set Branch Monthly Goal</h5>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="branchGoalForm" onsubmit="saveBranchGoal(event)">
+                {% csrf_token %}
+                <input type="hidden" name="branch_id" id="goalBranchId">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Branch Name</label>
+                        <input type="text" id="goalBranchName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" disabled>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label x-small text-muted fw-bold text-uppercase">Month</label>
+                            <input type="month" name="month" id="goalMonth" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required onchange="fetchGoalSuggestion()">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label x-small text-muted fw-bold text-uppercase">Target Sales (₹)</label>
+                            <input type="number" name="target_sales" id="goalTargetSales" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
+                        </div>
+                    </div>
+                    <div class="card bg-light border-0 p-3 mt-2">
+                        <div class="d-flex justify-content-between text-xs">
+                            <span class="text-muted">Previous Month Sales:</span>
+                            <span id="goalPrevSales" class="fw-bold">₹0</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-xs mt-1">
+                            <span class="text-muted">Suggested Goal (110%):</span>
+                            <span id="goalSuggestedVal" class="text-success fw-bold" onclick="applyGoalSuggestion()" style="cursor: pointer;" title="Click to use this value">₹0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success rounded-pill px-4">Save Goal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 1. Add Branch Modal -->
+<div class="modal fade" id="addBranchModal" tabindex="-1" aria-labelledby="addBranchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold" id="addBranchModalLabel"><i class="bi bi-shop text-primary me-2"></i>Create New Branch</h5>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addBranchForm" action="{% url 'branch_create' %}" method="post">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Branch Name</label>
+                        {{ branch_form.name }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Location</label>
+                        {{ branch_form.location }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Contact Number</label>
+                        {{ branch_form.contact_number }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Invoice Prefix</label>
+                        {{ branch_form.invoice_prefix }}
+                        <div class="form-text x-small">A unique prefix for invoice numbers (e.g. "AG")</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Create Branch</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Edit Branch Modal -->
+<div class="modal fade" id="editBranchModal" tabindex="-1" aria-labelledby="editBranchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold" id="editBranchModalLabel"><i class="bi bi-pencil text-primary me-2"></i>Edit Branch Details</h5>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editBranchForm" method="post" action="">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Branch Name</label>
+                        <input type="text" name="name" id="editBranchName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Location</label>
+                        <input type="text" name="location" id="editBranchLocation" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Contact Number</label>
+                        <input type="text" name="contact_number" id="editBranchContact" class="form-control rounded-pill shadow-sm border-0 bg-light px-3">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label x-small text-muted fw-bold text-uppercase">Invoice Prefix</label>
+                        <input type="text" name="invoice_prefix" id="editBranchPrefix" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Add Sales Staff Modal -->
+<div class="modal fade" id="addStaffModal" tabindex="-1" aria-labelledby="addStaffModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold" id="addStaffModalLabel"><i class="bi bi-person-plus text-primary me-2"></i>Add Sales Staff Account</h5>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addStaffForm" action="{% url 'staff_create' %}" method="post" autocomplete="off">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <!-- Account Details Card -->
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted mb-3">Account Details</h6>
+                                    <div class="row g-2">
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Username</label>
+                                            {{ staff_form.username }}
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">First Name</label>
+                                            {{ staff_form.first_name }}
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Last Name</label>
+                                            {{ staff_form.last_name }}
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Password</label>
+                                            <div class="position-relative">
+                                                {{ staff_form.password }}
+                                                <button type="button" class="btn btn-link position-absolute top-50 end-0 translate-middle-y text-muted pe-3 shadow-none border-0" onclick="togglePasswordVisibility('addStaffPassword', this)" tabindex="-1">
+                                                    <i class="bi bi-eye-slash-fill"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Employee ID</label>
+                                            {{ staff_form.employee_id }}
+                                            <div class="form-text small">Auto-generated based on branch if left blank.</div>
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Mobile Number</label>
+                                            {{ staff_form.mobile_number }}
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Address</label>
+                                            {{ staff_form.address }}
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Role</label>
+                                            {{ staff_form.role }}
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Active</label>
+                                            {{ staff_form.is_active }}
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">POS Access</label>
+                                            {{ staff_form.has_pos_access }}
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Attendance Access</label>
+                                            {{ staff_form.has_attendance_access }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Branch Assignment Card -->
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm mt-3">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted mb-3"><i class="bi bi-shop me-1"></i>Assign Branches</h6>
+                                    <div class="branch-picker" id="branchPickerAdd">
+                                        <input type="text" class="branch-search w-100" placeholder="🔍 Search branches..." oninput="filterBranchPicker('branchPickerAdd', this.value)">
+                                        {% for branch in all_branches %}
+                                        <div class="branch-item">
+                                            <input type="checkbox" name="branches" value="{{ branch.id }}" id="addBranch{{ branch.id }}">
+                                            <label for="addBranch{{ branch.id }}">{{ branch.name }} <span class="text-muted small">— {{ branch.location }}</span></label>
+                                        </div>
+                                        {% endfor %}
+                                        <div class="no-match">No branches found</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 4. Edit Sales Staff Modal -->
+<div class="modal fade" id="editStaffModal" tabindex="-1" aria-labelledby="editStaffModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold" id="editStaffModalLabel"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Sales Staff / Assign Branches</h5>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editStaffForm" method="post" action="" autocomplete="off">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <!-- Account Details Card -->
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted mb-3">Account Details</h6>
+                                    <div class="row g-2">
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Username</label>
+                                            <input type="text" name="username" id="editStaffUsername" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" autocomplete="new-username" required>
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">First Name</label>
+                                            <input type="text" name="first_name" id="editStaffFirstName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" autocomplete="off">
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Last Name</label>
+                                            <input type="text" name="last_name" id="editStaffLastName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" autocomplete="off">
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">New Password (Leave blank to keep current)</label>
+                                            <div class="position-relative">
+                                                <input type="password" name="password" id="editStaffPassword" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" autocomplete="new-password">
+                                                <button type="button" class="btn btn-link position-absolute top-50 end-0 translate-middle-y text-muted pe-3 shadow-none border-0" onclick="togglePasswordVisibility('editStaffPassword', this)" tabindex="-1">
+                                                    <i class="bi bi-eye-slash-fill"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Employee ID</label>
+                                            <input type="text" name="employee_id" id="editStaffEmployeeId" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Employee ID (Auto-generated if blank)" autocomplete="off">
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Date of Joining</label>
+                                            <input type="date" name="date_of_joining" id="editStaffDateOfJoining" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Date of Joining" autocomplete="off">
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Mobile Number</label>
+                                            <input type="text" name="mobile_number" id="editStaffMobileNumber" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Mobile Number" autocomplete="off" required>
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Address</label>
+                                            <textarea name="address" id="editStaffAddress" class="form-control rounded-3 shadow-sm border-0 bg-light px-3" rows="2" placeholder="Address" autocomplete="off"></textarea>
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Role</label>
+                                             <select name="role" id="editStaffRole" class="form-select rounded-pill shadow-sm border-0 bg-light px-3" data-no-search="true" required>
+                                                  <option value="owner">Admin</option>
+                                                  <option value="regional_manager">Regional Manager</option>
+                                                  <option value="manager">Manager</option>
+                                                  <option value="assistant_manager">Assistant Manager</option>
+                                                  <option value="sales_staff">Sales Staff</option>
+                                              </select>
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">POS Access</label>
+                                            <div class="form-check form-switch mt-1">
+                                                <input class="form-check-input" type="checkbox" name="has_pos_access" id="editStaffPosAccess" style="transform: scale(1.15);">
+                                            </div>
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Attendance Access</label>
+                                            <div class="form-check form-switch mt-1">
+                                                <input class="form-check-input" type="checkbox" name="has_attendance_access" id="editStaffAttendanceAccess" style="transform: scale(1.15);">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Branch Assignment Card -->
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm mt-3">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted mb-3"><i class="bi bi-shop me-1"></i>Assign Branches</h6>
+                                    <div class="branch-picker" id="branchPickerEdit">
+                                        <input type="text" class="branch-search w-100" placeholder="🔍 Search branches..." oninput="filterBranchPicker('branchPickerEdit', this.value)">
+                                        {% for branch in all_branches %}
+                                        <div class="branch-item">
+                                            <input type="checkbox" name="branches" value="{{ branch.id }}" id="editBranch{{ branch.id }}">
+                                            <label for="editBranch{{ branch.id }}">{{ branch.name }} <span class="text-muted small">— {{ branch.location }}</span></label>
+                                        </div>
+                                        {% endfor %}
+                                        <div class="no-match">No branches found</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Staff Status Details Modal -->
+<div class="modal fade" id="staffStatusDetailsModal" tabindex="-1" aria-labelledby="staffStatusDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-primary text-white border-0 py-2.5">
+                <h6 class="modal-title fw-bold" id="staffStatusModalTitle"><i class="bi bi-people-fill me-2"></i>Staff Members</h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive" style="max-height: 400px;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light sticky-top">
+                            <tr class="text-muted text-xxs text-uppercase">
+                                <th class="ps-3" style="width: 15%;">Emp. ID</th>
+                                <th style="width: 35%;">Staff Member</th>
+                                <th style="width: 25%;">Designation</th>
+                                <th class="pe-3" style="width: 25%;">Branches</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staffStatusModalTableBody">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0 p-2">
+                <button type="button" class="btn btn-secondary btn-xs rounded-pill px-3 py-1" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 5. Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-danger text-white border-0">
+                <h6 class="modal-title fw-bold" id="deleteConfirmModalLabel"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Delete</h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="deleteForm" method="post" action="">
+                {% csrf_token %}
+                <div class="modal-body p-4 text-center">
+                    <p class="mb-0">Are you sure you want to delete <strong id="deleteTargetName" class="text-danger"></strong>?</p>
+                    <p class="x-small text-muted mt-2">This action is permanent and cannot be undone.</p>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3 d-flex justify-content-center">
+                    <button type="button" class="btn btn-secondary rounded-pill px-3 py-1" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-3 py-1">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showStaffStatusModal(status) {
+        const modalTitle = document.getElementById('staffStatusModalTitle');
+        const modalBody = document.getElementById('staffStatusModalTableBody');
+        if (!modalTitle || !modalBody) return;
+
+        modalTitle.innerHTML = status === 'online' ? '<i class="bi bi-people-fill me-2"></i>Online Staff Members' : '<i class="bi bi-people-fill me-2"></i>Offline Staff Members';
+        modalBody.innerHTML = '';
+
+        const isOnlineTarget = (status === 'online');
+        const rows = document.querySelectorAll('.staff-row');
+        let count = 0;
+
+        rows.forEach(row => {
+            const isOnline = row.dataset.online === 'true';
+            if (isOnline === isOnlineTarget) {
+                count++;
+                const empId = row.querySelector('.staff-emp-id').textContent.trim();
+                const username = row.querySelector('.staff-username').textContent.trim();
+                const name = row.querySelector('.staff-name').textContent.trim();
+                
+                // Get role badge text
+                const roleBadge = row.querySelector('[data-label="Role"] span');
+                const roleText = roleBadge ? roleBadge.textContent.trim() : 'Sales Staff';
+                
+                // Get branches
+                const branchBadges = row.querySelectorAll('[data-label="Branches"] span');
+                let branchesList = [];
+                branchBadges.forEach(badge => {
+                    branchesList.push(badge.textContent.trim());
+                });
+                const branchesText = branchesList.length > 0 ? branchesList.join(', ') : 'None';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-xs fw-bold text-muted ps-3">${empId}</td>
+                    <td class="text-xs">
+                        <span class="fw-bold text-primary">${username}</span><br>
+                        <small class="text-secondary">${name}</small>
+                    </td>
+                    <td class="text-xs"><span class="badge bg-light text-dark border rounded-pill px-2.5 py-0.5">${roleText}</span></td>
+                    <td class="text-xs text-wrap pe-3">${branchesText}</td>
+                `;
+                modalBody.appendChild(tr);
+            }
+        });
+
+        if (count === 0) {
+            modalBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted text-xs p-3">No staff members are currently ${status}.</td></tr>`;
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('staffStatusDetailsModal'));
+        modal.show();
+    }
+
+    function togglePasswordVisibility(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const icon = btn.querySelector('i');
+        if (input && icon) {
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('bi-eye-slash-fill');
+                icon.classList.add('bi-eye-fill');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('bi-eye-fill');
+                icon.classList.add('bi-eye-slash-fill');
+            }
+        }
+    }
+    
+    function openEditBranchModal(id, name, location, contact, prefix) {
+        document.getElementById('editBranchForm').action = `/users/branch/edit/${id}/`;
+        document.getElementById('editBranchName').value = name;
+        document.getElementById('editBranchLocation').value = location;
+        document.getElementById('editBranchContact').value = contact === 'None' ? '' : contact;
+        document.getElementById('editBranchPrefix').value = prefix;
+        
+        const modal = new bootstrap.Modal(document.getElementById('editBranchModal'));
+        modal.show();
+    }
+
+    function confirmDelete(url, name) {
+        const deleteForm = document.getElementById('deleteForm');
+        if (deleteForm) {
+            deleteForm.action = url;
+        }
+        const targetNameElem = document.getElementById('deleteTargetName');
+        if (targetNameElem) {
+            targetNameElem.textContent = name;
+        }
+        const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        modal.show();
+    }
+
+    function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId, mobileNumber, address, dateOfJoining, hasPosAccess, hasAttendanceAccess) {
+        document.getElementById('editStaffForm').action = `/users/staff/edit/${id}/`;
+        document.getElementById('editStaffUsername').value = username;
+        document.getElementById('editStaffFirstName').value = firstName;
+        document.getElementById('editStaffLastName').value = lastName;
+        document.getElementById('editStaffPassword').value = '';
+        document.getElementById('editStaffEmployeeId').value = (employeeId === 'None' || !employeeId) ? '' : employeeId;
+        document.getElementById('editStaffMobileNumber').value = (mobileNumber === 'None' || !mobileNumber) ? '' : mobileNumber;
+        document.getElementById('editStaffAddress').value = (address === 'None' || !address) ? '' : address;
+        document.getElementById('editStaffDateOfJoining').value = (dateOfJoining === 'None' || !dateOfJoining) ? '' : dateOfJoining;
+        document.getElementById('editStaffPosAccess').checked = hasPosAccess;
+        document.getElementById('editStaffAttendanceAccess').checked = hasAttendanceAccess;
+
+        const roleEl = document.getElementById('editStaffRole');
+        if (roleEl && roleEl.tomselect) {
+            roleEl.tomselect.setValue(role, true);
+        } else if (roleEl) {
+            roleEl.value = role;
+        }
+
+        const picker = document.getElementById('branchPickerEdit');
+        const checkboxes = picker.querySelectorAll('input[type="checkbox"]');
+        const assignedIds = branchIdsStr ? branchIdsStr.split(',').map(s => s.trim()) : [];
+        checkboxes.forEach(function(cb) {
+            cb.checked = assignedIds.includes(cb.value);
+        });
+        const searchInput = picker.querySelector('.branch-search');
+        if (searchInput) { searchInput.value = ''; }
+        picker.querySelectorAll('.branch-item').forEach(el => el.style.display = '');
+        const noMatch = picker.querySelector('.no-match');
+        if (noMatch) noMatch.style.display = 'none';
+
+        const modal = new bootstrap.Modal(document.getElementById('editStaffModal'));
+        modal.show();
+    }
+
+    function toggleStaffActive(staffId, isActive) {
+        const csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (!csrfEl) { alert('CSRF token not found.'); return; }
+        fetch(`/users/staff/toggle/${staffId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfEl.value
+            },
+            body: JSON.stringify({ is_active: isActive })
+        })
+        .then(response => {
+            if (response.redirected || response.status === 401 || response.status === 302) {
+                alert('Session expired. Please reload the page to log in again.');
+                window.location.reload();
+                return;
+            }
+            if (!response.ok) {
+                throw new Error('Server returned error status ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.status !== 'success') {
+                alert('Failed to update status.');
+            }
+        })
+        .catch((err) => {
+            console.error(err);
+            alert('Failed to update status. Please check your connection or session.');
+        });
+    }
+
+    function togglePosAccess(staffId, hasPosAccess) {
+        const csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (!csrfEl) { alert('CSRF token not found.'); return; }
+        fetch(`/users/staff/toggle-pos-access/${staffId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfEl.value
+            },
+            body: JSON.stringify({ has_pos_access: hasPosAccess })
+        })
+        .then(response => {
+            if (response.redirected || response.status === 401 || response.status === 302) {
+                alert('Session expired. Please reload the page to log in again.');
+                window.location.reload();
+                return;
+            }
+            if (!response.ok) {
+                throw new Error('Server returned error status ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.status !== 'success') {
+                alert('Failed to update POS access.');
+            }
+        })
+        .catch((err) => {
+            console.error(err);
+            alert('Failed to update POS access. Please check your connection or session.');
+        });
+    }
+
+    function toggleAttendanceAccess(staffId, hasAttendanceAccess) {
+        const csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (!csrfEl) { alert('CSRF token not found.'); return; }
+        fetch(`/users/staff/toggle-attendance-access/${staffId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfEl.value
+            },
+            body: JSON.stringify({ has_attendance_access: hasAttendanceAccess })
+        })
+        .then(response => {
+            if (response.redirected || response.status === 401 || response.status === 302) {
+                alert('Session expired. Please reload the page to log in again.');
+                window.location.reload();
+                return;
+            }
+            if (!response.ok) {
+                throw new Error('Server returned error status ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.status !== 'success') {
+                alert('Failed to update Attendance access.');
+            }
+        })
+        .catch((err) => {
+            console.error(err);
+            alert('Failed to update Attendance access. Please check your connection or session.');
+        });
+    }
+
+    function toggleProductRights(staffId, hasProductRights) {
+        const csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (!csrfEl) { alert('CSRF token not found.'); return; }
+        fetch(`/users/staff/toggle-product-rights/${staffId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfEl.value
+            },
+            body: JSON.stringify({ has_product_rights: hasProductRights })
+        })
+        .then(response => {
+            if (response.redirected || response.status === 401 || response.status === 302) {
+                alert('Session expired. Please reload the page to log in again.');
+                window.location.reload();
+                return;
+            }
+            if (!response.ok) {
+                throw new Error('Server returned error status ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.status !== 'success') {
+                alert('Failed to update product rights.');
+            }
+        })
+        .catch((err) => {
+            console.error(err);
+            alert('Failed to update product rights. Please check your connection or session.');
+        });
+    }
+
+    let currentStaffPage = 1;
+    let currentBranchPage = 1;
+    const rowsPerPage = 10;
+
+    function renderPagination(navId, totalItems, currentPage, onPageChange) {
+        const nav = document.getElementById(navId);
+        if (!nav) return;
+        nav.innerHTML = '';
+        
+        const totalPages = Math.ceil(totalItems / rowsPerPage);
+        if (totalPages <= 1) {
+            return;
+        }
+        
+        const ul = document.createElement('ul');
+        ul.className = 'pagination pagination-sm justify-content-center mb-0';
+        
+        if (currentPage > 1) {
+            const li = document.createElement('li');
+            li.className = 'page-item';
+            const a = document.createElement('a');
+            a.className = 'page-link rounded-pill border-0 shadow-sm px-2.5 mx-1';
+            a.href = '#';
+            a.textContent = 'Previous';
+            a.onclick = function(e) {
+                e.preventDefault();
+                onPageChange(currentPage - 1);
+            };
+            li.appendChild(a);
+            ul.appendChild(li);
+        }
+        
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                const li = document.createElement('li');
+                if (i === currentPage) {
+                    li.className = 'page-item active';
+                    const span = document.createElement('span');
+                    span.className = 'page-link rounded-pill border-0 shadow px-2.5 mx-1 bg-primary text-white';
+                    span.textContent = i;
+                    li.appendChild(span);
+                } else {
+                    li.className = 'page-item';
+                    const a = document.createElement('a');
+                    a.className = 'page-link rounded-pill border-0 shadow-sm px-2.5 mx-1';
+                    a.href = '#';
+                    a.textContent = i;
+                    a.onclick = function(e) {
+                        e.preventDefault();
+                        onPageChange(i);
+                    };
+                    li.appendChild(a);
+                }
+                ul.appendChild(li);
+            } else if (i === currentPage - 3 || i === currentPage + 3) {
+                const li = document.createElement('li');
+                li.className = 'page-item disabled';
+                const span = document.createElement('span');
+                span.className = 'page-link rounded-pill border-0 px-2 mx-1 text-muted bg-transparent';
+                span.textContent = '...';
+                li.appendChild(span);
+                ul.appendChild(li);
+            }
+        }
+        
+        if (currentPage < totalPages) {
+            const li = document.createElement('li');
+            li.className = 'page-item';
+            const a = document.createElement('a');
+            a.className = 'page-link rounded-pill border-0 shadow-sm px-2.5 mx-1';
+            a.href = '#';
+            a.textContent = 'Next';
+            a.onclick = function(e) {
+                e.preventDefault();
+                onPageChange(currentPage + 1);
+            };
+            li.appendChild(a);
+            ul.appendChild(li);
+        }
+        
+        nav.appendChild(ul);
+    }
+
+    window.selectBranchFilter = function(val, label, el) {
+        document.getElementById('branchFilterSelect').value = val;
+        document.getElementById('branchFilterBtn').innerHTML = `<i class="bi bi-shop me-1"></i> ${label}`;
+        const dropdown = el.closest('.dropdown-menu');
+        dropdown.querySelectorAll('.dropdown-item').forEach(item => item.classList.remove('active'));
+        el.classList.add('active');
+        filterStaff();
+    };
+
+    window.selectRoleFilter = function(val, label, el) {
+        document.getElementById('roleFilterSelect').value = val;
+        document.getElementById('roleFilterBtn').innerHTML = `<i class="bi bi-person-badge me-1"></i> ${label}`;
+        const dropdown = el.closest('.dropdown-menu');
+        dropdown.querySelectorAll('.dropdown-item').forEach(item => item.classList.remove('active'));
+        el.classList.add('active');
+        filterStaff();
+    };
+
+    function filterStaff(resetPage = true) {
+        if (resetPage) {
+            currentStaffPage = 1;
+        }
+        const searchVal = document.getElementById('staffSearchInput').value.toLowerCase();
+        const branchVal = document.getElementById('branchFilterSelect').value;
+        const roleVal = document.getElementById('roleFilterSelect').value;
+        
+        const matchedRows = [];
+        
+        document.querySelectorAll('.staff-row').forEach(function(row) {
+            const username = row.querySelector('.staff-username').textContent.toLowerCase();
+            const name = row.querySelector('.staff-name').textContent.toLowerCase();
+            const empId = row.querySelector('.staff-emp-id').textContent.toLowerCase();
+            const matchesSearch = (searchVal === '') || username.includes(searchVal) || name.includes(searchVal) || empId.includes(searchVal);
+            const matchesBranch = (branchVal === 'all') || row.dataset.branches === 'all' || row.dataset.branches.includes(branchVal);
+            const matchesRole = (roleVal === 'all') || (row.dataset.role === roleVal);
+            
+            if (matchesSearch && matchesBranch && matchesRole) {
+                matchedRows.push(row);
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        let onlineCount = 0;
+        let offlineCount = 0;
+        matchedRows.forEach(function(row) {
+            if (row.dataset.online === 'true') {
+                onlineCount++;
+            } else {
+                offlineCount++;
+            }
+        });
+        
+        const onlineEl = document.getElementById('onlineStaffCount');
+        const offlineEl = document.getElementById('offlineStaffCount');
+        if (onlineEl) onlineEl.textContent = onlineCount;
+        if (offlineEl) offlineEl.textContent = offlineCount;
+
+        const totalItems = matchedRows.length;
+        const startIndex = totalItems === 0 ? 0 : (currentStaffPage - 1) * rowsPerPage;
+        const endIndex = Math.min(startIndex + rowsPerPage, totalItems);
+        
+        matchedRows.forEach(function(row, index) {
+            if (index >= startIndex && index < endIndex) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        const info = document.getElementById('staff-count-info');
+        if (info) {
+            if (totalItems === 0) {
+                info.textContent = 'Showing 0 to 0 of 0 staff accounts';
+            } else {
+                info.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${totalItems} staff accounts`;
+            }
+        }
+        
+        renderPagination('staff-pagination-nav', totalItems, currentStaffPage, function(newPage) {
+            currentStaffPage = newPage;
+            filterStaff(false);
+        });
+    }
+
+    function filterBranches(resetPage = true) {
+        if (resetPage) {
+            currentBranchPage = 1;
+        }
+        const searchVal = document.getElementById('branchSearchInput').value.toLowerCase();
+        
+        const matchedRows = [];
+        
+        document.querySelectorAll('.branch-row').forEach(function(row) {
+            const code = row.querySelector('.branch-code').textContent.toLowerCase();
+            const name = row.querySelector('.branch-name').textContent.toLowerCase();
+            
+            const matchesSearch = (searchVal === '') || code.includes(searchVal) || name.includes(searchVal);
+            
+            if (matchesSearch) {
+                matchedRows.push(row);
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        const totalItems = matchedRows.length;
+        const startIndex = totalItems === 0 ? 0 : (currentBranchPage - 1) * rowsPerPage;
+        const endIndex = Math.min(startIndex + rowsPerPage, totalItems);
+        
+        matchedRows.forEach(function(row, index) {
+            if (index >= startIndex && index < endIndex) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        const info = document.getElementById('branch-count-info');
+        if (info) {
+            if (totalItems === 0) {
+                info.textContent = 'Showing 0 to 0 of 0 branches';
+            } else {
+                info.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${totalItems} branches`;
+            }
+        }
+        
+        renderPagination('branch-pagination-nav', totalItems, currentBranchPage, function(newPage) {
+            currentBranchPage = newPage;
+            filterBranches(false);
+        });
+    }
+
+    function filterBranchPicker(pickerId, query) {
+        const picker = document.getElementById(pickerId);
+        const items = picker.querySelectorAll('.branch-item');
+        const noMatch = picker.querySelector('.no-match');
+        const q = query.toLowerCase();
+        let visible = 0;
+        items.forEach(function(item) {
+            const label = item.querySelector('label').textContent.toLowerCase();
+            if (label.includes(q)) {
+                item.style.display = '';
+                visible++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        if (noMatch) {
+            noMatch.style.display = visible === 0 ? 'block' : 'none';
+        }
+    }
+
+    function initOwnerDashboard() {
+        // Tab switching is handled via sidebar navigation query parameters
+
+        function handleAjaxFormSubmit(formId) {
+            const form = document.getElementById(formId);
+            if (!form) return;
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                form.querySelectorAll('.error-message').forEach(el => el.remove());
+                form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+                
+                const formData = new FormData(form);
+                formData.append('ajax', 'true');
+                
+                fetch(form.action || window.location.href, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                })
+                .then(response => {
+                    if (response.redirected || response.status === 401 || response.status === 302) {
+                        alert('Session expired. Please reload the page to log in again.');
+                        window.location.reload();
+                        return null;
+                    }
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error('Server returned an unexpected non-JSON response.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data) return;
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        for (const [field, errorList] of Object.entries(data.errors)) {
+                            const input = form.querySelector(`[name="${field}"]`);
+                            if (input) {
+                                input.classList.add('is-invalid');
+                                const errDiv = document.createElement('div');
+                                errDiv.className = 'text-danger x-small mt-1 error-message fw-bold';
+                                errDiv.textContent = errorList.join(' ');
+                                
+                                const parent = input.parentElement;
+                                if (parent.classList.contains('position-relative') || parent.classList.contains('input-group')) {
+                                    parent.after(errDiv);
+                                } else if (input.type === 'checkbox' && input.name === 'branches') {
+                                    const picker = form.querySelector('.branch-picker');
+                                    if (picker) {
+                                        picker.after(errDiv);
+                                    } else {
+                                        input.after(errDiv);
+                                    }
+                                } else {
+                                    input.after(errDiv);
+                                }
+                            } else if (field === '__all__') {
+                                const errorAlert = document.createElement('div');
+                                errorAlert.className = 'alert alert-danger x-small py-2 mt-2 error-message fw-bold';
+                                errorAlert.textContent = errorList.join(' ');
+                                form.querySelector('.modal-body').prepend(errorAlert);
+                            }
+                        }
+
+                        setTimeout(() => {
+                            const firstErr = form.querySelector('.error-message, .is-invalid');
+                            if (firstErr) {
+                                firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }, 55);
+                    }
+                })
+                .catch(err => {
+                    console.error('AJAX form submission error:', err);
+                    alert('An unexpected error occurred. Please try again.');
+                });
+            });
+        }
+        
+        handleAjaxFormSubmit('addStaffForm');
+        handleAjaxFormSubmit('editStaffForm');
+        handleAjaxFormSubmit('addBranchForm');
+        handleAjaxFormSubmit('editBranchForm');
+
+        function enforceSingleBranchForStaff(modalId, roleSelectId, pickerId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            const roleSelect = modal.querySelector(`#${roleSelectId}`);
+            const picker = modal.querySelector(`#${pickerId}`);
+            if (!roleSelect || !picker) return;
+
+            function checkRules() {
+                if (roleSelect.value === 'sales_staff') {
+                    const checkedCheckboxes = picker.querySelectorAll('input[type="checkbox"]:checked');
+                    if (checkedCheckboxes.length > 1) {
+                        for (let i = 1; i < checkedCheckboxes.length; i++) {
+                            checkedCheckboxes[i].checked = false;
+                        }
+                    }
+                }
+            }
+
+            roleSelect.addEventListener('change', checkRules);
+
+            picker.addEventListener('change', function(e) {
+                if (e.target.type === 'checkbox' && roleSelect.value === 'sales_staff' && e.target.checked) {
+                    const checkboxes = picker.querySelectorAll('input[type="checkbox"]');
+                    checkboxes.forEach(cb => {
+                        if (cb !== e.target) {
+                            cb.checked = false;
+                        }
+                    });
+                }
+            });
+
+            checkRules();
+        }
+
+        enforceSingleBranchForStaff('addStaffModal', 'id_role', 'branchPickerAdd');
+        enforceSingleBranchForStaff('editStaffModal', 'editStaffRole', 'branchPickerEdit');
+    }
+
+    function openSetGoalModal(branchId, branchName, currentGoal) {
+        document.getElementById('goalBranchId').value = branchId;
+        document.getElementById('goalBranchName').value = branchName;
+        
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const currentMonthStr = `${year}-${month}`;
+        document.getElementById('goalMonth').value = currentMonthStr;
+        document.getElementById('goalTargetSales').value = currentGoal > 0 ? currentGoal : '';
+        
+        fetchGoalSuggestion();
+        
+        const modal = new bootstrap.Modal(document.getElementById('setBranchGoalModal'));
+        modal.show();
+    }
+
+    function fetchGoalSuggestion() {
+        const branchId = document.getElementById('goalBranchId').value;
+        const monthStr = document.getElementById('goalMonth').value;
+        if (!branchId || !monthStr) return;
+        
+        document.getElementById('goalSuggestedVal').textContent = 'Loading...';
+        document.getElementById('goalPrevSales').textContent = 'Loading...';
+        
+        fetch("{% url 'get_suggested_goal_ajax' %}?branch_id=" + branchId + "&month=" + monthStr)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('goalSuggestedVal').textContent = data.suggested_sales;
+                    document.getElementById('goalPrevSales').textContent = '₹' + data.previous_sales;
+                    document.getElementById('goalSuggestedVal').dataset.val = data.suggested_sales;
+                } else {
+                    document.getElementById('goalSuggestedVal').textContent = 'Error';
+                    document.getElementById('goalPrevSales').textContent = 'Error';
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching suggestions:', err);
+                document.getElementById('goalSuggestedVal').textContent = 'Error';
+                document.getElementById('goalPrevSales').textContent = 'Error';
+            });
+    }
+
+    function applyGoalSuggestion() {
+        const val = document.getElementById('goalSuggestedVal').dataset.val;
+        if (val) {
+            document.getElementById('goalTargetSales').value = val;
+        }
+    }
+
+    function saveBranchGoal(event) {
+        event.preventDefault();
+        const form = document.getElementById('branchGoalForm');
+        const formData = new FormData(form);
+        
+        fetch("{% url 'set_branch_goal_ajax' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Error saving branch goal: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(err => {
+            console.error('Error saving goal:', err);
+            alert('An unexpected error occurred.');
+        });
+    }
+
+    function quickAutoSetGoal(branchId) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const currentMonthStr = `${year}-${month}`;
+        
+        const btn = event.currentTarget;
+        if (btn) btn.disabled = true;
+        
+        fetch("{% url 'get_suggested_goal_ajax' %}?branch_id=" + branchId + "&month=" + currentMonthStr)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const targetVal = data.suggested_sales;
+                    
+                    const formData = new FormData();
+                    formData.append('branch_id', branchId);
+                    formData.append('month', currentMonthStr);
+                    formData.append('target_sales', targetVal);
+                    
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    formData.append('csrfmiddlewaretoken', csrfToken);
+                    
+                    return fetch("{% url 'set_branch_goal_ajax' %}", {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                } else {
+                    throw new Error(data.error || 'Failed to calculate suggestion.');
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                    if (btn) btn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error('Quick set goal failed:', err);
+                alert('Failed to set goal: ' + err.message);
+                if (btn) btn.disabled = false;
+            });
+    }
+
+    function pollStaffOnlineStatus() {
+        fetch("{% url 'staff_online_status' %}")
+            .then(res => res.json())
+            .then(data => {
+                for (const [staffId, isOnline] of Object.entries(data)) {
+                    const row = document.getElementById(`staff-row-${staffId}`);
+                    if (!row) continue;
+                    
+                    row.setAttribute('data-online', isOnline ? 'true' : 'false');
+                    
+                    const activityCell = row.querySelector('td[data-label="Activity"]');
+                    if (activityCell) {
+                        const currentlyOnline = activityCell.querySelector('.bg-success-subtle') !== null;
+                        if (isOnline !== currentlyOnline) {
+                            if (isOnline) {
+                                activityCell.innerHTML = `
+                                    <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-0.5 text-xxs">
+                                        <i class="bi bi-circle-fill me-1" style="font-size: 6px; vertical-align: middle;"></i>Online
+                                    </span>
+                                `;
+                            } else {
+                                activityCell.innerHTML = `
+                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5 py-0.5 text-xxs">
+                                        <i class="bi bi-circle-fill me-1" style="font-size: 6px; vertical-align: middle;"></i>Offline
+                                    </span>
+                                `;
+                            }
+                        }
+                    }
+                }
+            })
+            .catch(err => console.error("Error polling staff status:", err));
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initOwnerDashboard();
+            pollStaffOnlineStatus();
+            setInterval(pollStaffOnlineStatus, 10000);
+        });
+    } else {
+        initOwnerDashboard();
+        pollStaffOnlineStatus();
+        setInterval(pollStaffOnlineStatus, 10000);
+    }
+</script>
+
+<!-- Create Role Modal -->
+<div class="modal fade" id="createRoleModal" tabindex="-1" aria-labelledby="createRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0" style="background:linear-gradient(135deg,#7c3aed,#a855f7);">
+                <h5 class="modal-title fw-bold text-white" id="createRoleModalLabel">
+                    <i class="bi bi-shield-plus me-2"></i>Create Custom Role
+                </h5>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createRoleForm" method="post" action="{% url 'role_create' %}">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-uppercase text-muted">Role Name</label>
+                        <input type="text" name="name" id="roleNameInput" class="form-control rounded-3" placeholder="e.g. CCTV Operator, Accounts, Security" required>
+                        <div class="form-text">This name will appear in the role dropdown when adding staff.</div>
+                    </div>
+                    <p class="fw-semibold small text-muted text-uppercase mb-2">Permissions</p>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="form-check p-3 rounded-3 border">
+                                <input class="form-check-input" type="checkbox" name="has_pos_access" id="rolePosCb" checked>
+                                <label class="form-check-label small fw-semibold" for="rolePosCb">
+                                    <i class="bi bi-receipt me-1 text-primary"></i>POS / Billing Access
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check p-3 rounded-3 border">
+                                <input class="form-check-input" type="checkbox" name="has_attendance_access" id="roleAttCb" checked>
+                                <label class="form-check-label small fw-semibold" for="roleAttCb">
+                                    <i class="bi bi-clock me-1 text-success"></i>Attendance Access
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check p-3 rounded-3 border">
+                                <input class="form-check-input" type="checkbox" name="has_all_branches_access" id="roleAllBrCb">
+                                <label class="form-check-label small fw-semibold" for="roleAllBrCb">
+                                    <i class="bi bi-diagram-3 me-1 text-warning"></i>All Branches Access
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check p-3 rounded-3 border">
+                                <input class="form-check-input" type="checkbox" name="has_product_rights" id="roleProdCb">
+                                <label class="form-check-label small fw-semibold" for="roleProdCb">
+                                    <i class="bi bi-box me-1 text-info"></i>Product Rights
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check p-3 rounded-3 border">
+                                <input class="form-check-input" type="checkbox" name="has_bill_edit_rights" id="roleBillCb">
+                                <label class="form-check-label small fw-semibold" for="roleBillCb">
+                                    <i class="bi bi-pencil me-1 text-danger"></i>Bill Edit Rights
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn rounded-pill px-4 text-white fw-bold" style="background:linear-gradient(135deg,#7c3aed,#a855f7);">Create Role</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

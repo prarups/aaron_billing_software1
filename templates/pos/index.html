@@ -32,6 +32,56 @@
     .qty-control {
         width: 100px;
     }
+    /* Premium Qty Adjuster styles */
+    .qty-adjuster {
+        display: inline-flex;
+        align-items: center;
+        background: #f1f5f9;
+        border-radius: 20px;
+        padding: 2px;
+        border: 1px solid #e2e8f0;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    .qty-btn {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: none;
+        background: #ffffff;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: all 0.15s ease-in-out;
+        padding: 0;
+        line-height: 1;
+    }
+    .qty-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    }
+    .qty-btn:active {
+        transform: scale(0.95);
+    }
+    .qty-btn-minus:hover {
+        background: #ef4444 !important;
+        color: #ffffff !important;
+    }
+    .qty-btn-plus:hover {
+        background: #10b981 !important;
+        color: #ffffff !important;
+    }
+    .qty-value {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #1e293b;
+        min-width: 18px;
+        text-align: center;
+        user-select: none;
+    }
     .btn-xs {
         padding: 0.15rem 0.45rem;
         font-size: 0.75rem;
@@ -152,6 +202,34 @@
     transform: translateY(-3px);
     box-shadow: var(--card-shadow);
 }
+
+/* Sticky Cart and Viewport Sizing for POS Desktop */
+@media (min-width: 992px) {
+    #section-cart {
+        position: sticky;
+        top: 85px; /* Aligns neatly below navbar */
+        height: calc(100vh - 115px);
+        display: flex !important;
+        flex-direction: column;
+    }
+    .cart-card {
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+    }
+    .cart-card .card-body {
+        flex-grow: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+    }
+    #cart-container {
+        flex-grow: 1 !important;
+        max-height: none !important;
+        overflow-y: auto !important;
+    }
+}
 </style>
 {% endblock %}
 
@@ -174,11 +252,11 @@
 
     <div class="row g-3 pos-container">
         <!-- POS Catalog (Left Side on Desktop) -->
-        <div class="col-lg-7" id="section-catalog">
+        <div class="col-lg-5" id="section-catalog">
             <div class="glass-card p-4 mb-3 border-0 shadow-sm">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="fw-bold m-0 text-primary"><i class="bi bi-search me-2"></i>Search Items</h5>
-                    <button class="btn btn-vibrant btn-sm rounded-pill px-3 shadow-sm" id="toggle-scanner">
+                    <button class="btn btn-outline-primary btn-xs rounded-pill px-2.5 py-1 text-xxs shadow-none" id="toggle-scanner" style="border: 1.5px solid rgba(79, 70, 229, 0.4);">
                         <i class="bi bi-camera me-1"></i> Scan
                     </button>
                 </div>
@@ -191,10 +269,10 @@
                 <!-- Manual Search -->
                 <div class="row g-2">
                     <div class="col-8 col-md-9">
-                        <input type="text" id="barcode-input" class="form-control rounded-pill border-0 shadow-sm bg-light py-2 px-4" placeholder="Search by name or enter barcode...">
+                        <input type="text" id="barcode-input" class="form-control rounded-pill border-0 shadow-sm bg-light py-1.5 px-3 text-xs" placeholder="Search by name or enter barcode...">
                     </div>
                     <div class="col-4 col-md-3">
-                        <button class="btn btn-vibrant w-100 rounded-pill shadow-sm py-2" id="add-by-barcode">Add</button>
+                        <button class="btn btn-vibrant w-100 rounded-pill shadow-sm py-1.5 text-xs fw-bold" id="add-by-barcode">Add</button>
                     </div>
                 </div>
                 <!-- Hidden input for hardware scanner -->
@@ -263,7 +341,7 @@
         </div>
 
         <!-- Cart (Right Side on Desktop) -->
-        <div class="col-lg-5 d-none d-lg-block" id="section-cart">
+        <div class="col-lg-7 d-none d-lg-block" id="section-cart">
             <div class="glass-card h-100 d-flex flex-column shadow-sm border-0 cart-card">
                 <div class="card-header bg-transparent py-4 px-4 border-0 d-flex justify-content-between align-items-center">
                     <h5 class="fw-bold m-0 text-primary"><i class="bi bi-bag-check-fill me-2"></i>Checkout</h5>
@@ -307,67 +385,65 @@
                                 onclick="clearExchangeCustomer()" title="Clear exchange info"></button>
                     </div>
                     {% endif %}
-
-                  <form id="pos-form">
-    <div class="glass-card p-3 mb-3 bg-light bg-opacity-50 border-0">
+                   <form id="pos-form">
+    <div class="glass-card p-2.5 mb-2 bg-light bg-opacity-50 border-0">
         <div class="row g-2">
-            <div class="col-12">
+            <div class="col-6">
                 <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-white border-0 rounded-pill-sm me-1"><i class="bi bi-person"></i></span>
-                    <input type="text" name="customer_name" id="customer-name" class="form-control form-control-sm rounded-pill-sm bg-white border-0" placeholder="Customer Name (Optional)" autofocus>
+                    <span class="input-group-text bg-white border-0 rounded-pill-sm me-1" style="padding: 0.2rem 0.35rem;"><i class="bi bi-person"></i></span>
+                    <input type="text" name="customer_name" id="customer-name" class="form-control form-control-sm rounded-pill-sm bg-white border-0 px-2" placeholder="Name" autofocus>
                 </div>
             </div>
-            <div class="col-12">
+            <div class="col-6">
                 <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-white border-0 rounded-pill-sm me-1"><i class="bi bi-whatsapp"></i></span>
-                    <input type="text" name="customer_phone" id="customer-phone" class="form-control form-control-sm rounded-pill-sm bg-white border-0" placeholder="Phone Number (Optional)">
+                    <span class="input-group-text bg-white border-0 rounded-pill-sm me-1" style="padding: 0.2rem 0.35rem;"><i class="bi bi-whatsapp"></i></span>
+                    <input type="text" name="customer_phone" id="customer-phone" class="form-control form-control-sm rounded-pill-sm bg-white border-0 px-2" placeholder="Phone">
                 </div>
             </div>
         </div>
     </div>
 </form>
                     
-                    <div class="mb-3">
+                    <div class="mb-2">
                         <div class="btn-group w-100 shadow-sm" role="group">
                             <input type="radio" class="btn-check" name="payment_method" id="pay-cash" value="cash" checked autocomplete="off">
-                            <label class="btn btn-outline-secondary border-0 py-2 rounded-start-pill" for="pay-cash">CASH</label>
+                            <label class="btn btn-outline-secondary border-0 py-1.5 rounded-start-pill text-xs" for="pay-cash">CASH</label>
                             
                             <input type="radio" class="btn-check" name="payment_method" id="pay-online" value="online" autocomplete="off">
-                            <label class="btn btn-outline-secondary border-0 py-2" for="pay-online">ONLINE</label>
+                            <label class="btn btn-outline-secondary border-0 py-1.5 text-xs" for="pay-online">ONLINE</label>
 
                             <input type="radio" class="btn-check" name="payment_method" id="pay-split" value="split" autocomplete="off">
-                            <label class="btn btn-outline-secondary border-0 py-2 rounded-end-pill" for="pay-split">SPLIT</label>
+                            <label class="btn btn-outline-secondary border-0 py-1.5 rounded-end-pill text-xs" for="pay-split">SPLIT</label>
                         </div>
                     </div>
 
                     <!-- Split Payment Inputs -->
-                    <div id="split-inputs" class="glass-card p-3 mb-3 bg-light bg-opacity-50 border-0 d-none animate-fade-in">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <label class="form-label x-small text-muted text-uppercase fw-bold mb-0">Split Amounts</label>
+                    <div id="split-inputs" class="glass-card p-2.5 mb-2 bg-light bg-opacity-50 border-0 d-none animate-fade-in">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label x-small text-muted text-uppercase fw-bold mb-0" style="font-size: 0.65rem;">Split Amounts</label>
                             <span class="badge bg-info-subtle text-info fw-bold text-xxs" id="split-remaining-label">Remaining: ₹0</span>
                         </div>
                         <div class="row g-2">
                             <div class="col-6">
                                 <div class="input-group input-group-sm">
-                                    <span class="input-group-text bg-white border-0 small">Cash</span>
-                                    <input type="number" step="1" id="split-cash" class="form-control form-control-sm border-0 px-2" placeholder="0" onfocus="this.select()" oninput="calculateSplit('cash')">
+                                    <span class="input-group-text bg-white border-0 small py-0.5 px-1.5" style="font-size: 0.7rem;">Cash</span>
+                                    <input type="number" step="1" id="split-cash" class="form-control form-control-sm border-0 px-1.5" placeholder="0" onfocus="this.select()" oninput="calculateSplit('cash')">
                                 </div>
                             </div>
                             <div class="col-6">
                                 <div class="input-group input-group-sm">
-                                    <span class="input-group-text bg-white border-0 small">Online</span>
-                                    <input type="number" step="1" id="split-online" class="form-control form-control-sm border-0 px-2" placeholder="0" onfocus="this.select()" oninput="calculateSplit('online')">
+                                    <span class="input-group-text bg-white border-0 small py-0.5 px-1.5" style="font-size: 0.7rem;">Online</span>
+                                    <input type="number" step="1" id="split-online" class="form-control form-control-sm border-0 px-1.5" placeholder="0" onfocus="this.select()" oninput="calculateSplit('online')">
                                 </div>
                             </div>
                         </div>
-                        <div id="split-warning" class="x-small text-danger mt-2 d-none fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Sum must match total!</div>
+                        <div id="split-warning" class="x-small text-danger mt-1.5 d-none fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Sum must match total!</div>
                     </div>
                     
-                    <div class="glass-card p-3 mb-3 bg-light bg-opacity-50 border-0 animate-fade-in">
-                        <label class="form-label x-small text-muted text-uppercase fw-bold mb-2">Retail Price</label>
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-white border-0 small">₹</span>
-                            <input type="number" id="retail-price" class="form-control form-control-sm border-0 px-2" placeholder="0" min="0" oninput="if(this.value < 0) this.value = 0; renderCart()">
+                    <div class="glass-card p-2 mb-2 bg-light bg-opacity-50 border-0">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <label class="form-label x-small text-muted text-uppercase fw-bold mb-0" style="font-size: 0.7rem;"><i class="bi bi-tag me-1"></i>Retail Price (₹)</label>
+                            <input type="number" id="retail-price" class="form-control form-control-sm border-0 px-2 rounded-pill bg-white text-xs text-end" placeholder="0" min="0" oninput="if(this.value < 0) this.value = 0; renderCart()" style="max-width: 110px; height: 26px;">
                         </div>
                     </div>
                     
@@ -377,13 +453,13 @@
                         <span class="text-success small fw-bold">YOU SAVE</span>
                         <span class="text-success small fw-bold" id="cart-savings">₹0</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <span class="text-muted fw-bold">FINAL TOTAL</span>
-                        <h3 class="fw-bold text-primary mb-0" id="cart-total">₹0</h3>
+                    <div class="d-flex justify-content-between align-items-center mb-2.5">
+                        <span class="text-muted fw-bold text-xxs" style="letter-spacing: 0.05em;">FINAL TOTAL</span>
+                        <h4 class="fw-bold text-primary mb-0" id="cart-total" style="font-size: 1.35rem;">₹0</h4>
                     </div>
                     
-                    <button class="btn btn-vibrant w-100 rounded-pill py-3 fw-bold shadow-lg" id="checkout-btn" disabled>
-                        <i class="bi bi-check-all fs-4 me-2"></i> COMPLETE BILLING
+                    <button class="btn btn-vibrant w-100 rounded-pill py-2.2 px-4 fw-bold shadow-sm d-flex align-items-center justify-content-center" id="checkout-btn" disabled style="font-size: 0.82rem; letter-spacing: 0.05em;">
+                        <i class="bi bi-check-all fs-5 me-1.5"></i> COMPLETE BILLING
                     </button>
                 </div>
             </div>
@@ -650,10 +726,10 @@
                         <span class="text-muted font-monospace d-block text-truncate" style="font-size: 0.65rem; letter-spacing: 0.02em;">${item.barcode || ''}</span>
                     </div>
                     <div class="d-flex align-items-center justify-content-end gap-2">
-                        <div class="d-flex align-items-center bg-light rounded-pill px-1.5 py-0.5" style="transform: scale(0.85); transform-origin: right center;">
-                            <button class="btn btn-sm btn-link text-muted p-0" onclick="updateQty('${item.id}', -1)"><i class="bi bi-dash-circle-fill"></i></button>
-                            <span class="mx-1.5 fw-bold text-xs" style="min-width: 14px; text-align: center;">${item.quantity}</span>
-                            <button class="btn btn-sm btn-link text-primary p-0" onclick="updateQty('${item.id}', 1)"><i class="bi bi-plus-circle-fill"></i></button>
+                        <div class="qty-adjuster">
+                            <button class="qty-btn qty-btn-minus" onclick="updateQty('${item.id}', -1)" type="button"><i class="bi bi-dash"></i></button>
+                            <span class="qty-value">${item.quantity}</span>
+                            <button class="qty-btn qty-btn-plus" onclick="updateQty('${item.id}', 1)" type="button"><i class="bi bi-plus"></i></button>
                         </div>
                         <span class="fw-bold text-primary text-xs" style="min-width: 55px; text-align: right; font-size: 0.8rem;">₹${Math.round(itemOriginalSubtotal)}</span>
                         <button class="btn btn-link text-danger p-0" onclick="removeFromCart('${item.id}')" style="transform: scale(0.85); line-height: 1;">
@@ -1180,7 +1256,6 @@ if (isScannerOpen) {
             paymentRadio.checked = true;
         }
         
-        // Show split inputs if payment method is split
         const splitInputs = document.getElementById('split-inputs');
         if (editCartData.payment_method === 'split') {
             splitInputs.classList.remove('d-none');

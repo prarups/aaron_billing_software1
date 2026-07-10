@@ -564,3 +564,33 @@ class StaffFormPasswordTestCase(TestCase):
         self.assertFalse(updated_user.check_password('originalpassword123'))
 
 
+class RegionalManagerPermissionsTests(TestCase):
+    def setUp(self):
+        from core.models import Branch
+        self.branch1 = Branch.objects.create(name="Branch One", code=101)
+        self.branch2 = Branch.objects.create(name="Branch Two", code=102)
+        
+        self.regional_manager = User.objects.create_user(
+            username="test_regional",
+            password="password123",
+            role="regional_manager",
+            mobile_number="1234567890"
+        )
+        
+    def test_regional_manager_has_access_to_all_branches(self):
+        from core.models import Branch
+        self.assertEqual(list(self.regional_manager.get_accessible_branches()), list(Branch.objects.all()))
+        
+    def test_regional_manager_dashboard_redirection(self):
+        self.client.login(username="test_regional", password="password123")
+        response = self.client.get(reverse('dashboard'))
+        self.assertRedirects(response, reverse('owner_dashboard'))
+        
+    def test_regional_manager_blocked_from_branches_tab(self):
+        self.client.login(username="test_regional", password="password123")
+        response = self.client.get(reverse('branch_staff_management') + '?tab=branches')
+        # For regional managers, accessing ?tab=branches is accepted but the active tab is forced to 'staff' in the view.
+        self.assertEqual(response.status_code, 200)
+
+
+

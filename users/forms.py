@@ -79,7 +79,7 @@ class StaffForm(forms.ModelForm):
     
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'role', 'branches', 'employee_id', 'mobile_number', 'address', 'is_active', 'date_of_joining']
+        fields = ['username', 'first_name', 'last_name', 'role', 'branches', 'employee_id', 'mobile_number', 'address', 'is_active', 'date_of_joining', 'has_pos_access', 'has_attendance_access']
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Username', 'autocomplete': 'new-username'}),
             'first_name': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'First Name', 'autocomplete': 'off'}),
@@ -91,6 +91,8 @@ class StaffForm(forms.ModelForm):
             'address': forms.Textarea(attrs={'class': 'form-control rounded-3 shadow-sm border-0 bg-light px-3', 'placeholder': 'Address', 'rows': '2', 'autocomplete': 'off'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'date_of_joining': forms.DateInput(attrs={'type':'date','class':'form-control rounded-pill shadow-sm border-0 bg-light px-3','placeholder':'Date of Joining', 'autocomplete': 'off'}),
+            'has_pos_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'has_attendance_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
     def clean_password(self):
@@ -100,7 +102,13 @@ class StaffForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['role'].choices = [('owner', 'Admin'), ('manager', 'Manager'), ('assistant_manager', 'Assistant Manager'), ('sales_staff', 'Sales Staff')]
+        built_in = [('owner', 'Admin'), ('regional_manager', 'Regional Manager'), ('manager', 'Manager'), ('assistant_manager', 'Assistant Manager'), ('sales_staff', 'Sales Staff')]
+        try:
+            from users.models import CustomRole
+            custom = [(crole.code, crole.name) for crole in CustomRole.objects.all()]
+        except Exception:
+            custom = []
+        self.fields['role'].choices = built_in + custom
         self.fields['branches'].queryset = Branch.objects.all()
         self.fields['branches'].required = False
         # Employee ID is optional on form input as it will auto‑generate if blank

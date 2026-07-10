@@ -1,0 +1,409 @@
+{% extends "base_attendance.html" %}
+
+{% block title %}My Attendance Summary - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%); border-radius: 1rem;">
+                <div class="card-body p-4 text-white">
+                    <h3 class="fw-bold mb-1"><i class="bi bi-person-badge-fill me-2"></i>My Attendance & Salary Summary</h3>
+                    <p class="mb-0 text-white-50">Track your daily clock-in history, approved leaves, salary rules, and download monthly pay slips.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Month Filter -->
+    <div class="card border-0 shadow-sm mb-4 bg-white" style="border-radius: 1rem;">
+        <div class="card-body p-4">
+            <h5 class="fw-bold text-success mb-3"><i class="bi bi-funnel-fill me-2"></i>Select Month & Year</h5>
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold text-muted">Month</label>
+                    <select name="month" class="form-select rounded-3">
+                        <option value="1" {% if selected_month == 1 %}selected{% endif %}>January</option>
+                        <option value="2" {% if selected_month == 2 %}selected{% endif %}>February</option>
+                        <option value="3" {% if selected_month == 3 %}selected{% endif %}>March</option>
+                        <option value="4" {% if selected_month == 4 %}selected{% endif %}>April</option>
+                        <option value="5" {% if selected_month == 5 %}selected{% endif %}>May</option>
+                        <option value="6" {% if selected_month == 6 %}selected{% endif %}>June</option>
+                        <option value="7" {% if selected_month == 7 %}selected{% endif %}>July</option>
+                        <option value="8" {% if selected_month == 8 %}selected{% endif %}>August</option>
+                        <option value="9" {% if selected_month == 9 %}selected{% endif %}>September</option>
+                        <option value="10" {% if selected_month == 10 %}selected{% endif %}>October</option>
+                        <option value="11" {% if selected_month == 11 %}selected{% endif %}>November</option>
+                        <option value="12" {% if selected_month == 12 %}selected{% endif %}>December</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold text-muted">Year</label>
+                    <select name="year" class="form-select rounded-3">
+                        {% for y in years %}
+                            <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-success w-100 rounded-pill py-2">
+                        <i class="bi bi-arrow-repeat me-1"></i> Retrieve Summary
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Monthly Statistics Widgets -->
+    <div class="row mb-4">
+        <!-- Card 1: Present -->
+        <div class="col-xl-3 col-sm-6 mb-3">
+            <div class="card border-0 shadow-sm bg-success text-white rounded-3 h-100">
+                <div class="card-body p-3.5 d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="small text-white-50 d-block">Days Present</span>
+                        <h3 class="fw-bold mb-0 mt-1">{{ present_cnt }}</h3>
+                    </div>
+                    <i class="bi bi-check-circle-fill fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        <!-- Card 2: Late -->
+        <div class="col-xl-3 col-sm-6 mb-3">
+            <div class="card border-0 shadow-sm bg-warning text-white rounded-3 h-100">
+                <div class="card-body p-3.5 d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="small text-white-50 d-block">Late Check-ins</span>
+                        <h3 class="fw-bold mb-0 mt-1">{{ late_cnt }}</h3>
+                    </div>
+                    <i class="bi bi-clock-fill fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        <!-- Card 3: Absent -->
+        <div class="col-xl-3 col-sm-6 mb-3">
+            <div class="card border-0 shadow-sm bg-danger text-white rounded-3 h-100">
+                <div class="card-body p-3.5 d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="small text-white-50 d-block">Absent (Loss of Pay)</span>
+                        <h3 class="fw-bold mb-0 mt-1">{{ absent_cnt }}</h3>
+                    </div>
+                    <i class="bi bi-exclamation-triangle-fill fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        <!-- Card 4: Leaves -->
+        <div class="col-xl-3 col-sm-6 mb-3">
+            <div class="card border-0 shadow-sm bg-info text-white rounded-3 h-100">
+                <div class="card-body p-3.5 d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="small text-white-50 d-block">Approved Leaves</span>
+                        <h3 class="fw-bold mb-0 mt-1">{{ leave_cnt }}</h3>
+                    </div>
+                    <i class="bi bi-calendar2-check-fill fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Log Sheet & Salary Section -->
+    <div class="row">
+        <!-- Daily logs calendar list -->
+        <div class="col-lg-8 mb-4">
+            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-calendar-check me-2"></i>Daily Log Sheet ({{ selected_month }}/{{ selected_year }})</h5>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>1. Check-In</th>
+                                    <th>2. Mid-Day</th>
+                                    <th>3. Check-Out</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for day in day_list %}
+                                <tr>
+                                    <td class="fw-bold text-dark">{{ day.date|date:"d M (D)" }}</td>
+                                    <td>
+                                        {% if day.status == 'present' %}
+                                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2">Present</span>
+                                        {% elif day.status == 'late' %}
+                                            <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-2">Late Check-in</span>
+                                        {% elif day.status == 'on_leave' %}
+                                            <span class="badge bg-info bg-opacity-10 text-info rounded-pill px-2">On Leave</span>
+                                        {% elif day.status == 'half_day' %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2">Half Day</span>
+                                        {% elif day.status == 'absent' %}
+                                            <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2">Absent</span>
+                                        {% else %}
+                                            <span class="text-muted opacity-50">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if day.record and day.record.check_in %}
+                                            <div class="d-flex align-items-center gap-2">
+                                                {% if day.record.check_in_photo %}
+                                                    <img src="{{ day.record.check_in_photo.url }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ day.record.check_in_photo.url }}', 'Check-In Photo')"/>
+                                                {% endif %}
+                                                <span class="text-dark">{{ day.record.check_in|date:"I:i A" }}</span>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if day.record and day.record.mid_day_time %}
+                                            <div class="d-flex align-items-center gap-2">
+                                                {% if day.record.mid_day_photo %}
+                                                    <img src="{{ day.record.mid_day_photo.url }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ day.record.mid_day_photo.url }}', 'Mid-Day Photo')"/>
+                                                {% endif %}
+                                                <span class="text-dark">{{ day.record.mid_day_time|date:"I:i A" }}</span>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if day.record and day.record.check_out %}
+                                            <div class="d-flex align-items-center gap-2">
+                                                {% if day.record.check_out_photo %}
+                                                    <img src="{{ day.record.check_out_photo.url }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ day.record.check_out_photo.url }}', 'Check-Out Photo')"/>
+                                                {% endif %}
+                                                <span class="text-dark">{{ day.record.check_out|date:"I:i A" }}</span>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar salary config & recent payslips -->
+        <div class="col-lg-4">
+            <!-- Salary rules -->
+            <div class="card border-0 shadow-sm bg-white mb-4" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-cash-stack me-2"></i>Salary Config</h6>
+                    {% if sal_config %}
+                        <div class="d-flex justify-content-between mb-2 pb-2 border-bottom small">
+                            <span class="text-muted">Base Salary:</span>
+                            <strong class="text-dark">Rs. {{ sal_config.base_salary }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 pb-2 border-bottom small">
+                            <span class="text-muted">Late Deduction:</span>
+                            <strong class="text-danger">Rs. {{ sal_config.late_check_in_penalty }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between small">
+                            <span class="text-muted">LOP Deduction:</span>
+                            <strong class="text-danger">Rs. {{ sal_config.lop_deduction_rate }}</strong>
+                        </div>
+                    {% else %}
+                        <p class="text-muted small mb-0">Salary configuration not set by admin yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Pay slips -->
+            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-wallet2 me-2"></i>Generated Pay Slips</h6>
+                    <div class="list-group list-group-flush small">
+                        {% for p in payslips %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <div>
+                                    <strong class="text-dark">{{ p.month }}/{{ p.year }}</strong>
+                                    <span class="text-success fw-bold d-block mt-0.5">Rs. {{ p.net_salary }}</span>
+                                </div>
+                                <button class="btn btn-xs btn-outline-primary rounded-pill" type="button" data-bs-toggle="modal" data-bs-target="#payslipModal"
+                                        onclick="showPayslip('{{ p.month }}', '{{ p.year }}', '{{ p.base_salary }}', '{{ p.present_days }}', '{{ p.late_days }}', '{{ p.late_deductions }}', '{{ p.lop_days }}', '{{ p.lop_deductions }}', '{{ p.net_salary }}', '{{ p.status }}')">
+                                    Slip
+                                </button>
+                            </div>
+                        {% empty %}
+                            <p class="text-muted small mb-0 py-2">No pay slips found.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Photo Zoom Modal -->
+<div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0 bg-dark text-white py-3">
+                <h6 class="modal-title fw-bold" id="photoModalLabel">Verification Photo</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0 bg-black">
+                <img id="fullPhotoEl" src="" class="w-100 h-auto object-fit-contain" style="max-height: 80vh;" alt="Verification Photo"/>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PAYSLIP MODAL -->
+<div class="modal fade" id="payslipModal" tabindex="-1" aria-labelledby="payslipModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0 bg-primary text-white py-3">
+                <h6 class="modal-title fw-bold" id="payslipModalLabel"><i class="bi bi-file-earmark-pdf-fill me-2"></i>Salary Pay Slip</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div id="printArea" class="modal-body p-4 bg-white">
+                <div class="text-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0">AARON BILLING SOFTWARE</h5>
+                    <span class="text-muted small">Staff Monthly Payslip</span>
+                    <hr class="my-2" />
+                </div>
+
+                <div class="row small mb-3">
+                    <div class="col-6">
+                        <span class="text-muted d-block">Employee Name:</span>
+                        <strong class="text-dark">{{ user.username }}</strong>
+                    </div>
+                    <div class="col-6 text-end">
+                        <span class="text-muted d-block">Pay Period:</span>
+                        <strong id="slipPeriod" class="text-dark">--/--</strong>
+                    </div>
+                </div>
+
+                <table class="table table-sm table-bordered small mb-3">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Earnings</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Basic Salary</td>
+                            <td id="slipBaseSalary" class="text-end">Rs. 0.00</td>
+                        </tr>
+                        <tr class="fw-bold table-light">
+                            <td>Gross Earnings</td>
+                            <td id="slipGross" class="text-end">Rs. 0.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <table class="table table-sm table-bordered small mb-3">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Deductions</th>
+                            <th>Details</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Late Penalty</td>
+                            <td id="slipLateDays">0 days</td>
+                            <td id="slipLateDeductions" class="text-end text-danger">Rs. 0.00</td>
+                        </tr>
+                        <tr>
+                            <td>Loss of Pay (LOP)</td>
+                            <td id="slipLopDays">0 days</td>
+                            <td id="slipLopDeductions" class="text-end text-danger">Rs. 0.00</td>
+                        </tr>
+                        <tr class="fw-bold table-light">
+                            <td colspan="2">Total Deductions</td>
+                            <td id="slipTotalDeductions" class="text-end text-danger">Rs. 0.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="alert alert-success border-0 rounded-3 py-2 px-3 d-flex justify-content-between align-items-center mb-0">
+                    <strong class="text-success small">NET PAYABLE:</strong>
+                    <h5 id="slipNetSalary" class="fw-bold text-success mb-0">Rs. 0.00</h5>
+                </div>
+                
+                <div class="mt-2 text-center text-muted small">
+                    Status: <span id="slipStatus" class="fw-bold">Paid</span>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary rounded-pill" onclick="window.print()">
+                    <i class="bi bi-printer-fill me-1"></i> Print Slip
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showFullPhoto(url, label) {
+        document.getElementById('fullPhotoEl').src = url;
+        document.getElementById('photoModalLabel').textContent = label;
+    }
+
+    function showPayslip(month, year, base, pDays, lateDays, lateDed, lopDays, lopDed, net, status) {
+        document.getElementById('slipPeriod').textContent = month + ' / ' + year;
+        document.getElementById('slipBaseSalary').textContent = 'Rs. ' + base;
+        document.getElementById('slipGross').textContent = 'Rs. ' + base;
+        document.getElementById('slipLateDays').textContent = lateDays + ' late days';
+        document.getElementById('slipLateDeductions').textContent = '- Rs. ' + lateDed;
+        const totalLopDays = parseInt(lopDays);
+        const actualLopDeductedDays = Math.max(0, totalLopDays - 4);
+        const weekOffsUsed = Math.min(4, totalLopDays);
+        document.getElementById('slipLopDays').textContent = actualLopDeductedDays + ' LOP days (after ' + weekOffsUsed + ' week offs)';
+        document.getElementById('slipLopDeductions').textContent = '- Rs. ' + lopDed;
+        
+        const totalDed = parseFloat(lateDed) + parseFloat(lopDed);
+        document.getElementById('slipTotalDeductions').textContent = 'Rs. ' + totalDed.toFixed(2);
+        document.getElementById('slipNetSalary').textContent = 'Rs. ' + net;
+        
+        const statusEl = document.getElementById('slipStatus');
+        statusEl.textContent = status.toUpperCase();
+        if (status === 'paid') {
+            statusEl.className = "fw-bold text-success";
+        } else {
+            statusEl.className = "fw-bold text-secondary";
+        }
+    }
+</script>
+<style>
+    .cursor-zoom {
+        cursor: zoom-in;
+        transition: transform 0.2s ease;
+    }
+    .cursor-zoom:hover {
+        transform: scale(1.05);
+    }
+    .btn-xs {
+        font-size: 0.75rem !important;
+        padding: 0.25rem 0.5rem !important;
+    }
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #printArea, #printArea * {
+            visibility: visible;
+        }
+        #printArea {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}

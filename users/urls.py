@@ -31,7 +31,14 @@ urlpatterns = [
     path('staff/toggle/<int:staff_id>/', views.toggle_staff_active, name='staff_toggle'),
     path('staff/toggle-product-rights/<int:staff_id>/', views.toggle_product_rights, name='toggle_product_rights'),
     path('staff/toggle-bill-edit-rights/<int:staff_id>/', views.toggle_bill_edit_rights, name='toggle_bill_edit_rights'),
+    path('staff/toggle-pos-access/<int:staff_id>/', views.toggle_pos_access, name='toggle_pos_access'),
+    path('staff/toggle-attendance-access/<int:staff_id>/', views.toggle_attendance_access, name='toggle_attendance_access'),
     path('staff/export/', views.export_staff_csv, name='export_staff_csv'),
     path('staff/online-status/', views.get_staff_online_status, name='staff_online_status'),
+    path('role/create/', views.role_create, name='role_create'),
+    path('portal/', views.portal_choice, name='portal_choice'),
+    path('billing-redirect/', views.billing_redirect, name='billing_redirect'),
+    path('select-portal/<str:portal_name>/', views.select_portal, name='select_portal'),
+    path('management/', views.branch_staff_management, name='branch_staff_management'),
 ]
 

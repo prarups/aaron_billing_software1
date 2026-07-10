@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'core.apps.CoreConfig',
     'billing.apps.BillingConfig',
     'audit.apps.AuditConfig',
+    'attendance.apps.AttendanceConfig',
 ]
 
 MIDDLEWARE = [
@@ -176,7 +177,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 AUTH_USER_MODEL = 'users.User'
 
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'dashboard_redirect'
+LOGIN_REDIRECT_URL = 'portal_choice'
 LOGOUT_REDIRECT_URL = 'login'
 
 # Railway / Render / Production settings

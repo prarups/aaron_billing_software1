@@ -1,0 +1,546 @@
+{% extends "base_attendance.html" %}
+
+{% block title %}Attendance Reports - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 1rem;">
+                <div class="card-body p-4 text-white">
+                    <h3 class="fw-bold mb-1"><i class="bi bi-person-check-fill me-2"></i>Attendance Reports</h3>
+                    <p class="mb-0 text-white-50">Audit employee attendance, verify photo captures, check GPS locations, view monthly grids, and export reports.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Navigation Tabs -->
+    <ul class="nav nav-pills mb-4 gap-2" id="reportsTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="btn btn-outline-success active rounded-pill px-4" id="grid-tab" data-bs-toggle="pill" data-bs-target="#gridSection" type="button" role="tab">
+                <i class="bi bi-grid-3x3-gap-fill me-1"></i> Monthly Visual Grid
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="btn btn-outline-success rounded-pill px-4" id="logs-tab" data-bs-toggle="pill" data-bs-target="#logsSection" type="button" role="tab">
+                <i class="bi bi-list-task me-1"></i> Detailed Daily Logs
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="reportsTabContent">
+        <!-- TAB 1: Visual Monthly Grid -->
+        <div class="tab-pane fade show active" id="gridSection" role="tabpanel">
+            <!-- Grid Filter Form -->
+            <div class="card border-0 shadow-sm mb-4 bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold text-success mb-3"><i class="bi bi-calendar-range me-2"></i>Monthly Grid Filter</h5>
+                    <form method="get" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">Branch</label>
+                            <select name="branch" class="form-select rounded-3">
+                                <option value="">All Branches</option>
+                                {% for b in branches %}
+                                    <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">Month</label>
+                            <select name="grid_month" class="form-select rounded-3">
+                                <option value="1" {% if grid_month == 1 %}selected{% endif %}>January</option>
+                                <option value="2" {% if grid_month == 2 %}selected{% endif %}>February</option>
+                                <option value="3" {% if grid_month == 3 %}selected{% endif %}>March</option>
+                                <option value="4" {% if grid_month == 4 %}selected{% endif %}>April</option>
+                                <option value="5" {% if grid_month == 5 %}selected{% endif %}>May</option>
+                                <option value="6" {% if grid_month == 6 %}selected{% endif %}>June</option>
+                                <option value="7" {% if grid_month == 7 %}selected{% endif %}>July</option>
+                                <option value="8" {% if grid_month == 8 %}selected{% endif %}>August</option>
+                                <option value="9" {% if grid_month == 9 %}selected{% endif %}>September</option>
+                                <option value="10" {% if grid_month == 10 %}selected{% endif %}>October</option>
+                                <option value="11" {% if grid_month == 11 %}selected{% endif %}>November</option>
+                                <option value="12" {% if grid_month == 12 %}selected{% endif %}>December</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">Year</label>
+                            <select name="grid_year" class="form-select rounded-3">
+                                {% for y in years %}
+                                    <option value="{{ y }}" {% if grid_year == y %}selected{% endif %}>{{ y }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-success w-100 rounded-pill py-2">
+                                <i class="bi bi-arrow-repeat me-1"></i> Update Grid
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Visual Grid Table -->
+            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+                        <h5 class="fw-bold text-primary mb-0"><i class="bi bi-calendar3 me-2"></i>Monthly Sheet: {{ grid_month }}/{{ grid_year }}</h5>
+                        
+                        <!-- Legend -->
+                        <div class="d-flex flex-wrap gap-2 small">
+                            <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-success d-inline-block" style="width: 10px; height: 10px;"></span> Present</span>
+                            <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-warning d-inline-block" style="width: 10px; height: 10px;"></span> Late</span>
+                            <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-secondary d-inline-block" style="width: 10px; height: 10px;"></span> Half Day</span>
+                            <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-info d-inline-block" style="width: 10px; height: 10px;"></span> Leave</span>
+                            <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-danger d-inline-block" style="width: 10px; height: 10px;"></span> Absent</span>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle text-center small mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-start" style="min-width: 120px; position: sticky; left: 0; background: #f8fafc; z-index: 2;">Employee</th>
+                                    {% for d in day_numbers %}
+                                        <th style="width: 32px; min-width: 32px;">{{ d }}</th>
+                                    {% endfor %}
+                                    <th class="bg-light" style="min-width: 150px;">Summary (P/L/H/V/A)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in grid_data %}
+                                <tr>
+                                    <!-- Employee username -->
+                                    <td class="text-start fw-bold text-dark" style="position: sticky; left: 0; background: #ffffff; z-index: 2; border-right: 2px solid #dee2e6;">
+                                        {{ item.user.username }}
+                                    </td>
+                                    
+                                    <!-- Days indicators -->
+                                    {% for day in item.days %}
+                                        <td class="p-1">
+                                            {% if day.status == 'present' %}
+                                                <span class="badge rounded-circle bg-success d-inline-flex align-items-center justify-content-center cursor-pointer" style="width: 22px; height: 22px;" title="Present" 
+                                                      {% if day.record_id %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'present', '')"{% endif %}>P</span>
+                                            {% elif day.status == 'late' %}
+                                                <span class="badge rounded-circle bg-warning d-inline-flex align-items-center justify-content-center cursor-pointer text-dark" style="width: 22px; height: 22px;" title="Late Check-in"
+                                                      {% if day.record_id %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'late', '')"{% endif %}>L</span>
+                                            {% elif day.status == 'half_day' %}
+                                                <span class="badge rounded-circle bg-secondary d-inline-flex align-items-center justify-content-center cursor-pointer" style="width: 22px; height: 22px;" title="Half Day"
+                                                      {% if day.record_id %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'half_day', '')"{% endif %}>H</span>
+                                            {% elif day.status == 'on_leave' %}
+                                                <span class="badge rounded-circle bg-info d-inline-flex align-items-center justify-content-center cursor-pointer" style="width: 22px; height: 22px;" title="On Approved Leave"
+                                                      {% if day.record_id %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'on_leave', '')"{% endif %}>V</span>
+                                            {% elif day.status == 'absent' %}
+                                                <span class="badge rounded-circle bg-danger d-inline-flex align-items-center justify-content-center cursor-pointer" style="width: 22px; height: 22px;" title="Absent">A</span>
+                                            {% else %}
+                                                <span class="text-muted opacity-25">-</span>
+                                            {% endif %}
+                                        </td>
+                                    {% endfor %}
+                                    
+                                    <!-- Summary counts -->
+                                    <td class="bg-light fw-bold text-dark">
+                                        <span class="text-success">{{ item.summary.present }}</span>/
+                                        <span class="text-warning">{{ item.summary.late }}</span>/
+                                        <span class="text-secondary">{{ item.summary.half_day }}</span>/
+                                        <span class="text-info">{{ item.summary.leave }}</span>/
+                                        <span class="text-danger">{{ item.summary.absent }}</span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="{{ day_numbers|length|add:2 }}" class="text-center py-4 text-muted">No employees found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: Detailed Logs list -->
+        <div class="tab-pane fade" id="logsSection" role="tabpanel">
+            <!-- Detailed filters -->
+            <div class="card border-0 shadow-sm mb-4 bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold text-success mb-3"><i class="bi bi-filter-square me-2"></i>Logs Filter</h5>
+                    <form method="get" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">Branch</label>
+                            <select name="branch" class="form-select rounded-3">
+                                <option value="">All Branches</option>
+                                {% for b in branches %}
+                                    <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">Employee</label>
+                            <select name="user" class="form-select rounded-3">
+                                <option value="">All Employees</option>
+                                {% for u in users %}
+                                    <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"i" %}selected{% endif %}>{{ u.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold text-muted">Start Date</label>
+                            <input type="date" name="start_date" class="form-control rounded-3" value="{{ start_date }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold text-muted">End Date</label>
+                            <input type="date" name="end_date" class="form-control rounded-3" value="{{ end_date }}">
+                        </div>
+                        <div class="col-md-2 d-flex gap-2">
+                            <button type="submit" class="btn btn-success w-100 rounded-pill py-2">
+                                <i class="bi bi-filter"></i> Filter
+                            </button>
+                            <button type="submit" name="export" value="csv" class="btn btn-outline-success rounded-pill px-3 py-2" title="Export to CSV">
+                                <i class="bi bi-file-earmark-excel-fill"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Detailed Logs Table -->
+            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-list-check me-2"></i>Attendance Logs</h5>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Date / Status</th>
+                                    <th>1. Check-In</th>
+                                    <th>2. Mid-Day Check</th>
+                                    <th>3. Check-Out</th>
+                                    <th>Audit Map</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in records %}
+                                <tr>
+                                    <!-- Employee info -->
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ record.user.username }}</div>
+                                        <span class="text-muted small">Branch: {{ record.branch.name }}</span>
+                                    </td>
+                                    
+                                    <!-- Date & Status -->
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ record.date|date:"d M Y" }}</div>
+                                        <div class="mt-1">
+                                            {% if record.status == 'present' %}
+                                                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2">Present</span>
+                                            {% elif record.status == 'late' %}
+                                                <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-2">Late Check-in</span>
+                                            {% elif record.status == 'on_leave' %}
+                                                <span class="badge bg-info bg-opacity-10 text-info rounded-pill px-2">On Leave</span>
+                                            {% elif record.status == 'half_day' %}
+                                                <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2">Half Day</span>
+                                            {% else %}
+                                                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2">Absent</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+
+                                    <!-- 1. Check In -->
+                                    <td>
+                                        {% if record.check_in %}
+                                            <div class="d-flex align-items-center gap-2">
+                                                {% if record.check_in_photo %}
+                                                    <img src="{{ record.check_in_photo.url }}" class="rounded border object-fit-cover shadow-sm cursor-zoom" style="width: 48px; height: 36px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.check_in_photo.url }}', 'Check-In Photo ({{ record.user.username }})')"/>
+                                                {% else %}
+                                                    <span class="text-muted small">[No Photo]</span>
+                                                {% endif %}
+                                                <div class="lh-sm">
+                                                    <span class="small fw-bold text-dark d-block">{{ record.check_in|date:"I:i A" }}</span>
+                                                    {% if record.check_in_lat %}
+                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_in_lat }},{{ record.check_in_lng }}" target="_blank" class="text-xxs text-decoration-none text-primary"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>Map GPS</a>
+                                                        <span class="gps-coord text-xxs text-muted d-block" data-lat="{{ record.check_in_lat }}" data-lng="{{ record.check_in_lng }}"></span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted small">-</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <!-- 2. Mid Day check -->
+                                    <td>
+                                        {% if record.mid_day_time %}
+                                            <div class="d-flex align-items-center gap-2">
+                                                {% if record.mid_day_photo %}
+                                                    <img src="{{ record.mid_day_photo.url }}" class="rounded border object-fit-cover shadow-sm cursor-zoom" style="width: 48px; height: 36px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.mid_day_photo.url }}', 'Mid-Day Photo ({{ record.user.username }})')"/>
+                                                {% else %}
+                                                    <span class="text-muted small">[No Photo]</span>
+                                                {% endif %}
+                                                <div class="lh-sm">
+                                                    <span class="small fw-bold text-dark d-block">{{ record.mid_day_time|date:"I:i A" }}</span>
+                                                    {% if record.mid_day_lat %}
+                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.mid_day_lat }},{{ record.mid_day_lng }}" target="_blank" class="text-xxs text-decoration-none text-primary"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>Map GPS</a>
+                                                        <span class="gps-coord text-xxs text-muted d-block" data-lat="{{ record.mid_day_lat }}" data-lng="{{ record.mid_day_lng }}"></span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted small">-</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <!-- 3. Check Out -->
+                                    <td>
+                                        {% if record.check_out %}
+                                            <div class="d-flex align-items-center gap-2">
+                                                {% if record.check_out_photo %}
+                                                    <img src="{{ record.check_out_photo.url }}" class="rounded border object-fit-cover shadow-sm cursor-zoom" style="width: 48px; height: 36px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.check_out_photo.url }}', 'Check-Out Photo ({{ record.user.username }})')"/>
+                                                {% else %}
+                                                    <span class="text-muted small">[No Photo]</span>
+                                                {% endif %}
+                                                <div class="lh-sm">
+                                                    <span class="small fw-bold text-dark d-block">{{ record.check_out|date:"I:i A" }}</span>
+                                                    {% if record.check_out_lat %}
+                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_out_lat }},{{ record.check_out_lng }}" target="_blank" class="text-xxs text-decoration-none text-primary"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>Map GPS</a>
+                                                        <span class="gps-coord text-xxs text-muted d-block" data-lat="{{ record.check_out_lat }}" data-lng="{{ record.check_out_lng }}"></span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted small">-</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <!-- Audit Maps Overview -->
+                                    <td>
+                                        {% if record.check_in_lat or record.mid_day_lat or record.check_out_lat %}
+                                            <div class="d-flex flex-column gap-1">
+                                                {% if record.check_in_lat %}
+                                                    <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_in_lat }},{{ record.check_in_lng }}" target="_blank" class="btn btn-xxs btn-outline-secondary rounded-pill px-2 py-0.5 small align-self-start">
+                                                        In Loc <i class="bi bi-box-arrow-up-right text-xxs"></i>
+                                                    </a>
+                                                {% endif %}
+                                                {% if record.mid_day_lat %}
+                                                    <a href="https://www.google.com/maps/search/?api=1&query={{ record.mid_day_lat }},{{ record.mid_day_lng }}" target="_blank" class="btn btn-xxs btn-outline-secondary rounded-pill px-2 py-0.5 small align-self-start">
+                                                        Mid Loc <i class="bi bi-box-arrow-up-right text-xxs"></i>
+                                                    </a>
+                                                {% endif %}
+                                                {% if record.check_out_lat %}
+                                                    <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_out_lat }},{{ record.check_out_lng }}" target="_blank" class="btn btn-xxs btn-outline-secondary rounded-pill px-2 py-0.5 small align-self-start">
+                                                        Out Loc <i class="bi bi-box-arrow-up-right text-xxs"></i>
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted small">-</span>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <!-- Action button -->
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 d-flex align-items-center gap-1" 
+                                                type="button" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#editAttendanceModal"
+                                                onclick="initEditModal('{{ record.id }}', '{{ record.user.username }}', '{{ record.date|date:"d M Y" }}', '{{ record.status }}', '{{ record.notes|default:"" }}')">
+                                            <i class="bi bi-pencil-fill" style="font-size: 0.75rem;"></i>
+                                            <span>Edit</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">No attendance logs match the filters.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Photo Zoom Modal -->
+<div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0 bg-dark text-white py-3">
+                <h6 class="modal-title fw-bold" id="photoModalLabel">Verification Photo</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0 bg-black">
+                <img id="fullPhotoEl" src="" class="w-100 h-auto object-fit-contain" style="max-height: 80vh;" alt="Verification Photo"/>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Attendance Modal -->
+<div class="modal fade" id="editAttendanceModal" tabindex="-1" aria-labelledby="editAttendanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0 bg-primary text-white py-3">
+                <h6 class="modal-title fw-bold" id="editAttendanceModalLabel"><i class="bi bi-pencil-square me-2"></i>Edit Attendance Record</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="alert alert-secondary border-0 bg-white rounded-3 mb-3 py-2 px-3 small shadow-sm">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="fw-semibold text-muted">Employee:</span>
+                        <span id="editEmpName" class="fw-bold text-dark">--</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-semibold text-muted">Date:</span>
+                        <span id="editEmpDate" class="fw-bold text-dark">--</span>
+                    </div>
+                </div>
+
+                <form id="editAttendanceForm">
+                    <input type="hidden" id="editRecordId">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Status</label>
+                        <select id="editStatus" class="form-select rounded-3" required>
+                            <option value="present">Present</option>
+                            <option value="late">Late</option>
+                            <option value="half_day">Half Day</option>
+                            <option value="on_leave">On Leave</option>
+                            <option value="absent">Absent</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Correction Notes / Reason</label>
+                        <textarea id="editNotes" rows="3" class="form-control rounded-3" placeholder="Explain the reason for manual adjustment..." required></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill w-50 py-2" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary rounded-pill w-50 py-2">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showFullPhoto(url, label) {
+        document.getElementById('fullPhotoEl').src = url;
+        document.getElementById('photoModalLabel').textContent = label;
+    }
+
+    function initEditModal(id, username, date, status, notes) {
+        document.getElementById('editRecordId').value = id;
+        document.getElementById('editEmpName').textContent = username;
+        document.getElementById('editEmpDate').textContent = date;
+        document.getElementById('editStatus').value = status;
+        document.getElementById('editNotes').value = notes;
+    }
+
+    document.getElementById('editAttendanceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const id = document.getElementById('editRecordId').value;
+        const status = document.getElementById('editStatus').value;
+        const notes = document.getElementById('editNotes').value;
+        
+        let url = "{% url 'attendance:edit_attendance_ajax' 0 %}".replace('0', id);
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                status: status,
+                notes: notes
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                const modalEl = document.getElementById('editAttendanceModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                location.reload();
+            } else {
+                alert("Error: " + data.message);
+            }
+        })
+        .catch(err => {
+            console.error("AJAX Error:", err);
+            alert("Failed to update record. Connection error.");
+        });
+    });
+
+    // Dynamic Geocoder script to show area names
+    document.addEventListener("DOMContentLoaded", function() {
+        const coords = Array.from(document.querySelectorAll('.gps-coord'));
+        let delay = 0;
+        const cache = {};
+
+        coords.forEach(el => {
+            const lat = parseFloat(el.dataset.lat);
+            const lng = parseFloat(el.dataset.lng);
+            if (isNaN(lat) || isNaN(lng)) return;
+
+            const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+            if (cache[cacheKey]) {
+                el.textContent = cache[cacheKey];
+                return;
+            }
+
+            setTimeout(async () => {
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14`, {
+                        headers: {
+                            'User-Agent': 'AaronHR-Reports-Locator'
+                        }
+                    });
+                    const data = await res.json();
+                    if (data && data.address) {
+                        const addr = data.address;
+                        const area = addr.suburb || addr.neighbourhood || addr.residential || addr.commercial || addr.village || addr.subdistrict || addr.city_district || addr.city || '';
+                        if (area) {
+                            const displayText = `(${area})`;
+                            cache[cacheKey] = displayText;
+                            el.textContent = displayText;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error geocoding:", e);
+                }
+            }, delay);
+            
+            delay += 600; // 600ms spacing to respect OpenStreetMap rate limits
+        });
+    });
+</script>
+<style>
+    .cursor-zoom {
+        cursor: zoom-in;
+        transition: transform 0.2s ease;
+    }
+    .cursor-zoom:hover {
+        transform: scale(1.05);
+    }
+    .btn-xxs {
+        font-size: 0.7rem !important;
+        padding: 0.15rem 0.4rem !important;
+    }
+    .cursor-pointer {
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
