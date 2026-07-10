@@ -111,7 +111,7 @@
                                                 {% if item.record.check_in_photo %}
                                                     <img src="{{ item.record.check_in_photo.url }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.check_in_photo.url }}', 'Check-In: {{ item.user.username }}')"/>
                                                 {% endif %}
-                                                <span class="text-dark">{{ item.record.check_in|date:"I:i A" }}</span>
+                                                <span class="text-dark">{{ item.record.check_in|date:"h:i A" }}</span>
                                                 {% if item.record.check_in_lat %}
                                                     <a href="https://www.google.com/maps?q={{ item.record.check_in_lat }},{{ item.record.check_in_lng }}" target="_blank" class="text-warning text-decoration-none small"><i class="bi bi-geo-alt-fill"></i></a>
                                                     <span class="gps-coord small text-muted text-xxs d-block" data-lat="{{ item.record.check_in_lat }}" data-lng="{{ item.record.check_in_lng }}"></span>
@@ -127,7 +127,7 @@
                                                 {% if item.record.mid_day_photo %}
                                                     <img src="{{ item.record.mid_day_photo.url }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.mid_day_photo.url }}', 'Mid-Day: {{ item.user.username }}')"/>
                                                 {% endif %}
-                                                <span class="text-dark">{{ item.record.mid_day_time|date:"I:i A" }}</span>
+                                                <span class="text-dark">{{ item.record.mid_day_time|date:"h:i A" }}</span>
                                                 {% if item.record.mid_day_lat %}
                                                     <a href="https://www.google.com/maps?q={{ item.record.mid_day_lat }},{{ item.record.mid_day_lng }}" target="_blank" class="text-warning text-decoration-none small"><i class="bi bi-geo-alt-fill"></i></a>
                                                     <span class="gps-coord small text-muted text-xxs d-block" data-lat="{{ item.record.mid_day_lat }}" data-lng="{{ item.record.mid_day_lng }}"></span>
@@ -143,7 +143,7 @@
                                                 {% if item.record.check_out_photo %}
                                                     <img src="{{ item.record.check_out_photo.url }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.check_out_photo.url }}', 'Check-Out: {{ item.user.username }}')"/>
                                                 {% endif %}
-                                                <span class="text-dark">{{ item.record.check_out|date:"I:i A" }}</span>
+                                                <span class="text-dark">{{ item.record.check_out|date:"h:i A" }}</span>
                                                 {% if item.record.check_out_lat %}
                                                     <a href="https://www.google.com/maps?q={{ item.record.check_out_lat }},{{ item.record.check_out_lng }}" target="_blank" class="text-warning text-decoration-none small"><i class="bi bi-geo-alt-fill"></i></a>
                                                     <span class="gps-coord small text-muted text-xxs d-block" data-lat="{{ item.record.check_out_lat }}" data-lng="{{ item.record.check_out_lng }}"></span>
@@ -201,7 +201,7 @@
                                 <div class="d-flex justify-content-between align-items-start mb-1">
                                     <div>
                                         <strong class="text-dark">{{ p.user.username }}</strong>
-                                        <span class="text-muted text-xxs d-block">{{ p.date|date:"d M" }} at {{ p.start_time|time:"I:i A" }} ({{ p.duration_minutes }} mins)</span>
+                                        <span class="text-muted text-xxs d-block">{{ p.date|date:"d M" }} at {{ p.start_time|time:"h:i A" }} ({{ p.duration_minutes }} mins)</span>
                                     </div>
                                     <span class="badge bg-warning text-dark">Pending</span>
                                 </div>

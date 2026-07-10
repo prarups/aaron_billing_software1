@@ -260,7 +260,7 @@
                                                     <span class="text-muted small">[No Photo]</span>
                                                 {% endif %}
                                                 <div class="lh-sm">
-                                                    <span class="small fw-bold text-dark d-block">{{ record.check_in|date:"I:i A" }}</span>
+                                                    <span class="small fw-bold text-dark d-block">{{ record.check_in|date:"h:i A" }}</span>
                                                     {% if record.check_in_lat %}
                                                         <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_in_lat }},{{ record.check_in_lng }}" target="_blank" class="text-xxs text-decoration-none text-primary"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>Map GPS</a>
                                                         <span class="gps-coord text-xxs text-muted d-block" data-lat="{{ record.check_in_lat }}" data-lng="{{ record.check_in_lng }}"></span>
@@ -282,7 +282,7 @@
                                                     <span class="text-muted small">[No Photo]</span>
                                                 {% endif %}
                                                 <div class="lh-sm">
-                                                    <span class="small fw-bold text-dark d-block">{{ record.mid_day_time|date:"I:i A" }}</span>
+                                                    <span class="small fw-bold text-dark d-block">{{ record.mid_day_time|date:"h:i A" }}</span>
                                                     {% if record.mid_day_lat %}
                                                         <a href="https://www.google.com/maps/search/?api=1&query={{ record.mid_day_lat }},{{ record.mid_day_lng }}" target="_blank" class="text-xxs text-decoration-none text-primary"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>Map GPS</a>
                                                         <span class="gps-coord text-xxs text-muted d-block" data-lat="{{ record.mid_day_lat }}" data-lng="{{ record.mid_day_lng }}"></span>
@@ -304,7 +304,7 @@
                                                     <span class="text-muted small">[No Photo]</span>
                                                 {% endif %}
                                                 <div class="lh-sm">
-                                                    <span class="small fw-bold text-dark d-block">{{ record.check_out|date:"I:i A" }}</span>
+                                                    <span class="small fw-bold text-dark d-block">{{ record.check_out|date:"h:i A" }}</span>
                                                     {% if record.check_out_lat %}
                                                         <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_out_lat }},{{ record.check_out_lng }}" target="_blank" class="text-xxs text-decoration-none text-primary"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>Map GPS</a>
                                                         <span class="gps-coord text-xxs text-muted d-block" data-lat="{{ record.check_out_lat }}" data-lng="{{ record.check_out_lng }}"></span>

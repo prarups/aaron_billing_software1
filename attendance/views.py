@@ -15,6 +15,8 @@ from core.models import Branch
 from .models import Attendance, LeaveRequest, PermissionRequest, SalaryConfig, MonthlyPayroll
 import datetime
 import calendar
+from decimal import Decimal
+from django.db import transaction
 
 def get_file_from_base64(base64_str, filename):
     if not base64_str:
@@ -36,7 +38,7 @@ def is_owner(user):
     return user.role == 'owner'
 
 def is_manager_or_owner(user):
-    return user.role in ['owner', 'manager', 'assistant_manager']
+    return user.role in ['owner', 'regional_manager', 'manager', 'assistant_manager']
 
 @login_required
 def attendance_dashboard(request):
@@ -358,7 +360,9 @@ def leave_request(request):
             )
             messages.success(request, 'Leave request submitted successfully.')
         except ValueError:
-            messages.error(request, 'Invalid date formats.')
+            messages.error(request, 'Invalid date formats. Please use YYYY-MM-DD.')
+        except Exception as e:
+            messages.error(request, f'Failed to submit leave request: {e}')
             
         return redirect('attendance:leave_list')
     return redirect('attendance:leave_list')
@@ -379,36 +383,43 @@ def leave_approve(request, pk, action):
             messages.error(request, 'You do not have permission to approve leaves for this staff.')
             return redirect('attendance:leave_list')
             
-    if action == 'approve':
-        leave.status = 'approved'
-        leave.approved_by = request.user
-        leave.save()
-        
-        # Mark attendance records as 'on_leave' for those dates
-        current_date = leave.start_date
-        while current_date <= leave.end_date:
-            # Check if there is an existing attendance, if so update, otherwise create
-            att, created = Attendance.objects.get_or_create(
-                user=leave.user,
-                date=current_date,
-                defaults={
-                    'branch': leave.user.active_branch or leave.user.branches.first() or Branch.objects.first(),
-                    'status': 'on_leave',
-                    'notes': f"On Approved Leave: {leave.get_leave_type_display()}"
-                }
-            )
-            if not created:
-                att.status = 'on_leave'
-                att.notes = f"On Approved Leave: {leave.get_leave_type_display()}"
-                att.save()
-            current_date += datetime.timedelta(days=1)
-            
-        messages.success(request, f'Leave for {leave.user.username} approved.')
-    elif action == 'reject':
-        leave.status = 'rejected'
-        leave.approved_by = request.user
-        leave.save()
-        messages.success(request, f'Leave for {leave.user.username} rejected.')
+    try:
+        with transaction.atomic():
+            if action == 'approve':
+                leave.status = 'approved'
+                leave.approved_by = request.user
+                leave.save()
+                
+                # Mark attendance records as 'on_leave' for those dates
+                current_date = leave.start_date
+                while current_date <= leave.end_date:
+                    branch = leave.user.active_branch or leave.user.branches.first() or Branch.objects.first()
+                    if not branch:
+                        raise Exception("No active branch or registered branch available for the leave record.")
+                    
+                    att, created = Attendance.objects.get_or_create(
+                        user=leave.user,
+                        date=current_date,
+                        defaults={
+                            'branch': branch,
+                            'status': 'on_leave',
+                            'notes': f"On Approved Leave: {leave.get_leave_type_display()}"
+                        }
+                    )
+                    if not created:
+                        att.status = 'on_leave'
+                        att.notes = f"On Approved Leave: {leave.get_leave_type_display()}"
+                        att.save()
+                    current_date += datetime.timedelta(days=1)
+                    
+                messages.success(request, f'Leave for {leave.user.username} approved.')
+            elif action == 'reject':
+                leave.status = 'rejected'
+                leave.approved_by = request.user
+                leave.save()
+                messages.success(request, f'Leave for {leave.user.username} rejected.')
+    except Exception as e:
+        messages.error(request, f"Error processing leave approval: {e}")
         
     return redirect('attendance:leave_list')
 
@@ -467,6 +478,8 @@ def permission_request(request):
             messages.success(request, 'Short permission request submitted successfully.')
         except ValueError as e:
             messages.error(request, f'Invalid date or time formats: {e}')
+        except Exception as e:
+            messages.error(request, f'Failed to submit permission request: {e}')
             
         return redirect('attendance:permission_list')
     return redirect('attendance:permission_list')
@@ -487,16 +500,19 @@ def permission_approve(request, pk, action):
             messages.error(request, 'You do not have permission to approve permissions for this staff.')
             return redirect('attendance:permission_list')
             
-    if action == 'approve':
-        perm.status = 'approved'
-        perm.approved_by = request.user
-        perm.save()
-        messages.success(request, f'Permission for {perm.user.username} approved.')
-    elif action == 'reject':
-        perm.status = 'rejected'
-        perm.approved_by = request.user
-        perm.save()
-        messages.success(request, f'Permission for {perm.user.username} rejected.')
+    try:
+        if action == 'approve':
+            perm.status = 'approved'
+            perm.approved_by = request.user
+            perm.save()
+            messages.success(request, f'Permission for {perm.user.username} approved.')
+        elif action == 'reject':
+            perm.status = 'rejected'
+            perm.approved_by = request.user
+            perm.save()
+            messages.success(request, f'Permission for {perm.user.username} rejected.')
+    except Exception as e:
+        messages.error(request, f'Error processing permission approval: {e}')
         
     return redirect('attendance:permission_list')
 
@@ -716,17 +732,20 @@ def salary_config_view(request, user_id):
     config, created = SalaryConfig.objects.get_or_create(user=user_obj)
     
     if request.method == 'POST':
-        base = request.POST.get('monthly_base_salary', 0)
-        late = request.POST.get('late_deduction_amount', 0)
-        lop = request.POST.get('lop_deduction_amount', 0)
-        
-        config.monthly_base_salary = base
-        config.late_deduction_amount = late
-        config.lop_deduction_amount = lop
-        config.save()
-        
-        messages.success(request, f'Salary configuration updated for {user_obj.username}.')
-        return redirect('attendance:payroll_list')
+        try:
+            base = request.POST.get('monthly_base_salary', '0')
+            late = request.POST.get('late_deduction_amount', '0')
+            lop = request.POST.get('lop_deduction_amount', '0')
+            
+            config.monthly_base_salary = Decimal(base)
+            config.late_deduction_amount = Decimal(late)
+            config.lop_deduction_amount = Decimal(lop)
+            config.save()
+            
+            messages.success(request, f'Salary configuration updated for {user_obj.username}.')
+            return redirect('attendance:payroll_list')
+        except (ValueError, TypeError, Exception) as e:
+            messages.error(request, f'Failed to update salary configuration: {e}')
         
     context = {
         'employee': user_obj,
@@ -752,101 +771,107 @@ def generate_payroll(request):
             days_in_month = calendar.monthrange(year, month)[1]
             last_day = datetime.date(year, month, days_in_month)
             
+            success_count = 0
+            failed_users = []
+            
             for user in users:
-                config, _ = SalaryConfig.objects.get_or_create(user=user)
-                
-                # Fetch attendance summary for this month
-                # Late check-ins count
-                late_days = Attendance.objects.filter(
-                    user=user, 
-                    date__range=(first_day, last_day),
-                    status='late'
-                ).count()
-                
-                # Present count (present + late + half_day)
-                present_att = Attendance.objects.filter(
-                    user=user, 
-                    date__range=(first_day, last_day)
-                )
-                
-                present_days = 0
-                absent_days = 0
-                approved_leaves = 0
-                unapproved_leaves = 0
-                
-                # Loop through each calendar day of the month to evaluate attendance
-                # This ensures we count absents where no check-in record exists
-                current_date = first_day
-                while current_date <= last_day:
-                    att_rec = present_att.filter(date=current_date).first()
-                    
-                    if att_rec:
-                        if att_rec.status in ['present', 'late']:
-                            present_days += 1
-                        elif att_rec.status == 'half_day':
-                            present_days += 0.5
-                            absent_days += 0.5 # half day LOP or absent
-                        elif att_rec.status == 'on_leave':
-                            # Check leave request type
-                            leave = LeaveRequest.objects.filter(
-                                user=user, 
-                                start_date__lte=current_date, 
-                                end_date__gte=current_date, 
-                                status='approved'
-                            ).first()
-                            if leave:
-                                approved_leaves += 1
-                            else:
-                                unapproved_leaves += 1
-                    else:
-                        # No check-in record. Is there a leave?
-                        leave = LeaveRequest.objects.filter(
+                try:
+                    with transaction.atomic():
+                        config, _ = SalaryConfig.objects.get_or_create(user=user)
+                        
+                        # Fetch attendance summary for this month
+                        late_days = Attendance.objects.filter(
                             user=user, 
-                            start_date__lte=current_date, 
-                            end_date__gte=current_date, 
-                            status='approved'
-                        ).first()
-                        if leave:
-                            approved_leaves += 1
-                        else:
-                            # Absent
-                            absent_days += 1
-                            unapproved_leaves += 1 # counts as loss of pay
+                            date__range=(first_day, last_day),
+                            status='late'
+                        ).count()
+                        
+                        present_att = Attendance.objects.filter(
+                            user=user, 
+                            date__range=(first_day, last_day)
+                        )
+                        
+                        present_days = 0
+                        absent_days = 0
+                        approved_leaves = 0
+                        unapproved_leaves = 0
+                        
+                        current_date = first_day
+                        while current_date <= last_day:
+                            att_rec = present_att.filter(date=current_date).first()
                             
-                    current_date += datetime.timedelta(days=1)
+                            if att_rec:
+                                if att_rec.status in ['present', 'late']:
+                                    present_days += 1
+                                elif att_rec.status == 'half_day':
+                                    present_days += 0.5
+                                    absent_days += 0.5
+                                elif att_rec.status == 'on_leave':
+                                    leave = LeaveRequest.objects.filter(
+                                        user=user, 
+                                        start_date__lte=current_date, 
+                                        end_date__gte=current_date, 
+                                        status='approved'
+                                    ).first()
+                                    if leave:
+                                        approved_leaves += 1
+                                    else:
+                                        unapproved_leaves += 1
+                            else:
+                                leave = LeaveRequest.objects.filter(
+                                    user=user, 
+                                    start_date__lte=current_date, 
+                                    end_date__gte=current_date, 
+                                    status='approved'
+                                ).first()
+                                if leave:
+                                    approved_leaves += 1
+                                else:
+                                    absent_days += 1
+                                    unapproved_leaves += 1
+                                    
+                            current_date += datetime.timedelta(days=1)
+                        
+                        lop_days_to_deduct = max(0, unapproved_leaves - 4)
+                        
+                        late_deduction = late_days * config.late_deduction_amount
+                        lop_deduction = lop_days_to_deduct * config.lop_deduction_amount
+                        total_deductions = late_deduction + lop_deduction
+                        
+                        net_salary = config.monthly_base_salary - total_deductions
+                        if net_salary < 0:
+                            net_salary = 0
+                            
+                        MonthlyPayroll.objects.update_or_create(
+                            user=user,
+                            month=month,
+                            year=year,
+                            defaults={
+                                'present_days': int(present_days),
+                                'absent_days': int(absent_days),
+                                'late_days': late_days,
+                                'approved_leaves': approved_leaves,
+                                'unapproved_leaves': unapproved_leaves,
+                                'base_salary': config.monthly_base_salary,
+                                'deductions': total_deductions,
+                                'net_salary': net_salary,
+                                'processed_by': request.user,
+                                'status': 'draft'
+                            }
+                        )
+                        success_count += 1
+                except Exception as user_err:
+                    failed_users.append(f"{user.username} ({user_err})")
+            
+            if failed_users:
+                messages.warning(request, f"Payroll generated for {success_count} employees. Failed for: {', '.join(failed_users)}")
+            else:
+                messages.success(request, f"Payroll generated successfully for all {success_count} staff members.")
                 
-                # Deductions calculation: 4 rotational weekly offs are allowed per month
-                lop_days_to_deduct = max(0, unapproved_leaves - 4)
-                
-                late_deduction = late_days * config.late_deduction_amount
-                lop_deduction = lop_days_to_deduct * config.lop_deduction_amount
-                total_deductions = late_deduction + lop_deduction
-                
-                net_salary = config.monthly_base_salary - total_deductions
-                if net_salary < 0:
-                    net_salary = 0
-                    
-                # Create or update payroll record
-                MonthlyPayroll.objects.update_or_create(
-                    user=user,
-                    month=month,
-                    year=year,
-                    defaults={
-                        'present_days': int(present_days),
-                        'absent_days': int(absent_days),
-                        'late_days': late_days,
-                        'approved_leaves': approved_leaves,
-                        'unapproved_leaves': unapproved_leaves,
-                        'base_salary': config.monthly_base_salary,
-                        'deductions': total_deductions,
-                        'net_salary': net_salary,
-                        'processed_by': request.user,
-                        'status': 'draft'
-                    }
-                )
-                
-            messages.success(request, f'Payroll generated successfully for {month}/{year}.')
             return redirect(f"{reverse('attendance:payroll_list')}?month={month}&year={year}")
+        except Exception as e:
+            messages.error(request, f"Error generating payroll: {e}")
+            return redirect('attendance:payroll_list')
         except Exception as e:
             messages.error(request, f"Error generating payroll: {e}")
             return redirect('attendance:payroll_list')

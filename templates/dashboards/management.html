@@ -586,6 +586,12 @@
                             <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('manager', 'Manager', this); return false;">Manager</a></li>
                             <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('assistant_manager', 'Asst. Manager', this); return false;">Asst. Manager</a></li>
                             <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('sales_staff', 'Sales Staff', this); return false;">Sales Staff</a></li>
+                            {% if custom_roles %}
+                                <div class="dropdown-divider"></div>
+                                {% for crole in custom_roles %}
+                                <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('{{ crole.code|escapejs }}', '{{ crole.name|escapejs }}', this); return false;">{{ crole.name }}</a></li>
+                                {% endfor %}
+                            {% endif %}
                         </ul>
                         <input type="hidden" id="roleFilterSelect" value="all">
                     </div>

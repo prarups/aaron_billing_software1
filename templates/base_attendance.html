@@ -326,19 +326,21 @@
                             <span>Permissions</span>
                         </a>
                     </li>
+                    {% if user.role == 'owner' or user.role == 'regional_manager' or user.role == 'manager' or user.role == 'assistant_manager' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}" href="{% url 'attendance:reports' %}">
                             <i class="bi bi-file-earmark-bar-graph-fill"></i>
                             <span>Attendance Reports</span>
                         </a>
                     </li>
+                    {% endif %}
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if request.resolver_match.url_name == 'my_summary' %}active{% endif %}" href="{% url 'attendance:my_summary' %}">
                             <i class="bi bi-person-check-fill"></i>
                             <span>My Summary</span>
                         </a>
                     </li>
-                    {% if user.role == 'owner' or user.role == 'manager' or user.role == 'assistant_manager' %}
+                    {% if user.role == 'owner' or user.role == 'regional_manager' or user.role == 'manager' or user.role == 'assistant_manager' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if request.resolver_match.url_name == 'management_overview' %}active{% endif %}" href="{% url 'attendance:management_overview' %}">
                             <i class="bi bi-people-fill"></i>
@@ -410,19 +412,21 @@
                             <span>Permissions</span>
                         </a>
                     </li>
+                    {% if user.role == 'owner' or user.role == 'regional_manager' or user.role == 'manager' or user.role == 'assistant_manager' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}" href="{% url 'attendance:reports' %}">
                             <i class="bi bi-file-earmark-bar-graph-fill"></i>
                             <span>Attendance Reports</span>
                         </a>
                     </li>
+                    {% endif %}
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if request.resolver_match.url_name == 'my_summary' %}active{% endif %}" href="{% url 'attendance:my_summary' %}">
                             <i class="bi bi-person-check-fill"></i>
                             <span>My Summary</span>
                         </a>
                     </li>
-                    {% if user.role == 'owner' or user.role == 'manager' or user.role == 'assistant_manager' %}
+                    {% if user.role == 'owner' or user.role == 'regional_manager' or user.role == 'manager' or user.role == 'assistant_manager' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if request.resolver_match.url_name == 'management_overview' %}active{% endif %}" href="{% url 'attendance:management_overview' %}">
                             <i class="bi bi-people-fill"></i>

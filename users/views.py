@@ -1226,7 +1226,8 @@ def branch_staff_management(request):
             b.current_goal_percent = 0
             b.current_goal_percent_exact = 0
             
-    staff_qs = User.objects.filter(role__in=['owner', 'manager', 'assistant_manager', 'sales_staff']).prefetch_related('branches').order_by('employee_id', 'username')
+    staff_qs = User.objects.all().prefetch_related('branches').order_by('employee_id', 'username')
+    custom_roles = CustomRole.objects.all()
     
     from users.forms import BranchForm, StaffForm
     branch_form = BranchForm()
@@ -1237,6 +1238,7 @@ def branch_staff_management(request):
         'branches_by_code': branches_by_code_list,
         'branch_search': branch_search,
         'staff_list': staff_qs,
+        'custom_roles': custom_roles,
         'all_branches': Branch.objects.all(),
         'branch_form': branch_form,
         'staff_form': staff_form,

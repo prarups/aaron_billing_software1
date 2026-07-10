@@ -18,6 +18,18 @@ class Branch(models.Model):
             from django.db.models import Max
             max_code = Branch.objects.aggregate(max_code=Max('code'))['max_code']
             self.code = (max_code + 1) if max_code else 10001
+            
+        # Ensure invoice_prefix is unique
+        if not self.invoice_prefix or self.invoice_prefix == 'AG':
+            existing_prefixes = Branch.objects.exclude(pk=self.pk).values_list('invoice_prefix', flat=True)
+            if self.invoice_prefix in existing_prefixes:
+                counter = 2
+                new_prefix = f"AG{counter}"
+                while new_prefix in existing_prefixes:
+                    counter += 1
+                    new_prefix = f"AG{counter}"
+                self.invoice_prefix = new_prefix
+                
         super().save(*args, **kwargs)
 
     def __str__(self):

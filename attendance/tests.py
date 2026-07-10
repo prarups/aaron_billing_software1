@@ -124,3 +124,45 @@ class AttendanceTestCase(TestCase):
             expected_net = 0
             
         self.assertEqual(payroll.net_salary, expected_net)
+
+    def test_is_manager_or_owner_includes_regional_manager(self):
+        from .views import is_manager_or_owner
+        regional_manager = User.objects.create_user(
+            username="rm_user",
+            password="testpassword",
+            role="regional_manager"
+        )
+        self.assertTrue(is_manager_or_owner(regional_manager))
+
+    def test_payroll_properties(self):
+        # Create a MonthlyPayroll
+        today = timezone.localdate()
+        payroll = MonthlyPayroll.objects.create(
+            user=self.staff,
+            month=today.month,
+            year=today.year,
+            present_days=20,
+            absent_days=10,
+            late_days=3,
+            approved_leaves=2,
+            unapproved_leaves=8,
+            base_salary=30000.00,
+            deductions=4600.00, # (3 late * 200) + ((8 unapproved - 4 weekoff) * 1000) = 600 + 4000 = 4600
+            net_salary=25400.00
+        )
+        self.assertEqual(payroll.late_deductions, 600.00)
+        self.assertEqual(payroll.lop_days, 8)
+        self.assertEqual(payroll.lop_deductions, 4000.00)
+
+    def test_branch_invoice_prefix_auto_uniquify(self):
+        # b1 will automatically uniquify to 'AG2' because self.branch created in setUp already has 'AG'
+        b1 = Branch.objects.create(name="Nellore", location="Loc1")
+        self.assertEqual(b1.invoice_prefix, "AG2")
+        
+        # b2 created without explicit invoice_prefix should automatically uniquify to 'AG3'
+        b2 = Branch.objects.create(name="Tirupati", location="Loc2")
+        self.assertEqual(b2.invoice_prefix, "AG3")
+        
+        # b3 created without explicit invoice_prefix should automatically uniquify to 'AG4'
+        b3 = Branch.objects.create(name="Guntur", location="Loc3")
+        self.assertEqual(b3.invoice_prefix, "AG4")

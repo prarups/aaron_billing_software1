@@ -1,4 +1,5 @@
 from django.test import TestCase, RequestFactory
+from django.urls import reverse
 from django.contrib.admin import AdminSite
 from core.models import Branch, Product, ProductRegistry, StockTransaction, StockAdjustment
 from core.admin import BranchAdmin, ProductAdmin, ProductRegistryAdmin, StockTransactionAdmin, StockAdjustmentAdmin

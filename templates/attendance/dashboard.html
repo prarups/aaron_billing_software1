@@ -115,7 +115,7 @@
                                 <h6 class="fw-bold mb-0">1. Check-In</h6>
                                 <span class="small text-muted">Time: 
                                     {% if attendance and attendance.check_in %}
-                                        <strong class="text-dark">{{ attendance.check_in|date:"I:i A" }}</strong>
+                                        <strong class="text-dark">{{ attendance.check_in|date:"h:i A" }}</strong>
                                     {% else %}
                                         <span class="text-warning">Pending</span>
                                     {% endif %}
@@ -142,7 +142,7 @@
                                 <h6 class="fw-bold mb-0">2. Mid-Day Verification</h6>
                                 <span class="small text-muted">Time: 
                                     {% if attendance and attendance.mid_day_time %}
-                                        <strong class="text-dark">{{ attendance.mid_day_time|date:"I:i A" }}</strong>
+                                        <strong class="text-dark">{{ attendance.mid_day_time|date:"h:i A" }}</strong>
                                     {% else %}
                                         <span class="text-warning">Pending</span>
                                     {% endif %}
@@ -169,7 +169,7 @@
                                 <h6 class="fw-bold mb-0">3. Check-Out</h6>
                                 <span class="small text-muted">Time: 
                                     {% if attendance and attendance.check_out %}
-                                        <strong class="text-dark">{{ attendance.check_out|date:"I:i A" }}</strong>
+                                        <strong class="text-dark">{{ attendance.check_out|date:"h:i A" }}</strong>
                                     {% else %}
                                         <span class="text-warning">Pending</span>
                                     {% endif %}
@@ -233,21 +233,21 @@
                                     </td>
                                     <td>
                                         {% if item.check_in %}
-                                            <span class="text-dark">{{ item.check_in|date:"I:i A" }}</span>
+                                            <span class="text-dark">{{ item.check_in|date:"h:i A" }}</span>
                                         {% else %}
                                             <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if item.check_out %}
-                                            <span class="text-dark">{{ item.check_out|date:"I:i A" }}</span>
+                                            <span class="text-dark">{{ item.check_out|date:"h:i A" }}</span>
                                         {% else %}
                                             <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if item.mid_day_time %}
-                                            <span class="text-dark">{{ item.mid_day_time|date:"I:i A" }}</span>
+                                            <span class="text-dark">{{ item.mid_day_time|date:"h:i A" }}</span>
                                         {% else %}
                                             <span class="text-muted">-</span>
                                         {% endif %}
@@ -306,6 +306,53 @@
     let stream = null;
     let userLatitude = null;
     let userLongitude = null;
+
+    function showSuccessToast(message, callback) {
+        const toast = document.createElement('div');
+        toast.className = 'custom-success-toast animate-slide-up';
+        toast.innerHTML = `
+            <div class="d-flex align-items-center gap-3">
+                <div class="toast-icon-wrapper bg-success bg-opacity-25 text-success rounded-circle d-flex align-items-center justify-content-center">
+                    <i class="bi bi-check-circle-fill fs-4"></i>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-0 text-dark">Success</h6>
+                    <p class="mb-0 text-muted small">${message}</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('fade-out');
+            setTimeout(() => {
+                toast.remove();
+                if (callback) callback();
+            }, 500);
+        }, 1500);
+    }
+
+    function showErrorToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'custom-error-toast animate-slide-up';
+        toast.innerHTML = `
+            <div class="d-flex align-items-center gap-3">
+                <div class="toast-icon-wrapper bg-danger bg-opacity-25 text-danger rounded-circle d-flex align-items-center justify-content-center">
+                    <i class="bi bi-x-circle-fill fs-4"></i>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-0 text-dark">Error</h6>
+                    <p class="mb-0 text-muted small">${message}</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('fade-out');
+            setTimeout(() => {
+                toast.remove();
+            }, 500);
+        }, 4000);
+    }
 
     // Robust function to retrieve GPS location
     function fetchLocation(onSuccess = null, onFailure = null) {
@@ -441,21 +488,22 @@
                 overlay.classList.remove('d-flex');
                 
                 if (data.success) {
-                    alert(data.message);
                     // Stop camera stream
                     if (stream) {
                         stream.getTracks().forEach(track => track.stop());
                     }
-                    location.reload();
+                    showSuccessToast(data.message, () => {
+                        location.reload();
+                    });
                 } else {
-                    alert("Error: " + data.message);
+                    showErrorToast(data.message);
                 }
             })
             .catch(err => {
                 overlay.classList.add('d-none');
                 overlay.classList.remove('d-flex');
                 console.error("AJAX Error:", err);
-                alert("Verification failed due to a server connection error.");
+                showErrorToast("Verification failed due to a server connection error.");
             });
         };
 
@@ -463,7 +511,7 @@
         if (!userLatitude || !userLongitude) {
             fetchLocation(
                 () => { postData(); },
-                (errorMsg) => { alert("Failed to resolve GPS coordinates: " + errorMsg); }
+                (errorMsg) => { showErrorToast("Failed to resolve GPS coordinates: " + errorMsg); }
             );
         } else {
             postData();
@@ -514,6 +562,50 @@
     });
 </script>
 <style>
+    .custom-success-toast, .custom-error-toast {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 99999;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        border-radius: 1rem;
+        padding: 1rem 1.5rem;
+        max-width: 380px;
+        min-width: 280px;
+        transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .custom-success-toast {
+        border-left: 5px solid #10b981;
+    }
+    .custom-error-toast {
+        border-left: 5px solid #ef4444;
+    }
+    .toast-icon-wrapper {
+        width: 42px;
+        height: 42px;
+        flex-shrink: 0;
+    }
+    .animate-slide-up {
+        animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .fade-out {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(40px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
     .btn-xxs {
         font-size: 0.7rem !important;
         padding: 0.15rem 0.4rem !important;

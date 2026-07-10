@@ -151,7 +151,7 @@
                                                 {% if day.record.check_in_photo %}
                                                     <img src="{{ day.record.check_in_photo.url }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ day.record.check_in_photo.url }}', 'Check-In Photo')"/>
                                                 {% endif %}
-                                                <span class="text-dark">{{ day.record.check_in|date:"I:i A" }}</span>
+                                                <span class="text-dark">{{ day.record.check_in|date:"h:i A" }}</span>
                                             </div>
                                         {% else %}
                                             <span class="text-muted">-</span>
@@ -163,7 +163,7 @@
                                                 {% if day.record.mid_day_photo %}
                                                     <img src="{{ day.record.mid_day_photo.url }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ day.record.mid_day_photo.url }}', 'Mid-Day Photo')"/>
                                                 {% endif %}
-                                                <span class="text-dark">{{ day.record.mid_day_time|date:"I:i A" }}</span>
+                                                <span class="text-dark">{{ day.record.mid_day_time|date:"h:i A" }}</span>
                                             </div>
                                         {% else %}
                                             <span class="text-muted">-</span>
@@ -175,7 +175,7 @@
                                                 {% if day.record.check_out_photo %}
                                                     <img src="{{ day.record.check_out_photo.url }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ day.record.check_out_photo.url }}', 'Check-Out Photo')"/>
                                                 {% endif %}
-                                                <span class="text-dark">{{ day.record.check_out|date:"I:i A" }}</span>
+                                                <span class="text-dark">{{ day.record.check_out|date:"h:i A" }}</span>
                                             </div>
                                         {% else %}
                                             <span class="text-muted">-</span>
@@ -199,15 +199,15 @@
                     {% if sal_config %}
                         <div class="d-flex justify-content-between mb-2 pb-2 border-bottom small">
                             <span class="text-muted">Base Salary:</span>
-                            <strong class="text-dark">Rs. {{ sal_config.base_salary }}</strong>
+                            <strong class="text-dark">Rs. {{ sal_config.monthly_base_salary }}</strong>
                         </div>
                         <div class="d-flex justify-content-between mb-2 pb-2 border-bottom small">
                             <span class="text-muted">Late Deduction:</span>
-                            <strong class="text-danger">Rs. {{ sal_config.late_check_in_penalty }}</strong>
+                            <strong class="text-danger">Rs. {{ sal_config.late_deduction_amount }}</strong>
                         </div>
                         <div class="d-flex justify-content-between small">
                             <span class="text-muted">LOP Deduction:</span>
-                            <strong class="text-danger">Rs. {{ sal_config.lop_deduction_rate }}</strong>
+                            <strong class="text-danger">Rs. {{ sal_config.lop_deduction_amount }}</strong>
                         </div>
                     {% else %}
                         <p class="text-muted small mb-0">Salary configuration not set by admin yet.</p>

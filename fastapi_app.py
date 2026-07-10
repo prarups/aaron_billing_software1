@@ -173,174 +173,198 @@ def get_current_user(request: Request):
             status_code=500,
             detail=f"Authentication error: {str(e)}"
         )
-
 @router.post("/attendance/check-in")
 def api_check_in(payload: AttendanceActionRequest, current_user = Depends(get_current_user), request: Request = None):
-    from django.utils import timezone
-    from attendance.models import Attendance, LeaveRequest
-    
-    today = timezone.localdate()
-    
-    # Check if already checked in
-    existing = Attendance.objects.filter(user=current_user, date=today).first()
-    if existing and existing.check_in:
-        raise HTTPException(status_code=400, detail="Already checked in for today.")
+    try:
+        from django.utils import timezone
+        from attendance.models import Attendance, LeaveRequest
         
-    photo_file = get_file_from_base64(payload.photo, f"{current_user.username}_checkin_{today}")
-    if not photo_file:
-        raise HTTPException(status_code=400, detail="Photo capture is required and must be valid base64.")
+        today = timezone.localdate()
         
-    branch = current_user.active_branch
-    if not branch:
-        branch = current_user.branches.first()
-        if not branch:
-            raise HTTPException(status_code=400, detail="No branch assigned to user.")
+        # Check if already checked in
+        existing = Attendance.objects.filter(user=current_user, date=today).first()
+        if existing and existing.check_in:
+            raise HTTPException(status_code=400, detail="Already checked in for today.")
             
-    now = timezone.localtime(timezone.now())
-    status_str = 'present'
-    if now.hour > 10 or (now.hour == 10 and now.minute > 15):
-        status_str = 'late'
-        
-    on_leave = LeaveRequest.objects.filter(
-        user=current_user,
-        start_date__lte=today,
-        end_date__gte=today,
-        status='approved'
-    ).exists()
-    if on_leave:
-        status_str = 'on_leave'
-        
-    if existing:
-        existing.check_in = timezone.now()
-        existing.check_in_photo = photo_file
-        existing.check_in_lat = Decimal(str(payload.lat))
-        existing.check_in_lng = Decimal(str(payload.lng))
-        existing.status = status_str
-        existing.save()
-        att = existing
-    else:
-        att = Attendance.objects.create(
+        photo_file = get_file_from_base64(payload.photo, f"{current_user.username}_checkin_{today}")
+        if not photo_file:
+            raise HTTPException(status_code=400, detail="Photo capture is required and must be valid base64.")
+            
+        branch = current_user.active_branch
+        if not branch:
+            branch = current_user.branches.first()
+            if not branch:
+                raise HTTPException(status_code=400, detail="No branch assigned to user.")
+                
+        now = timezone.localtime(timezone.now())
+        status_str = 'present'
+        if now.hour > 10 or (now.hour == 10 and now.minute > 15):
+            status_str = 'late'
+            
+        on_leave = LeaveRequest.objects.filter(
             user=current_user,
-            branch=branch,
-            date=today,
-            check_in=timezone.now(),
-            check_in_photo=photo_file,
-            check_in_lat=Decimal(str(payload.lat)),
-            check_in_lng=Decimal(str(payload.lng)),
-            status=status_str
-        )
-        
-    return {
-        "success": True,
-        "message": "Checked in successfully!",
-        "status": att.status,
-        "time": timezone.localtime(att.check_in).strftime('%I:%M %p')
-    }
+            start_date__lte=today,
+            end_date__gte=today,
+            status='approved'
+        ).exists()
+        if on_leave:
+            status_str = 'on_leave'
+            
+        if existing:
+            existing.check_in = timezone.now()
+            existing.check_in_photo = photo_file
+            existing.check_in_lat = Decimal(str(payload.lat))
+            existing.check_in_lng = Decimal(str(payload.lng))
+            existing.status = status_str
+            existing.save()
+            att = existing
+        else:
+            att = Attendance.objects.create(
+                user=current_user,
+                branch=branch,
+                date=today,
+                check_in=timezone.now(),
+                check_in_photo=photo_file,
+                check_in_lat=Decimal(str(payload.lat)),
+                check_in_lng=Decimal(str(payload.lng)),
+                status=status_str
+            )
+            
+        return {
+            "success": True,
+            "message": "Checked in successfully!",
+            "status": att.status,
+            "time": timezone.localtime(att.check_in).strftime('%I:%M %p')
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Check-in failed: {str(e)}")
 
 @router.post("/attendance/mid-day")
 def api_mid_day(payload: AttendanceActionRequest, current_user = Depends(get_current_user)):
-    from django.utils import timezone
-    from attendance.models import Attendance
-    
-    today = timezone.localdate()
-    
-    attendance = Attendance.objects.filter(user=current_user, date=today).first()
-    if not attendance:
-        raise HTTPException(status_code=400, detail="Please check-in first before mid-day verification.")
+    try:
+        from django.utils import timezone
+        from attendance.models import Attendance
         
-    if attendance.mid_day_time:
-        raise HTTPException(status_code=400, detail="Mid-day verification already completed.")
+        today = timezone.localdate()
         
-    photo_file = get_file_from_base64(payload.photo, f"{current_user.username}_midday_{today}")
-    if not photo_file:
-        raise HTTPException(status_code=400, detail="Photo capture is required and must be valid base64.")
+        attendance = Attendance.objects.filter(user=current_user, date=today).first()
+        if not attendance:
+            raise HTTPException(status_code=400, detail="Please check-in first before mid-day verification.")
+            
+        if attendance.mid_day_time:
+            raise HTTPException(status_code=400, detail="Mid-day verification already completed.")
+            
+        photo_file = get_file_from_base64(payload.photo, f"{current_user.username}_midday_{today}")
+        if not photo_file:
+            raise HTTPException(status_code=400, detail="Photo capture is required and must be valid base64.")
+            
+        attendance.mid_day_time = timezone.now()
+        attendance.mid_day_photo = photo_file
+        attendance.mid_day_lat = Decimal(str(payload.lat))
+        attendance.mid_day_lng = Decimal(str(payload.lng))
+        attendance.save()
         
-    attendance.mid_day_time = timezone.now()
-    attendance.mid_day_photo = photo_file
-    attendance.mid_day_lat = Decimal(str(payload.lat))
-    attendance.mid_day_lng = Decimal(str(payload.lng))
-    attendance.save()
-    
-    return {
-        "success": True,
-        "message": "Mid-day verification completed successfully!",
-        "time": timezone.localtime(attendance.mid_day_time).strftime('%I:%M %p')
-    }
+        return {
+            "success": True,
+            "message": "Mid-day verification completed successfully!",
+            "time": timezone.localtime(attendance.mid_day_time).strftime('%I:%M %p')
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Mid-day verification failed: {str(e)}")
 
 @router.post("/attendance/check-out")
 def api_check_out(payload: AttendanceActionRequest, current_user = Depends(get_current_user)):
-    from django.utils import timezone
-    from attendance.models import Attendance
-    
-    today = timezone.localdate()
-    
-    attendance = Attendance.objects.filter(user=current_user, date=today).first()
-    if not attendance:
-        raise HTTPException(status_code=400, detail="Please check-in first before checking out.")
+    try:
+        from django.utils import timezone
+        from attendance.models import Attendance
         
-    if attendance.check_out:
-        raise HTTPException(status_code=400, detail="Already checked out for today.")
+        today = timezone.localdate()
         
-    photo_file = get_file_from_base64(payload.photo, f"{current_user.username}_checkout_{today}")
-    if not photo_file:
-        raise HTTPException(status_code=400, detail="Photo capture is required and must be valid base64.")
+        attendance = Attendance.objects.filter(user=current_user, date=today).first()
+        if not attendance:
+            raise HTTPException(status_code=400, detail="Please check-in first before checking out.")
+            
+        if attendance.check_out:
+            raise HTTPException(status_code=400, detail="Already checked out for today.")
+            
+        photo_file = get_file_from_base64(payload.photo, f"{current_user.username}_checkout_{today}")
+        if not photo_file:
+            raise HTTPException(status_code=400, detail="Photo capture is required and must be valid base64.")
+            
+        attendance.check_out = timezone.now()
+        attendance.check_out_photo = photo_file
+        attendance.check_out_lat = Decimal(str(payload.lat))
+        attendance.check_out_lng = Decimal(str(payload.lng))
+        attendance.save()
         
-    attendance.check_out = timezone.now()
-    attendance.check_out_photo = photo_file
-    attendance.check_out_lat = Decimal(str(payload.lat))
-    attendance.check_out_lng = Decimal(str(payload.lng))
-    attendance.save()
-    
-    return {
-        "success": True,
-        "message": "Checked out successfully!",
-        "time": timezone.localtime(attendance.check_out).strftime('%I:%M %p')
-    }
+        return {
+            "success": True,
+            "message": "Checked out successfully!",
+            "time": timezone.localtime(attendance.check_out).strftime('%I:%M %p')
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Check-out failed: {str(e)}")
 
 @router.get("/attendance/today-status")
 def api_today_status(current_user = Depends(get_current_user)):
-    from django.utils import timezone
-    from attendance.models import Attendance
-    
-    today = timezone.localdate()
-    att = Attendance.objects.filter(user=current_user, date=today).first()
-    
-    if not att:
+    try:
+        from django.utils import timezone
+        from attendance.models import Attendance
+        
+        today = timezone.localdate()
+        att = Attendance.objects.filter(user=current_user, date=today).first()
+        
+        if not att:
+            return {
+                "date": today.isoformat(),
+                "checked_in": False,
+                "mid_day_completed": False,
+                "checked_out": False,
+                "status": "absent"
+            }
+            
         return {
             "date": today.isoformat(),
-            "checked_in": False,
-            "mid_day_completed": False,
-            "checked_out": False,
-            "status": "absent"
+            "checked_in": att.check_in is not None,
+            "check_in_time": timezone.localtime(att.check_in).strftime('%I:%M %p') if att.check_in else None,
+            "mid_day_completed": att.mid_day_time is not None,
+            "mid_day_time": timezone.localtime(att.mid_day_time).strftime('%I:%M %p') if att.mid_day_time else None,
+            "checked_out": att.check_out is not None,
+            "check_out_time": timezone.localtime(att.check_out).strftime('%I:%M %p') if att.check_out else None,
+            "status": att.status
         }
-        
-    return {
-        "date": today.isoformat(),
-        "checked_in": att.check_in is not None,
-        "check_in_time": timezone.localtime(att.check_in).strftime('%I:%M %p') if att.check_in else None,
-        "mid_day_completed": att.mid_day_time is not None,
-        "mid_day_time": timezone.localtime(att.mid_day_time).strftime('%I:%M %p') if att.mid_day_time else None,
-        "checked_out": att.check_out is not None,
-        "check_out_time": timezone.localtime(att.check_out).strftime('%I:%M %p') if att.check_out else None,
-        "status": att.status
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch today's status: {str(e)}")
 
 @router.get("/attendance/history")
 def api_attendance_history(limit: int = 10, current_user = Depends(get_current_user)):
-    from attendance.models import Attendance
-    
-    records = Attendance.objects.filter(user=current_user).order_by('-date')[:limit]
-    
-    result = []
-    for att in records:
-        result.append({
-            "date": att.date.isoformat(),
-            "check_in": att.check_in.isoformat() if att.check_in else None,
-            "mid_day_time": att.mid_day_time.isoformat() if att.mid_day_time else None,
-            "check_out": att.check_out.isoformat() if att.check_out else None,
-            "status": att.status,
-            "notes": att.notes
-        })
-    return result
+    try:
+        from attendance.models import Attendance
+        
+        records = Attendance.objects.filter(user=current_user).order_by('-date')[:limit]
+        
+        result = []
+        for att in records:
+            result.append({
+                "date": att.date.isoformat(),
+                "check_in": att.check_in.isoformat() if att.check_in else None,
+                "mid_day_time": att.mid_day_time.isoformat() if att.mid_day_time else None,
+                "check_out": att.check_out.isoformat() if att.check_out else None,
+                "status": att.status,
+                "notes": att.notes
+            })
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch attendance history: {str(e)}")
 
 app.include_router(router)

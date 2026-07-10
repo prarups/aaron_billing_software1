@@ -125,5 +125,24 @@ class MonthlyPayroll(models.Model):
         unique_together = ('user', 'month', 'year')
         ordering = ['-year', '-month']
 
+    @property
+    def late_deductions(self):
+        try:
+            return self.late_days * self.user.salary_config.late_deduction_amount
+        except Exception:
+            return 0.00
+
+    @property
+    def lop_days(self):
+        return self.unapproved_leaves
+
+    @property
+    def lop_deductions(self):
+        try:
+            lop_days_to_deduct = max(0, self.unapproved_leaves - 4)
+            return lop_days_to_deduct * self.user.salary_config.lop_deduction_amount
+        except Exception:
+            return 0.00
+
     def __str__(self):
         return f"{self.user.username} - {self.month}/{self.year} - Net: {self.net_salary} ({self.status})"
