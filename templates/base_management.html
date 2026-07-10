@@ -455,7 +455,7 @@
         document.addEventListener("DOMContentLoaded", function () {
             function initTomSelect(el) {
                 if (el.tagName === 'SELECT' && !el.classList.contains('tomselected')) {
-                    if (el.dataset.noSearch !== undefined) return;
+                    if (el.classList.contains('no-search') || el.hasAttribute('data-no-search') || el.dataset.noSearch !== undefined) return;
                     try {
                         const settings = {
                             placeholder: el.getAttribute('placeholder') || 'Select...',

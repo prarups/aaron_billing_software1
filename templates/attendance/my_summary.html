@@ -400,9 +400,59 @@
         }
         #printArea {
             position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
+            left: 5%;
+            top: 40px;
+            width: 90% !important;
+            padding: 30px !important;
+            border: 1px solid #ddd !important;
+            border-radius: 12px !important;
+            background-color: #fff !important;
+            color: #000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        /* Enforce row/col side-by-side layout in print */
+        #printArea .row {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            justify-content: space-between !important;
+            width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+        #printArea .col-6 {
+            flex: 0 0 50% !important;
+            max-width: 50% !important;
+            width: 50% !important;
+        }
+        #printArea .text-end {
+            text-align: right !important;
+            margin-left: auto !important;
+        }
+        /* Render tables and borders properly */
+        #printArea .table {
+            width: 100% !important;
+            margin-bottom: 1rem !important;
+            border-collapse: collapse !important;
+            background-color: transparent !important;
+        }
+        #printArea .table-bordered th,
+        #printArea .table-bordered td {
+            border: 1px solid #dee2e6 !important;
+            padding: 6px 10px !important;
+        }
+        #printArea .table-light {
+            background-color: #f8f9fa !important;
+        }
+        /* Render alert box colors correctly */
+        #printArea .alert-success {
+            background-color: #d1e7dd !important;
+            color: #0f5132 !important;
+            border: 0 !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
         }
     }
 </style>

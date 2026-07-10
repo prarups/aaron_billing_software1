@@ -40,16 +40,16 @@
                     <form method="get" class="row g-3 align-items-end">
                         <div class="col-md-3">
                             <label class="form-label small fw-bold text-muted">Branch</label>
-                            <select name="branch" class="form-select rounded-3">
+                            <select name="branch" class="form-select rounded-3 no-search" data-no-search="true">
                                 <option value="">All Branches</option>
                                 {% for b in branches %}
                                     <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
-                                {% endfor %}
+                                    {% endfor %}
                             </select>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-bold text-muted">Month</label>
-                            <select name="grid_month" class="form-select rounded-3">
+                            <select name="grid_month" class="form-select rounded-3 no-search" data-no-search="true">
                                 <option value="1" {% if grid_month == 1 %}selected{% endif %}>January</option>
                                 <option value="2" {% if grid_month == 2 %}selected{% endif %}>February</option>
                                 <option value="3" {% if grid_month == 3 %}selected{% endif %}>March</option>
@@ -66,7 +66,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-bold text-muted">Year</label>
-                            <select name="grid_year" class="form-select rounded-3">
+                            <select name="grid_year" class="form-select rounded-3 no-search" data-no-search="true">
                                 {% for y in years %}
                                     <option value="{{ y }}" {% if grid_year == y %}selected{% endif %}>{{ y }}</option>
                                 {% endfor %}
@@ -219,7 +219,6 @@
                                     <th>1. Check-In</th>
                                     <th>2. Mid-Day Check</th>
                                     <th>3. Check-Out</th>
-                                    <th>Audit Map</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -315,31 +314,6 @@
                                             <span class="text-muted small">-</span>
                                         {% endif %}
                                     </td>
-
-                                    <!-- Audit Maps Overview -->
-                                    <td>
-                                        {% if record.check_in_lat or record.mid_day_lat or record.check_out_lat %}
-                                            <div class="d-flex flex-column gap-1">
-                                                {% if record.check_in_lat %}
-                                                    <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_in_lat }},{{ record.check_in_lng }}" target="_blank" class="btn btn-xxs btn-outline-secondary rounded-pill px-2 py-0.5 small align-self-start">
-                                                        In Loc <i class="bi bi-box-arrow-up-right text-xxs"></i>
-                                                    </a>
-                                                {% endif %}
-                                                {% if record.mid_day_lat %}
-                                                    <a href="https://www.google.com/maps/search/?api=1&query={{ record.mid_day_lat }},{{ record.mid_day_lng }}" target="_blank" class="btn btn-xxs btn-outline-secondary rounded-pill px-2 py-0.5 small align-self-start">
-                                                        Mid Loc <i class="bi bi-box-arrow-up-right text-xxs"></i>
-                                                    </a>
-                                                {% endif %}
-                                                {% if record.check_out_lat %}
-                                                    <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_out_lat }},{{ record.check_out_lng }}" target="_blank" class="btn btn-xxs btn-outline-secondary rounded-pill px-2 py-0.5 small align-self-start">
-                                                        Out Loc <i class="bi bi-box-arrow-up-right text-xxs"></i>
-                                                    </a>
-                                                {% endif %}
-                                            </div>
-                                        {% else %}
-                                            <span class="text-muted small">-</span>
-                                        {% endif %}
-                                    </td>
                                     
                                     <!-- Action button -->
                                     <td>
@@ -355,7 +329,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="7" class="text-center py-4 text-muted">No attendance logs match the filters.</td>
+                                    <td colspan="6" class="text-center py-4 text-muted">No attendance logs match the filters.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

@@ -347,6 +347,8 @@
                             <span>Management Overview</span>
                         </a>
                     </li>
+                    {% endif %}
+                    {% if user.role == 'owner' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if 'payroll' in request.resolver_match.url_name or 'salary' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'attendance:payroll_list' %}">
                             <i class="bi bi-wallet2"></i>
@@ -433,6 +435,8 @@
                             <span>Management Overview</span>
                         </a>
                     </li>
+                    {% endif %}
+                    {% if user.role == 'owner' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if 'payroll' in request.resolver_match.url_name or 'salary' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'attendance:payroll_list' %}">
                             <i class="bi bi-wallet2"></i>
@@ -504,8 +508,9 @@
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             function initTomSelect(el) {
+                return; // Disabled globally in Attendance portal to keep normal browser dropdowns
                 if (el.tagName === 'SELECT' && !el.classList.contains('tomselected')) {
-                    if (el.dataset.noSearch !== undefined) return;
+                    if (el.classList.contains('no-search') || el.hasAttribute('data-no-search') || el.dataset.noSearch !== undefined) return;
                     try {
                         const settings = {
                             placeholder: el.getAttribute('placeholder') || 'Select...',

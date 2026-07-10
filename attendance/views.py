@@ -176,11 +176,23 @@ def check_in(request):
                 if not branch:
                     return JsonResponse({'success': False, 'message': 'No branch assigned to user. Please contact admin.'})
             
-            # Check-in time threshold for late mark (e.g. 10:00 AM local time)
+            # Check-in time threshold for late mark (using user's specific shift and grace period)
             now = timezone.localtime(timezone.now())
             status = 'present'
-            # Let's say check-in after 10:15 AM is late (or custom rule)
-            if now.hour > 10 or (now.hour == 10 and now.minute > 15):
+            
+            # Combine today's date with the user's shift start time in local timezone
+            shift_start = request.user.shift_start_time
+            grace_mins = request.user.grace_period_minutes
+            
+            local_shift_datetime = timezone.make_aware(
+                datetime.datetime.combine(today, shift_start),
+                timezone.get_current_timezone()
+            )
+            
+            # Calculate late threshold
+            late_threshold = local_shift_datetime + datetime.timedelta(minutes=grace_mins)
+            
+            if now > late_threshold:
                 status = 'late'
                 
             # If there's an approved leave for today, set status to 'on_leave'

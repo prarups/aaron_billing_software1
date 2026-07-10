@@ -546,11 +546,11 @@
                         <h6><i class="bi bi-people-fill me-2"></i>Team Management</h6>
                         <div class="d-flex align-items-center gap-3 mt-1">
                             <span style="color:rgba(255,255,255,0.75);font-size:0.73rem;">{{ staff_list|length }} members</span>
-                            <span class="d-flex align-items-center gap-1" style="color:#86efac;font-size:0.73rem;">
+                            <span class="d-flex align-items-center gap-1" onclick="showStaffStatusModal('online')" style="color:#86efac;font-size:0.73rem;cursor:pointer;">
                                 <span class="s-online-dot s-dot-on"></span>
                                 Online: <strong id="onlineStaffCount">0</strong>
                             </span>
-                            <span class="d-flex align-items-center gap-1" style="color:rgba(255,255,255,0.5);font-size:0.73rem;">
+                            <span class="d-flex align-items-center gap-1" onclick="showStaffStatusModal('offline')" style="color:rgba(255,255,255,0.5);font-size:0.73rem;cursor:pointer;">
                                 <span class="s-online-dot s-dot-off"></span>
                                 Offline: <strong id="offlineStaffCount">0</strong>
                             </span>
@@ -651,7 +651,7 @@
                                     {{ staff.first_name }} {{ staff.last_name }}
                                     {% if not staff.first_name and not staff.last_name %}<span class="text-muted">{{ staff.username }}</span>{% endif %}
                                 </div>
-                                <div style="font-size:0.71rem;color:#94a3b8;">@{{ staff.username }} &middot; {{ staff.employee_id|default:"No ID" }}</div>
+                                <div style="font-size:0.71rem;color:#94a3b8;">@{{ staff.username }} &middot; {{ staff.employee_id|default:"No ID" }} &middot; <i class="bi bi-clock"></i> {{ staff.shift_start_time|time:"h:i A" }} - {{ staff.shift_end_time|time:"h:i A" }} ({{ staff.grace_period_minutes }}m grace)</div>
                             </div>
                         </div>
                         <!-- Hidden search spans -->
@@ -744,7 +744,7 @@
                     <td class="text-center">
                         <div class="d-flex align-items-center justify-content-center gap-2">
                             <button class="s-act-btn s-act-edit" title="Edit Staff"
-                                onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}', '{{ staff.date_of_joining|date:"Y-m-d"|default:'' }}', {% if staff.has_pos_access %}true{% else %}false{% endif %}, {% if staff.has_attendance_access %}true{% else %}false{% endif %})">
+                                onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}', '{{ staff.date_of_joining|date:"Y-m-d"|default:'' }}', {% if staff.has_pos_access %}true{% else %}false{% endif %}, {% if staff.has_attendance_access %}true{% else %}false{% endif %}, '{{ staff.shift_start_time|time:"H:i" }}', '{{ staff.shift_end_time|time:"H:i" }}', {{ staff.grace_period_minutes }})">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
                             {% if staff != request.user and user.role == 'owner' %}
@@ -975,6 +975,18 @@
                                             <label class="form-label small text-muted fw-bold text-uppercase">Attendance Access</label>
                                             {{ staff_form.has_attendance_access }}
                                         </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Shift Start Time</label>
+                                            {{ staff_form.shift_start_time }}
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Shift End Time</label>
+                                            {{ staff_form.shift_end_time }}
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Grace Period (Minutes)</label>
+                                            {{ staff_form.grace_period_minutes }}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1084,6 +1096,18 @@
                                             <div class="form-check form-switch mt-1">
                                                 <input class="form-check-input" type="checkbox" name="has_attendance_access" id="editStaffAttendanceAccess" style="transform: scale(1.15);">
                                             </div>
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Shift Start Time</label>
+                                            <input type="time" name="shift_start_time" id="editStaffShiftStart" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Shift End Time</label>
+                                            <input type="time" name="shift_end_time" id="editStaffShiftEnd" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
+                                        </div>
+                                        <div class="col-12 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Grace Period (Minutes)</label>
+                                            <input type="number" name="grace_period_minutes" id="editStaffGracePeriod" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Grace minutes" required>
                                         </div>
                                     </div>
                                 </div>
@@ -1270,7 +1294,7 @@
         modal.show();
     }
 
-    function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId, mobileNumber, address, dateOfJoining, hasPosAccess, hasAttendanceAccess) {
+    function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId, mobileNumber, address, dateOfJoining, hasPosAccess, hasAttendanceAccess, shiftStart, shiftEnd, gracePeriod) {
         document.getElementById('editStaffForm').action = `/users/staff/edit/${id}/`;
         document.getElementById('editStaffUsername').value = username;
         document.getElementById('editStaffFirstName').value = firstName;
@@ -1282,6 +1306,9 @@
         document.getElementById('editStaffDateOfJoining').value = (dateOfJoining === 'None' || !dateOfJoining) ? '' : dateOfJoining;
         document.getElementById('editStaffPosAccess').checked = hasPosAccess;
         document.getElementById('editStaffAttendanceAccess').checked = hasAttendanceAccess;
+        document.getElementById('editStaffShiftStart').value = shiftStart || '09:00';
+        document.getElementById('editStaffShiftEnd').value = shiftEnd || '17:00';
+        document.getElementById('editStaffGracePeriod').value = gracePeriod !== undefined ? gracePeriod : 15;
 
         const roleEl = document.getElementById('editStaffRole');
         if (roleEl && roleEl.tomselect) {
@@ -1931,11 +1958,29 @@
         fetch("{% url 'staff_online_status' %}")
             .then(res => res.json())
             .then(data => {
+                let updated = false;
                 for (const [staffId, isOnline] of Object.entries(data)) {
                     const row = document.getElementById(`staff-row-${staffId}`);
                     if (!row) continue;
                     
-                    row.setAttribute('data-online', isOnline ? 'true' : 'false');
+                    const oldOnline = row.getAttribute('data-online');
+                    const newOnlineStr = isOnline ? 'true' : 'false';
+                    if (oldOnline !== newOnlineStr) {
+                        row.setAttribute('data-online', newOnlineStr);
+                        updated = true;
+                    }
+                    
+                    // Update online dot classes in avatar
+                    const dot = row.querySelector('.s-online-dot');
+                    if (dot) {
+                        if (isOnline) {
+                            dot.classList.add('s-dot-on');
+                            dot.classList.remove('s-dot-off');
+                        } else {
+                            dot.classList.add('s-dot-off');
+                            dot.classList.remove('s-dot-on');
+                        }
+                    }
                     
                     const activityCell = row.querySelector('td[data-label="Activity"]');
                     if (activityCell) {
@@ -1957,6 +2002,16 @@
                         }
                     }
                 }
+                
+                // Refresh pagination and count headers if status updated or initial counts are zero
+                const onlineEl = document.getElementById('onlineStaffCount');
+                const offlineEl = document.getElementById('offlineStaffCount');
+                const needsInitialUpdate = (onlineEl && onlineEl.textContent === '0' && offlineEl && offlineEl.textContent === '0');
+                if (updated || needsInitialUpdate) {
+                    if (typeof filterStaff === 'function') {
+                        filterStaff(false);
+                    }
+                }
             })
             .catch(err => console.error("Error polling staff status:", err));
     }
@@ -1964,11 +2019,17 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             initOwnerDashboard();
+            if (typeof filterStaff === 'function') {
+                filterStaff();
+            }
             pollStaffOnlineStatus();
             setInterval(pollStaffOnlineStatus, 10000);
         });
     } else {
         initOwnerDashboard();
+        if (typeof filterStaff === 'function') {
+            filterStaff();
+        }
         pollStaffOnlineStatus();
         setInterval(pollStaffOnlineStatus, 10000);
     }

@@ -86,7 +86,11 @@ class User(AbstractUser):
     has_attendance_access = models.BooleanField(default=True)
     mobile_number = models.CharField(max_length=15, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
+    shift_start_time = models.TimeField(default="09:00:00", help_text="Shift start time")
+    shift_end_time = models.TimeField(default="17:00:00", help_text="Shift end time")
+    grace_period_minutes = models.IntegerField(default=15, help_text="Grace period in minutes before marked Late")
     last_activity = models.DateTimeField(null=True, blank=True)
+
 
     @property
     def is_online(self):
@@ -131,6 +135,14 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         if not self.employee_id:
             self.employee_id = generate_employee_id_for_user(self)
+        
+        # Shift fields defaults fallback
+        if self.shift_start_time is None:
+            self.shift_start_time = "09:00:00"
+        if self.shift_end_time is None:
+            self.shift_end_time = "17:00:00"
+        if self.grace_period_minutes is None:
+            self.grace_period_minutes = 15
         
         # Sync permissions if role is custom
         if self.role and self.role not in ['owner', 'regional_manager', 'manager', 'assistant_manager', 'sales_staff']:

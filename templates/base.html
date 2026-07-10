@@ -528,7 +528,7 @@
             function initTomSelect(el) {
                 // Ensure it is a select, not already initialized, and not flagged to ignore
                 if (el.tagName === 'SELECT' && !el.classList.contains('tomselected')) {
-                    if (el.dataset.noSearch !== undefined) return;
+                    if (el.classList.contains('no-search') || el.hasAttribute('data-no-search') || el.dataset.noSearch !== undefined) return;
                     
                     try {
                         const settings = {
