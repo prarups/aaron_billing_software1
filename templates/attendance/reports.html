@@ -19,12 +19,12 @@
     <!-- Main Navigation Tabs -->
     <ul class="nav nav-pills mb-4 gap-2" id="reportsTab" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="btn btn-outline-success active rounded-pill px-4" id="grid-tab" data-bs-toggle="pill" data-bs-target="#gridSection" type="button" role="tab">
+            <button class="btn btn-outline-success {% if active_tab != 'logs' %}active{% endif %} rounded-pill px-4" id="grid-tab" data-bs-toggle="pill" data-bs-target="#gridSection" type="button" role="tab">
                 <i class="bi bi-grid-3x3-gap-fill me-1"></i> Monthly Visual Grid
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="btn btn-outline-success rounded-pill px-4" id="logs-tab" data-bs-toggle="pill" data-bs-target="#logsSection" type="button" role="tab">
+            <button class="btn btn-outline-success {% if active_tab == 'logs' %}active{% endif %} rounded-pill px-4" id="logs-tab" data-bs-toggle="pill" data-bs-target="#logsSection" type="button" role="tab">
                 <i class="bi bi-list-task me-1"></i> Detailed Daily Logs
             </button>
         </li>
@@ -32,12 +32,13 @@
 
     <div class="tab-content" id="reportsTabContent">
         <!-- TAB 1: Visual Monthly Grid -->
-        <div class="tab-pane fade show active" id="gridSection" role="tabpanel">
+        <div class="tab-pane fade {% if active_tab != 'logs' %}show active{% endif %}" id="gridSection" role="tabpanel">
             <!-- Grid Filter Form -->
             <div class="card border-0 shadow-sm mb-4 bg-white" style="border-radius: 1rem;">
                 <div class="card-body p-4">
                     <h5 class="fw-bold text-success mb-3"><i class="bi bi-calendar-range me-2"></i>Monthly Grid Filter</h5>
                     <form method="get" class="row g-3 align-items-end">
+                        <input type="hidden" name="tab" value="grid">
                         <div class="col-md-3">
                             <label class="form-label small fw-bold text-muted">Branch</label>
                             <select name="branch" class="form-select rounded-3 no-search" data-no-search="true">
@@ -113,7 +114,11 @@
                                 <tr>
                                     <!-- Employee username -->
                                     <td class="text-start fw-bold text-dark" style="position: sticky; left: 0; background: #ffffff; z-index: 2; border-right: 2px solid #dee2e6;">
-                                        {{ item.user.username }}
+                                        <div>
+                                            {{ item.user.first_name }} {{ item.user.last_name }}
+                                            {% if not item.user.first_name and not item.user.last_name %}{{ item.user.username }}{% endif %}
+                                        </div>
+                                        <small class="text-muted text-xxs d-block" style="font-weight: normal; font-size: 0.7rem;">@{{ item.user.username }} &middot; ID: {{ item.user.employee_id|default:"-" }}</small>
                                     </td>
                                     
                                     <!-- Days indicators -->
@@ -161,12 +166,13 @@
         </div>
 
         <!-- TAB 2: Detailed Logs list -->
-        <div class="tab-pane fade" id="logsSection" role="tabpanel">
+        <div class="tab-pane fade {% if active_tab == 'logs' %}show active{% endif %}" id="logsSection" role="tabpanel">
             <!-- Detailed filters -->
             <div class="card border-0 shadow-sm mb-4 bg-white" style="border-radius: 1rem;">
                 <div class="card-body p-4">
                     <h5 class="fw-bold text-success mb-3"><i class="bi bi-filter-square me-2"></i>Logs Filter</h5>
                     <form method="get" class="row g-3 align-items-end">
+                        <input type="hidden" name="tab" value="logs">
                         <div class="col-md-3">
                             <label class="form-label small fw-bold text-muted">Branch</label>
                             <select name="branch" class="form-select rounded-3">
@@ -187,11 +193,11 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-bold text-muted">Start Date</label>
-                            <input type="date" name="start_date" class="form-control rounded-3" value="{{ start_date }}">
+                            <input type="date" name="start_date" class="form-control rounded-3" value="{{ start_date_val }}">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-bold text-muted">End Date</label>
-                            <input type="date" name="end_date" class="form-control rounded-3" value="{{ end_date }}">
+                            <input type="date" name="end_date" class="form-control rounded-3" value="{{ end_date_val }}">
                         </div>
                         <div class="col-md-2 d-flex gap-2">
                             <button type="submit" class="btn btn-success w-100 rounded-pill py-2">
@@ -223,12 +229,20 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for record in records %}
+                                {% for record in page_obj %}
                                 <tr>
                                     <!-- Employee info -->
                                     <td>
-                                        <div class="fw-bold text-dark">{{ record.user.username }}</div>
-                                        <span class="text-muted small">Branch: {{ record.branch.name }}</span>
+                                        <div class="fw-bold text-dark">
+                                            {{ record.user.first_name }} {{ record.user.last_name }}
+                                            {% if not record.user.first_name and not record.user.last_name %}{{ record.user.username }}{% endif %}
+                                        </div>
+                                        <div class="text-muted small" style="font-size: 0.75rem;">
+                                            @{{ record.user.username }} &middot; ID: {{ record.user.employee_id|default:"No ID" }} &middot; {{ record.user.role_display }}
+                                        </div>
+                                        <div class="mt-1">
+                                            <span class="badge text-purple border text-xxs" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.65rem; font-weight: 600;">Branch: {{ record.branch.name }}</span>
+                                        </div>
                                     </td>
                                     
                                     <!-- Date & Status -->
@@ -335,6 +349,34 @@
                             </tbody>
                         </table>
                     </div>
+
+                    {% if page_obj.has_other_pages %}
+                    <nav aria-label="Page navigation" class="mt-4">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link rounded-start-pill px-3 border-0 shadow-sm text-success" href="?page=1&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="First Page">&laquo; First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link px-3 border-0 shadow-sm text-success" href="?page={{ page_obj.previous_page_number }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Previous Page">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item disabled">
+                                <span class="page-link px-3 border-0 shadow-sm bg-light text-dark">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link px-3 border-0 shadow-sm text-success" href="?page={{ page_obj.next_page_number }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Next Page">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link rounded-end-pill px-3 border-0 shadow-sm text-success" href="?page={{ page_obj.paginator.num_pages }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Last Page">Last &raquo;</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
                 </div>
             </div>
         </div>

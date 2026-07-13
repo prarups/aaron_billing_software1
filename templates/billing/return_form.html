@@ -638,11 +638,13 @@
             barcodeSearchError.style.display = 'none';
         }
 
+        // Barcode search group is always visible so they can search for products outside combo groups
+        if (barcodeSearchGroup) barcodeSearchGroup.style.display = 'block';
+
         if (isCombo) {
-            if (barcodeSearchGroup) barcodeSearchGroup.style.display = 'none';
             // Combo item exchange constraints
             exchangeContextMsg.className = "alert alert-warning border-0 rounded-3 py-1.5 px-3 small mb-2 text-xs";
-            exchangeContextMsg.innerHTML = `<i class="bi bi-shield-exclamation me-1"></i>Combo item from <strong>"${comboName}"</strong>. Exchange is allowed <strong>ONLY</strong> for products inside the same combo group.`;
+            exchangeContextMsg.innerHTML = `<i class="bi bi-info-circle me-1"></i>Combo item from <strong>"${comboName}"</strong>. Swapping with a product inside the same combo group is a direct swap. You can also search for a product outside the combo group using barcode search (price difference will apply).`;
             
             // Populate combo details section
             if (comboTiers && comboTiers.length > 0) {
@@ -670,10 +672,9 @@
                 replacementProductSelect.appendChild(o);
             });
         } else {
-            if (barcodeSearchGroup) barcodeSearchGroup.style.display = 'block';
             // Normal item exchange constraints
             exchangeContextMsg.className = "alert alert-info border-0 rounded-3 py-1.5 px-3 small mb-2 text-xs";
-            exchangeContextMsg.innerHTML = `<i class="bi bi-info-circle me-1"></i>Normal item exchange. Allowed for **any** product of <strong>equal or greater value</strong>.`;
+            exchangeContextMsg.innerHTML = `<i class="bi bi-info-circle me-1"></i>Normal item exchange. Allowed for **any** product. Difference will be calculated.`;
             comboDetailsCard.style.display = 'none';
             
             replacementProductSelect.innerHTML = '<option value="">-- Enter barcode above to search replacement --</option>';
@@ -697,7 +698,12 @@
 
         const returnedPrice = (returnedOpt && returnedOpt.value && returnedOpt.value !== 'replacement_only') ? parseFloat(returnedOpt.getAttribute('data-price')) : 0;
         const replacementPrice = parseFloat(replacementOpt.getAttribute('data-price'));
-        const isCombo = returnedOpt && returnedOpt.getAttribute('data-is-combo') === 'true';
+        
+        // Check if combo direct swap is applicable
+        const isReturnedCombo = returnedOpt && returnedOpt.getAttribute('data-is-combo') === 'true';
+        const comboEligibleIds = returnedOpt ? safeJsonParse(returnedOpt.getAttribute('data-combo-eligible-ids'), []) : [];
+        const isReplacementInComboGroup = isReturnedCombo && comboEligibleIds.includes(parseInt(replacementOpt.value));
+        const isComboDirectSwap = isReturnedCombo && isReplacementInComboGroup;
 
         const retQty = (returnedOpt && returnedOpt.value && returnedOpt.value !== 'replacement_only') ? (parseInt(qtyInput.value) || 0) : 0;
         const repQty = parseInt(replacementQtyInput.value) || 1;
@@ -717,7 +723,7 @@
             return;
         }
 
-        if (isCombo) {
+        if (isComboDirectSwap) {
             priceDiffLabel.textContent = 'Diff: ₹0 (Combo Direct Swap)';
             priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-white text-center fw-semibold text-success small';
             addReturnBtn.disabled = false;
@@ -1029,25 +1035,29 @@
         if (!opt || !opt.value || opt.value === 'replacement_only') { alert('Select a valid product to return first.'); return; }
         if (!repOpt || !repOpt.value) { alert('Select a replacement product for exchange.'); return; }
         
-        // Prevent duplicates
-        const alreadyInList = returnList.some(item => item.id == opt.value);
-        if (alreadyInList) {
-            alert('This product is already in the return list.');
+        // Validate cumulative quantity instead of blocking duplicate items completely
+        const maxQty = parseInt(opt.getAttribute('data-qty'));
+        const qty = parseInt(qtyInput.value) || 1;
+        const existingQty = returnList
+            .filter(item => item.id == opt.value)
+            .reduce((sum, item) => sum + item.quantity, 0);
+
+        if (qty + existingQty > maxQty) {
+            alert(`Cannot add: Total return quantity (${qty + existingQty}) for this item would exceed the remaining returnable quantity (${maxQty}).`);
             return;
         }
 
-        const maxQty = parseInt(opt.getAttribute('data-qty'));
-        const qty = parseInt(qtyInput.value) || 1;
-        if (qty < 1 || qty > maxQty) { alert(`Quantity must be between 1 and ${maxQty} (remaining).`); return; }
         const retPrice = parseFloat(opt.getAttribute('data-price'));
-        
         const repQty = parseInt(replacementQtyInput.value) || 1;
 
-        // Double check normal price requirements
+        // Determine if direct combo swap applies (only if replacement is in combo group)
         const isCombo = opt.getAttribute('data-is-combo') === 'true';
-        const repPrice = parseFloat(repOpt.getAttribute('data-price'));
+        const comboEligibleIds = safeJsonParse(opt.getAttribute('data-combo-eligible-ids'), []);
+        const isReplacementInComboGroup = isCombo && comboEligibleIds.includes(parseInt(repOpt.value));
+        const isComboDirectSwap = isCombo && isReplacementInComboGroup;
         
-        const priceDifference = isCombo ? 0 : (repPrice * repQty) - (retPrice * qty);
+        const repPrice = parseFloat(repOpt.getAttribute('data-price'));
+        const priceDifference = isComboDirectSwap ? 0 : (repPrice * repQty) - (retPrice * qty);
 
         // Add to list
         returnList.push({
@@ -1062,7 +1072,7 @@
             replacement_product_price: repPrice,
             replacement_quantity: repQty,
             price_difference: priceDifference,
-            is_combo: isCombo
+            is_combo: isComboDirectSwap
         });
         
         // Reset selections
@@ -1208,11 +1218,7 @@
                 }
             });
 
-            if (totalReplacementVal < totalReturnedVal) {
-                e.preventDefault();
-                alert(`Cannot complete return: Total replacement value (₹${totalReplacementVal}) must be equal or greater than total returned value (₹${totalReturnedVal}). Please add more replacement items.`);
-                return;
-            }
+
 
             // Validation for split payment sum
             const selectedMethod = document.querySelector('input[name="temp_payment_method"]:checked') ? document.querySelector('input[name="temp_payment_method"]:checked').value : 'cash';

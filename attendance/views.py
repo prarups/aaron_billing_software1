@@ -323,25 +323,52 @@ def leave_list(request):
     
     # Manager sees their branch staff leaves
     pending_leaves = []
-    past_leaves = []
+    past_leaves_page = None
+    
+    # Get user's accessible branches
+    branches = user.get_accessible_branches()
+    
+    # Filter variables for past leaves
+    q_leave = request.GET.get('q_leave', '').strip()
+    branch_leave = request.GET.get('branch_leave', '').strip()
     
     if is_owner(user):
         pending_leaves = LeaveRequest.objects.filter(status='pending').exclude(user=user)
-        past_leaves = LeaveRequest.objects.exclude(status='pending').exclude(user=user)[:50]
+        past_leaves_qs = LeaveRequest.objects.exclude(status='pending').exclude(user=user)
     elif is_manager_or_owner(user):
-        branches = user.get_accessible_branches()
         pending_leaves = LeaveRequest.objects.filter(
             user__branches__in=branches, 
             status='pending'
         ).exclude(user=user).distinct()
-        past_leaves = LeaveRequest.objects.filter(
+        past_leaves_qs = LeaveRequest.objects.filter(
             user__branches__in=branches
-        ).exclude(status='pending').exclude(user=user).distinct()[:50]
+        ).exclude(status='pending').exclude(user=user).distinct()
+    else:
+        past_leaves_qs = LeaveRequest.objects.none()
+
+    # Apply search/filters
+    if q_leave:
+        past_leaves_qs = past_leaves_qs.filter(
+            Q(user__username__icontains=q_leave) | Q(user__employee_id__icontains=q_leave)
+        )
+    if branch_leave:
+        past_leaves_qs = past_leaves_qs.filter(user__branches__id=branch_leave)
+        
+    past_leaves_qs = past_leaves_qs.order_by('-created_at')
+    
+    # Pagination for past leaves
+    from django.core.paginator import Paginator
+    paginator = Paginator(past_leaves_qs, 10)
+    page_number = request.GET.get('page')
+    past_leaves_page = paginator.get_page(page_number)
         
     context = {
         'my_leaves': my_leaves,
         'pending_leaves': pending_leaves,
-        'past_leaves': past_leaves,
+        'past_leaves': past_leaves_page,
+        'branches': branches,
+        'q_leave': q_leave,
+        'selected_branch_id': branch_leave,
     }
     return render(request, 'attendance/leave_list.html', context)
 
@@ -444,25 +471,52 @@ def permission_list(request):
     my_permissions = PermissionRequest.objects.filter(user=user).order_by('-created_at')
     
     pending_perms = []
-    past_perms = []
+    past_perms_page = None
+    
+    # Get user's accessible branches
+    branches = user.get_accessible_branches()
+    
+    # Filter variables for past permissions
+    q_perm = request.GET.get('q_perm', '').strip()
+    branch_perm = request.GET.get('branch_perm', '').strip()
     
     if is_owner(user):
         pending_perms = PermissionRequest.objects.filter(status='pending').exclude(user=user)
-        past_perms = PermissionRequest.objects.exclude(status='pending').exclude(user=user)[:50]
+        past_perms_qs = PermissionRequest.objects.exclude(status='pending').exclude(user=user)
     elif is_manager_or_owner(user):
-        branches = user.get_accessible_branches()
         pending_perms = PermissionRequest.objects.filter(
             user__branches__in=branches,
             status='pending'
         ).exclude(user=user).distinct()
-        past_perms = PermissionRequest.objects.filter(
+        past_perms_qs = PermissionRequest.objects.filter(
             user__branches__in=branches
-        ).exclude(status='pending').exclude(user=user).distinct()[:50]
+        ).exclude(status='pending').exclude(user=user).distinct()
+    else:
+        past_perms_qs = PermissionRequest.objects.none()
+
+    # Apply search/filters
+    if q_perm:
+        past_perms_qs = past_perms_qs.filter(
+            Q(user__username__icontains=q_perm) | Q(user__employee_id__icontains=q_perm)
+        )
+    if branch_perm:
+        past_perms_qs = past_perms_qs.filter(user__branches__id=branch_perm)
+        
+    past_perms_qs = past_perms_qs.order_by('-created_at')
+    
+    # Pagination for past permissions
+    from django.core.paginator import Paginator
+    paginator = Paginator(past_perms_qs, 10)
+    page_number = request.GET.get('page')
+    past_perms_page = paginator.get_page(page_number)
         
     context = {
         'my_permissions': my_permissions,
         'pending_perms': pending_perms,
-        'past_perms': past_perms,
+        'past_perms': past_perms_page,
+        'branches': branches,
+        'q_perm': q_perm,
+        'selected_branch_id': branch_perm,
     }
     return render(request, 'attendance/permission_list.html', context)
 
@@ -548,6 +602,7 @@ def attendance_reports(request):
     selected_user = request.GET.get('user', '')
     start_date_str = request.GET.get('start_date', '')
     end_date_str = request.GET.get('end_date', '')
+    active_tab = request.GET.get('tab', 'grid')
     
     today = timezone.localdate()
     start_date = today - datetime.timedelta(days=30)
@@ -600,6 +655,12 @@ def attendance_reports(request):
                 r.notes or ''
             ])
         return response
+
+    # Pagination for detailed daily logs
+    from django.core.paginator import Paginator
+    paginator = Paginator(records, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
     # --- Visual Monthly Grid Builder ---
     grid_month = int(request.GET.get('grid_month', today.month))
@@ -684,13 +745,14 @@ def attendance_reports(request):
         })
         
     context = {
-        'records': records,
+        'page_obj': page_obj,  # paginated page object
         'branches': branches,
         'users': users,
         'selected_branch': selected_branch,
         'selected_user': selected_user,
-        'start_date': start_date.strftime('%Y-%m-%d'),
-        'end_date': end_date.strftime('%Y-%m-%d'),
+        'start_date_val': start_date.strftime('%Y-%m-%d'),
+        'end_date_val': end_date.strftime('%Y-%m-%d'),
+        'active_tab': active_tab,
         
         # Grid parameters
         'grid_data': grid_data,
@@ -724,6 +786,22 @@ def salary_list(request):
     
     payrolls = MonthlyPayroll.objects.filter(month=selected_month, year=selected_year)
     
+    # Base Salary Config filtering logic
+    q_staff = request.GET.get('q_staff', '').strip()
+    branch_staff = request.GET.get('branch_staff', '').strip()
+    active_tab = request.GET.get('tab', 'process')
+    
+    if q_staff:
+        users = users.filter(Q(username__icontains=q_staff) | Q(employee_id__icontains=q_staff))
+        
+    if branch_staff:
+        users = users.filter(branches__id=branch_staff)
+        
+    users = users.distinct()
+    
+    # Fetch all branches for the filter dropdown
+    branches = Branch.objects.all().order_by('name')
+    
     context = {
         'users': users,
         'payrolls': payrolls,
@@ -731,6 +809,10 @@ def salary_list(request):
         'selected_year': selected_year,
         'months': range(1, 13),
         'years': range(today.year - 2, today.year + 2),
+        'branches': branches,
+        'q_staff': q_staff,
+        'selected_branch_id': branch_staff,
+        'active_tab': active_tab,
     }
     return render(request, 'attendance/payroll.html', context)
 

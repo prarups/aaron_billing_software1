@@ -152,5 +152,128 @@
             </div>
         </div>
     </div>
+
+    {% if pending_perms or past_perms %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-clock-history me-2"></i>Staff Permission History (Past Requests)</h5>
+                    
+                    <!-- Search & Filter Form -->
+                    <form method="get" action="{% url 'attendance:permission_list' %}" class="mb-4">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold text-muted">Search Staff</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 rounded-start-pill"><i class="bi bi-search"></i></span>
+                                    <input type="text" name="q_perm" value="{{ q_perm }}" class="form-control border-start-0 rounded-end-pill" placeholder="Search username or Employee ID...">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted">Filter by Branch</label>
+                                <select name="branch_perm" class="form-select rounded-pill" onchange="this.form.submit()">
+                                    <option value="">All Branches</option>
+                                    {% for b in branches %}
+                                        <option value="{{ b.id }}" {% if selected_branch_id == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3 d-flex gap-2">
+                                <button type="submit" class="btn btn-primary rounded-pill w-100 py-2">
+                                    <i class="bi bi-funnel-fill me-1"></i> Filter
+                                </button>
+                                <a href="{% url 'attendance:permission_list' %}" class="btn btn-outline-secondary rounded-pill w-100 py-2 d-flex align-items-center justify-content-center">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Date</th>
+                                    <th>Duration</th>
+                                    <th>Reason</th>
+                                    <th>Approved By</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for perm in past_perms %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold text-dark">
+                                            {{ perm.user.first_name }} {{ perm.user.last_name }}
+                                            {% if not perm.user.first_name and not perm.user.last_name %}{{ perm.user.username }}{% endif %}
+                                        </div>
+                                        <span class="text-muted small">@{{ perm.user.username }} &middot; ID: {{ perm.user.employee_id|default:"-" }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ perm.date|date:"d M Y" }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border rounded-pill px-3 py-1.5">{{ perm.start_time|time:"f a" }} to {{ perm.end_time|time:"f a" }}</span>
+                                    </td>
+                                    <td>
+                                        <p class="mb-0 small text-muted text-wrap" style="max-width: 300px;">{{ perm.reason }}</p>
+                                    </td>
+                                    <td>
+                                        <span class="text-dark fw-semibold small">{{ perm.action_by.username|default:"-" }}</span>
+                                    </td>
+                                    <td>
+                                        {% if perm.status == 'approved' %}
+                                            <span class="badge bg-success rounded-pill px-3 py-1.5"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                                        {% elif perm.status == 'rejected' %}
+                                            <span class="badge bg-danger rounded-pill px-3 py-1.5"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                                        {% else %}
+                                            <span class="badge bg-warning rounded-pill px-3 py-1.5"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">No past short permissions found matching the search/filter criteria.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if past_perms.has_other_pages %}
+                    <nav aria-label="Page navigation" class="mt-4">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if past_perms.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link rounded-start-pill px-3 border-0 shadow-sm text-success" href="?page=1&q_perm={{ q_perm }}&branch_perm={{ selected_branch_id }}" title="First Page">&laquo; First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link px-3 border-0 shadow-sm text-success" href="?page={{ past_perms.previous_page_number }}&q_perm={{ q_perm }}&branch_perm={{ selected_branch_id }}" title="Previous Page">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item disabled">
+                                <span class="page-link px-3 border-0 shadow-sm bg-light text-dark">Page {{ past_perms.number }} of {{ past_perms.paginator.num_pages }}</span>
+                            </li>
+
+                            {% if past_perms.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link px-3 border-0 shadow-sm text-success" href="?page={{ past_perms.next_page_number }}&q_perm={{ q_perm }}&branch_perm={{ selected_branch_id }}" title="Next Page">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link rounded-end-pill px-3 border-0 shadow-sm text-success" href="?page={{ past_perms.paginator.num_pages }}&q_perm={{ q_perm }}&branch_perm={{ selected_branch_id }}" title="Last Page">Last &raquo;</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

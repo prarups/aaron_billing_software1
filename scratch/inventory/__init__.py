@@ -1,1 +1,0 @@
-# Inventory app package initializer

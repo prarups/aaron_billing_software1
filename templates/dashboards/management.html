@@ -427,9 +427,6 @@
                                     <button class="btn btn-outline-primary btn-xs rounded-circle p-1" onclick="openEditBranchModal('{{ branch.id }}', '{{ branch.name|escapejs }}', '{{ branch.location|escapejs }}', '{{ branch.contact_number|default:''|escapejs }}', '{{ branch.invoice_prefix|escapejs }}')" title="Edit Branch Settings" style="width: 24px; height: 24px; line-height: 1;">
                                         <i class="bi bi-pencil" style="font-size: 10px; display: block;"></i>
                                     </button>
-                                    <button class="btn btn-outline-danger btn-xs rounded-circle p-1" onclick="confirmDelete('{% url 'branch_delete' branch.id %}', '{{ branch.name|escapejs }}')" title="Delete Branch" style="width: 24px; height: 24px; line-height: 1;">
-                                        <i class="bi bi-trash" style="font-size: 10px; display: block;"></i>
-                                    </button>
                                 </td>
                                 {% endif %}
                             </tr>
@@ -661,7 +658,7 @@
                     </td>
 
                     <!-- Role -->
-                    <td>
+                    <td data-label="Role">
                         {% if staff.role == 'owner' %}
                         <span class="s-role-badge s-rb-admin">Admin</span>
                         {% elif staff.role == 'regional_manager' %}
@@ -678,7 +675,7 @@
                     </td>
 
                     <!-- Branches -->
-                    <td>
+                    <td data-label="Branches">
                         {% if staff.role == 'owner' or staff.role == 'regional_manager' %}
                         <span style="color:#94a3b8;font-size:0.72rem;">—</span>
                         {% else %}
@@ -747,12 +744,6 @@
                                 onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}', '{{ staff.date_of_joining|date:"Y-m-d"|default:'' }}', {% if staff.has_pos_access %}true{% else %}false{% endif %}, {% if staff.has_attendance_access %}true{% else %}false{% endif %}, '{{ staff.shift_start_time|time:"H:i" }}', '{{ staff.shift_end_time|time:"H:i" }}', {{ staff.grace_period_minutes }})">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
-                            {% if staff != request.user and user.role == 'owner' %}
-                            <button class="s-act-btn s-act-del" title="Delete Staff"
-                                onclick="confirmDelete('{% url 'staff_delete' staff.id %}', '{{ staff.username|escapejs }}')">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                            {% endif %}
                         </div>
                     </td>
                 </tr>

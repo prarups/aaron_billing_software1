@@ -118,7 +118,7 @@ else:
     # Production: PostgreSQL (Railway, Render, or custom)
     if os.environ.get('DATABASE_URL'):
         DATABASES = {
-            'default': dj_database_url.config(conn_max_age=600)
+            'default': dj_database_url.config(conn_max_age=0)
         }
     else:
         DATABASES = {
@@ -214,3 +214,33 @@ else:
     CSRF_COOKIE_SECURE = False
     SESSION_COOKIE_SAMESITE = 'Lax'
     CSRF_COOKIE_SAMESITE = 'Lax'
+
+# Logging configuration to output to console for easy debugging in Render/Railway
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+

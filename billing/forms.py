@@ -248,20 +248,17 @@ class ReturnCreateForm(forms.Form):
             # Deduct replacement from simulated stock
             simulated_stock[rep_product.id] -= rep_qty
 
-            # Validate Combo Group constraints vs Normal constraints
-            is_combo = combo_map.get(item.id, False) if item else False
-            if item and is_combo:
+            # Validate Combo Group constraints vs Normal constraints:
+            # We now allow exchanging a combo item for a non-combo product.
+            # `is_combo` (balanced combo swap) only applies if the replacement product
+            # is inside the returned item's combo group.
+            is_combo = False
+            if item and combo_map.get(item.id, False):
                 combo_group = combo_group_map.get(item.id)
                 if combo_group:
-                    # Replacement must belong to the same combo group
-                    # We can use the prefetched products to avoid another query
                     cg_product_ids = {p.id for p in combo_group.products.all()}
-                    if rep_product.id not in cg_product_ids:
-                        raise forms.ValidationError(
-                            f'Product {item.product.name} was sold as part of combo "{combo_group.name}". '
-                            f'It can only be exchanged for products in the same combo group. '
-                            f'{rep_product.name} is not in that combo group.'
-                        )
+                    if rep_product.id in cg_product_ids:
+                        is_combo = True
 
             if is_combo:
                 # Balanced combo swap: add replacement price to both totals so they cancel out
@@ -280,12 +277,6 @@ class ReturnCreateForm(forms.Form):
                 'replacement_product': rep_product,
                 'replacement_quantity': rep_qty,
             })
-
-        # Overall validation: total replacement value must be >= total returned value (for normal items)
-        if total_replacement_value < total_returned_value:
-            raise forms.ValidationError(
-                f'Total replacement value (₹{total_replacement_value:.0f}) must be equal or greater than total returned value (₹{total_returned_value:.0f}).'
-            )
 
         total_difference = total_replacement_value - total_returned_value
         if total_difference > 0:
@@ -321,6 +312,7 @@ class ReturnCreateForm(forms.Form):
         validated_items = self.cleaned_data['validated_return_items']
 
         # Pre-calculate positive difference totals for payment allocation
+        from core.models import ComboGroup
         total_positive_difference = 0
         positive_diff_items_count = 0
         for vi in validated_items:
@@ -328,7 +320,15 @@ class ReturnCreateForm(forms.Form):
             qty = vi['quantity']
             rep_product = vi['replacement_product']
             rep_qty = vi['replacement_quantity']
-            is_combo = item.is_combo_purchase if item else False
+            
+            is_combo = False
+            if item and item.is_combo_purchase:
+                is_combo = ComboGroup.objects.filter(
+                    products=item.product,
+                    branches=bill.branch,
+                    is_active=True
+                ).filter(products=rep_product).exists()
+
             if not is_combo:
                 unit_price = item.unit_price if item else 0
                 price_diff = (rep_product.price * rep_qty) - (unit_price * qty)
@@ -344,7 +344,7 @@ class ReturnCreateForm(forms.Form):
         assigned_online = 0.0
         positive_diff_processed = 0
 
-        from core.models import ProductRegistry, StockTransaction, ComboGroup
+        from core.models import ProductRegistry, StockTransaction
         returns = []
         for vi in validated_items:
             item = vi['bill_item']
@@ -355,7 +355,13 @@ class ReturnCreateForm(forms.Form):
             rep_qty = vi['replacement_quantity']
 
             # Check if combo product to determine price difference
-            is_combo = item.is_combo_purchase if item else False
+            is_combo = False
+            if item and item.is_combo_purchase:
+                is_combo = ComboGroup.objects.filter(
+                    products=item.product,
+                    branches=bill.branch,
+                    is_active=True
+                ).filter(products=rep_product).exists()
 
             if is_combo:
                 price_diff = 0
@@ -474,5 +480,42 @@ class ReturnCreateForm(forms.Form):
                 )
 
             returns.append(ret)
+
+        # After processing all items, if the net difference is negative, create a CreditNote
+        from decimal import Decimal
+        total_returned_value = Decimal('0')
+        total_replacement_value = Decimal('0')
+        for vi in validated_items:
+            item = vi['bill_item']
+            qty = vi['quantity']
+            rep_product = vi['replacement_product']
+            rep_qty = vi['replacement_quantity']
+            
+            is_combo = False
+            if item and item.is_combo_purchase:
+                from core.models import ComboGroup
+                is_combo = ComboGroup.objects.filter(
+                    products=item.product,
+                    branches=bill.branch,
+                    is_active=True
+                ).filter(products=rep_product).exists()
+
+            if is_combo:
+                total_returned_value += Decimal(str(rep_product.price)) * rep_qty
+                total_replacement_value += Decimal(str(rep_product.price)) * rep_qty
+            else:
+                if item:
+                    total_returned_value += Decimal(str(item.unit_price)) * qty
+                total_replacement_value += Decimal(str(rep_product.price)) * rep_qty
+
+        total_difference = total_replacement_value - total_returned_value
+        if total_difference < 0:
+            from .return_models import CreditNote
+            CreditNote.objects.create(
+                invoice=bill,
+                amount=abs(total_difference),
+                reason=reason or f"Return/Exchange refund difference",
+                issued_by=user
+            )
 
         return returns

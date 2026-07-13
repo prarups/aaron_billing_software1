@@ -89,8 +89,23 @@
                                 {% for item in staff_today_status %}
                                 <tr>
                                     <td>
-                                        <div class="fw-bold text-dark">{{ item.user.username }}</div>
-                                        <span class="text-muted text-xxs">Role: {{ item.user.get_role_display }}</span>
+                                        <div class="fw-bold text-dark">
+                                            {{ item.user.first_name }} {{ item.user.last_name }}
+                                            {% if not item.user.first_name and not item.user.last_name %}{{ item.user.username }}{% endif %}
+                                        </div>
+                                        <div class="text-muted text-xxs">
+                                            @{{ item.user.username }} &middot; ID: {{ item.user.employee_id|default:"No ID" }}
+                                        </div>
+                                        <div class="mt-1 d-flex flex-wrap gap-1 align-items-center">
+                                            <span class="badge bg-light text-dark border text-xxs" style="font-size: 0.65rem;">{{ item.user.role_display }}</span>
+                                            {% if item.user.role != 'owner' and item.user.role != 'regional_manager' %}
+                                                {% for b in item.user.branches.all %}
+                                                    <span class="badge text-purple border text-xxs" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.65rem; font-weight: 600;">{{ b.name }}</span>
+                                                {% empty %}
+                                                    <span class="badge bg-light text-muted border text-xxs" style="font-size: 0.65rem; font-style: italic;">No branch</span>
+                                                {% endfor %}
+                                            {% endif %}
+                                        </div>
                                     </td>
                                     <td>
                                         {% if item.status == 'present' %}

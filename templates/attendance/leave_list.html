@@ -163,5 +163,133 @@
             </div>
         </div>
     </div>
+
+    {% if pending_leaves or past_leaves %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-clock-history me-2"></i>Staff Leave History (Past Requests)</h5>
+                    
+                    <!-- Search & Filter Form -->
+                    <form method="get" action="{% url 'attendance:leave_list' %}" class="mb-4">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold text-muted">Search Staff</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 rounded-start-pill"><i class="bi bi-search"></i></span>
+                                    <input type="text" name="q_leave" value="{{ q_leave }}" class="form-control border-start-0 rounded-end-pill" placeholder="Search username or Employee ID...">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted">Filter by Branch</label>
+                                <select name="branch_leave" class="form-select rounded-pill" onchange="this.form.submit()">
+                                    <option value="">All Branches</option>
+                                    {% for b in branches %}
+                                        <option value="{{ b.id }}" {% if selected_branch_id == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3 d-flex gap-2">
+                                <button type="submit" class="btn btn-primary rounded-pill w-100 py-2">
+                                    <i class="bi bi-funnel-fill me-1"></i> Filter
+                                </button>
+                                <a href="{% url 'attendance:leave_list' %}" class="btn btn-outline-secondary rounded-pill w-100 py-2 d-flex align-items-center justify-content-center">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Leave Type</th>
+                                    <th>Duration</th>
+                                    <th>Reason</th>
+                                    <th>Approved By</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for leave in past_leaves %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold text-dark">
+                                            {{ leave.user.first_name }} {{ leave.user.last_name }}
+                                            {% if not leave.user.first_name and not leave.user.last_name %}{{ leave.user.username }}{% endif %}
+                                        </div>
+                                        <span class="text-muted small">@{{ leave.user.username }} &middot; ID: {{ leave.user.employee_id|default:"-" }}</span>
+                                    </td>
+                                    <td>
+                                        {% if leave.leave_type == 'emergency' %}
+                                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-1.5">Emergency Leave</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-3 py-1.5">{{ leave.leave_type|title }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ leave.start_date|date:"d M Y" }}</div>
+                                        <span class="small text-muted">to {{ leave.end_date|date:"d M Y" }}</span>
+                                    </td>
+                                    <td>
+                                        <p class="mb-0 small text-muted text-wrap" style="max-width: 300px;">{{ leave.reason }}</p>
+                                    </td>
+                                    <td>
+                                        <span class="text-dark fw-semibold small">{{ leave.action_by.username|default:"-" }}</span>
+                                    </td>
+                                    <td>
+                                        {% if leave.status == 'approved' %}
+                                            <span class="badge bg-success rounded-pill px-3 py-1.5"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                                        {% elif leave.status == 'rejected' %}
+                                            <span class="badge bg-danger rounded-pill px-3 py-1.5"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                                        {% else %}
+                                            <span class="badge bg-warning rounded-pill px-3 py-1.5"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">No past leave applications found matching the search/filter criteria.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if past_leaves.has_other_pages %}
+                    <nav aria-label="Page navigation" class="mt-4">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if past_leaves.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link rounded-start-pill px-3 border-0 shadow-sm text-success" href="?page=1&q_leave={{ q_leave }}&branch_leave={{ selected_branch_id }}" title="First Page">&laquo; First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link px-3 border-0 shadow-sm text-success" href="?page={{ past_leaves.previous_page_number }}&q_leave={{ q_leave }}&branch_leave={{ selected_branch_id }}" title="Previous Page">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item disabled">
+                                <span class="page-link px-3 border-0 shadow-sm bg-light text-dark">Page {{ past_leaves.number }} of {{ past_leaves.paginator.num_pages }}</span>
+                            </li>
+
+                            {% if past_leaves.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link px-3 border-0 shadow-sm text-success" href="?page={{ past_leaves.next_page_number }}&q_leave={{ q_leave }}&branch_leave={{ selected_branch_id }}" title="Next Page">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link rounded-end-pill px-3 border-0 shadow-sm text-success" href="?page={{ past_leaves.paginator.num_pages }}&q_leave={{ q_leave }}&branch_leave={{ selected_branch_id }}" title="Last Page">Last &raquo;</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
