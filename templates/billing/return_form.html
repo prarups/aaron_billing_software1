@@ -181,13 +181,13 @@
 
                 <!-- Add to Return & Exchange List buttons -->
                 <div class="row g-2 mt-2 mb-3">
-                    <div class="col-sm-6">
+                    <div class="col-12" id="addReturnBtnCol">
                         <button type="button" id="addReturnBtn" class="btn btn-outline-primary w-100 rounded-pill py-2 fw-semibold text-xs" style="font-size: 0.8rem;">
                             <i class="bi bi-arrow-left-right me-1"></i> Add Return & Replacement
                         </button>
                     </div>
-                    <div class="col-sm-6">
-                        <button type="button" id="addExtraReplacementBtn" class="btn btn-outline-success w-100 rounded-pill py-2 fw-semibold text-xs" style="display: none; font-size: 0.8rem;">
+                    <div class="col-sm-6" id="addExtraReplacementBtnCol" style="display: none;">
+                        <button type="button" id="addExtraReplacementBtn" class="btn btn-outline-success w-100 rounded-pill py-2 fw-semibold text-xs" style="font-size: 0.8rem;">
                             <i class="bi bi-plus-circle me-1"></i> Add Extra Replacement (No Return)
                         </button>
                     </div>
@@ -366,7 +366,9 @@
     const returnListTableBody = document.querySelector('#returnListTable tbody');
     const returnListContainer = document.getElementById('returnListContainer');
     const addReturnBtn = document.getElementById('addReturnBtn');
+    const addReturnBtnCol = document.getElementById('addReturnBtnCol');
     const addExtraReplacementBtn = document.getElementById('addExtraReplacementBtn');
+    const addExtraReplacementBtnCol = document.getElementById('addExtraReplacementBtnCol');
     const returnItemsField = document.getElementById('id_return_items');
 
 
@@ -453,7 +455,6 @@
                     console.log("Updated currentBranchId from AJAX:", currentBranchId);
                 }
                 
-                if (addExtraReplacementBtn) addExtraReplacementBtn.style.display = 'block';
                 populateItems(data.items);
                 
                 // Restore selection after updating products if it's still valid
@@ -574,13 +575,13 @@
 
     function resetItems() {
         currentItems = [];
+        returnList.length = 0;
         itemSelect.innerHTML = '<option value="">-- Load bill first --</option>';
         productInfo.textContent = '';
         summaryCard.style.display = 'none';
         replacementSection.style.display = 'none';
         document.getElementById('purchasedProductsContainer').style.display = 'none';
-        if (addExtraReplacementBtn) addExtraReplacementBtn.style.display = 'none';
-
+        refreshReturnListUI();
     }
 
     // Item selected
@@ -605,6 +606,7 @@
             calculateExchangeDifference();
         }
         updateSummary();
+        updateButtonsVisibility();
     });
 
     // Populate exchange options based on product type (Combo vs Normal)
@@ -1026,6 +1028,44 @@
         })));
         
         updateSummary();
+        updateButtonsVisibility();
+    }
+
+    function updateButtonsVisibility() {
+        const hasReturn = returnList.some(item => item.id !== null);
+        const hasExtraReplacement = returnList.some(item => item.id === null);
+
+        if (hasReturn) {
+            // Hide return button
+            if (addReturnBtnCol) addReturnBtnCol.style.display = 'none';
+            
+            // Show extra replacement button if not already added
+            if (addExtraReplacementBtnCol) {
+                if (hasExtraReplacement) {
+                    addExtraReplacementBtnCol.style.display = 'none';
+                } else {
+                    addExtraReplacementBtnCol.style.display = 'block';
+                    addExtraReplacementBtnCol.className = 'col-12';
+                }
+            }
+        } else {
+            // Show return button as full width since extra replacement is hidden
+            if (addReturnBtnCol) {
+                addReturnBtnCol.style.display = 'block';
+                addReturnBtnCol.className = 'col-12';
+            }
+            // Hide extra replacement button
+            if (addExtraReplacementBtnCol) addExtraReplacementBtnCol.style.display = 'none';
+        }
+
+        // Also control visibility of the replacementSection.
+        // If the returnList is empty and no item is selected in itemSelect, hide the section.
+        const selectedItemVal = itemSelect.value;
+        if (returnList.length === 0 && (!selectedItemVal || selectedItemVal === 'replacement_only')) {
+            replacementSection.style.display = 'none';
+        } else {
+            replacementSection.style.display = 'block';
+        }
     }
 
     addReturnBtn.addEventListener('click', function(){
