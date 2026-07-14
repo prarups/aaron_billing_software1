@@ -261,4 +261,5 @@ STORAGES = {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
-
+# Add this line to resolve the AttributeError:
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
