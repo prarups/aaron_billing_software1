@@ -1,4 +1,5 @@
 {% extends "base_attendance.html" %}
+{% load static product_extras %}
 
 {% block title %}Management Overview - Aaron Billing{% endblock %}
 
@@ -124,7 +125,7 @@
                                         {% if item.record and item.record.check_in %}
                                             <div class="d-flex align-items-center gap-2">
                                                 {% if item.record.check_in_photo %}
-                                                    <img src="{{ item.record.check_in_photo.url }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.check_in_photo.url }}', 'Check-In: {{ item.user.username }}')"/>
+                                                    <img src="{{ item.record.check_in_photo|cloudinary_optimize:"w_80,h_60" }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.check_in_photo|cloudinary_optimize }}', 'Check-In: {{ item.user.username }}')"/>
                                                 {% endif %}
                                                 <span class="text-dark">{{ item.record.check_in|date:"h:i A" }}</span>
                                                 {% if item.record.check_in_lat %}
@@ -140,7 +141,7 @@
                                         {% if item.record and item.record.mid_day_time %}
                                             <div class="d-flex align-items-center gap-2">
                                                 {% if item.record.mid_day_photo %}
-                                                    <img src="{{ item.record.mid_day_photo.url }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.mid_day_photo.url }}', 'Mid-Day: {{ item.user.username }}')"/>
+                                                    <img src="{{ item.record.mid_day_photo|cloudinary_optimize:"w_80,h_60" }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.mid_day_photo|cloudinary_optimize }}', 'Mid-Day: {{ item.user.username }}')"/>
                                                 {% endif %}
                                                 <span class="text-dark">{{ item.record.mid_day_time|date:"h:i A" }}</span>
                                                 {% if item.record.mid_day_lat %}
@@ -156,7 +157,7 @@
                                         {% if item.record and item.record.check_out %}
                                             <div class="d-flex align-items-center gap-2">
                                                 {% if item.record.check_out_photo %}
-                                                    <img src="{{ item.record.check_out_photo.url }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.check_out_photo.url }}', 'Check-Out: {{ item.user.username }}')"/>
+                                                    <img src="{{ item.record.check_out_photo|cloudinary_optimize:"w_80,h_60" }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.check_out_photo|cloudinary_optimize }}', 'Check-Out: {{ item.user.username }}')"/>
                                                 {% endif %}
                                                 <span class="text-dark">{{ item.record.check_out|date:"h:i A" }}</span>
                                                 {% if item.record.check_out_lat %}

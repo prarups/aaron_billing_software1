@@ -120,6 +120,8 @@ def get_stats(branch_id: int):
 from pydantic import BaseModel
 import base64
 from django.core.files.base import ContentFile
+from io import BytesIO
+from PIL import Image
 
 class AttendanceActionRequest(BaseModel):
     photo: str  # base64 encoded photo
@@ -132,13 +134,28 @@ def get_file_from_base64(base64_str, filename):
     try:
         if ';base64,' in base64_str:
             format_str, imgstr = base64_str.split(';base64,')
-            ext = format_str.split('/')[-1]
-            if ext not in ['jpeg', 'png', 'jpg']:
-                ext = 'png'
-            data = ContentFile(base64.b64decode(imgstr), name=f"{filename}.{ext}")
-            return data
+            img_data = base64.b64decode(imgstr)
+            
+            # Load with Pillow to resize and compress
+            img = Image.open(BytesIO(img_data))
+            
+            # Convert to RGB mode if RGBA/PNG
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # Resize if dimensions exceed 640px
+            max_size = 640
+            if img.width > max_size or img.height > max_size:
+                img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+            
+            # Compress and save to buffer as JPEG
+            output = BytesIO()
+            img.save(output, format='JPEG', quality=60, optimize=True)
+            output.seek(0)
+            
+            return ContentFile(output.read(), name=f"{filename}.jpg")
     except Exception as e:
-        print(f"Error parsing base64 image: {e}")
+        print(f"Error parsing/compressing base64 image: {e}")
     return None
 
 def get_current_user(request: Request):

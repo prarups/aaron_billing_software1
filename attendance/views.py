@@ -1,6 +1,8 @@
 import base64
 import json
 import csv
+from io import BytesIO
+from PIL import Image
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
@@ -24,14 +26,28 @@ def get_file_from_base64(base64_str, filename):
     try:
         if ';base64,' in base64_str:
             format, imgstr = base64_str.split(';base64,')
-            ext = format.split('/')[-1]
-            # Ensure it is a valid extension, default to png if weird
-            if ext not in ['jpeg', 'png', 'jpg']:
-                ext = 'png'
-            data = ContentFile(base64.b64decode(imgstr), name=f"{filename}.{ext}")
-            return data
+            img_data = base64.b64decode(imgstr)
+            
+            # Load with Pillow to resize and compress
+            img = Image.open(BytesIO(img_data))
+            
+            # Convert to RGB mode if RGBA/PNG
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # Resize if dimensions exceed 640px
+            max_size = 640
+            if img.width > max_size or img.height > max_size:
+                img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+            
+            # Compress and save to buffer as JPEG
+            output = BytesIO()
+            img.save(output, format='JPEG', quality=60, optimize=True)
+            output.seek(0)
+            
+            return ContentFile(output.read(), name=f"{filename}.jpg")
     except Exception as e:
-        print(f"Error parsing base64 image: {e}")
+        print(f"Error parsing/compressing base64 image: {e}")
     return None
 
 def is_owner(user):

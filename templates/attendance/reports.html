@@ -1,4 +1,5 @@
 {% extends "base_attendance.html" %}
+{% load product_extras %}
 
 {% block title %}Attendance Reports - Aaron Billing{% endblock %}
 
@@ -268,7 +269,7 @@
                                         {% if record.check_in %}
                                             <div class="d-flex align-items-center gap-2">
                                                 {% if record.check_in_photo %}
-                                                    <img src="{{ record.check_in_photo.url }}" class="rounded border object-fit-cover shadow-sm cursor-zoom" style="width: 48px; height: 36px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.check_in_photo.url }}', 'Check-In Photo ({{ record.user.username }})')"/>
+                                                    <img src="{{ record.check_in_photo|cloudinary_optimize:"w_100,h_80" }}" class="rounded border object-fit-cover shadow-sm cursor-zoom" style="width: 48px; height: 36px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.check_in_photo|cloudinary_optimize }}', 'Check-In Photo ({{ record.user.username }})')"/>
                                                 {% else %}
                                                     <span class="text-muted small">[No Photo]</span>
                                                 {% endif %}
@@ -290,7 +291,7 @@
                                         {% if record.mid_day_time %}
                                             <div class="d-flex align-items-center gap-2">
                                                 {% if record.mid_day_photo %}
-                                                    <img src="{{ record.mid_day_photo.url }}" class="rounded border object-fit-cover shadow-sm cursor-zoom" style="width: 48px; height: 36px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.mid_day_photo.url }}', 'Mid-Day Photo ({{ record.user.username }})')"/>
+                                                    <img src="{{ record.mid_day_photo|cloudinary_optimize:"w_100,h_80" }}" class="rounded border object-fit-cover shadow-sm cursor-zoom" style="width: 48px; height: 36px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.mid_day_photo|cloudinary_optimize }}', 'Mid-Day Photo ({{ record.user.username }})')"/>
                                                 {% else %}
                                                     <span class="text-muted small">[No Photo]</span>
                                                 {% endif %}
@@ -312,7 +313,7 @@
                                         {% if record.check_out %}
                                             <div class="d-flex align-items-center gap-2">
                                                 {% if record.check_out_photo %}
-                                                    <img src="{{ record.check_out_photo.url }}" class="rounded border object-fit-cover shadow-sm cursor-zoom" style="width: 48px; height: 36px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.check_out_photo.url }}', 'Check-Out Photo ({{ record.user.username }})')"/>
+                                                    <img src="{{ record.check_out_photo|cloudinary_optimize:"w_100,h_80" }}" class="rounded border object-fit-cover shadow-sm cursor-zoom" style="width: 48px; height: 36px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.check_out_photo|cloudinary_optimize }}', 'Check-Out Photo ({{ record.user.username }})')"/>
                                                 {% else %}
                                                     <span class="text-muted small">[No Photo]</span>
                                                 {% endif %}

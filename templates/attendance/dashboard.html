@@ -1,5 +1,5 @@
 {% extends "base_attendance.html" %}
-{% load static %}
+{% load static product_extras %}
 
 {% block title %}Attendance Dashboard - Aaron Billing{% endblock %}
 
@@ -129,7 +129,7 @@
                                 {% endif %}
                             </div>
                             {% if attendance and attendance.check_in_photo %}
-                                <img src="{{ attendance.check_in_photo.url }}" class="rounded-3 border object-fit-cover shadow-sm" style="width: 60px; height: 45px;" alt="Check-in Photo"/>
+                                <img src="{{ attendance.check_in_photo|cloudinary_optimize:"w_120,h_90" }}" class="rounded-3 border object-fit-cover shadow-sm" style="width: 60px; height: 45px;" alt="Check-in Photo"/>
                             {% endif %}
                         </div>
 
@@ -156,7 +156,7 @@
                                 {% endif %}
                             </div>
                             {% if attendance and attendance.mid_day_photo %}
-                                <img src="{{ attendance.mid_day_photo.url }}" class="rounded-3 border object-fit-cover shadow-sm" style="width: 60px; height: 45px;" alt="Mid-day Photo"/>
+                                <img src="{{ attendance.mid_day_photo|cloudinary_optimize:"w_120,h_90" }}" class="rounded-3 border object-fit-cover shadow-sm" style="width: 60px; height: 45px;" alt="Mid-day Photo"/>
                             {% endif %}
                         </div>
 
@@ -183,7 +183,7 @@
                                 {% endif %}
                             </div>
                             {% if attendance and attendance.check_out_photo %}
-                                <img src="{{ attendance.check_out_photo.url }}" class="rounded-3 border object-fit-cover shadow-sm" style="width: 60px; height: 45px;" alt="Check-out Photo"/>
+                                <img src="{{ attendance.check_out_photo|cloudinary_optimize:"w_120,h_90" }}" class="rounded-3 border object-fit-cover shadow-sm" style="width: 60px; height: 45px;" alt="Check-out Photo"/>
                             {% endif %}
                         </div>
                     </div>
@@ -453,10 +453,27 @@
         const postData = () => {
             // Capture snapshot from video
             const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
+            const nativeW = video.videoWidth || 640;
+            const nativeH = video.videoHeight || 480;
+            
+            // Scale down to max 640px preserving aspect ratio
+            const maxDim = 640;
+            let targetW = nativeW;
+            let targetH = nativeH;
+            if (nativeW > maxDim || nativeH > maxDim) {
+                if (nativeW > nativeH) {
+                    targetW = maxDim;
+                    targetH = Math.round((nativeH * maxDim) / nativeW);
+                } else {
+                    targetH = maxDim;
+                    targetW = Math.round((nativeW * maxDim) / nativeH);
+                }
+            }
+            
+            canvas.width = targetW;
+            canvas.height = targetH;
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataURL = canvas.toDataURL('image/png');
+            const dataURL = canvas.toDataURL('image/jpeg', 0.6);
 
             // Show flash overlay
             const overlay = document.getElementById('snapOverlay');

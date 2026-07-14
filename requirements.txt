@@ -28,3 +28,6 @@ python-dotenv
 fastapi
 uvicorn[standard]
 starlette
+cloudinary
+django-cloudinary-storage
+
