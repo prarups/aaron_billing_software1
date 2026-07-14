@@ -1758,6 +1758,20 @@ def api_dashboard_stats(request):
     total_cash = bills_qs.aggregate(Sum('cash_amount'))['cash_amount__sum'] or 0
     total_online = bills_qs.aggregate(Sum('online_amount'))['online_amount__sum'] or 0
     transaction_count = bills_qs.count()
+
+    # Add extra payments collected from return/exchange transactions
+    from billing.return_models import ReturnRequest
+    ret_qs = ReturnRequest.objects.filter(
+        invoice__in=bills_qs,
+        status=ReturnRequest.Status.APPROVED
+    )
+    ret_cash = ret_qs.aggregate(Sum('cash_amount'))['cash_amount__sum'] or 0
+    ret_online = ret_qs.aggregate(Sum('online_amount'))['online_amount__sum'] or 0
+
+    total_cash += ret_cash
+    total_online += ret_online
+    total_sales += ret_cash + ret_online  # extra collected in exchanges adds to total sales
+
     low_stock = ProductRegistry.objects.filter(stock_quantity__lte=F('low_stock_threshold')).count()
     total_current_stock = ProductRegistry.objects.aggregate(Sum('stock_quantity'))['stock_quantity__sum'] or 0
     total_items_sold = BillItem.objects.filter(bill__created_at__range=(start_dt, end_dt)).aggregate(Sum('quantity'))['quantity__sum'] or 0

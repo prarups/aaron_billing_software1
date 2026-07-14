@@ -144,6 +144,7 @@ class OwnerDashboardView(TemplateView):
 
         # Overall Stats (optimized to fetch all sums in a single query)
         import datetime
+        from billing.return_models import ReturnRequest
         if is_filtered:
             start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
             end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
@@ -154,9 +155,14 @@ class OwnerDashboardView(TemplateView):
                 cash=Sum('cash_amount'),
                 online=Sum('online_amount')
             )
-            context['total_sales_today'] = aggs['sales'] or 0
-            context['total_cash_today'] = aggs['cash'] or 0
-            context['total_online_today'] = aggs['online'] or 0
+            # Add return exchange payments collected in same period
+            ret_aggs = ReturnRequest.objects.filter(
+                invoice__in=range_bills,
+                status=ReturnRequest.Status.APPROVED
+            ).aggregate(ret_cash=Sum('cash_amount'), ret_online=Sum('online_amount'))
+            context['total_sales_today'] = (aggs['sales'] or 0) + (ret_aggs['ret_cash'] or 0) + (ret_aggs['ret_online'] or 0)
+            context['total_cash_today'] = (aggs['cash'] or 0) + (ret_aggs['ret_cash'] or 0)
+            context['total_online_today'] = (aggs['online'] or 0) + (ret_aggs['ret_online'] or 0)
             context['transaction_count_today'] = range_bills.count()
             context['stats_label'] = f"Sales ({start_date.strftime('%d %b')} - {end_date.strftime('%d %b')})"
             context['trans_label'] = "Transactions (Period)"
@@ -170,9 +176,14 @@ class OwnerDashboardView(TemplateView):
                 cash=Sum('cash_amount'),
                 online=Sum('online_amount')
             )
-            context['total_sales_today'] = aggs['sales'] or 0
-            context['total_cash_today'] = aggs['cash'] or 0
-            context['total_online_today'] = aggs['online'] or 0
+            # Add return exchange payments collected today
+            ret_aggs = ReturnRequest.objects.filter(
+                invoice__in=today_bills,
+                status=ReturnRequest.Status.APPROVED
+            ).aggregate(ret_cash=Sum('cash_amount'), ret_online=Sum('online_amount'))
+            context['total_sales_today'] = (aggs['sales'] or 0) + (ret_aggs['ret_cash'] or 0) + (ret_aggs['ret_online'] or 0)
+            context['total_cash_today'] = (aggs['cash'] or 0) + (ret_aggs['ret_cash'] or 0)
+            context['total_online_today'] = (aggs['online'] or 0) + (ret_aggs['ret_online'] or 0)
             context['transaction_count_today'] = today_bills.count()
             context['stats_label'] = "Total Sales (Today)"
             context['trans_label'] = "Transactions"

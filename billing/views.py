@@ -719,15 +719,24 @@ def owner_bill_list(request):
     # Stats for the filtered selection
     from .return_models import ReturnRequest
     total_bill_amount = bills.aggregate(total=Sum('total_amount'))['total'] or 0
-    total_exchange_diff = ReturnRequest.objects.filter(
+
+    # Include extra payments collected from return/exchange transactions
+    return_qs = ReturnRequest.objects.filter(
         invoice__in=bills,
         status=ReturnRequest.Status.APPROVED
-    ).aggregate(total=Sum('price_difference'))['total'] or 0
-    total_cash = bills.aggregate(total=Sum('cash_amount'))['total'] or 0
-    total_online = bills.aggregate(total=Sum('online_amount'))['total'] or 0
+    )
+    total_exchange_cash = return_qs.aggregate(total=Sum('cash_amount'))['total'] or 0
+    total_exchange_online = return_qs.aggregate(total=Sum('online_amount'))['total'] or 0
+    total_exchange_collected = total_exchange_cash + total_exchange_online
+
+    # Cash = bills cash + return exchange cash paid by customer
+    total_cash = (bills.aggregate(total=Sum('cash_amount'))['total'] or 0) + total_exchange_cash
+    # Online = bills online + return exchange online paid by customer
+    total_online = (bills.aggregate(total=Sum('online_amount'))['total'] or 0) + total_exchange_online
 
     stats = {
-        'total_revenue': total_bill_amount + total_exchange_diff,
+        # Revenue = total billed + extra collected during exchanges
+        'total_revenue': total_bill_amount + total_exchange_collected,
         'bill_count': bills.count(),
         'total_cash': total_cash,
         'total_online': total_online,
