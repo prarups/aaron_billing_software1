@@ -525,6 +525,23 @@ def permission_list(request):
     paginator = Paginator(past_perms_qs, 10)
     page_number = request.GET.get('page')
     past_perms_page = paginator.get_page(page_number)
+    
+    # Load dynamic limits
+    try:
+        salary_config = user.salary_config
+        max_permissions = salary_config.max_permissions_per_month
+        max_hours = salary_config.max_hours_per_permission
+    except Exception:
+        max_permissions = 2
+        max_hours = Decimal('2.00')
+
+    # Count how many permissions the user has requested/approved in the current month (excluding rejected)
+    today_date = timezone.localdate()
+    permissions_used_this_month = PermissionRequest.objects.filter(
+        user=user,
+        date__year=today_date.year,
+        date__month=today_date.month
+    ).exclude(status='rejected').count()
         
     context = {
         'my_permissions': my_permissions,
@@ -533,6 +550,9 @@ def permission_list(request):
         'branches': branches,
         'q_perm': q_perm,
         'selected_branch_id': branch_perm,
+        'max_permissions': max_permissions,
+        'max_hours': max_hours,
+        'permissions_used_this_month': permissions_used_this_month,
     }
     return render(request, 'attendance/permission_list.html', context)
 
@@ -548,6 +568,46 @@ def permission_request(request):
             date_val = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
             start_time = datetime.datetime.strptime(start_time_str, '%H:%M').time()
             end_time = datetime.datetime.strptime(end_time_str, '%H:%M').time()
+            
+            # 1. Calculate duration and validate hourly limit
+            start_dt = datetime.datetime.combine(date_val, start_time)
+            end_dt = datetime.datetime.combine(date_val, end_time)
+            if end_dt <= start_dt:
+                messages.error(request, 'Failed to submit request: End time must be after start time.')
+                return redirect('attendance:permission_list')
+                
+            duration_hours = Decimal(str((end_dt - start_dt).total_seconds() / 3600.0))
+            
+            try:
+                salary_config = request.user.salary_config
+                max_hours = salary_config.max_hours_per_permission
+                max_perms = salary_config.max_permissions_per_month
+            except Exception:
+                max_hours = Decimal('2.00')
+                max_perms = 2
+                
+            if duration_hours > max_hours:
+                messages.error(
+                    request,
+                    f'Failed to submit request: Duration ({duration_hours:.2f} hours) '
+                    f'exceeds your permitted limit of {max_hours:.2f} hours per request.'
+                )
+                return redirect('attendance:permission_list')
+                
+            # 2. Validate monthly quota limit (excluding rejected)
+            existing_perms_count = PermissionRequest.objects.filter(
+                user=request.user,
+                date__year=date_val.year,
+                date__month=date_val.month
+            ).exclude(status='rejected').count()
+            
+            if existing_perms_count >= max_perms:
+                messages.error(
+                    request,
+                    f'Failed to submit request: You have already used your quota of '
+                    f'{existing_perms_count} / {max_perms} permissions for the month of {date_val.strftime("%B %Y")}.'
+                )
+                return redirect('attendance:permission_list')
             
             PermissionRequest.objects.create(
                 user=request.user,
@@ -846,16 +906,20 @@ def salary_config_view(request, user_id):
             base = request.POST.get('monthly_base_salary', '0')
             late = request.POST.get('late_deduction_amount', '0')
             lop = request.POST.get('lop_deduction_amount', '0')
+            max_perms = request.POST.get('max_permissions_per_month', '2')
+            max_hours = request.POST.get('max_hours_per_permission', '2.00')
             
             config.monthly_base_salary = Decimal(base)
             config.late_deduction_amount = Decimal(late)
             config.lop_deduction_amount = Decimal(lop)
+            config.max_permissions_per_month = int(max_perms)
+            config.max_hours_per_permission = Decimal(max_hours)
             config.save()
             
-            messages.success(request, f'Salary configuration updated for {user_obj.username}.')
+            messages.success(request, f'Salary & Permission configuration updated for {user_obj.username}.')
             return redirect('attendance:payroll_list')
         except (ValueError, TypeError, Exception) as e:
-            messages.error(request, f'Failed to update salary configuration: {e}')
+            messages.error(request, f'Failed to update configuration: {e}')
         
     context = {
         'employee': user_obj,

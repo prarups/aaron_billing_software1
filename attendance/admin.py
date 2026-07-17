@@ -22,7 +22,7 @@ class PermissionRequestAdmin(admin.ModelAdmin):
 
 @admin.register(SalaryConfig)
 class SalaryConfigAdmin(admin.ModelAdmin):
-    list_display = ('user', 'monthly_base_salary', 'late_deduction_amount', 'lop_deduction_amount')
+    list_display = ('user', 'monthly_base_salary', 'late_deduction_amount', 'lop_deduction_amount', 'max_permissions_per_month', 'max_hours_per_permission')
     search_fields = ('user__username',)
 
 @admin.register(MonthlyPayroll)

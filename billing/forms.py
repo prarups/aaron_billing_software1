@@ -39,6 +39,7 @@ class ReturnCreateForm(forms.Form):
         required=False,
         widget=forms.Select(attrs={
             'class': 'form-select rounded-pill border-0 bg-light',
+            'data-no-search': 'true',
         })
     )
     action_type = forms.ChoiceField(
@@ -50,6 +51,7 @@ class ReturnCreateForm(forms.Form):
         required=False,
         widget=forms.Select(attrs={
             'class': 'form-select rounded-pill border-0 bg-light',
+            'data-no-search': 'true',
         })
     )
     reason = forms.CharField(

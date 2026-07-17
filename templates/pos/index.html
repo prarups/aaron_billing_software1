@@ -207,27 +207,17 @@
 @media (min-width: 992px) {
     #section-cart {
         position: sticky;
-        top: 85px; /* Aligns neatly below navbar */
-        height: calc(100vh - 115px);
+        top: 85px;
         display: flex !important;
         flex-direction: column;
     }
     .cart-card {
-        height: 100% !important;
         display: flex !important;
         flex-direction: column !important;
-        overflow: hidden !important;
     }
     .cart-card .card-body {
-        flex-grow: 1 !important;
         display: flex !important;
         flex-direction: column !important;
-        overflow: hidden !important;
-    }
-    #cart-container {
-        flex-grow: 1 !important;
-        max-height: none !important;
-        overflow-y: auto !important;
     }
 }
 </style>
@@ -352,7 +342,7 @@
                     <div id="combo-tracker" class="d-none mb-2"></div>
 
                     <!-- Cart items list (compact height and scrollable) -->
-                    <div class="overflow-auto" id="cart-container" style="min-height: 120px; max-height: 240px;">
+                    <div id="cart-container">
                         <div class="text-center py-4" id="empty-cart-msg">
                             <i class="bi bi-cart-x fs-1 text-muted opacity-25 d-block mb-2"></i>
                             <p class="text-muted small">No items added to bill.</p>
@@ -803,20 +793,12 @@
             }
 
             let cardHtml = `
-                <div class="p-2 px-3 rounded-3 mb-2 animate-fade-in shadow-sm" style="background:#f0f4ff; border:1px solid #c7d2fe;">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="fw-bold text-dark text-truncate me-2" style="font-size: 0.72rem;" title="${group.name}">
-                            <i class="bi bi-tag-fill me-1" style="color:#6366f1;"></i>${group.name}
-                        </span>
-                        <span class="badge text-white px-1.5 py-0.5 text-xxs font-monospace rounded-pill flex-shrink-0" style="background: linear-gradient(135deg, #d946ef, #8b5cf6) !important; font-size: 0.58rem; font-weight: normal;">
-                            ${group.combo_id || 'Combo'}
-                        </span>
-                    </div>
-                    <div class="d-flex align-items-center mb-1.5">
-                        <i class="bi bi-lightning-charge-fill me-1" style="color:#eab308; font-size:0.7rem;"></i>
-                        <span class="fw-semibold text-secondary" style="font-size:0.68rem;">${msgText}</span>
-                    </div>
-                    <div style="position:relative; height:4px; background:#e0e7ff; border-radius:2px; margin: 0.25rem 2px 0.8rem;" id="combo-bar-${group.id}">
+                <div class="d-flex align-items-center gap-2 px-2 py-1 rounded-2 mb-1 animate-fade-in" style="background:#f0f4ff; border:1px solid #dde3f8; font-size:0.62rem;">
+                    <i class="bi bi-lightning-charge-fill flex-shrink-0" style="color:#6366f1; font-size:0.65rem;"></i>
+                    <span class="fw-bold text-dark text-truncate" title="${group.name}">${group.name}</span>
+                    <span class="badge text-white px-1 py-0 font-monospace rounded-pill flex-shrink-0" style="background:linear-gradient(135deg,#d946ef,#8b5cf6); font-size:0.5rem;">${group.combo_id || 'Combo'}</span>
+                    <span class="fw-semibold text-secondary text-truncate flex-grow-1" style="font-size:0.58rem;">${msgText}</span>
+                    <div class="flex-shrink-0" style="position:relative; height:3px; background:#e0e7ff; border-radius:2px; width:60px;" id="combo-bar-${group.id}">
                         <div style="height:100%; background:linear-gradient(90deg,#6366f1,#8b5cf6); border-radius:2px; width:${pct}%; transition:width 0.3s ease;"></div>
                     </div>
                 </div>
@@ -830,12 +812,8 @@
                     let pos = (t.quantity / maxQty) * 100;
                     let dot = document.createElement('div');
                     dot.className = 'ct-dot';
-                    dot.style.cssText = `position:absolute;top:50%;left:${pos}%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;border:2px solid #fff;background:${groupQty>=t.quantity?'#6366f1':'#c7d2fe'};`;
-                    let label = document.createElement('div');
-                    label.style.cssText = `position:absolute;top:9px;left:${pos}%;transform:translateX(-50%);font-size:0.58rem;font-weight:700;color:${groupQty>=t.quantity?'#4338ca':'#94a3b8'};white-space:nowrap;`;
-                    label.textContent = t.quantity + '-pc';
+                    dot.style.cssText = `position:absolute;top:50%;left:${pos}%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;border:1px solid #fff;background:${groupQty>=t.quantity?'#6366f1':'#c7d2fe'};`;
                     bar.appendChild(dot);
-                    bar.appendChild(label);
                 });
             }
         }

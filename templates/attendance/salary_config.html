@@ -52,13 +52,27 @@
                         </div>
 
                         <!-- 3. LOP penalty -->
-                        <div class="mb-4">
+                        <div class="mb-3">
                             <label class="form-label small fw-bold text-muted">LOP Deduction Rate (Per Day) (Rs.)</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light border-end-0 text-muted rounded-start-3">Rs.</span>
                                 <input type="number" step="0.01" name="lop_deduction_amount" class="form-control border-start-0 rounded-end-3" value="{{ config.lop_deduction_amount }}" placeholder="0.00">
                             </div>
                             <div class="form-text small text-muted">Amount deducted per day of unapproved leave or absent. Recommendation: (Base Salary / 30)</div>
+                        </div>
+
+                        <!-- 4. Max Permissions Per Month -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">Max Permissions Per Month</label>
+                            <input type="number" name="max_permissions_per_month" class="form-control rounded-3" value="{{ config.max_permissions_per_month|default:2 }}" placeholder="2" required>
+                            <div class="form-text small text-muted">Maximum number of permission requests allowed per month.</div>
+                        </div>
+
+                        <!-- 5. Max Hours Per Permission -->
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-muted">Max Hours Per Permission (Hours)</label>
+                            <input type="number" step="0.01" name="max_hours_per_permission" class="form-control rounded-3" value="{{ config.max_hours_per_permission|default:2.00 }}" placeholder="2.00" required>
+                            <div class="form-text small text-muted">Maximum hours allowed per short permission request.</div>
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100 rounded-pill py-2.5">

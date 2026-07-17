@@ -94,6 +94,8 @@ class SalaryConfig(models.Model):
     monthly_base_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     late_deduction_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00) # Deduction per late check-in
     lop_deduction_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00) # Deduction per LOP day (e.g. Base Salary / 30)
+    max_permissions_per_month = models.IntegerField(default=2, help_text="Maximum permission requests allowed per month")
+    max_hours_per_permission = models.DecimalField(max_digits=4, decimal_places=2, default=2.00, help_text="Maximum hours allowed per permission request")
 
     def __str__(self):
         return f"{self.user.username} - Base: {self.monthly_base_salary}"

@@ -657,12 +657,19 @@
         calculateExchangeDifference();
     });
 
+    // Track whether current replacement context is a combo group swap
+    let currentReplacementIsCombo = false;
+    let comboEligibleProductIds = [];
+
     // Populate exchange options based on product type (Combo vs Normal)
     function setupReplacementSelector(opt) {
         const isCombo = opt.getAttribute('data-is-combo') === 'true';
         const comboName = opt.getAttribute('data-combo-name');
         const comboTiers = safeJsonParse(opt.getAttribute('data-combo-tiers'), []);
         const comboEligibleProducts = safeJsonParse(opt.getAttribute('data-combo-eligible-products'), []);
+
+        currentReplacementIsCombo = isCombo;
+        comboEligibleProductIds = isCombo ? comboEligibleProducts.map(p => p.id) : [];
         
         replacementProductSelect.innerHTML = '<option value="">-- Choose exchange item --</option>';
         replacementQtyInput.value = qtyInput.value;
@@ -718,17 +725,18 @@
         if (!replacementOpt || !replacementOpt.value) {
             priceDiffLabel.textContent = 'Diff: ₹0';
             priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-white text-center fw-bold text-dark small';
+            replacementProductInfo.textContent = '';
+            addReplacementItemBtn.disabled = false;
             return;
         }
 
         const replacementPrice = parseFloat(replacementOpt.getAttribute('data-price'));
         const repQty = parseInt(replacementQtyInput.value) || 1;
 
-        // Stock checks using current returns
+        // Stock checks — consider that a GOOD-condition return of same product adds to effective stock
         const repStock = parseInt(replacementOpt.getAttribute('data-stock')) || 0;
         const repProductId = parseInt(replacementOpt.value);
         
-        // Sum returns for the same product to get effective stock
         const returnedQtyOfThisProduct = returnedItems
             .filter(item => item.product_id === repProductId && item.condition === 'GOOD')
             .reduce((sum, item) => sum + item.quantity, 0);
@@ -738,16 +746,52 @@
             .filter(item => item.product_id === repProductId)
             .reduce((sum, item) => sum + item.quantity, 0);
 
-        if (repQty + existingRepQty > effectiveStock) {
-            priceDiffLabel.textContent = 'Error: No Stock';
+        // ── Out of Stock check ──────────────────────────────────────────
+        if (effectiveStock <= 0) {
+            priceDiffLabel.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i>Out of Stock';
             priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-danger bg-opacity-10 text-center fw-bold text-danger small';
-            replacementProductInfo.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> Insufficient stock. Available: ${effectiveStock}</span>`;
+            replacementProductInfo.innerHTML = `<span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle-fill me-1"></i>This product is out of stock and cannot be selected as a replacement.</span>`;
+            addReplacementItemBtn.disabled = true;
+            addReplacementItemBtn.classList.add('opacity-50');
             return;
         }
 
-        priceDiffLabel.textContent = `Price: ₹${replacementPrice * repQty}`;
-        priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-success bg-opacity-10 text-center fw-bold text-success small';
-        replacementProductInfo.textContent = '';
+        // ── Insufficient qty check ──────────────────────────────────────
+        if (repQty + existingRepQty > effectiveStock) {
+            priceDiffLabel.textContent = 'Error: No Stock';
+            priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-danger bg-opacity-10 text-center fw-bold text-danger small';
+            replacementProductInfo.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> Insufficient stock. Available: ${effectiveStock - existingRepQty}</span>`;
+            addReplacementItemBtn.disabled = true;
+            addReplacementItemBtn.classList.add('opacity-50');
+            return;
+        }
+
+        // ── All good ────────────────────────────────────────────────────
+        addReplacementItemBtn.disabled = false;
+        addReplacementItemBtn.classList.remove('opacity-50');
+        replacementProductInfo.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>In stock: ${effectiveStock - existingRepQty} available</span>`;
+
+        // For combo swaps (replacement is within the same combo group) → Diff is ₹0
+        const isComboSwap = currentReplacementIsCombo && comboEligibleProductIds.includes(parseInt(replacementOpt.value));
+        if (isComboSwap) {
+            priceDiffLabel.textContent = 'Diff: ₹0';
+            priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-primary bg-opacity-10 text-center fw-bold text-primary small';
+        } else {
+            const returnedOpt = itemSelect.options[itemSelect.selectedIndex];
+            const returnedPrice = returnedOpt ? parseFloat(returnedOpt.getAttribute('data-price')) || 0 : 0;
+            const returnedQty = parseInt(qtyInput.value) || 1;
+            const diff = (replacementPrice * repQty) - (returnedPrice * returnedQty);
+            if (diff > 0) {
+                priceDiffLabel.textContent = `Pay Extra: ₹${diff.toFixed(0)}`;
+                priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-warning bg-opacity-10 text-center fw-bold text-warning-emphasis small';
+            } else if (diff < 0) {
+                priceDiffLabel.textContent = `Refund: ₹${Math.abs(diff).toFixed(0)}`;
+                priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-success bg-opacity-10 text-center fw-bold text-success small';
+            } else {
+                priceDiffLabel.textContent = 'Diff: ₹0';
+                priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-success bg-opacity-10 text-center fw-bold text-success small';
+            }
+        }
     }
 
     replacementProductSelect.addEventListener('change', calculateExchangeDifference);
@@ -1223,6 +1267,7 @@
         if (!barcode) return;
         
         barcodeSearchError.style.display = 'none';
+        replacementProductInfo.textContent = '';
         
         fetch(`{% url 'get_replacement_product' %}?barcode=${encodeURIComponent(barcode)}&branch_id=${currentBranchId}`)
             .then(r => {
@@ -1241,6 +1286,16 @@
                 o.setAttribute('data-stock', p.stock);
                 replacementProductSelect.appendChild(o);
                 replacementProductSelect.value = p.id;
+
+                // Immediate out-of-stock warning after barcode scan
+                if (parseInt(p.stock) <= 0) {
+                    priceDiffLabel.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i>Out of Stock';
+                    priceDiffLabel.className = 'w-100 p-2 rounded-pill bg-danger bg-opacity-10 text-center fw-bold text-danger small';
+                    replacementProductInfo.innerHTML = `<span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle-fill me-1"></i><strong>${p.name}</strong> is currently out of stock. Cannot be used as replacement.</span>`;
+                    addReplacementItemBtn.disabled = true;
+                    addReplacementItemBtn.classList.add('opacity-50');
+                    return; // don't trigger change event, stay blocked
+                }
                 
                 replacementProductSelect.dispatchEvent(new Event('change'));
             })

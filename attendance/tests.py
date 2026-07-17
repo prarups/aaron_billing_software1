@@ -166,3 +166,58 @@ class AttendanceTestCase(TestCase):
         # b3 created without explicit invoice_prefix should automatically uniquify to 'AG4'
         b3 = Branch.objects.create(name="Guntur", location="Loc3")
         self.assertEqual(b3.invoice_prefix, "AG4")
+
+    def test_permission_request_validations(self):
+        # Configure limits for the staff user: max 2 permissions per month, max 2.5 hours per request
+        self.salary_config.max_permissions_per_month = 2
+        self.salary_config.max_hours_per_permission = 2.50
+        self.salary_config.save()
+
+        # Login as staff user
+        self.client.login(username="staff_user", password="testpassword")
+
+        # 1. Test standard valid request (2 hours)
+        response = self.client.post(reverse('attendance:permission_request'), {
+            'date': '2026-07-15',
+            'start_time': '10:00',
+            'end_time': '12:00',
+            'reason': 'Doctor appointment'
+        })
+        self.assertEqual(response.status_code, 302)  # Redirect
+        # Check created
+        self.assertEqual(PermissionRequest.objects.filter(user=self.staff).count(), 1)
+        perm1 = PermissionRequest.objects.get(user=self.staff)
+        self.assertEqual(perm1.reason, 'Doctor appointment')
+
+        # 2. Test request exceeding hours limit (3 hours)
+        response = self.client.post(reverse('attendance:permission_request'), {
+            'date': '2026-07-16',
+            'start_time': '10:00',
+            'end_time': '13:00',
+            'reason': 'Personal errand'
+        })
+        self.assertEqual(response.status_code, 302)
+        # Should NOT create a second request
+        self.assertEqual(PermissionRequest.objects.filter(user=self.staff).count(), 1)
+
+        # 3. Test request exceeding monthly quota (creating 2nd valid, then 3rd should fail)
+        # Create second valid request
+        response = self.client.post(reverse('attendance:permission_request'), {
+            'date': '2026-07-17',
+            'start_time': '10:00',
+            'end_time': '12:00',
+            'reason': 'Bank visit'
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(PermissionRequest.objects.filter(user=self.staff).count(), 2)
+
+        # Try to create third request in the same month (July 2026)
+        response = self.client.post(reverse('attendance:permission_request'), {
+            'date': '2026-07-18',
+            'start_time': '10:00',
+            'end_time': '11:00',
+            'reason': 'Other errand'
+        })
+        self.assertEqual(response.status_code, 302)
+        # Should still be only 2 requests
+        self.assertEqual(PermissionRequest.objects.filter(user=self.staff).count(), 2)

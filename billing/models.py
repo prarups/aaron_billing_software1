@@ -96,11 +96,21 @@ class Bill(models.Model):
         return_payment_method = None
         
         for ret in approved_returns:
-            if ret.quantity > 0 and ret.bill_item:
-                total_returned_value += ret.bill_item.unit_price * ret.quantity
+            ret_value = ret.bill_item.unit_price * ret.quantity if (ret.quantity > 0 and ret.bill_item) else 0
+            total_returned_value += ret_value
             if ret.replacement_product:
-                total_replacement_value += ret.replacement_product.price * ret.replacement_quantity
-            
+                # Combo swap: bill_item is a combo purchase AND price_difference==0
+                # → customer paid nothing extra, so Total Exchanged = ₹0
+                is_combo_swap = (
+                    ret.price_difference == 0
+                    and ret.bill_item is not None
+                    and ret.bill_item.is_combo_purchase
+                )
+                if is_combo_swap:
+                    total_replacement_value += 0
+                else:
+                    total_replacement_value += ret_value + ret.price_difference
+
             total_net_difference += ret.price_difference
             total_cash_paid += ret.cash_amount
             total_online_paid += ret.online_amount

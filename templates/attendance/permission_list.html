@@ -76,6 +76,24 @@
                 <div class="card-body p-4">
                     <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-plus-circle-fill me-2"></i>Request Permission</h5>
                     
+                    <!-- Permission Quota Details -->
+                    <div class="alert border-0 rounded-3 mb-4 py-2.5 px-3 small" style="background-color: #f5f3ff; border-left: 4px solid #8b5cf6 !important;">
+                        <div class="d-flex justify-content-between mb-1.5">
+                            <span class="fw-semibold text-muted"><i class="bi bi-calendar-event me-1"></i>Monthly Limit:</span>
+                            <span class="fw-bold text-dark">{{ max_permissions }} request{% if max_permissions > 1 %}s{% endif %}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1.5">
+                            <span class="fw-semibold text-muted"><i class="bi bi-check2-circle me-1"></i>Used This Month:</span>
+                            <span class="fw-bold {% if permissions_used_this_month >= max_permissions %}text-danger{% else %}text-success{% endif %}">
+                                {{ permissions_used_this_month }} used
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-semibold text-muted"><i class="bi bi-clock me-1"></i>Max Duration:</span>
+                            <span class="fw-bold text-dark">{{ max_hours }} hour{% if max_hours > 1 %}s{% endif %}</span>
+                        </div>
+                    </div>
+                    
                     <form method="post" action="{% url 'attendance:permission_request' %}">
                         {% csrf_token %}
                         <div class="mb-3">

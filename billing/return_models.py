@@ -11,13 +11,13 @@ class ReturnRequest(models.Model):
         EXPIRED = "E", "Expired"
 
     CONDITION_CHOICES = (
-        ('GOOD', 'Good – Resellable'),
+        ('GOOD', 'Good - Resellable'),
         ('DAMAGED', 'Damaged'),
     )
     ACTION_CHOICES = (
         ('REFUND', 'Refund'),
         ('EXCHANGE', 'Exchange'),
-        ('EXCH_SAME', 'Exchange with same item (Another one)'),
+        ('EXCH_SAME', 'Exchange with same item'),
     )
 
     invoice = models.ForeignKey('billing.Bill', on_delete=models.CASCADE, related_name='return_requests')
