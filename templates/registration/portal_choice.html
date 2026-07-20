@@ -188,8 +188,8 @@
         
         <!-- Cards grid -->
         <div class="row g-4 justify-content-center">
-            <!-- 1. Branch & Staff Portal (Only for Owner/Managers/Regional Managers) -->
-            {% if user.role == 'owner' or user.role == 'manager' or user.role == 'assistant_manager' or user.role == 'regional_manager' %}
+            <!-- 1. Branch & Staff Portal (Only for Owner/Regional Managers) -->
+            {% if user.role == 'owner' or user.role == 'regional_manager' %}
             <div class="col-md-6 col-lg-4">
                 <div class="portal-card" onclick="window.location.href='{% url 'branch_staff_management' %}'">
                     <div class="portal-card-content">
@@ -208,7 +208,7 @@
             {% endif %}
 
             <!-- 2. Billing & POS Portal -->
-            <div class="{% if user.role == 'owner' or user.role == 'manager' or user.role == 'assistant_manager' or user.role == 'regional_manager' %}col-md-6 col-lg-4{% else %}col-md-6 col-lg-5{% endif %}">
+            <div class="{% if user.role == 'owner' or user.role == 'regional_manager' %}col-md-6 col-lg-4{% else %}col-md-6 col-lg-5{% endif %}">
                 <div class="portal-card" onclick="window.location.href='{% url 'select_portal' 'billing' %}'">
                     <div class="portal-card-content">
                         <div class="portal-icon">
@@ -225,7 +225,7 @@
             </div>
             
             <!-- 3. HR & Attendance Portal -->
-            <div class="{% if user.role == 'owner' or user.role == 'manager' or user.role == 'assistant_manager' or user.role == 'regional_manager' %}col-md-6 col-lg-4{% else %}col-md-6 col-lg-5{% endif %}">
+            <div class="{% if user.role == 'owner' or user.role == 'regional_manager' %}col-md-6 col-lg-4{% else %}col-md-6 col-lg-5{% endif %}">
                 <div class="portal-card" onclick="window.location.href='{% url 'select_portal' 'attendance' %}'">
                     <div class="portal-card-content">
                         <div class="portal-icon">

@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, Http404
 from django.core.files.base import ContentFile
 from django.db.models import Count, Q
 from django.conf import settings
@@ -332,151 +332,15 @@ def check_out(request):
 
 @login_required
 def leave_list(request):
-    user = request.user
-    
-    # Staff sees their own leaves
-    my_leaves = LeaveRequest.objects.filter(user=user).order_by('-created_at')
-    
-    # Manager sees their branch staff leaves
-    pending_leaves = []
-    past_leaves_page = None
-    
-    # Get user's accessible branches
-    branches = user.get_accessible_branches()
-    
-    # Filter variables for past leaves
-    q_leave = request.GET.get('q_leave', '').strip()
-    branch_leave = request.GET.get('branch_leave', '').strip()
-    
-    if is_owner(user):
-        pending_leaves = LeaveRequest.objects.filter(status='pending').exclude(user=user)
-        past_leaves_qs = LeaveRequest.objects.exclude(status='pending').exclude(user=user)
-    elif is_manager_or_owner(user):
-        pending_leaves = LeaveRequest.objects.filter(
-            user__branches__in=branches, 
-            status='pending'
-        ).exclude(user=user).distinct()
-        past_leaves_qs = LeaveRequest.objects.filter(
-            user__branches__in=branches
-        ).exclude(status='pending').exclude(user=user).distinct()
-    else:
-        past_leaves_qs = LeaveRequest.objects.none()
-
-    # Apply search/filters
-    if q_leave:
-        past_leaves_qs = past_leaves_qs.filter(
-            Q(user__username__icontains=q_leave) | Q(user__employee_id__icontains=q_leave)
-        )
-    if branch_leave:
-        past_leaves_qs = past_leaves_qs.filter(user__branches__id=branch_leave)
-        
-    past_leaves_qs = past_leaves_qs.order_by('-created_at')
-    
-    # Pagination for past leaves
-    from django.core.paginator import Paginator
-    paginator = Paginator(past_leaves_qs, 10)
-    page_number = request.GET.get('page')
-    past_leaves_page = paginator.get_page(page_number)
-        
-    context = {
-        'my_leaves': my_leaves,
-        'pending_leaves': pending_leaves,
-        'past_leaves': past_leaves_page,
-        'branches': branches,
-        'q_leave': q_leave,
-        'selected_branch_id': branch_leave,
-    }
-    return render(request, 'attendance/leave_list.html', context)
+    raise Http404("Leave management is disabled.")
 
 @login_required
 def leave_request(request):
-    if request.method == 'POST':
-        leave_type = request.POST.get('leave_type')
-        start_date_str = request.POST.get('start_date')
-        end_date_str = request.POST.get('end_date')
-        reason = request.POST.get('reason')
-        
-        try:
-            start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
-            end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            
-            if start_date > end_date:
-                messages.error(request, 'Start date cannot be after end date.')
-                return redirect('attendance:leave_list')
-                
-            # Create leave request
-            LeaveRequest.objects.create(
-                user=request.user,
-                leave_type=leave_type,
-                start_date=start_date,
-                end_date=end_date,
-                reason=reason,
-                status='pending'
-            )
-            messages.success(request, 'Leave request submitted successfully.')
-        except ValueError:
-            messages.error(request, 'Invalid date formats. Please use YYYY-MM-DD.')
-        except Exception as e:
-            messages.error(request, f'Failed to submit leave request: {e}')
-            
-        return redirect('attendance:leave_list')
-    return redirect('attendance:leave_list')
+    raise Http404("Leave management is disabled.")
 
 @login_required
 def leave_approve(request, pk, action):
-    if not is_manager_or_owner(request.user):
-        messages.error(request, 'Unauthorized access.')
-        return redirect('attendance:leave_list')
-        
-    leave = get_object_or_404(LeaveRequest, pk=pk)
-    
-    # Manager permission check
-    if not is_owner(request.user):
-        user_branches = request.user.get_accessible_branches()
-        overlap = leave.user.branches.filter(id__in=user_branches.values_list('id', flat=True))
-        if not overlap.exists():
-            messages.error(request, 'You do not have permission to approve leaves for this staff.')
-            return redirect('attendance:leave_list')
-            
-    try:
-        with transaction.atomic():
-            if action == 'approve':
-                leave.status = 'approved'
-                leave.approved_by = request.user
-                leave.save()
-                
-                # Mark attendance records as 'on_leave' for those dates
-                current_date = leave.start_date
-                while current_date <= leave.end_date:
-                    branch = leave.user.active_branch or leave.user.branches.first() or Branch.objects.first()
-                    if not branch:
-                        raise Exception("No active branch or registered branch available for the leave record.")
-                    
-                    att, created = Attendance.objects.get_or_create(
-                        user=leave.user,
-                        date=current_date,
-                        defaults={
-                            'branch': branch,
-                            'status': 'on_leave',
-                            'notes': f"On Approved Leave: {leave.get_leave_type_display()}"
-                        }
-                    )
-                    if not created:
-                        att.status = 'on_leave'
-                        att.notes = f"On Approved Leave: {leave.get_leave_type_display()}"
-                        att.save()
-                    current_date += datetime.timedelta(days=1)
-                    
-                messages.success(request, f'Leave for {leave.user.username} approved.')
-            elif action == 'reject':
-                leave.status = 'rejected'
-                leave.approved_by = request.user
-                leave.save()
-                messages.success(request, f'Leave for {leave.user.username} rejected.')
-    except Exception as e:
-        messages.error(request, f"Error processing leave approval: {e}")
-        
-    return redirect('attendance:leave_list')
+    raise Http404("Leave management is disabled.")
 
 
 # --- Permission Views ---

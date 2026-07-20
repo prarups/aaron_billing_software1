@@ -314,12 +314,7 @@
                             <span>Attendance Home</span>
                         </a>
                     </li>
-                    <li class="sidebar-item">
-                        <a class="sidebar-link {% if 'leave' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'attendance:leave_list' %}">
-                            <i class="bi bi-calendar-event-fill"></i>
-                            <span>Leaves</span>
-                        </a>
-                    </li>
+
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if 'permission' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'attendance:permission_list' %}">
                             <i class="bi bi-clock-history"></i>
@@ -402,12 +397,7 @@
                             <span>Attendance Home</span>
                         </a>
                     </li>
-                    <li class="sidebar-item">
-                        <a class="sidebar-link {% if 'leave' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'attendance:leave_list' %}">
-                            <i class="bi bi-calendar-event-fill"></i>
-                            <span>Leaves</span>
-                        </a>
-                    </li>
+
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if 'permission' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'attendance:permission_list' %}">
                             <i class="bi bi-clock-history"></i>
