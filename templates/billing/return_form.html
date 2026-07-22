@@ -1013,6 +1013,27 @@
             }
         }
 
+        // Pass 4: Remaining return items (No Replacement / Refund)
+        for (let i = 0; i < retQueue.length; i++) {
+            const retItem = retQueue[i];
+            if (retItem.remainingQty > 0) {
+                backendItems.push({
+                    id: retItem.id,
+                    name: retItem.name,
+                    price: retItem.price,
+                    quantity: retItem.remainingQty,
+                    condition: retItem.condition,
+                    action_type: 'RETURN',
+                    replacement_product_id: null,
+                    replacement_product_name: '-',
+                    replacement_product_price: 0,
+                    replacement_quantity: 0,
+                    price_difference: -(retItem.price * retItem.remainingQty),
+                    is_combo: false
+                });
+            }
+        }
+
         return backendItems;
     }
 
@@ -1090,6 +1111,8 @@
         updateSummaryUI(finalPairs);
     }
 
+    let currentTotalDiff = 0;
+
     function updateSummaryUI(finalPairs) {
         const summaryBody = document.getElementById('summaryBody');
         summaryBody.innerHTML = '';
@@ -1100,6 +1123,7 @@
         if (!finalPairs || finalPairs.length === 0) {
             summaryCard.style.display = 'none';
             document.getElementById('paymentSection').style.display = 'none';
+            currentTotalDiff = 0;
             return;
         }
 
@@ -1140,6 +1164,7 @@
         });
 
         const balance = totalReplacement - totalReturned;
+        currentTotalDiff = Math.max(0, balance);
         const balanceClass = balance >= 0 ? 'text-success font-bold' : 'text-danger font-bold';
         const balanceText = balance >= 0 ? `+₹${balance.toFixed(0)}` : `-₹${Math.abs(balance).toFixed(0)}`;
 
@@ -1167,7 +1192,7 @@
             if (hiddenPaymentMethod) hiddenPaymentMethod.value = selectedMethod;
             
             if (selectedMethod === 'split') {
-                calculateRetSplit(balance);
+                calculateRetSplit(currentTotalDiff);
             } else if (selectedMethod === 'cash') {
                 if (hiddenCashAmount) hiddenCashAmount.value = balance.toFixed(0);
                 if (hiddenOnlineAmount) hiddenOnlineAmount.value = '0';
@@ -1184,58 +1209,46 @@
     }
 
     function calculateRetSplit(totalDiff) {
-        if (totalDiff <= 0) return;
-        
         const cashInput = document.getElementById('ret-split-cash');
         const onlineInput = document.getElementById('ret-split-online');
         const remainingLabel = document.getElementById('ret-split-remaining-label');
         const warning = document.getElementById('ret-split-warning');
-        
-        let cashVal = Math.round(parseFloat(cashInput.value)) || 0;
-        let onlineVal = Math.round(parseFloat(onlineInput.value)) || 0;
-        
+
+        if (!cashInput || !onlineInput) return;
+
+        const cashVal = parseFloat(cashInput.value) || 0;
+        const onlineVal = parseFloat(onlineInput.value) || 0;
         const sum = cashVal + onlineVal;
         const remaining = totalDiff - sum;
-        
-        if (remainingLabel) {
-            if (Math.abs(remaining) < 0.01) {
-                remainingLabel.textContent = 'Split Balanced!';
-                remainingLabel.className = 'badge bg-success text-white fw-bold text-xxs';
-                if (warning) warning.classList.add('d-none');
-            } else if (remaining > 0) {
-                remainingLabel.textContent = `Remaining: ₹${remaining.toFixed(0)}`;
-                remainingLabel.className = 'badge bg-warning text-dark fw-bold text-xxs';
-            } else {
-                remainingLabel.textContent = `Overpaid: ₹${Math.abs(remaining).toFixed(0)}`;
-                remainingLabel.className = 'badge bg-danger text-white fw-bold text-xxs';
-            }
-        }
-        
+
         const hiddenCashAmount = document.getElementById('id_cash_amount');
         const hiddenOnlineAmount = document.getElementById('id_online_amount');
         if (hiddenCashAmount) hiddenCashAmount.value = cashVal.toFixed(0);
         if (hiddenOnlineAmount) hiddenOnlineAmount.value = onlineVal.toFixed(0);
+
+        if (Math.abs(remaining) < 0.01) {
+            remainingLabel.className = 'badge bg-success-subtle text-success fw-bold text-xxs';
+            remainingLabel.textContent = 'Split Balanced!';
+            if (warning) warning.classList.add('d-none');
+        } else {
+            remainingLabel.className = 'badge bg-warning-subtle text-warning fw-bold text-xxs';
+            remainingLabel.textContent = remaining > 0 ? `Remaining: ₹${remaining.toFixed(0)}` : `Over by: ₹${Math.abs(remaining).toFixed(0)}`;
+            if (warning) warning.classList.remove('d-none');
+        }
     }
 
-    const tempPaymentRadios = document.querySelectorAll('input[name="temp_payment_method"]');
-    const retSplitInputs = document.getElementById('ret-split-inputs');
-    const retSplitCash = document.getElementById('ret-split-cash');
-    const retSplitOnline = document.getElementById('ret-split-online');
-
-    tempPaymentRadios.forEach(radio => {
-        radio.addEventListener('change', function(e) {
-            const method = e.target.value;
+    // Payment method switch handler (Cash / UPI / Customer Account / Split)
+    document.querySelectorAll('input[name="temp_payment_method"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const method = this.value;
             const hiddenPaymentMethod = document.getElementById('id_payment_method');
             const hiddenCashAmount = document.getElementById('id_cash_amount');
             const hiddenOnlineAmount = document.getElementById('id_online_amount');
+            
             if (hiddenPaymentMethod) hiddenPaymentMethod.value = method;
-            
-            let totalReturned = 0;
-            let totalReplacement = 0;
-            returnedItems.forEach(item => totalReturned += item.price * item.quantity);
-            replacementItems.forEach(item => totalReplacement += item.price * item.quantity);
-            const totalDiff = Math.max(0, totalReplacement - totalReturned);
-            
+
+            const totalDiff = currentTotalDiff;
+
             if (method === 'split') {
                 if (retSplitInputs) retSplitInputs.classList.remove('d-none');
                 if (retSplitCash) retSplitCash.value = totalDiff.toFixed(0);
@@ -1256,11 +1269,7 @@
 
     if (retSplitCash && retSplitOnline) {
         retSplitCash.addEventListener('input', function() {
-            let totalReturned = 0;
-            let totalReplacement = 0;
-            returnedItems.forEach(item => totalReturned += item.price * item.quantity);
-            replacementItems.forEach(item => totalReplacement += item.price * item.quantity);
-            const totalDiff = Math.max(0, totalReplacement - totalReturned);
+            const totalDiff = currentTotalDiff;
 
             let cashVal = Math.round(parseFloat(this.value)) || 0;
             if (cashVal > totalDiff) {
@@ -1272,11 +1281,7 @@
         });
         
         retSplitOnline.addEventListener('input', function() {
-            let totalReturned = 0;
-            let totalReplacement = 0;
-            returnedItems.forEach(item => totalReturned += item.price * item.quantity);
-            replacementItems.forEach(item => totalReplacement += item.price * item.quantity);
-            const totalDiff = Math.max(0, totalReplacement - totalReturned);
+            const totalDiff = currentTotalDiff;
 
             let onlineVal = Math.round(parseFloat(this.value)) || 0;
             if (onlineVal > totalDiff) {
