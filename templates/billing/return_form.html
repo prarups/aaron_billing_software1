@@ -923,15 +923,51 @@
         const retQueue = returned.map(item => ({ ...item, remainingQty: item.quantity }));
         const repQueue = replacements.map(item => ({ ...item, remainingQty: item.quantity }));
 
+        // Pass 1: Pair combo return items with eligible combo replacement items
+        for (let i = 0; i < retQueue.length; i++) {
+            const retItem = retQueue[i];
+            if (!retItem.is_combo || retItem.remainingQty <= 0) continue;
+
+            for (let j = 0; j < repQueue.length; j++) {
+                const repItem = repQueue[j];
+                if (repItem.remainingQty <= 0) continue;
+
+                const isComboDirectSwap = retItem.combo_eligible_ids && retItem.combo_eligible_ids.includes(parseInt(repItem.product_id));
+                if (isComboDirectSwap) {
+                    const pairQty = Math.min(retItem.remainingQty, repItem.remainingQty);
+                    backendItems.push({
+                        id: retItem.id,
+                        name: retItem.name,
+                        price: retItem.price,
+                        quantity: pairQty,
+                        condition: retItem.condition,
+                        action_type: retItem.action_type || 'EXCHANGE',
+                        replacement_product_id: repItem.product_id,
+                        replacement_product_name: repItem.name,
+                        replacement_product_price: repItem.price,
+                        replacement_quantity: pairQty,
+                        price_difference: 0,
+                        is_combo: true
+                    });
+                    retItem.remainingQty -= pairQty;
+                    repItem.remainingQty -= pairQty;
+                    if (retItem.remainingQty <= 0) break;
+                }
+            }
+        }
+
+        // Pass 2: Pair remaining return items with remaining replacement items
         let retIdx = 0;
         let repIdx = 0;
-
         while (retIdx < retQueue.length && repIdx < repQueue.length) {
             const retItem = retQueue[retIdx];
             const repItem = repQueue[repIdx];
 
+            if (retItem.remainingQty <= 0) { retIdx++; continue; }
+            if (repItem.remainingQty <= 0) { repIdx++; continue; }
+
             const pairQty = Math.min(retItem.remainingQty, repItem.remainingQty);
-            const isComboDirectSwap = retItem.is_combo && retItem.combo_eligible_ids.includes(parseInt(repItem.product_id));
+            const isComboDirectSwap = retItem.is_combo && retItem.combo_eligible_ids && retItem.combo_eligible_ids.includes(parseInt(repItem.product_id));
             const pairDiff = isComboDirectSwap ? 0 : (repItem.price * pairQty) - (retItem.price * pairQty);
 
             backendItems.push({
@@ -952,13 +988,13 @@
             retItem.remainingQty -= pairQty;
             repItem.remainingQty -= pairQty;
 
-            if (retItem.remainingQty === 0) retIdx++;
-            if (repItem.remainingQty === 0) repIdx++;
+            if (retItem.remainingQty <= 0) retIdx++;
+            if (repItem.remainingQty <= 0) repIdx++;
         }
 
-        // Remaining replacements (No Return)
-        while (repIdx < repQueue.length) {
-            const repItem = repQueue[repIdx];
+        // Pass 3: Remaining replacements (No Return)
+        for (let j = 0; j < repQueue.length; j++) {
+            const repItem = repQueue[j];
             if (repItem.remainingQty > 0) {
                 backendItems.push({
                     id: null,
@@ -975,7 +1011,6 @@
                     is_combo: false
                 });
             }
-            repIdx++;
         }
 
         return backendItems;
@@ -1062,14 +1097,7 @@
         let totalReturned = 0;
         let totalReplacement = 0;
 
-        returnedItems.forEach(item => {
-            totalReturned += item.price * item.quantity;
-        });
-        replacementItems.forEach(item => {
-            totalReplacement += item.price * item.quantity;
-        });
-
-        if (finalPairs.length === 0) {
+        if (!finalPairs || finalPairs.length === 0) {
             summaryCard.style.display = 'none';
             document.getElementById('paymentSection').style.display = 'none';
             return;
@@ -1077,16 +1105,19 @@
 
         finalPairs.forEach(item => {
             let rowRetPrice = 0;
-            let rowRepPrice = item.replacement_product_price * item.replacement_quantity;
+            let rowRepPrice = (item.replacement_product_price || 0) * item.replacement_quantity;
 
             if (item.is_combo) {
                 rowRetPrice = rowRepPrice;
             } else {
-                rowRetPrice = item.price * item.quantity;
+                rowRetPrice = (item.price || 0) * item.quantity;
             }
 
+            totalReturned += rowRetPrice;
+            totalReplacement += rowRepPrice;
+
             const diff = rowRepPrice - rowRetPrice;
-            const diffText = diff >= 0 ? `+₹${diff}` : `-₹${Math.abs(diff)}`;
+            const diffText = diff >= 0 ? `+₹${diff.toFixed(0)}` : `-₹${Math.abs(diff).toFixed(0)}`;
             const diffClass = diff >= 0 ? 'text-success' : 'text-danger';
 
             const row = document.createElement('tr');
@@ -1110,14 +1141,14 @@
 
         const balance = totalReplacement - totalReturned;
         const balanceClass = balance >= 0 ? 'text-success font-bold' : 'text-danger font-bold';
-        const balanceText = balance >= 0 ? `+₹${balance}` : `-₹${Math.abs(balance)}`;
+        const balanceText = balance >= 0 ? `+₹${balance.toFixed(0)}` : `-₹${Math.abs(balance).toFixed(0)}`;
 
         const totalRow = document.createElement('tr');
         totalRow.className = 'border-top fw-bold table-light';
         totalRow.innerHTML = `
             <td class="ps-2">TOTAL SUMMARY</td>
             <td></td>
-            <td>Returned: ₹${totalReturned}<br>Replacement: ₹${totalReplacement}</td>
+            <td>Returned: ₹${totalReturned.toFixed(0)}<br>Replacement: ₹${totalReplacement.toFixed(0)}</td>
             <td class="text-end ${balanceClass}">${balanceText}</td>
         `;
         summaryBody.appendChild(totalRow);
@@ -1339,14 +1370,19 @@
                 return;
             }
             
+            const finalPairs = generateBackendReturnItems(returnedItems, replacementItems);
             let totalReturnedVal = 0;
             let totalReplacementVal = 0;
-            returnedItems.forEach(item => totalReturnedVal += item.price * item.quantity);
-            replacementItems.forEach(item => totalReplacementVal += item.price * item.quantity);
+            finalPairs.forEach(item => {
+                let rowRetPrice = item.is_combo ? ((item.replacement_product_price || 0) * item.replacement_quantity) : ((item.price || 0) * item.quantity);
+                let rowRepPrice = (item.replacement_product_price || 0) * item.replacement_quantity;
+                totalReturnedVal += rowRetPrice;
+                totalReplacementVal += rowRepPrice;
+            });
 
             if (totalReplacementVal < totalReturnedVal) {
                 e.preventDefault();
-                alert(`Total replacement value (₹${totalReplacementVal}) is below returned value (₹${totalReturnedVal}). Please add more replacement items to cover the return value.`);
+                alert(`Total replacement value (₹${totalReplacementVal.toFixed(0)}) is below returned value (₹${totalReturnedVal.toFixed(0)}). Please add more replacement items to cover the return value.`);
                 return;
             }
 
@@ -1357,7 +1393,7 @@
                 const onlineVal = parseFloat(document.getElementById('ret-split-online').value) || 0;
                 if (Math.abs((cashVal + onlineVal) - totalDiff) > 0.01) {
                     e.preventDefault();
-                    alert(`Split payment amounts (Cash: ₹${cashVal}, Online: ₹${onlineVal}) must equal the total difference of ₹${totalDiff}.`);
+                    alert(`Split payment amounts (Cash: ₹${cashVal.toFixed(0)}, Online: ₹${onlineVal.toFixed(0)}) must equal the total difference of ₹${totalDiff.toFixed(0)}.`);
                     return;
                 }
             }

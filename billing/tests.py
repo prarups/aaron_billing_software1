@@ -474,8 +474,20 @@ class ExchangePolicyTests(TestCase):
                 'replacement_quantity': 1
             }])
         }
+        # Cheaper product exchange should pass validation (and issue refund / credit note / price diff)
+        data_cheap = {
+            'invoice_id': self.bill.invoice_number,
+            'reason': 'Too small',
+            'return_items': json.dumps([{
+                'id': self.item_normal.id,
+                'quantity': 1,
+                'condition': 'GOOD',
+                'replacement_product_id': self.product_normal_cheap.id,
+                'replacement_quantity': 1
+            }])
+        }
         form_cheap = ReturnCreateForm(data=data_cheap)
-        self.assertFalse(form_cheap.is_valid())
+        self.assertTrue(form_cheap.is_valid())
 
         # Equal price exchange should pass validation
         data_equal = {
@@ -537,8 +549,8 @@ class ExchangePolicyTests(TestCase):
         from billing.forms import ReturnCreateForm
         import json
 
-        # Exchanging combo item for something outside combo group should fail validation
-        data_invalid = {
+        # Exchanging combo item for non-combo item is now allowed (calculates price difference)
+        data_non_combo = {
             'invoice_id': self.bill.invoice_number,
             'reason': 'Wrong shade',
             'return_items': json.dumps([{
@@ -549,10 +561,10 @@ class ExchangePolicyTests(TestCase):
                 'replacement_quantity': 1
             }])
         }
-        form_invalid = ReturnCreateForm(data=data_invalid)
-        self.assertFalse(form_invalid.is_valid())
+        form_non_combo = ReturnCreateForm(data=data_non_combo)
+        self.assertTrue(form_non_combo.is_valid())
 
-        # Exchanging combo item for something inside combo group should pass validation
+        # Exchanging combo item for something inside combo group should pass validation with 0 price diff
         data_valid = {
             'invoice_id': self.bill.invoice_number,
             'reason': 'Wrong shade',

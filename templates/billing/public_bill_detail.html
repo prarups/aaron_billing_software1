@@ -268,7 +268,12 @@
                             {% for item in items %}
                             <tr class="border-bottom border-light-subtle align-top">
                                 <td class="ps-0 py-2">
-                                    <span class="fw-semibold text-dark d-block">{{ item.product.name }}</span>
+                                    <span class="fw-semibold text-dark d-block">
+                                        {{ item.product.name }}
+                                        {% if item.is_combo_purchase %}
+                                        <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle rounded-pill px-1.5 py-0.5 xxs-text ms-1" style="font-size: 0.6rem;"><i class="bi bi-tag-fill me-0.5"></i>{{ item.combo_display_id }}</span>
+                                        {% endif %}
+                                    </span>
                                     {% if item.product.barcode %}
                                     <div class="mt-0.5">
                                         <code class="text-muted font-monospace xxs-text">{{ item.product.barcode }}</code>

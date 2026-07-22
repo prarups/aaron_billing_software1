@@ -75,7 +75,12 @@
                         <tr>
                             <td class="small">{{ forloop.counter }}</td>
                             <td class="fw-semibold">
-                            <div>{{ item.product.name }}</div>
+                            <div>
+                                {{ item.product.name }}
+                                {% if item.is_combo_purchase %}
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-1.5 py-0.5 text-xxs ms-1" style="font-size: 0.6rem;"><i class="bi bi-tag-fill me-0.5"></i>{{ item.combo_display_id }}</span>
+                                {% endif %}
+                            </div>
                             {% if item.product.barcode %}
                             <div class="text-muted font-monospace" style="font-size: 0.72rem; font-weight: normal;">{{ item.product.barcode }}</div>
                             {% endif %}

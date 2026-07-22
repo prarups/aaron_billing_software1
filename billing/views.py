@@ -319,6 +319,7 @@ def process_bill(request):
                         qty = r_item['quantity']
                         r_item['subtotal'] = Decimal(str(sub))
                         r_item['unit_price'] = int(round(float(sub / qty))) if qty > 0 else 0
+                        r_item['combo_group'] = group
                         processed_items.add(r_item['product'].id)
                 
                 # Fetch all fallback combos in a single query to avoid N+1 queries
@@ -368,6 +369,7 @@ def process_bill(request):
                         quantity=quantity,
                         unit_price=effective_unit_price,
                         subtotal=subtotal,
+                        combo_group=r_item.get('combo_group'),
                     ))
                     
                     stock_transactions_to_create.append(StockTransaction(

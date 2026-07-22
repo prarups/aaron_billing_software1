@@ -157,6 +157,7 @@ class BillItem(models.Model):
     unit_price = models.DecimalField(max_digits=10, decimal_places=0)
     subtotal = models.DecimalField(max_digits=12, decimal_places=0)
     exchange_from = models.CharField(max_length=150, blank=True, null=True)
+    combo_group = models.ForeignKey('core.ComboGroup', on_delete=models.SET_NULL, null=True, blank=True, related_name='bill_items')
 
     @property
     def regular_total(self):
@@ -171,7 +172,55 @@ class BillItem(models.Model):
         return reg_total - sub if reg_total > sub else Decimal('0')
 
     @property
+    def combo_display_id(self):
+        if self.combo_group and self.combo_group.combo_id:
+            return self.combo_group.combo_id
+        from core.models import ComboGroup
+
+        combo_group = ComboGroup.objects.filter(
+            products=self.product,
+            branches=self.bill.branch,
+            is_active=True
+        ).prefetch_related('tiers', 'products').first()
+        
+        if combo_group and combo_group.combo_id:
+            tiers = list(combo_group.tiers.all())
+            if tiers:
+                min_combo_qty = min(t.quantity for t in tiers)
+                cg_product_ids = {p.id for p in combo_group.products.all()}
+                total_group_qty = sum(item.quantity for item in self.bill.items.all() if item.product_id in cg_product_ids)
+                if total_group_qty >= min_combo_qty:
+                    return combo_group.combo_id
+
+        return "Combo"
+
+    @property
+    def combo_name(self):
+        if self.combo_group:
+            return self.combo_group.name
+        from core.models import ComboGroup
+
+        combo_group = ComboGroup.objects.filter(
+            products=self.product,
+            branches=self.bill.branch,
+            is_active=True
+        ).prefetch_related('tiers', 'products').first()
+        
+        if combo_group:
+            tiers = list(combo_group.tiers.all())
+            if tiers:
+                min_combo_qty = min(t.quantity for t in tiers)
+                cg_product_ids = {p.id for p in combo_group.products.all()}
+                total_group_qty = sum(item.quantity for item in self.bill.items.all() if item.product_id in cg_product_ids)
+                if total_group_qty >= min_combo_qty:
+                    return combo_group.name
+
+        return "Combo Offer"
+
+    @property
     def is_combo_purchase(self):
+        if self.combo_group_id:
+            return True
         from core.models import ComboGroup
         from django.db.models import Sum, Min
 
