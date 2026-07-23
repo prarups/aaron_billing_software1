@@ -3,6 +3,9 @@ import json
 import csv
 from io import BytesIO
 from PIL import Image
+import logging
+
+logger = logging.getLogger(__name__)
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
@@ -47,7 +50,7 @@ def get_file_from_base64(base64_str, filename):
             
             return ContentFile(output.read(), name=f"{filename}.jpg")
     except Exception as e:
-        print(f"Error parsing/compressing base64 image: {e}")
+        logger.error(f"Error parsing/compressing base64 image: {e}")
     return None
 
 def is_owner(user):

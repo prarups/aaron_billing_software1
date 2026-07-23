@@ -1052,10 +1052,6 @@ def stock_pivot_report(request):
     paginator = Paginator(products, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    print("DEBUG PAGINATION: total products:", paginator.count, "has_other:", page_obj.has_other_pages())
-
-    if request.GET.get('test_error'):
-        raise Exception(f"Pagination triggered: {paginator.count} items, returning {len(page_obj.object_list)}")
 
     # 1. Fetch current stock via registries (restricted to active branches)
     registries = ProductRegistry.objects.filter(branch__in=active_branches).values('id', 'product_id', 'branch_id', 'stock_quantity')

@@ -146,7 +146,6 @@ def return_create_view(request):
             from django.urls import reverse
             redirect_url = reverse(redirect_url_name)
         else:
-            print(f"DEBUG return_create_view form errors: {form.errors.as_data()}")
             messages.error(request, "Please correct the errors below.")
     else:
         # ---------- GET handling ----------

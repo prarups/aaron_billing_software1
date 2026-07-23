@@ -799,7 +799,6 @@ def staff_create(request):
                 errors = {field: [err['message'] for err in errs] for field, errs in form.errors.get_json_data().items()}
                 return JsonResponse({'success': False, 'errors': errors})
             errors_str = " ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
-            print('Staff Create Form Errors:', form.errors)
             messages.error(request, f"Failed to create staff. {errors_str}")
     return redirect(reverse('branch_staff_management') + '?tab=staff')
 
@@ -823,7 +822,6 @@ def staff_edit(request, pk):
                 errors = {field: [err['message'] for err in errs] for field, errs in form.errors.get_json_data().items()}
                 return JsonResponse({'success': False, 'errors': errors})
             errors_str = " ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
-            print('Staff Edit Form Errors:', form.errors)
             messages.error(request, f"Failed to update staff. {errors_str}")
     return redirect(reverse('branch_staff_management') + '?tab=staff')
 

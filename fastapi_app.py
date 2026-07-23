@@ -120,8 +120,12 @@ def get_stats(branch_id: int):
 from pydantic import BaseModel
 import base64
 from django.core.files.base import ContentFile
+import base64
 from io import BytesIO
 from PIL import Image
+import logging
+
+logger = logging.getLogger(__name__)
 
 class AttendanceActionRequest(BaseModel):
     photo: str  # base64 encoded photo
@@ -155,7 +159,7 @@ def get_file_from_base64(base64_str, filename):
             
             return ContentFile(output.read(), name=f"{filename}.jpg")
     except Exception as e:
-        print(f"Error parsing/compressing base64 image: {e}")
+        logger.error(f"Error parsing/compressing base64 image: {e}")
     return None
 
 def get_current_user(request: Request):

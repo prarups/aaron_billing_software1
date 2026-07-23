@@ -182,7 +182,12 @@ class ReturnCreateForm(forms.Form):
                     item_id = None
                 
                 qty = int(ri['quantity'])
-                rep_prod_id = int(ri['replacement_product_id'])
+                rep_prod_id_raw = ri.get('replacement_product_id')
+                if rep_prod_id_raw is not None and str(rep_prod_id_raw).isdigit():
+                    rep_prod_id = int(rep_prod_id_raw)
+                else:
+                    # Skip return-only items (no replacement) - frontend should block these
+                    continue
                 rep_qty = int(ri.get('replacement_quantity', qty))
             except (ValueError, KeyError, TypeError):
                 raise forms.ValidationError('Invalid product, quantity, or replacement product in return list.')

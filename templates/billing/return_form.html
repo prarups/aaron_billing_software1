@@ -1192,6 +1192,10 @@
             if (hiddenPaymentMethod) hiddenPaymentMethod.value = selectedMethod;
             
             if (selectedMethod === 'split') {
+                const retSplitCashEl = document.getElementById('ret-split-cash');
+                const retSplitOnlineEl = document.getElementById('ret-split-online');
+                if (retSplitCashEl) retSplitCashEl.value = currentTotalDiff.toFixed(0);
+                if (retSplitOnlineEl) retSplitOnlineEl.value = '0';
                 calculateRetSplit(currentTotalDiff);
             } else if (selectedMethod === 'cash') {
                 if (hiddenCashAmount) hiddenCashAmount.value = balance.toFixed(0);
@@ -1376,29 +1380,24 @@
             }
             
             const finalPairs = generateBackendReturnItems(returnedItems, replacementItems);
-            let totalReturnedVal = 0;
-            let totalReplacementVal = 0;
-            finalPairs.forEach(item => {
-                let rowRetPrice = item.is_combo ? ((item.replacement_product_price || 0) * item.replacement_quantity) : ((item.price || 0) * item.quantity);
-                let rowRepPrice = (item.replacement_product_price || 0) * item.replacement_quantity;
-                totalReturnedVal += rowRetPrice;
-                totalReplacementVal += rowRepPrice;
-            });
 
-            if (totalReplacementVal < totalReturnedVal) {
+            // Check for unpaired return items (no replacement assigned)
+            const unpairedReturns = finalPairs.filter(i => i.replacement_product_id === null || i.replacement_product_id === undefined);
+            if (unpairedReturns.length > 0) {
                 e.preventDefault();
-                alert(`Total replacement value (₹${totalReplacementVal.toFixed(0)}) is below returned value (₹${totalReturnedVal.toFixed(0)}). Please add more replacement items to cover the return value.`);
+                alert('Some returned items do not have replacement products. Please add more replacement items to cover all returns.');
                 return;
             }
 
+            // Use the combo-aware currentTotalDiff from updateSummaryUI
+            // (this correctly handles combo direct swaps as ₹0 difference)
             const selectedMethod = document.querySelector('input[name="temp_payment_method"]:checked') ? document.querySelector('input[name="temp_payment_method"]:checked').value : 'cash';
-            if (totalReplacementVal > totalReturnedVal && selectedMethod === 'split') {
-                const totalDiff = totalReplacementVal - totalReturnedVal;
+            if (currentTotalDiff > 0 && selectedMethod === 'split') {
                 const cashVal = parseFloat(document.getElementById('ret-split-cash').value) || 0;
                 const onlineVal = parseFloat(document.getElementById('ret-split-online').value) || 0;
-                if (Math.abs((cashVal + onlineVal) - totalDiff) > 0.01) {
+                if (Math.abs((cashVal + onlineVal) - currentTotalDiff) > 0.01) {
                     e.preventDefault();
-                    alert(`Split payment amounts (Cash: ₹${cashVal.toFixed(0)}, Online: ₹${onlineVal.toFixed(0)}) must equal the total difference of ₹${totalDiff.toFixed(0)}.`);
+                    alert(`Split payment amounts (Cash: ₹${cashVal.toFixed(0)}, Online: ₹${onlineVal.toFixed(0)}) must equal the total difference of ₹${currentTotalDiff.toFixed(0)}.`);
                     return;
                 }
             }
