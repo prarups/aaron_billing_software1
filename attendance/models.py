@@ -89,6 +89,49 @@ class PermissionRequest(models.Model):
         return f"{self.user.username} - Permission on {self.date} ({self.start_time} - {self.end_time}) - {self.status}"
 
 
+def format_duration_display(hours_val):
+    try:
+        hours = float(hours_val)
+        h = int(hours)
+        m = int(round((hours - h) * 60))
+        if h > 0 and m > 0:
+            return f"{h} Hour{'s' if h > 1 else ''} {m} Mins"
+        elif h > 0:
+            return f"{h} Hour{'s' if h > 1 else ''}"
+        elif m > 0:
+            return f"{m} Mins"
+        return f"{hours} Hours"
+    except Exception:
+        return f"{hours_val} Hours"
+
+
+class GlobalPermissionPolicy(models.Model):
+    max_permissions_per_month = models.IntegerField(default=2, help_text="Maximum permission requests allowed per month for all employees")
+    max_hours_per_permission = models.DecimalField(max_digits=4, decimal_places=2, default=2.00, help_text="Maximum hours allowed per permission request for all employees")
+    late_threshold_for_half_day_deduction = models.IntegerField(default=4, help_text="Number of late check-ins per month that trigger half-day salary deduction")
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Global Permission Policy"
+        verbose_name_plural = "Global Permission Policies"
+
+    def __str__(self):
+        return f"Global Policy: {self.max_permissions_per_month} per month, max {self.formatted_max_hours}"
+
+    @property
+    def formatted_max_hours(self):
+        return format_duration_display(self.max_hours_per_permission)
+
+    @classmethod
+    def get_policy(cls):
+        policy, _ = cls.objects.get_or_create(id=1, defaults={
+            'max_permissions_per_month': 2,
+            'max_hours_per_permission': 2.00
+        })
+        return policy
+
+
 class SalaryConfig(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='salary_config')
     monthly_base_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)

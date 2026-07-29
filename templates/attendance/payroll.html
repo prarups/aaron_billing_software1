@@ -1,267 +1,155 @@
 {% extends "base_attendance.html" %}
 
-{% block title %}Staff Salaries & Payroll - Aaron Billing{% endblock %}
+{% block title %}Salary Configs & Payroll - Aaron Billing{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container-fluid py-3">
     <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%); border-radius: 1rem;">
-                <div class="card-body p-4 text-white">
-                    <h3 class="fw-bold mb-1"><i class="bi bi-currency-rupee me-2"></i>Salaries & Payroll</h3>
-                    <p class="mb-0 text-white-50">Manage employee base salary configurations, configure deduction rules, and process monthly payroll.</p>
-                </div>
-            </div>
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 pb-2 border-bottom">
+        <div>
+            <h4 class="fw-bold mb-0 text-dark"><i class="bi bi-person-gear text-primary me-2"></i>Staff Base Salary Configs</h4>
+            <p class="text-muted text-xxs mb-0">Manage employee base salary rules, late penalties, and calculate monthly payroll.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-2 mt-sm-0">
+            <a href="{% url 'attendance:pay_slips' %}" class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold">
+                <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> View Pay Slips Statement
+            </a>
         </div>
     </div>
 
-    <!-- Main Tabs -->
-    <ul class="nav nav-pills mb-4 gap-2" id="payrollTab" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="btn btn-outline-primary {% if active_tab != 'configs' %}active{% endif %} rounded-pill px-4" id="process-tab" data-bs-toggle="pill" data-bs-target="#process" type="button" role="tab"><i class="bi bi-gear-fill me-1"></i>Process Monthly Payroll</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="btn btn-outline-primary {% if active_tab == 'configs' %}active{% endif %} rounded-pill px-4" id="configs-tab" data-bs-toggle="pill" data-bs-target="#configs" type="button" role="tab"><i class="bi bi-person-gear me-1"></i>Base Salary Configs</button>
-        </li>
-    </ul>
+    <!-- Quick Payroll Generator Card (Compact) -->
+    <div class="card border-0 shadow-sm bg-white mb-3" style="border-radius: 0.75rem; border-left: 4px solid #4f46e5 !important;">
+        <div class="card-body py-3 px-3.5">
+            <form method="post" action="{% url 'attendance:generate_payroll' %}" class="row g-2 align-items-end">
+                {% csrf_token %}
+                <div class="col-6 col-md-3">
+                    <label class="form-label text-xxs fw-bold text-muted mb-1">Month</label>
+                    <select name="month" class="form-select form-select-sm rounded-3">
+                        <option value="1" {% if current_month == 1 %}selected{% endif %}>January</option>
+                        <option value="2" {% if current_month == 2 %}selected{% endif %}>February</option>
+                        <option value="3" {% if current_month == 3 %}selected{% endif %}>March</option>
+                        <option value="4" {% if current_month == 4 %}selected{% endif %}>April</option>
+                        <option value="5" {% if current_month == 5 %}selected{% endif %}>May</option>
+                        <option value="6" {% if current_month == 6 %}selected{% endif %}>June</option>
+                        <option value="7" {% if current_month == 7 %}selected{% endif %}>July</option>
+                        <option value="8" {% if current_month == 8 %}selected{% endif %}>August</option>
+                        <option value="9" {% if current_month == 9 %}selected{% endif %}>September</option>
+                        <option value="10" {% if current_month == 10 %}selected{% endif %}>October</option>
+                        <option value="11" {% if current_month == 11 %}selected{% endif %}>November</option>
+                        <option value="12" {% if current_month == 12 %}selected{% endif %}>December</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label text-xxs fw-bold text-muted mb-1">Year</label>
+                    <select name="year" class="form-select form-select-sm rounded-3">
+                        {% for y in years %}
+                            <option value="{{ y }}" {% if current_year == y %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-6 d-flex align-items-end justify-content-md-end gap-2">
+                    <button type="submit" class="btn btn-sm btn-indigo text-white rounded-pill px-4 py-1.5 fw-semibold" style="background-color: #4f46e5;">
+                        <i class="bi bi-calculator me-1"></i> Process / Recalculate Monthly Payroll
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-    <div class="tab-content" id="payrollTabContent">
-        <!-- TAB 1: Process Payroll -->
-        <div class="tab-pane fade {% if active_tab != 'configs' %}show active{% endif %}" id="process" role="tabpanel">
-            <!-- Filter / Generate Form -->
-            <div class="card border-0 shadow-sm mb-4 bg-white" style="border-radius: 1rem;">
-                <div class="card-body p-4">
-                    <div class="row align-items-center">
-                        <div class="col-md-7">
-                            <h5 class="fw-bold text-primary mb-3"><i class="bi bi-calculator-fill me-2"></i>Calculate Salaries</h5>
-                            <form method="post" action="{% url 'attendance:generate_payroll' %}" class="row g-3">
-                                {% csrf_token %}
-                                <div class="col-sm-4">
-                                    <label class="form-label small fw-bold text-muted">Month</label>
-                                    <select name="month" class="form-select rounded-3">
-                                        <option value="1" {% if selected_month == 1 %}selected{% endif %}>January</option>
-                                        <option value="2" {% if selected_month == 2 %}selected{% endif %}>February</option>
-                                        <option value="3" {% if selected_month == 3 %}selected{% endif %}>March</option>
-                                        <option value="4" {% if selected_month == 4 %}selected{% endif %}>April</option>
-                                        <option value="5" {% if selected_month == 5 %}selected{% endif %}>May</option>
-                                        <option value="6" {% if selected_month == 6 %}selected{% endif %}>June</option>
-                                        <option value="7" {% if selected_month == 7 %}selected{% endif %}>July</option>
-                                        <option value="8" {% if selected_month == 8 %}selected{% endif %}>August</option>
-                                        <option value="9" {% if selected_month == 9 %}selected{% endif %}>September</option>
-                                        <option value="10" {% if selected_month == 10 %}selected{% endif %}>October</option>
-                                        <option value="11" {% if selected_month == 11 %}selected{% endif %}>November</option>
-                                        <option value="12" {% if selected_month == 12 %}selected{% endif %}>December</option>
-                                    </select>
-                                </div>
-                                <div class="col-sm-4">
-                                    <label class="form-label small fw-bold text-muted">Year</label>
-                                    <select name="year" class="form-select rounded-3">
-                                        {% for y in years %}
-                                            <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="col-sm-4 d-flex align-items-end">
-                                    <button type="submit" class="btn btn-primary w-100 rounded-pill py-2">
-                                        <i class="bi bi-play-fill me-1"></i> Generate Payroll
-                                    </button>
-                                </div>
-                            </form>
+    <!-- Staff Salary Rules Table Card -->
+    <div class="card border-0 shadow-sm bg-white" style="border-radius: 0.75rem;">
+        <div class="card-body p-3.5">
+            <!-- Compact Search & Filter Bar -->
+            <form method="get" action="{% url 'attendance:payroll_list' %}" class="mb-3">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-5">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light border-end-0 rounded-start-pill"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" name="q_staff" value="{{ q_staff }}" class="form-control border-start-0 rounded-end-pill" placeholder="Search staff by name or ID...">
                         </div>
-                        <div class="col-md-5 border-start ps-md-4 mt-3 mt-md-0">
-                            <h6 class="fw-bold text-dark"><i class="bi bi-info-circle me-1"></i>How Payroll is Calculated:</h6>
-                            <ul class="small text-muted ps-3 mb-0">
-                                <li>Generates draft slips for all active users (except Owner).</li>
-                                <li>Scans calendar days, marking absents / LOP leave days as unpaid.</li>
-                                <li>Deductions = (Absent days * LOP rate) + (Late days * Late rate).</li>
-                                <li>Adjusted against Base Salary to produce Net Payable Salary.</li>
-                            </ul>
-                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <select name="branch_staff" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                            <option value="">All Branches</option>
+                            {% for b in branches %}
+                                <option value="{{ b.id }}" {% if selected_branch_id == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex gap-1.5">
+                        <button type="submit" class="btn btn-sm btn-primary rounded-pill w-100">
+                            <i class="bi bi-funnel me-1"></i> Filter
+                        </button>
+                        <a href="{% url 'attendance:payroll_list' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </a>
                     </div>
                 </div>
-            </div>
+            </form>
 
-            <!-- Payroll List Table -->
-            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h5 class="fw-bold text-primary mb-0"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Pay Slips ({{ selected_month }}/{{ selected_year }})</h5>
-                        <form method="get" class="d-flex gap-2">
-                            <select name="month" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
-                                <option value="1" {% if selected_month == 1 %}selected{% endif %}>Jan</option>
-                                <option value="2" {% if selected_month == 2 %}selected{% endif %}>Feb</option>
-                                <option value="3" {% if selected_month == 3 %}selected{% endif %}>Mar</option>
-                                <option value="4" {% if selected_month == 4 %}selected{% endif %}>Apr</option>
-                                <option value="5" {% if selected_month == 5 %}selected{% endif %}>May</option>
-                                <option value="6" {% if selected_month == 6 %}selected{% endif %}>Jun</option>
-                                <option value="7" {% if selected_month == 7 %}selected{% endif %}>Jul</option>
-                                <option value="8" {% if selected_month == 8 %}selected{% endif %}>Aug</option>
-                                <option value="9" {% if selected_month == 9 %}selected{% endif %}>Sep</option>
-                                <option value="10" {% if selected_month == 10 %}selected{% endif %}>Oct</option>
-                                <option value="11" {% if selected_month == 11 %}selected{% endif %}>Nov</option>
-                                <option value="12" {% if selected_month == 12 %}selected{% endif %}>Dec</option>
-                            </select>
-                            <input type="hidden" name="year" value="{{ selected_year }}">
-                        </form>
-                    </div>
-
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Employee</th>
-                                    <th>Attendance Info</th>
-                                    <th>Base Salary</th>
-                                    <th>Deductions</th>
-                                    <th>Net Salary</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for payroll in payrolls %}
-                                <tr>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0 text-xxs small">
+                    <thead class="table-light text-muted text-uppercase">
+                        <tr>
+                            <th>Employee</th>
+                            <th>Role</th>
+                            {% if not selected_branch_id %}
+                                <th>Branches</th>
+                            {% endif %}
+                            <th>Monthly Base Salary</th>
+                            <th>Late Penalty Policy</th>
+                            <th>LOP Absent Cut Policy</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in users %}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold text-dark">
+                                        {{ item.first_name }} {{ item.last_name }}
+                                        {% if not item.first_name and not item.last_name %}{{ item.username }}{% endif %}
+                                    </div>
+                                    <span class="text-muted text-xxs">@{{ item.username }} &middot; ID: {{ item.employee_id|default:"-" }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1">{{ item.role_display }}</span>
+                                </td>
+                                {% if not selected_branch_id %}
                                     <td>
-                                        <div class="fw-bold text-dark">{{ payroll.user.username }}</div>
-                                        <span class="text-muted small">ID: {{ payroll.user.employee_id|default:"-" }}</span>
-                                    </td>
-                                    <td>
-                                        <div class="small">
-                                            <span class="text-success"><i class="bi bi-check-circle me-1"></i>Present: {{ payroll.present_days }}d</span> |
-                                            <span class="text-warning">Late: {{ payroll.late_days }}d</span> |
-                                            <span class="text-danger">LOP: {% if payroll.unapproved_leaves > 4 %}{{ payroll.unapproved_leaves|add:"-4" }}{% else %}0{% endif %}d</span>
-                                            <span class="text-muted small d-block">(Week Offs used: {% if payroll.unapproved_leaves > 4 %}4{% else %}{{ payroll.unapproved_leaves }}{% endif %}d / 4d)</span>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            {% for b in item.branches.all %}
+                                                <span class="badge text-purple border" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.65rem;">{{ b.name }}</span>
+                                            {% empty %}
+                                                <span class="text-muted text-xxs fst-italic">None</span>
+                                            {% endfor %}
                                         </div>
                                     </td>
-                                    <td class="fw-bold text-dark">Rs. {{ payroll.base_salary }}</td>
-                                    <td class="text-danger fw-bold">- Rs. {{ payroll.deductions }}</td>
-                                    <td class="text-success fw-bold">Rs. {{ payroll.net_salary }}</td>
-                                    <td>
-                                        {% if payroll.status == 'paid' %}
-                                            <span class="badge bg-success rounded-pill px-3 py-1.5"><i class="bi bi-patch-check-fill me-1"></i>Paid</span>
-                                        {% else %}
-                                            <span class="badge bg-warning text-dark rounded-pill px-3 py-1.5"><i class="bi bi-hourglass-split me-1"></i>Draft</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if payroll.status == 'draft' %}
-                                            <a href="{% url 'attendance:mark_payroll_paid' payroll.id %}" class="btn btn-sm btn-success rounded-pill px-3">
-                                                <i class="bi bi-check-lg me-1"></i> Mark Paid
-                                            </a>
-                                        {% else %}
-                                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" disabled>
-                                                <i class="bi bi-check-all me-1"></i> Settled
-                                            </button>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="7" class="text-center py-4 text-muted">No processed payroll records found for this month. Click "Generate Payroll" to calculate.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB 2: Base Salary Configurations -->
-        <div class="tab-pane fade {% if active_tab == 'configs' %}show active{% endif %}" id="configs" role="tabpanel">
-            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
-                <div class="card-body p-4">
-                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-person-gear me-2"></i>Configure Staff Base Salary</h5>
-                    
-                    <!-- Search & Filter Form -->
-                    <form method="get" action="{% url 'attendance:payroll_list' %}" class="mb-4">
-                        <input type="hidden" name="tab" value="configs">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-md-5">
-                                <label class="form-label small fw-bold text-muted">Search Staff</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0 rounded-start-pill"><i class="bi bi-search"></i></span>
-                                    <input type="text" name="q_staff" value="{{ q_staff }}" class="form-control border-start-0 rounded-end-pill" placeholder="Search username or Employee ID...">
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold text-muted">Filter by Branch</label>
-                                <select name="branch_staff" class="form-select rounded-pill" onchange="this.form.submit()">
-                                    <option value="">All Branches</option>
-                                    {% for b in branches %}
-                                        <option value="{{ b.id }}" {% if selected_branch_id == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-3 d-flex gap-2">
-                                <button type="submit" class="btn btn-primary rounded-pill w-100 py-2">
-                                    <i class="bi bi-funnel-fill me-1"></i> Filter
-                                </button>
-                                <a href="{% url 'attendance:payroll_list' %}?tab=configs" class="btn btn-outline-secondary rounded-pill w-100 py-2 d-flex align-items-center justify-content-center">
-                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
-                                </a>
-                            </div>
-                        </div>
-                    </form>
-                    
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Employee</th>
-                                    <th>Role</th>
-                                    {% if not selected_branch_id %}
-                                        <th>Branches</th>
-                                    {% endif %}
-                                    <th>Monthly Base Salary</th>
-                                    <th>Late Deduction (Per instance)</th>
-                                    <th>LOP Deduction (Per day)</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in users %}
-                                    <tr>
-                                        <td>
-                                            <div class="fw-bold text-dark">
-                                                {{ item.first_name }} {{ item.last_name }}
-                                                {% if not item.first_name and not item.last_name %}{{ item.username }}{% endif %}
-                                            </div>
-                                            <span class="text-muted small">@{{ item.username }} &middot; ID: {{ item.employee_id|default:"-" }}</span>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-light text-dark border rounded-pill px-3">{{ item.role_display }}</span>
-                                        </td>
-                                        {% if not selected_branch_id %}
-                                            <td>
-                                                <div class="d-flex flex-wrap gap-1">
-                                                    {% for b in item.branches.all %}
-                                                        <span class="badge text-purple border text-xxs" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.65rem; font-weight: 600;">{{ b.name }}</span>
-                                                    {% empty %}
-                                                        <span class="badge bg-light text-muted border text-xxs" style="font-size: 0.65rem; font-style: italic;">None</span>
-                                                    {% endfor %}
-                                                </div>
-                                            </td>
-                                        {% endif %}
-                                        <td class="fw-bold text-dark">Rs. {{ item.salary_config.monthly_base_salary|default:"0.00" }}</td>
-                                        <td class="text-muted">Rs. {{ item.salary_config.late_deduction_amount|default:"0.00" }}</td>
-                                        <td class="text-muted">Rs. {{ item.salary_config.lop_deduction_amount|default:"0.00" }}</td>
-                                        <td>
-                                            <a href="{% url 'attendance:salary_config' item.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
-                                                <i class="bi bi-pencil-fill me-1"></i> Edit Rules
-                                            </a>
-                                        </td>
-                                    </tr>
-                                {% empty %}
-                                    <tr>
-                                        <td colspan="{% if not selected_branch_id %}7{% else %}6{% endif %}" class="text-center py-4 text-muted">No staff members found matching the search/filter criteria.</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                                {% endif %}
+                                <td class="fw-bold text-dark">₹ {{ item.salary_config.monthly_base_salary|default:"0.00" }}</td>
+                                <td>
+                                    <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fef3c7; color: #b45309; font-size: 0.65rem;">
+                                        <i class="bi bi-clock-history me-1"></i> 4 Lates = 0.5 Day Cut
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fee2e2; color: #b91c1c; font-size: 0.65rem;">
+                                        <i class="bi bi-calculator me-1"></i> Dynamic (Salary / 30)
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'attendance:salary_config' item.id %}" class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-0.5">
+                                        <i class="bi bi-pencil-fill me-1"></i> Edit Base Salary
+                                    </a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="{% if not selected_branch_id %}7{% else %}6{% endif %}" class="text-center py-3 text-muted">No staff members found matching criteria.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

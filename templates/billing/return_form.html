@@ -223,15 +223,6 @@
                     {{ form.cash_amount }}
                     {{ form.online_amount }}
 
-                    <!-- Reason -->
-                    <div class="card border-0 bg-light p-4 rounded-4 shadow-sm mb-4">
-                        <label class="form-label small fw-bold text-muted">{{ form.reason.label }}</label>
-                        {{ form.reason }}
-                        {% if form.reason.errors %}
-                        <div class="text-danger small mt-1">{{ form.reason.errors.0 }}</div>
-                        {% endif %}
-                    </div>
-
                     <!-- Summary Card -->
                     <div class="card bg-light border-0 rounded-4 mb-4" id="summaryCard" style="display:none;">
                         <div class="card-body p-4">
@@ -290,6 +281,15 @@
                                 <div id="ret-split-warning" class="x-small text-danger mt-2 d-none fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Sum must match difference!</div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Reason for Return (Optional) -->
+                    <div class="card border-0 bg-light p-4 rounded-4 shadow-sm mb-4">
+                        <label class="form-label small fw-bold text-muted">{{ form.reason.label }} <span class="fw-normal text-muted ms-1">(Optional)</span></label>
+                        {{ form.reason }}
+                        {% if form.reason.errors %}
+                        <div class="text-danger small mt-1">{{ form.reason.errors.0 }}</div>
+                        {% endif %}
                     </div>
 
                     <button type="submit" class="btn btn-warning w-100 rounded-pill py-2.5 fw-bold shadow-sm" id="submitBtn">
@@ -377,6 +377,9 @@
 
     const returnedItems = [];
     const replacementItems = [];
+    let currentTotalDiff = 0;
+    let currentReplacementIsCombo = false;
+    let comboEligibleProductIds = [];
 
     const returnedItemsBody = document.getElementById('returnedItemsBody');
     const replacementItemsBody = document.getElementById('replacementItemsBody');
@@ -385,6 +388,10 @@
     const addReplacementItemBtn = document.getElementById('addReplacementItemBtn');
     
     const returnItemsField = document.getElementById('id_return_items');
+
+    const retSplitInputs = document.getElementById('ret-split-inputs');
+    const retSplitCash = document.getElementById('ret-split-cash');
+    const retSplitOnline = document.getElementById('ret-split-online');
 
     let currentItems = [];
 
@@ -474,7 +481,7 @@
         fetchTimer = setTimeout(() => fetchBillItems(val), 400);
     });
 
-    if (invoiceInput.value.trim()) {
+    if (invoiceInput.value.trim() && (!preloaded || preloaded.length === 0)) {
         fetchBillItems(invoiceInput.value.trim());
     }
 
@@ -657,10 +664,6 @@
         calculateExchangeDifference();
     });
 
-    // Track whether current replacement context is a combo group swap
-    let currentReplacementIsCombo = false;
-    let comboEligibleProductIds = [];
-
     // Populate exchange options based on product type (Combo vs Normal)
     function setupReplacementSelector(opt) {
         const isCombo = opt.getAttribute('data-is-combo') === 'true';
@@ -713,9 +716,44 @@
             });
         } else {
             exchangeContextMsg.className = "alert alert-info border-0 rounded-3 py-1.5 px-3 small mb-2 text-xs";
-            exchangeContextMsg.innerHTML = `<i class="bi bi-info-circle me-1"></i>Normal item exchange. Allowed for **any** product. Difference will be calculated.`;
+            exchangeContextMsg.innerHTML = `<i class="bi bi-info-circle me-1"></i>Normal item exchange. Choose a replacement product below or scan a barcode.`;
             comboDetailsCard.style.display = 'none';
+
+            // Add returned item itself at top for easy same-item exchange selection
+            const retProdId = opt.getAttribute('data-product-id');
+            const retName = opt.getAttribute('data-name');
+            const retPrice = opt.getAttribute('data-price');
+            if (retProdId) {
+                const sameOpt = document.createElement('option');
+                sameOpt.value = retProdId;
+                sameOpt.textContent = `[Same Item] ${retName} - ₹${retPrice}`;
+                sameOpt.setAttribute('data-price', retPrice);
+                sameOpt.setAttribute('data-name', retName);
+                sameOpt.setAttribute('data-stock', 9999);
+                replacementProductSelect.appendChild(sameOpt);
+            }
+
+            // Populate other products from branch catalog if available
+            if (allProducts && allProducts.length > 0) {
+                allProducts.forEach(p => {
+                    if (String(p.id) !== String(retProdId)) {
+                        const o = document.createElement('option');
+                        o.value = p.id;
+                        o.textContent = `${p.name} - ${p.barcode || 'N/A'} (Stock: ${p.stock} | Price: ₹${p.price})`;
+                        o.setAttribute('data-price', p.price);
+                        o.setAttribute('data-name', p.name);
+                        o.setAttribute('data-stock', p.stock);
+                        replacementProductSelect.appendChild(o);
+                    }
+                });
+            }
         }
+
+        // Auto select first available replacement option if present
+        if (replacementProductSelect.options.length > 1) {
+            replacementProductSelect.selectedIndex = 1;
+        }
+
         calculateExchangeDifference();
     }
 
@@ -857,11 +895,8 @@
             });
         }
 
-        // Reset inputs
+        // Reset inputs and dispatch change event to cleanly update state
         itemSelect.value = '';
-        qtyInput.value = 1;
-        qtyInput.disabled = true;
-        productInfo.textContent = '';
         conditionInfo.style.display = 'none';
 
         refreshListsUI();
@@ -1110,8 +1145,6 @@
 
         updateSummaryUI(finalPairs);
     }
-
-    let currentTotalDiff = 0;
 
     function updateSummaryUI(finalPairs) {
         const summaryBody = document.getElementById('summaryBody');

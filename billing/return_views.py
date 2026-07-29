@@ -196,7 +196,27 @@ def return_create_view(request):
     elif request.user.is_authenticated and request.user.active_branch:
         target_branch_id = request.user.active_branch.id
 
-    all_products_json = "[]"
+    def _get_branch_products_data(branch_id, limit=500):
+        if not branch_id:
+            return []
+        registries = ProductRegistry.objects.filter(
+            branch_id=branch_id
+        ).select_related('product')[:limit]
+        
+        products = []
+        for reg in registries:
+            p = reg.product
+            products.append({
+                "id": p.id,
+                "name": p.name,
+                "barcode": p.barcode or "",
+                "price": int(p.price),
+                "stock": reg.stock_quantity
+            })
+        return products
+
+    branch_products = _get_branch_products_data(target_branch_id)
+    all_products_json = json.dumps(branch_products)
 
     selected_bill_item = form.data.get("bill_item") if form.is_bound else ""
     selected_quantity = form.data.get("quantity") if form.is_bound else 1
@@ -243,10 +263,11 @@ def get_bill_items_api(request):
         return JsonResponse({"items": [], "error": "This invoice does not belong to your active branch."})
 
     items, _ = _get_bill_items_data(bill)
+    branch_products = _get_branch_products_data(bill.branch.id if bill else None)
 
     return JsonResponse({
         "items": items,
-        "products": [],
+        "products": branch_products,
         "branch_id": bill.branch.id if bill else ""
     })
 

@@ -10,11 +10,76 @@
             <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); border-radius: 1rem;">
                 <div class="card-body p-4 text-white">
                     <h3 class="fw-bold mb-1"><i class="bi bi-clock-history me-2"></i>Short Permission Portal</h3>
-                    <p class="mb-0 text-white-50">Request short permissions (1-2 hours off) during work hours and manage approvals.</p>
+                    <p class="mb-0 text-white-50">Request short permissions during work hours and manage global company policies & approvals.</p>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Global Permission Policy Configuration (Admin / Manager Only) -->
+    {% if is_owner_or_manager %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem; border-left: 5px solid #6366f1;">
+                <div class="card-body p-4">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+                        <div>
+                            <h5 class="card-title fw-bold text-indigo mb-1" style="color: #4f46e5;"><i class="bi bi-sliders me-2"></i>Global Permission Limits Policy</h5>
+                            <p class="small text-muted mb-0">Set default monthly permission limits and max hours dynamically for <strong>all employees</strong> in one place.</p>
+                        </div>
+                        <span class="badge rounded-pill px-3 py-1.5 fw-semibold small" style="background-color: #e0e7ff; color: #4338ca;">
+                            <i class="bi bi-shield-check me-1"></i> Admin Global Controls
+                        </span>
+                    </div>
+
+                    <form method="post" action="{% url 'attendance:update_global_policy' %}" class="row g-3 align-items-end">
+                        {% csrf_token %}
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted mb-1">Max Permissions / Month</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 rounded-start-3 text-muted"><i class="bi bi-calendar-check"></i></span>
+                                <input type="number" name="max_permissions_per_month" value="{{ global_policy.max_permissions_per_month }}" min="1" max="30" class="form-control border-start-0 rounded-end-3" required>
+                            </div>
+                            <span class="text-muted text-xxs d-block mt-1">Allowed count per month</span>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted mb-1">Max Hours / Permission</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 rounded-start-3 text-muted"><i class="bi bi-clock"></i></span>
+                                <select name="max_hours_per_permission" class="form-select border-start-0 rounded-end-3" required>
+                                    <option value="0.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "0.50" %}selected{% endif %}>30 Mins (0.5 hrs)</option>
+                                    <option value="1.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "1.00" %}selected{% endif %}>1 Hour (1.0 hr)</option>
+                                    <option value="1.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "1.50" %}selected{% endif %}>1 Hour 30 Mins (1.5 hrs)</option>
+                                    <option value="2.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "2.00" %}selected{% endif %}>2 Hours (2.0 hrs)</option>
+                                    <option value="2.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "2.50" %}selected{% endif %}>2 Hours 30 Mins (2.5 hrs)</option>
+                                    <option value="3.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "3.00" %}selected{% endif %}>3 Hours (3.0 hrs)</option>
+                                    <option value="3.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "3.50" %}selected{% endif %}>3 Hours 30 Mins (3.5 hrs)</option>
+                                    <option value="4.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "4.00" %}selected{% endif %}>4 Hours (4.0 hrs)</option>
+                                    <option value="5.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "5.00" %}selected{% endif %}>5 Hours (5.0 hrs)</option>
+                                    <option value="6.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "6.00" %}selected{% endif %}>6 Hours (6.0 hrs)</option>
+                                </select>
+                            </div>
+                            <span class="text-muted text-xxs d-block mt-1">Maximum time per request</span>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted mb-1">Lates For Half-Day Cut</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 rounded-start-3 text-muted"><i class="bi bi-exclamation-triangle"></i></span>
+                                <input type="number" name="late_threshold_for_half_day_deduction" value="{{ global_policy.late_threshold_for_half_day_deduction|default:4 }}" min="1" max="30" class="form-control border-start-0 rounded-end-3" required>
+                            </div>
+                            <span class="text-muted text-xxs d-block mt-1">Late count triggering 0.5 day cut</span>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn text-white rounded-pill w-100 py-2 fw-semibold shadow-sm" style="background: linear-gradient(135deg, #4f46e5, #6366f1); border: none;">
+                                <i class="bi bi-save-fill me-1"></i> Save Global Policy
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Manager/Admin Approvals Panel -->
     {% if pending_perms %}
@@ -90,7 +155,7 @@
                         </div>
                         <div class="d-flex justify-content-between">
                             <span class="fw-semibold text-muted"><i class="bi bi-clock me-1"></i>Max Duration:</span>
-                            <span class="fw-bold text-dark">{{ max_hours }} hour{% if max_hours > 1 %}s{% endif %}</span>
+                            <span class="fw-bold text-dark">{{ global_policy.formatted_max_hours }}</span>
                         </div>
                     </div>
                     

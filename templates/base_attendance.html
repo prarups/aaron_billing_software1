@@ -345,9 +345,15 @@
                     {% endif %}
                     {% if user.role == 'owner' %}
                     <li class="sidebar-item">
-                        <a class="sidebar-link {% if 'payroll' in request.resolver_match.url_name or 'salary' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'attendance:payroll_list' %}">
-                            <i class="bi bi-wallet2"></i>
-                            <span>Salaries & Payroll</span>
+                        <a class="sidebar-link {% if request.resolver_match.url_name == 'payroll_list' %}active{% endif %}" href="{% url 'attendance:payroll_list' %}">
+                            <i class="bi bi-person-gear"></i>
+                            <span>Salary Configs</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link {% if request.resolver_match.url_name == 'pay_slips' %}active{% endif %}" href="{% url 'attendance:pay_slips' %}">
+                            <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+                            <span>Pay Slips Statement</span>
                         </a>
                     </li>
                     {% endif %}
@@ -428,9 +434,15 @@
                     {% endif %}
                     {% if user.role == 'owner' %}
                     <li class="sidebar-item">
-                        <a class="sidebar-link {% if 'payroll' in request.resolver_match.url_name or 'salary' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'attendance:payroll_list' %}">
-                            <i class="bi bi-wallet2"></i>
-                            <span>Salaries & Payroll</span>
+                        <a class="sidebar-link {% if request.resolver_match.url_name == 'payroll_list' %}active{% endif %}" href="{% url 'attendance:payroll_list' %}">
+                            <i class="bi bi-person-gear"></i>
+                            <span>Salary Configs</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link {% if request.resolver_match.url_name == 'pay_slips' %}active{% endif %}" href="{% url 'attendance:pay_slips' %}">
+                            <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+                            <span>Pay Slips Statement</span>
                         </a>
                     </li>
                     {% endif %}

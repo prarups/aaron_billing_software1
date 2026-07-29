@@ -62,7 +62,7 @@ class ReturnCreateForm(forms.Form):
             'placeholder': 'Why is this product being returned?',
             'style': 'border-radius: 1rem;',
         }),
-        required=True,
+        required=False,
     )
     return_items = forms.CharField(
         widget=forms.HiddenInput(attrs={

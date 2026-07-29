@@ -1,0 +1,340 @@
+{% extends "base_attendance.html" %}
+
+{% block title %}Pay Slips & Statements - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <!-- Header -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 pb-2 border-bottom">
+        <div>
+            <h4 class="fw-bold mb-0 text-dark"><i class="bi bi-file-earmark-spreadsheet-fill text-indigo me-2" style="color: #4f46e5;"></i>Pay Slips & Salary Statements</h4>
+            <p class="text-muted text-xxs mb-0">View monthly calculated pay slips, filter records, print employee statements, and settle payments.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-2 mt-sm-0">
+            <a href="{% url 'attendance:payroll_list' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                <i class="bi bi-person-gear me-1"></i> Edit Base Salary Rules
+            </a>
+        </div>
+    </div>
+
+    <!-- Monthly Summary Metric Badges (Sleek & Compact) -->
+    <div class="row g-2 mb-3">
+        <div class="col-sm-6 col-md-3">
+            <div class="p-2.5 bg-success bg-opacity-10 text-success rounded-3 border border-success border-opacity-20 d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-xxs text-uppercase fw-bold d-block opacity-75">Net Payable</span>
+                    <strong class="fs-6 fw-bold">₹ {{ total_net|floatformat:2 }}</strong>
+                </div>
+                <i class="bi bi-cash-stack fs-3 opacity-50"></i>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+            <div class="p-2.5 bg-danger bg-opacity-10 text-danger rounded-3 border border-danger border-opacity-20 d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-xxs text-uppercase fw-bold d-block opacity-75">Total Deductions</span>
+                    <strong class="fs-6 fw-bold">- ₹ {{ total_deductions|floatformat:2 }}</strong>
+                </div>
+                <i class="bi bi-scissors fs-3 opacity-50"></i>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+            <div class="p-2.5 bg-light text-dark rounded-3 border d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-xxs text-uppercase fw-bold text-muted d-block">Gross Base</span>
+                    <strong class="fs-6 fw-bold">₹ {{ total_base|floatformat:2 }}</strong>
+                </div>
+                <i class="bi bi-building fs-3 text-muted opacity-50"></i>
+            </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+            <div class="p-2.5 bg-warning bg-opacity-10 text-dark rounded-3 border border-warning border-opacity-20 d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-xxs text-uppercase fw-bold text-muted d-block">Status</span>
+                    <strong class="fs-6 fw-bold text-dark">{{ paid_count }} / {{ total_staff_payrolls }} Paid</strong>
+                </div>
+                <i class="bi bi-pie-chart-fill fs-3 text-warning opacity-75"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unified Month & Year Selection Bar + Bulk Actions -->
+    <div class="card border-0 shadow-sm bg-white mb-3" style="border-radius: 0.75rem;">
+        <div class="card-body py-2.5 px-3">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <form method="get" id="paySlipsMonthForm" class="d-flex align-items-center gap-2 m-0">
+                    <label class="form-label text-xxs fw-bold text-muted mb-0">Period:</label>
+                    <select name="month" class="form-select form-select-sm rounded-pill py-1 text-xs" onchange="document.getElementById('paySlipsMonthForm').submit()">
+                        <option value="1" {% if selected_month == 1 %}selected{% endif %}>January</option>
+                        <option value="2" {% if selected_month == 2 %}selected{% endif %}>February</option>
+                        <option value="3" {% if selected_month == 3 %}selected{% endif %}>March</option>
+                        <option value="4" {% if selected_month == 4 %}selected{% endif %}>April</option>
+                        <option value="5" {% if selected_month == 5 %}selected{% endif %}>May</option>
+                        <option value="6" {% if selected_month == 6 %}selected{% endif %}>June</option>
+                        <option value="7" {% if selected_month == 7 %}selected{% endif %}>July</option>
+                        <option value="8" {% if selected_month == 8 %}selected{% endif %}>August</option>
+                        <option value="9" {% if selected_month == 9 %}selected{% endif %}>September</option>
+                        <option value="10" {% if selected_month == 10 %}selected{% endif %}>October</option>
+                        <option value="11" {% if selected_month == 11 %}selected{% endif %}>November</option>
+                        <option value="12" {% if selected_month == 12 %}selected{% endif %}>December</option>
+                    </select>
+                    <select name="year" class="form-select form-select-sm rounded-pill py-1 text-xs" onchange="document.getElementById('paySlipsMonthForm').submit()">
+                        {% for y in years %}
+                            <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+
+                <div class="d-flex align-items-center gap-2">
+                    {% if draft_count > 0 %}
+                        <form method="post" action="{% url 'attendance:mark_all_payrolls_paid' %}" class="m-0" onsubmit="return confirm('Mark all {{ draft_count }} pending draft pay slips as PAID for {{ selected_month }}/{{ selected_year }}?');">
+                            {% csrf_token %}
+                            <input type="hidden" name="month" value="{{ selected_month }}">
+                            <input type="hidden" name="year" value="{{ selected_year }}">
+                            <button type="submit" class="btn btn-xs btn-success rounded-pill px-3 py-1 fw-semibold">
+                                <i class="bi bi-check-all me-1"></i> Mark All Drafts Paid ({{ draft_count }})
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pay Slips Table Card -->
+    <div class="card border-0 shadow-sm bg-white" style="border-radius: 0.75rem;">
+        <div class="card-body p-3.5">
+            <!-- Compact Filters for Pay Slips -->
+            <form method="get" action="{% url 'attendance:pay_slips' %}" class="mb-3">
+                <input type="hidden" name="month" value="{{ selected_month }}">
+                <input type="hidden" name="year" value="{{ selected_year }}">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light border-end-0 rounded-start-pill"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" name="q_payroll" value="{{ q_payroll }}" class="form-control border-start-0 rounded-end-pill" placeholder="Search staff name or ID...">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="branch_payroll" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                            <option value="">All Branches</option>
+                            {% for b in branches %}
+                                <option value="{{ b.id }}" {% if branch_payroll == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="status_payroll" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                            <option value="">All Statuses</option>
+                            <option value="draft" {% if status_payroll == 'draft' %}selected{% endif %}>Draft (Pending)</option>
+                            <option value="paid" {% if status_payroll == 'paid' %}selected{% endif %}>Paid (Settled)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex gap-1.5">
+                        <button type="submit" class="btn btn-sm btn-primary rounded-pill w-100">
+                            <i class="bi bi-funnel me-1"></i> Filter
+                        </button>
+                        <a href="{% url 'attendance:pay_slips' %}?month={{ selected_month }}&year={{ selected_year }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Pay Slips Table -->
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0 text-xxs small">
+                    <thead class="table-light text-muted text-uppercase">
+                        <tr>
+                            <th>Employee</th>
+                            <th>Attendance Days</th>
+                            <th>Base Salary</th>
+                            <th>Deductions</th>
+                            <th>Net Payable</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payroll in payrolls %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold text-dark">
+                                    {{ payroll.user.first_name }} {{ payroll.user.last_name }}
+                                    {% if not payroll.user.first_name and not payroll.user.last_name %}{{ payroll.user.username }}{% endif %}
+                                </div>
+                                <span class="text-muted text-xxs">@{{ payroll.user.username }} &middot; ID: {{ payroll.user.employee_id|default:"-" }}</span>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <span class="badge rounded-pill px-2 py-0.5" style="background-color: #d1fae5; color: #047857; font-size: 0.65rem; font-weight: 600;">
+                                        P: {{ payroll.present_days }}d
+                                    </span>
+                                    <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fef3c7; color: #b45309; font-size: 0.65rem; font-weight: 600;">
+                                        L: {{ payroll.late_days }}d
+                                    </span>
+                                    <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fee2e2; color: #b91c1c; font-size: 0.65rem; font-weight: 600;">
+                                        LOP: {% if payroll.unapproved_leaves > 4 %}{{ payroll.unapproved_leaves|add:"-4" }}{% else %}0{% endif %}d
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="fw-bold text-dark">₹ {{ payroll.base_salary }}</td>
+                            <td class="text-danger fw-bold">- ₹ {{ payroll.deductions }}</td>
+                            <td class="text-success fw-bold">₹ {{ payroll.net_salary }}</td>
+                            <td>
+                                {% if payroll.status == 'paid' %}
+                                    <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0;"><i class="bi bi-check-circle-fill me-1"></i>Paid</span>
+                                {% else %}
+                                    <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a;"><i class="bi bi-hourglass-split me-1"></i>Draft</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex align-items-center justify-content-end gap-1">
+                                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2.5 py-0.5" onclick="openPayslipModal('{{ payroll.user.username }}', '{{ payroll.user.employee_id|default:"-" }}', '{{ payroll.base_salary }}', '{{ payroll.deductions }}', '{{ payroll.net_salary }}', '{{ payroll.present_days }}', '{{ payroll.late_days }}', '{% if payroll.unapproved_leaves > 4 %}{{ payroll.unapproved_leaves|add:"-4" }}{% else %}0{% endif %}', '{{ selected_month }}/{{ selected_year }}', '{{ payroll.status }}')">
+                                        <i class="bi bi-file-earmark-text me-1"></i> View Slip
+                                    </button>
+
+                                    {% if payroll.status == 'draft' %}
+                                        <a href="{% url 'attendance:mark_payroll_paid' payroll.id %}" class="btn btn-xs btn-success rounded-pill px-2.5 py-0.5 fw-semibold">
+                                            <i class="bi bi-check-lg me-1"></i> Mark Paid
+                                        </a>
+                                    {% else %}
+                                        <button class="btn btn-xs btn-light text-muted border rounded-pill px-2 py-0.5" disabled>
+                                            <i class="bi bi-check-all"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                No pay slips found for {{ selected_month }}/{{ selected_year }}.<br>
+                                Go to <a href="{% url 'attendance:payroll_list' %}">Salary Configs</a> to calculate payroll.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PAYSLIP PREVIEW MODAL -->
+<div class="modal fade" id="payslipModal" tabindex="-1" aria-labelledby="payslipModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 text-white py-2.5 px-3" style="background: linear-gradient(135deg, #4f46e5, #6366f1); border-radius: 1rem 1rem 0 0;">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-receipt fs-5"></i>
+                    <div>
+                        <h6 class="modal-title fw-bold text-white mb-0" id="payslipModalLabel">Employee Pay Slip</h6>
+                        <span id="payslipPeriod" class="text-xxs text-white-50">Period</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3.5 bg-light">
+                <div class="card border-0 shadow-sm bg-white p-3 rounded-3 mb-2.5">
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                        <div>
+                            <h6 class="fw-bold text-primary mb-0">Aaron HR Payroll</h6>
+                            <span class="text-muted text-xxs">Official Salary Slip</span>
+                        </div>
+                        <span id="slipStatusBadge" class="badge bg-success rounded-pill px-2.5 py-1 text-xxs">Paid</span>
+                    </div>
+                    <div class="row g-2 text-xxs">
+                        <div class="col-6">
+                            <span class="text-muted d-block">Employee Name:</span>
+                            <strong id="slipEmpName" class="text-dark">--</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block">Employee ID:</span>
+                            <strong id="slipEmpId" class="text-dark">--</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm bg-white p-3 rounded-3 mb-2.5">
+                    <span class="text-xxs fw-bold text-muted text-uppercase mb-2 d-block">Attendance Breakdown</span>
+                    <div class="row text-center g-1 text-xxs">
+                        <div class="col-4">
+                            <div class="p-1.5 rounded-2 bg-success bg-opacity-10 text-success fw-bold">
+                                Present: <span id="slipPresentDays">0</span>d
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-1.5 rounded-2 bg-warning bg-opacity-10 text-warning fw-bold">
+                                Late: <span id="slipLateDays">0</span>d
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-1.5 rounded-2 bg-danger bg-opacity-10 text-danger fw-bold">
+                                LOP: <span id="slipLopDays">0</span>d
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm bg-white p-3 rounded-3">
+                    <span class="text-xxs fw-bold text-muted text-uppercase mb-2 d-block">Salary Calculation</span>
+                    <table class="table table-sm table-borderless mb-0 text-xxs">
+                        <tbody>
+                            <tr class="border-bottom">
+                                <td class="text-muted">Base Salary</td>
+                                <td class="text-end fw-bold text-dark" id="slipBaseSalary">₹ 0.00</td>
+                            </tr>
+                            <tr class="border-bottom">
+                                <td class="text-muted">Total Deductions (Late/LOP)</td>
+                                <td class="text-end fw-bold text-danger" id="slipDeductions">- ₹ 0.00</td>
+                            </tr>
+                            <tr class="bg-light rounded-2">
+                                <td class="fw-bold text-dark">Net Payable Salary</td>
+                                <td class="text-end fw-bold text-success fs-6" id="slipNetSalary">₹ 0.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-white py-2 px-3 d-flex justify-content-between">
+                <button type="button" class="btn btn-sm btn-light rounded-pill px-3" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" onclick="window.print()">
+                    <i class="bi bi-printer me-1"></i> Print Slip
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function openPayslipModal(username, empId, base, deductions, net, present, late, lop, period, status) {
+        document.getElementById('slipEmpName').textContent = username;
+        document.getElementById('slipEmpId').textContent = empId;
+        document.getElementById('slipBaseSalary').textContent = '₹ ' + parseFloat(base).toFixed(2);
+        document.getElementById('slipDeductions').textContent = '- ₹ ' + parseFloat(deductions).toFixed(2);
+        document.getElementById('slipNetSalary').textContent = '₹ ' + parseFloat(net).toFixed(2);
+        document.getElementById('slipPresentDays').textContent = present;
+        document.getElementById('slipLateDays').textContent = late;
+        document.getElementById('slipLopDays').textContent = lop;
+        document.getElementById('payslipPeriod').textContent = 'Period: ' + period;
+
+        const badge = document.getElementById('slipStatusBadge');
+        if (status === 'paid') {
+            badge.className = 'badge rounded-pill px-2.5 py-1 text-xxs fw-bold';
+            badge.style.backgroundColor = '#d1fae5';
+            badge.style.color = '#047857';
+            badge.textContent = 'Paid (Settled)';
+        } else {
+            badge.className = 'badge rounded-pill px-2.5 py-1 text-xxs fw-bold';
+            badge.style.backgroundColor = '#fef3c7';
+            badge.style.color = '#b45309';
+            badge.textContent = 'Draft (Pending)';
+        }
+
+        const payslipModal = new bootstrap.Modal(document.getElementById('payslipModal'));
+        payslipModal.show();
+    }
+</script>
+{% endblock %}

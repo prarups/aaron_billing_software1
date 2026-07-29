@@ -13,7 +13,7 @@
                     <div class="row align-items-center">
                         <div class="col-md-8 mb-3 mb-md-0">
                             <h3 class="fw-bold mb-1 text-white"><i class="bi bi-clock-fill me-2"></i>Attendance Portal</h3>
-                            <p class="mb-0" style="color: rgba(255, 255, 255, 0.88); font-size: 0.9rem;">Welcome, <strong>{{ user.username }}</strong> ({% if is_owner_or_manager %}Admin/Manager{% else %}Staff{% endif %}). Automatic Camera and GPS location logging.</p>
+                            <p class="mb-0" style="color: rgba(255, 255, 255, 0.88); font-size: 0.9rem;">Welcome, <strong>{{ user.username }}</strong> ({% if is_owner_or_manager %}Admin/Manager{% else %}Staff{% endif %}). Facial Verification and GPS Location Logging.</p>
                             {% if not is_owner_or_manager %}
                                 <a href="{% url 'attendance:my_summary' %}" class="btn btn-sm btn-light text-primary rounded-pill mt-2 px-3 fw-bold shadow-sm">
                                     <i class="bi bi-person-badge-fill me-1"></i> View My Monthly Summary
@@ -30,70 +30,120 @@
                         </div>
                     </div>
                 </div>
-                <!-- Floating decorative shape -->
+                <!-- Floating decorative shapes -->
                 <div class="position-absolute bg-white rounded-circle" style="width: 150px; height: 150px; top: -50px; right: -50px; z-index: 0; opacity: 0.12;"></div>
                 <div class="position-absolute bg-white rounded-circle" style="width: 250px; height: 250px; bottom: -100px; left: -50px; z-index: 0; opacity: 0.06;"></div>
             </div>
         </div>
     </div>
 
-
-
-    <!-- MAIN INTERACTIVE WORKSPACE (Check-in & Today's Status) -->
+    <!-- MAIN INTERACTIVE WORKSPACE (Attendance Action Center & Timeline) -->
     <div class="row mb-4">
-        <!-- Capture Panel -->
+        <!-- Attendance Action Center Panel -->
         <div class="col-lg-6 mb-4">
-            <div class="card border-0 shadow-sm h-100 bg-white" style="border-radius: 1rem;">
-                <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center">
-                    <h5 class="card-title fw-bold text-primary mb-4 w-100"><i class="bi bi-camera-fill me-2"></i>Verification Camera</h5>
-                    
-                    <!-- Camera Box -->
-                    <div class="position-relative overflow-hidden bg-dark rounded-4 shadow-inner mb-4 w-100" style="max-width: 480px; aspect-ratio: 4/3;">
-                        <video id="video" class="w-100 h-100 object-fit-cover" autoplay playsinline></video>
-                        <canvas id="canvas" class="d-none"></canvas>
-                        
-                        <!-- Overlay status or placeholder -->
-                        <div id="cameraPlaceholder" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-dark text-white p-3 text-center">
-                            <i class="bi bi-camera-video-off fs-1 text-muted mb-3"></i>
-                            <p class="mb-0 small text-white-50">Camera preview is off. Grant permissions or click Check-in to initialize.</p>
+            <div class="card border-0 shadow-sm h-100 bg-white overflow-hidden" style="border-radius: 1rem;">
+                <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex align-items-center justify-content-between">
+                    <h5 class="card-title fw-bold text-primary mb-0"><i class="bi bi-person-bounding-box me-2"></i>Attendance Actions</h5>
+                    <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-1.5 fw-semibold small">
+                        <i class="bi bi-camera-fill me-1"></i> Camera Verification
+                    </span>
+                </div>
+                <div class="card-body p-4 d-flex flex-column justify-content-between">
+                    <!-- Status Header Banner -->
+                    <div class="p-3.5 rounded-4 mb-4 text-center border" style="background: linear-gradient(135deg, rgba(5, 150, 105, 0.04), rgba(14, 165, 233, 0.04)); border-color: rgba(5, 150, 105, 0.15) !important;">
+                        <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                            <span class="fs-4">
+                                {% if not attendance or not attendance.check_in %}
+                                    ⌛
+                                {% elif not attendance.mid_day_time %}
+                                    🟢
+                                {% elif not attendance.check_out %}
+                                    🛡️
+                                {% else %}
+                                    🎉
+                                {% endif %}
+                            </span>
+                            <h6 class="fw-bold text-dark mb-0">Current Status: 
+                                {% if not attendance or not attendance.check_in %}
+                                    <span class="text-warning">Not Checked In</span>
+                                {% elif not attendance.mid_day_time %}
+                                    <span class="text-success">Checked In (Mid-Day Pending)</span>
+                                {% elif not attendance.check_out %}
+                                    <span class="text-info">Mid-Day Verified (Check-Out Pending)</span>
+                                {% else %}
+                                    <span class="text-primary">Today Completed!</span>
+                                {% endif %}
+                            </h6>
                         </div>
-                        
-                        <!-- Success Snapshot Overlay -->
-                        <div id="snapOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none bg-success bg-opacity-25 align-items-center justify-content-center">
-                            <i class="bi bi-check-circle-fill text-white fs-1 shadow"></i>
-                        </div>
-                    </div>
-                    
-                    <!-- Geolocation Status -->
-                    <div id="geoStatus" class="alert alert-secondary py-2 px-3 rounded-pill mb-4 w-100 text-center small border-0 bg-light d-flex flex-column align-items-center justify-content-center gap-1">
-                        <div class="d-flex align-items-center justify-content-center gap-2">
-                            <i class="bi bi-geo-alt-fill text-warning fs-5"></i>
-                            <span id="geoText">GPS Coordinates pending...</span>
-                        </div>
-                        <button id="btnMockLocation" class="btn btn-xxs btn-outline-secondary rounded-pill d-none py-0.5 px-3 mt-1" type="button" onclick="useMockLocation()" style="font-size: 0.7rem;">
-                            <i class="bi bi-magic"></i> Use Mock Location (For testing)
-                        </button>
+                        <p class="small text-muted mb-0">Click an action button below to launch live camera verification.</p>
                     </div>
 
-                    <!-- Actions -->
-                    <div class="d-flex flex-wrap gap-2 justify-content-center w-100">
+                    <!-- Action Buttons Container (Smart Single Button Workflow) -->
+                    <div class="d-flex flex-column gap-3 mb-4">
                         {% if not attendance or not attendance.check_in %}
-                            <button id="btnCheckIn" class="btn btn-primary btn-lg rounded-pill px-4" onclick="triggerAttendance('check_in')">
-                                <i class="bi bi-box-arrow-in-right me-1"></i> Check In
+                            <!-- Step 1: Check In -->
+                            <button type="button" id="btnCheckIn" class="btn btn-primary btn-lg rounded-4 py-3.5 px-4 shadow-sm d-flex align-items-center justify-content-between action-btn-hover" onclick="openVerificationModal('check_in')">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="btn-icon-circle bg-white text-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm">
+                                        <i class="bi bi-box-arrow-in-right fs-4"></i>
+                                    </div>
+                                    <div class="text-start">
+                                        <div class="fw-bold fs-5">Check In</div>
+                                        <div class="small text-white-50" style="font-size: 0.8rem;">Start shift with face & GPS verification</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1.5 small">Open Camera</span>
+                                    <i class="bi bi-camera-fill fs-5"></i>
+                                </div>
                             </button>
                         {% elif not attendance.mid_day_time %}
-                            <button id="btnMidDay" class="btn btn-warning btn-lg text-white rounded-pill px-4" onclick="triggerAttendance('mid_day')">
-                                <i class="bi bi-shield-check me-1"></i> Mid-Day Verify
+                            <!-- Step 2: Mid-Day Verification -->
+                            <button type="button" id="btnMidDay" class="btn btn-warning text-white btn-lg rounded-4 py-3.5 px-4 shadow-sm d-flex align-items-center justify-content-between action-btn-hover" onclick="openVerificationModal('mid_day')">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="btn-icon-circle bg-white text-warning rounded-circle d-flex align-items-center justify-content-center shadow-sm">
+                                        <i class="bi bi-shield-check fs-4"></i>
+                                    </div>
+                                    <div class="text-start">
+                                        <div class="fw-bold fs-5">Mid-Day Verification</div>
+                                        <div class="small text-white-50" style="font-size: 0.8rem;">Verify presence mid-shift with camera</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1.5 small">Open Camera</span>
+                                    <i class="bi bi-camera-fill fs-5"></i>
+                                </div>
                             </button>
                         {% elif not attendance.check_out %}
-                            <button id="btnCheckOut" class="btn btn-danger btn-lg rounded-pill px-4" onclick="triggerAttendance('check_out')">
-                                <i class="bi bi-box-arrow-left me-1"></i> Check Out
+                            <!-- Step 3: Check Out -->
+                            <button type="button" id="btnCheckOut" class="btn btn-danger btn-lg rounded-4 py-3.5 px-4 shadow-sm d-flex align-items-center justify-content-between action-btn-hover" onclick="openVerificationModal('check_out')">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="btn-icon-circle bg-white text-danger rounded-circle d-flex align-items-center justify-content-center shadow-sm">
+                                        <i class="bi bi-box-arrow-left fs-4"></i>
+                                    </div>
+                                    <div class="text-start">
+                                        <div class="fw-bold fs-5">Check Out</div>
+                                        <div class="small text-white-50" style="font-size: 0.8rem;">Complete shift with face & GPS verification</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1.5 small">Open Camera</span>
+                                    <i class="bi bi-camera-fill fs-5"></i>
+                                </div>
                             </button>
                         {% else %}
-                            <div class="alert alert-success border-0 py-2 px-4 rounded-pill mb-0">
-                                <i class="bi bi-check-all me-1"></i> Today's Attendance Completed!
+                            <!-- Step Completed Card -->
+                            <div class="card border-0 bg-success bg-opacity-10 text-success p-4 rounded-4 text-center shadow-sm">
+                                <i class="bi bi-patch-check-fill display-4 mb-2 text-success"></i>
+                                <h5 class="fw-bold text-dark mb-1">Today's Attendance Completed!</h5>
+                                <p class="small text-muted mb-0">All 3 verification steps (Check-In, Mid-Day, Check-Out) are logged.</p>
                             </div>
                         {% endif %}
+                    </div>
+
+                    <!-- Security note -->
+                    <div class="text-center text-muted small mt-auto pt-2">
+                        <i class="bi bi-shield-lock-fill text-success me-1"></i> Live camera snapshot & GPS location required for verification.
                     </div>
                 </div>
             </div>
@@ -129,7 +179,7 @@
                                 {% endif %}
                             </div>
                             {% if attendance and attendance.check_in_photo %}
-                                <img src="{{ attendance.check_in_photo|cloudinary_optimize:"w_120,h_90" }}" class="rounded-3 border object-fit-cover shadow-sm" style="width: 60px; height: 45px;" alt="Check-in Photo"/>
+                                <img src="{{ attendance.check_in_photo|cloudinary_optimize:"w_120,h_90" }}" class="rounded-3 border object-fit-cover shadow-sm cursor-zoom" style="width: 60px; height: 45px;" alt="Check-in Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.check_in_photo|cloudinary_optimize }}', 'Check-In Photo')"/>
                             {% endif %}
                         </div>
 
@@ -156,7 +206,7 @@
                                 {% endif %}
                             </div>
                             {% if attendance and attendance.mid_day_photo %}
-                                <img src="{{ attendance.mid_day_photo|cloudinary_optimize:"w_120,h_90" }}" class="rounded-3 border object-fit-cover shadow-sm" style="width: 60px; height: 45px;" alt="Mid-day Photo"/>
+                                <img src="{{ attendance.mid_day_photo|cloudinary_optimize:"w_120,h_90" }}" class="rounded-3 border object-fit-cover shadow-sm cursor-zoom" style="width: 60px; height: 45px;" alt="Mid-day Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.mid_day_photo|cloudinary_optimize }}', 'Mid-Day Photo')"/>
                             {% endif %}
                         </div>
 
@@ -183,7 +233,7 @@
                                 {% endif %}
                             </div>
                             {% if attendance and attendance.check_out_photo %}
-                                <img src="{{ attendance.check_out_photo|cloudinary_optimize:"w_120,h_90" }}" class="rounded-3 border object-fit-cover shadow-sm" style="width: 60px; height: 45px;" alt="Check-out Photo"/>
+                                <img src="{{ attendance.check_out_photo|cloudinary_optimize:"w_120,h_90" }}" class="rounded-3 border object-fit-cover shadow-sm cursor-zoom" style="width: 60px; height: 45px;" alt="Check-out Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.check_out_photo|cloudinary_optimize }}', 'Check-Out Photo')"/>
                             {% endif %}
                         </div>
                     </div>
@@ -191,10 +241,6 @@
             </div>
         </div>
     </div>
-
-
-
-
 
     <!-- History Panel -->
     <div class="row mt-2">
@@ -274,7 +320,114 @@
     </div>
 </div>
 
+<!-- LIVE CAMERA VERIFICATION MODAL -->
+<div class="modal fade" id="cameraVerificationModal" tabindex="-1" aria-labelledby="cameraModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <!-- Modal Header -->
+            <div id="modalHeader" class="modal-header text-white py-3 px-4" style="background: linear-gradient(135deg, #059669, #10b981);">
+                <div class="d-flex align-items-center gap-2">
+                    <i id="modalHeaderIcon" class="bi bi-camera-fill fs-4"></i>
+                    <div>
+                        <h5 class="modal-title fw-bold text-white mb-0" id="cameraModalLabel">Facial Verification</h5>
+                        <span id="modalSubTitle" class="small text-white-50">Position face inside camera frame</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
 
+            <!-- Modal Body -->
+            <div class="modal-body p-4 bg-light">
+                <div class="row align-items-center">
+                    <!-- Left: Camera Viewport -->
+                    <div class="col-md-7 mb-3 mb-md-0">
+                        <div class="position-relative overflow-hidden bg-black rounded-4 shadow border border-2 border-dark" style="aspect-ratio: 4/3;">
+                            <video id="modalVideo" class="w-100 h-100 object-fit-cover" autoplay playsinline></video>
+                            <canvas id="modalCanvas" class="d-none"></canvas>
+
+                            <!-- Live Camera Indicator -->
+                            <div class="position-absolute top-0 start-0 m-3 px-3 py-1 bg-dark bg-opacity-75 backdrop-blur text-white rounded-pill small d-flex align-items-center gap-2" style="font-size: 0.75rem; z-index: 10;">
+                                <span class="spinner-grow spinner-grow-sm text-danger" style="width: 8px; height: 8px;"></span>
+                                <span class="fw-semibold tracking-wide">LIVE CAMERA FEED</span>
+                            </div>
+
+                            <!-- Face Oval Guide Overlay -->
+                            <div class="position-absolute top-50 start-50 translate-middle pointer-events-none d-flex flex-column align-items-center justify-content-center" style="width: 200px; height: 240px; z-index: 5;">
+                                <div class="w-100 h-100 rounded-circle border border-2 border-dashed border-white opacity-75 shadow-lg"></div>
+                                <span class="badge bg-dark bg-opacity-65 text-white rounded-pill px-3 py-1 mt-2 small">Align Face Here</span>
+                            </div>
+
+                            <!-- Camera Placeholder / Permission Error State -->
+                            <div id="cameraModalPlaceholder" class="position-absolute top-0 start-0 w-100 h-100 d-none bg-dark text-white p-4 text-center d-flex flex-column align-items-center justify-content-center" style="z-index: 15;">
+                                <i class="bi bi-camera-video-off fs-1 text-danger mb-3"></i>
+                                <h6 class="fw-bold mb-1">Camera Access Required</h6>
+                                <p class="small text-white-50 mb-3">Please grant camera permissions in your browser settings to continue.</p>
+                                <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-4" onclick="startModalCamera()">
+                                    <i class="bi bi-arrow-clockwise me-1"></i> Retry Camera Access
+                                </button>
+                            </div>
+
+                            <!-- Snapshot Flash Overlay -->
+                            <div id="modalSnapOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none bg-success bg-opacity-50 align-items-center justify-content-center" style="z-index: 20;">
+                                <div class="text-center text-white">
+                                    <i class="bi bi-check-circle-fill display-3 mb-2 animate-bounce"></i>
+                                    <h5 class="fw-bold mb-0">Photo Captured!</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Info & Geolocation status -->
+                    <div class="col-md-5">
+                        <div class="card border-0 shadow-sm bg-white p-3.5 rounded-4 mb-3">
+                            <h6 class="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5"><i class="bi bi-geo-alt-fill text-warning fs-5"></i> GPS Location Status</h6>
+                            <div id="modalGeoStatus" class="alert alert-secondary py-2 px-3 rounded-3 mb-2 small text-center border-0 bg-light">
+                                <span id="modalGeoText" class="d-block small">Acquiring GPS location...</span>
+                            </div>
+                            <button id="modalBtnMockLocation" class="btn btn-xxs btn-outline-secondary rounded-pill d-none py-1 px-3 w-100" type="button" onclick="useMockLocation()">
+                                <i class="bi bi-magic me-1"></i> Use Mock Location (Testing)
+                            </button>
+                        </div>
+
+                        <div class="card border-0 shadow-sm bg-white p-3.5 rounded-4">
+                            <h6 class="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5"><i class="bi bi-shield-check text-success fs-5"></i> Verification Steps</h6>
+                            <ol class="small text-muted ps-3 mb-0" style="font-size: 0.8rem; line-height: 1.5;">
+                                <li class="mb-1">Ensure clear lighting on your face.</li>
+                                <li class="mb-1">Wait for GPS status to show green location.</li>
+                                <li>Click <strong>Capture & Submit</strong> button below.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer border-0 bg-white py-3 px-4 d-flex align-items-center justify-content-between">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <button type="button" id="btnModalSubmit" class="btn btn-primary btn-lg rounded-pill px-4 fw-bold shadow-sm" onclick="submitAttendanceVerification()">
+                    <i class="bi bi-camera-fill me-1"></i> Capture & Submit
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Photo Zoom Modal -->
+<div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0 bg-dark text-white py-3">
+                <h6 class="modal-title fw-bold" id="photoModalLabel">Verification Photo</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0 bg-black">
+                <img id="fullPhotoEl" src="" class="w-100 h-auto object-fit-contain" style="max-height: 80vh;" alt="Verification Photo"/>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -288,26 +441,82 @@
         const ampm = hours >= 12 ? 'PM' : 'AM';
         
         hours = hours % 12;
-        hours = hours ? hours : 12; // the hour '0' should be '12'
+        hours = hours ? hours : 12;
         minutes = minutes < 10 ? '0'+minutes : minutes;
         seconds = seconds < 10 ? '0'+seconds : seconds;
         
         const strTime = hours + ':' + minutes + ':' + seconds + ' ' + ampm;
-        document.getElementById('liveClock').textContent = strTime;
+        const clockEl = document.getElementById('liveClock');
+        if (clockEl) clockEl.textContent = strTime;
     }
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Camera & Geolocation APIs
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const cameraPlaceholder = document.getElementById('cameraPlaceholder');
-    const geoText = document.getElementById('geoText');
-    let stream = null;
+    // Verification state variables
+    let currentVerificationType = 'check_in';
+    let modalStream = null;
     let userLatitude = null;
     let userLongitude = null;
+    let cameraModalObj = null;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const modalEl = document.getElementById('cameraVerificationModal');
+        if (modalEl) {
+            cameraModalObj = new bootstrap.Modal(modalEl);
+            modalEl.addEventListener('shown.bs.modal', function () {
+                startModalCamera();
+                fetchLocation();
+            });
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                stopModalCamera();
+            });
+        }
+    });
+
+    function showFullPhoto(url, label) {
+        document.getElementById('fullPhotoEl').src = url;
+        document.getElementById('photoModalLabel').textContent = label;
+    }
+
+    function playShutterAudio() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const buf = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            const src = ctx.createBufferSource();
+            src.buffer = buf;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.value = 1200;
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.04);
+            src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+            src.start();
+        } catch(e) {}
+    }
+
+    function playSuccessChime() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const now = ctx.currentTime;
+            [523.25, 659.25, 783.99].forEach((freq, idx) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                const start = now + (idx * 0.08);
+                gain.gain.setValueAtTime(0.25, start);
+                gain.gain.exponentialRampToValueAtTime(0.001, start + 0.25);
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.start(start); osc.stop(start + 0.25);
+            });
+        } catch(e) {}
+    }
 
     function showSuccessToast(message, callback) {
+        playSuccessChime();
         const toast = document.createElement('div');
         toast.className = 'custom-success-toast animate-slide-up';
         toast.innerHTML = `
@@ -354,51 +563,120 @@
         }, 4000);
     }
 
-    // Robust function to retrieve GPS location
+    // Open Verification Camera Modal
+    function openVerificationModal(type) {
+        currentVerificationType = type;
+        const header = document.getElementById('modalHeader');
+        const label = document.getElementById('cameraModalLabel');
+        const sub = document.getElementById('modalSubTitle');
+        const icon = document.getElementById('modalHeaderIcon');
+        const submitBtn = document.getElementById('btnModalSubmit');
+
+        if (type === 'check_in') {
+            header.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+            label.textContent = 'Check-In Verification';
+            sub.textContent = 'Capture face snapshot & GPS to start shift';
+            icon.className = 'bi bi-box-arrow-in-right fs-4 me-2';
+            submitBtn.className = 'btn btn-primary btn-lg rounded-pill px-4 fw-bold shadow-sm';
+            submitBtn.innerHTML = '<i class="bi bi-camera-fill me-1"></i> Capture & Submit Check-In';
+        } else if (type === 'mid_day') {
+            header.style.background = 'linear-gradient(135deg, #d97706, #f59e0b)';
+            label.textContent = 'Mid-Day Verification';
+            sub.textContent = 'Verify presence & GPS location during shift';
+            icon.className = 'bi bi-shield-check fs-4 me-2';
+            submitBtn.className = 'btn btn-warning text-white btn-lg rounded-pill px-4 fw-bold shadow-sm';
+            submitBtn.innerHTML = '<i class="bi bi-shield-camera me-1"></i> Capture & Submit Mid-Day';
+        } else if (type === 'check_out') {
+            header.style.background = 'linear-gradient(135deg, #dc2626, #ef4444)';
+            label.textContent = 'Check-Out Verification';
+            sub.textContent = 'Capture face snapshot & GPS to complete shift';
+            icon.className = 'bi bi-box-arrow-left fs-4 me-2';
+            submitBtn.className = 'btn btn-danger btn-lg rounded-pill px-4 fw-bold shadow-sm';
+            submitBtn.innerHTML = '<i class="bi bi-door-closed-fill me-1"></i> Capture & Submit Check-Out';
+        }
+
+        if (cameraModalObj) {
+            cameraModalObj.show();
+        }
+    }
+
+    // Start video stream inside modal
+    function startModalCamera() {
+        const video = document.getElementById('modalVideo');
+        const placeholder = document.getElementById('cameraModalPlaceholder');
+        if (placeholder) placeholder.classList.add('d-none');
+
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+                .then(s => {
+                    modalStream = s;
+                    if (video) video.srcObject = modalStream;
+                })
+                .catch(err => {
+                    console.error("Camera access error:", err);
+                    if (placeholder) placeholder.classList.remove('d-none');
+                });
+        } else {
+            if (placeholder) placeholder.classList.remove('d-none');
+        }
+    }
+
+    // Stop video stream when modal closes
+    function stopModalCamera() {
+        if (modalStream) {
+            modalStream.getTracks().forEach(track => track.stop());
+            modalStream = null;
+        }
+        const video = document.getElementById('modalVideo');
+        if (video) video.srcObject = null;
+    }
+
+    // Retrieve GPS location
     function fetchLocation(onSuccess = null, onFailure = null) {
+        const geoText = document.getElementById('modalGeoText');
+        const geoStatus = document.getElementById('modalGeoStatus');
+        const mockBtn = document.getElementById('modalBtnMockLocation');
+
         if (!navigator.geolocation) {
-            const msg = "Geolocation is not supported by your browser.";
-            geoText.textContent = msg;
+            const msg = "Geolocation not supported by browser.";
+            if (geoText) geoText.textContent = msg;
             if (onFailure) onFailure(msg);
             return;
         }
 
-        geoText.textContent = "Retrieving location coordinates...";
-        document.getElementById('geoStatus').className = "alert alert-secondary py-2 px-3 rounded-pill mb-4 w-100 text-center small border-0 bg-light d-flex align-items-center justify-content-center gap-2";
+        if (geoText) geoText.textContent = "Retrieving GPS coordinates...";
+        if (geoStatus) geoStatus.className = "alert alert-secondary py-2 px-3 rounded-3 mb-2 small text-center border-0 bg-light";
 
-        // Try high accuracy first
         navigator.geolocation.getCurrentPosition(
             position => {
                 userLatitude = position.coords.latitude;
                 userLongitude = position.coords.longitude;
-                geoText.textContent = `Location Captured: ${userLatitude.toFixed(5)}, ${userLongitude.toFixed(5)}`;
-                document.getElementById('geoStatus').className = "alert alert-success py-2 px-3 rounded-pill mb-4 w-100 text-center small border-0 d-flex align-items-center justify-content-center gap-2";
+                if (geoText) geoText.textContent = `Location Captured: ${userLatitude.toFixed(4)}, ${userLongitude.toFixed(4)}`;
+                if (geoStatus) geoStatus.className = "alert alert-success py-2 px-3 rounded-3 mb-2 small text-center border-0 fw-semibold text-success bg-success bg-opacity-10";
+                if (mockBtn) mockBtn.classList.add('d-none');
                 if (onSuccess) onSuccess();
             },
             error => {
-                console.warn("High accuracy GPS failed, trying fallback...", error);
-                // Fallback to low accuracy (resolves desktop location issues)
+                console.warn("High accuracy GPS failed, trying low accuracy...", error);
                 navigator.geolocation.getCurrentPosition(
                     position => {
                         userLatitude = position.coords.latitude;
                         userLongitude = position.coords.longitude;
-                        geoText.textContent = `Location (Approx): ${userLatitude.toFixed(5)}, ${userLongitude.toFixed(5)}`;
-                        document.getElementById('geoStatus').className = "alert alert-success py-2 px-3 rounded-pill mb-4 w-100 text-center small border-0 d-flex align-items-center justify-content-center gap-2";
+                        if (geoText) geoText.textContent = `Location (Approx): ${userLatitude.toFixed(4)}, ${userLongitude.toFixed(4)}`;
+                        if (geoStatus) geoStatus.className = "alert alert-success py-2 px-3 rounded-3 mb-2 small text-center border-0 fw-semibold text-success bg-success bg-opacity-10";
+                        if (mockBtn) mockBtn.classList.add('d-none');
                         if (onSuccess) onSuccess();
                     },
                     fallbackError => {
-                        console.error("All GPS options failed:", fallbackError);
-                        let msg = "GPS Error. Please allow location access & turn on GPS.";
-                        if (fallbackError.code === 1) {
-                            msg = "Permission Denied. Please reset browser location permissions.";
-                        } else if (fallbackError.code === 2) {
-                            msg = "Position Unavailable. Check device GPS settings.";
-                        } else if (fallbackError.code === 3) {
-                            msg = "Request Timed Out. Please try again.";
-                        }
-                        geoText.textContent = msg;
-                        document.getElementById('geoStatus').className = "alert alert-danger py-2 px-3 rounded-pill mb-4 w-100 text-center small border-0 d-flex flex-column align-items-center justify-content-center gap-1";
-                        document.getElementById('btnMockLocation').classList.remove('d-none');
+                        console.error("GPS Error:", fallbackError);
+                        let msg = "GPS Error. Please grant location access.";
+                        if (fallbackError.code === 1) msg = "Permission Denied. Enable browser location.";
+                        else if (fallbackError.code === 2) msg = "Position Unavailable. Check device GPS.";
+                        else if (fallbackError.code === 3) msg = "GPS Timed Out. Try again.";
+                        
+                        if (geoText) geoText.textContent = msg;
+                        if (geoStatus) geoStatus.className = "alert alert-danger py-2 px-3 rounded-3 mb-2 small text-center border-0 text-danger bg-danger bg-opacity-10";
+                        if (mockBtn) mockBtn.classList.remove('d-none');
                         if (onFailure) onFailure(msg);
                     },
                     { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
@@ -408,55 +686,36 @@
         );
     }
 
-    // Helper to simulate/mock location if blocked
     function useMockLocation() {
         userLatitude = 17.385044;
         userLongitude = 78.486671;
-        geoText.textContent = "Location (Mocked): 17.38504, 78.48667";
-        document.getElementById('geoStatus').className = "alert alert-success py-2 px-3 rounded-pill mb-4 w-100 text-center small border-0 d-flex align-items-center justify-content-center gap-2";
-        document.getElementById('btnMockLocation').classList.add('d-none');
+        const geoText = document.getElementById('modalGeoText');
+        const geoStatus = document.getElementById('modalGeoStatus');
+        const mockBtn = document.getElementById('modalBtnMockLocation');
+
+        if (geoText) geoText.textContent = "Location (Mocked): 17.3850, 78.4866";
+        if (geoStatus) geoStatus.className = "alert alert-success py-2 px-3 rounded-3 mb-2 small text-center border-0 fw-semibold text-success bg-success bg-opacity-10";
+        if (mockBtn) mockBtn.classList.add('d-none');
     }
 
-    // Load location immediately
-    fetchLocation();
+    // Submit Verification Photo and Location
+    function submitAttendanceVerification() {
+        const video = document.getElementById('modalVideo');
+        const canvas = document.getElementById('modalCanvas');
+        const submitBtn = document.getElementById('btnModalSubmit');
+        const overlay = document.getElementById('modalSnapOverlay');
 
-    // Start video camera
-    function startCamera() {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-                .then(s => {
-                    stream = s;
-                    video.srcObject = stream;
-                    cameraPlaceholder.classList.add('d-none');
-                })
-                .catch(err => {
-                    console.error("Camera access error:", err);
-                    alert("Camera access is required. Please check your browser permission settings.");
-                });
-        }
-    }
-
-    // Trigger start camera immediately on load if anything is pending
-    {% if not attendance or not attendance.check_in or not attendance.mid_day_time or not attendance.check_out %}
-        startCamera();
-    {% endif %}
-
-    // Main action triggers
-    function triggerAttendance(type) {
-        if (!stream) {
-            alert("Waiting for camera feed. Please allow camera permissions.");
-            startCamera();
+        if (!modalStream) {
+            showErrorToast("Camera stream is not active. Please grant camera permission.");
+            startModalCamera();
             return;
         }
 
-        // Helper to post attendance
         const postData = () => {
-            // Capture snapshot from video
             const context = canvas.getContext('2d');
             const nativeW = video.videoWidth || 640;
             const nativeH = video.videoHeight || 480;
             
-            // Scale down to max 640px preserving aspect ratio
             const maxDim = 640;
             let targetW = nativeW;
             let targetH = nativeH;
@@ -475,18 +734,17 @@
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             const dataURL = canvas.toDataURL('image/jpeg', 0.6);
 
-            // Show flash overlay
-            const overlay = document.getElementById('snapOverlay');
+            playShutterAudio();
             overlay.classList.remove('d-none');
             overlay.classList.add('d-flex');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Submitting...';
 
-            // Determine URL endpoint
             let endpoint = '';
-            if (type === 'check_in') endpoint = "{% url 'attendance:check_in' %}";
-            else if (type === 'mid_day') endpoint = "{% url 'attendance:mid_day' %}";
-            else if (type === 'check_out') endpoint = "{% url 'attendance:check_out' %}";
+            if (currentVerificationType === 'check_in') endpoint = "{% url 'attendance:check_in' %}";
+            else if (currentVerificationType === 'mid_day') endpoint = "{% url 'attendance:mid_day' %}";
+            else if (currentVerificationType === 'check_out') endpoint = "{% url 'attendance:check_out' %}";
 
-            // POST request via fetch
             fetch(endpoint, {
                 method: 'POST',
                 headers: {
@@ -503,28 +761,29 @@
             .then(data => {
                 overlay.classList.add('d-none');
                 overlay.classList.remove('d-flex');
+                submitBtn.disabled = false;
                 
                 if (data.success) {
-                    // Stop camera stream
-                    if (stream) {
-                        stream.getTracks().forEach(track => track.stop());
-                    }
+                    stopModalCamera();
+                    if (cameraModalObj) cameraModalObj.hide();
                     showSuccessToast(data.message, () => {
                         location.reload();
                     });
                 } else {
                     showErrorToast(data.message);
+                    submitBtn.innerHTML = '<i class="bi bi-camera-fill me-1"></i> Retry Capture';
                 }
             })
             .catch(err => {
                 overlay.classList.add('d-none');
                 overlay.classList.remove('d-flex');
+                submitBtn.disabled = false;
                 console.error("AJAX Error:", err);
-                showErrorToast("Verification failed due to a server connection error.");
+                showErrorToast("Verification failed due to server connection error.");
+                submitBtn.innerHTML = '<i class="bi bi-camera-fill me-1"></i> Retry Capture';
             });
         };
 
-        // If coordinates are not loaded yet, fetch them inline now and then post
         if (!userLatitude || !userLongitude) {
             fetchLocation(
                 () => { postData(); },
@@ -535,7 +794,7 @@
         }
     }
 
-    // Dynamic Geocoder script to show area names next to View Location
+    // Dynamic Geocoder script to show area names
     document.addEventListener("DOMContentLoaded", function() {
         const coords = Array.from(document.querySelectorAll('.gps-coord'));
         let delay = 0;
@@ -574,11 +833,30 @@
                 }
             }, delay);
             
-            delay += 600; // 600ms spacing to respect OpenStreetMap rate limits
+            delay += 600;
         });
     });
 </script>
 <style>
+    .cursor-zoom {
+        cursor: zoom-in;
+        transition: transform 0.2s ease;
+    }
+    .cursor-zoom:hover {
+        transform: scale(1.05);
+    }
+    .action-btn-hover {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .action-btn-hover:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+    }
+    .btn-icon-circle {
+        width: 42px;
+        height: 42px;
+        flex-shrink: 0;
+    }
     .custom-success-toast, .custom-error-toast {
         position: fixed;
         bottom: 30px;
@@ -626,24 +904,6 @@
     .btn-xxs {
         font-size: 0.7rem !important;
         padding: 0.15rem 0.4rem !important;
-    }
-    .btn-xs {
-        font-size: 0.75rem !important;
-        padding: 0.25rem 0.5rem !important;
-    }
-    @media print {
-        body * {
-            visibility: hidden;
-        }
-        #printArea, #printArea * {
-            visibility: visible;
-        }
-        #printArea {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-        }
     }
 </style>
 {% endblock %}

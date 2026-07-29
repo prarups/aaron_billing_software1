@@ -13,11 +13,11 @@ from django.utils import timezone
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse, Http404
 from django.core.files.base import ContentFile
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.conf import settings
 from users.models import User
 from core.models import Branch
-from .models import Attendance, LeaveRequest, PermissionRequest, SalaryConfig, MonthlyPayroll
+from .models import Attendance, LeaveRequest, PermissionRequest, SalaryConfig, MonthlyPayroll, GlobalPermissionPolicy
 import datetime
 import calendar
 from decimal import Decimal
@@ -393,14 +393,10 @@ def permission_list(request):
     page_number = request.GET.get('page')
     past_perms_page = paginator.get_page(page_number)
     
-    # Load dynamic limits
-    try:
-        salary_config = user.salary_config
-        max_permissions = salary_config.max_permissions_per_month
-        max_hours = salary_config.max_hours_per_permission
-    except Exception:
-        max_permissions = 2
-        max_hours = Decimal('2.00')
+    # Load global permission policy limits
+    global_policy = GlobalPermissionPolicy.get_policy()
+    max_permissions = global_policy.max_permissions_per_month
+    max_hours = global_policy.max_hours_per_permission
 
     # Count how many permissions the user has requested/approved in the current month (excluding rejected)
     today_date = timezone.localdate()
@@ -417,11 +413,60 @@ def permission_list(request):
         'branches': branches,
         'q_perm': q_perm,
         'selected_branch_id': branch_perm,
+        'global_policy': global_policy,
         'max_permissions': max_permissions,
         'max_hours': max_hours,
         'permissions_used_this_month': permissions_used_this_month,
+        'is_owner_or_manager': is_manager_or_owner(user),
     }
     return render(request, 'attendance/permission_list.html', context)
+
+@login_required
+def update_global_permission_policy(request):
+    if not is_manager_or_owner(request.user):
+        messages.error(request, 'Unauthorized access: Manager or Owner privilege required.')
+        return redirect('attendance:permission_list')
+        
+    if request.method == 'POST':
+        try:
+            max_perms = int(request.POST.get('max_permissions_per_month', 2))
+            max_hours = Decimal(request.POST.get('max_hours_per_permission', '2.00'))
+            late_thresh = int(request.POST.get('late_threshold_for_half_day_deduction', 4))
+            
+            if max_perms < 1:
+                messages.error(request, 'Max permissions per month must be at least 1.')
+                return redirect('attendance:permission_list')
+            if max_hours <= 0:
+                messages.error(request, 'Max hours per permission must be greater than 0.')
+                return redirect('attendance:permission_list')
+            if late_thresh < 1:
+                messages.error(request, 'Late threshold must be at least 1 day.')
+                return redirect('attendance:permission_list')
+                
+            policy = GlobalPermissionPolicy.get_policy()
+            policy.max_permissions_per_month = max_perms
+            policy.max_hours_per_permission = max_hours
+            policy.late_threshold_for_half_day_deduction = late_thresh
+            policy.updated_by = request.user
+            policy.save()
+            
+            # Sync all SalaryConfig objects so that user defaults stay aligned
+            SalaryConfig.objects.all().update(
+                max_permissions_per_month=max_perms,
+                max_hours_per_permission=max_hours
+            )
+            
+            from .models import format_duration_display
+            policy_dur_str = format_duration_display(max_hours)
+            
+            messages.success(
+                request,
+                f'Global permission policy updated! All employees are now permitted {max_perms} requests per month and max {policy_dur_str} per request.'
+            )
+        except Exception as e:
+            messages.error(request, f'Failed to update global permission policy: {e}')
+            
+    return redirect('attendance:permission_list')
 
 @login_required
 def permission_request(request):
@@ -445,19 +490,18 @@ def permission_request(request):
                 
             duration_hours = Decimal(str((end_dt - start_dt).total_seconds() / 3600.0))
             
-            try:
-                salary_config = request.user.salary_config
-                max_hours = salary_config.max_hours_per_permission
-                max_perms = salary_config.max_permissions_per_month
-            except Exception:
-                max_hours = Decimal('2.00')
-                max_perms = 2
+            global_policy = GlobalPermissionPolicy.get_policy()
+            max_hours = global_policy.max_hours_per_permission
+            max_perms = global_policy.max_permissions_per_month
                 
             if duration_hours > max_hours:
+                from .models import format_duration_display
+                req_dur_str = format_duration_display(duration_hours)
+                limit_dur_str = format_duration_display(max_hours)
                 messages.error(
                     request,
-                    f'Failed to submit request: Duration ({duration_hours:.2f} hours) '
-                    f'exceeds your permitted limit of {max_hours:.2f} hours per request.'
+                    f'Failed to submit request: Duration ({req_dur_str}) '
+                    f'exceeds your permitted limit of {limit_dur_str} per request.'
                 )
                 return redirect('attendance:permission_list')
                 
@@ -717,47 +761,195 @@ def salary_list(request):
         return redirect('attendance:dashboard')
         
     users = User.objects.all().order_by('username')
-    
-    # Make sure SalaryConfig exists for all users
     for user in users:
         SalaryConfig.objects.get_or_create(user=user)
         
-    # Processed Payroll list
-    today = timezone.localdate()
-    selected_month = int(request.GET.get('month', today.month))
-    selected_year = int(request.GET.get('year', today.year))
-    
-    payrolls = MonthlyPayroll.objects.filter(month=selected_month, year=selected_year)
-    
-    # Base Salary Config filtering logic
     q_staff = request.GET.get('q_staff', '').strip()
     branch_staff = request.GET.get('branch_staff', '').strip()
-    active_tab = request.GET.get('tab', 'process')
     
     if q_staff:
-        users = users.filter(Q(username__icontains=q_staff) | Q(employee_id__icontains=q_staff))
-        
+        users = users.filter(Q(username__icontains=q_staff) | Q(employee_id__icontains=q_staff) | Q(first_name__icontains=q_staff) | Q(last_name__icontains=q_staff))
     if branch_staff:
         users = users.filter(branches__id=branch_staff)
         
     users = users.distinct()
-    
-    # Fetch all branches for the filter dropdown
     branches = Branch.objects.all().order_by('name')
+    
+    today = timezone.localdate()
     
     context = {
         'users': users,
+        'branches': branches,
+        'q_staff': q_staff,
+        'selected_branch_id': branch_staff,
+        'months': range(1, 13),
+        'years': range(today.year - 2, today.year + 2),
+        'current_month': today.month,
+        'current_year': today.year,
+    }
+    return render(request, 'attendance/payroll.html', context)
+
+
+def ensure_monthly_payrolls(month, year, request_user=None):
+    users = User.objects.all().order_by('username')
+    first_day = datetime.date(year, month, 1)
+    days_in_month = calendar.monthrange(year, month)[1]
+    last_day = datetime.date(year, month, days_in_month)
+    
+    for user in users:
+        config, _ = SalaryConfig.objects.get_or_create(user=user)
+        if not MonthlyPayroll.objects.filter(user=user, month=month, year=year).exists():
+            # Exclude dates where short permission was approved
+            approved_perm_dates = set(
+                PermissionRequest.objects.filter(
+                    user=user,
+                    date__range=(first_day, last_day),
+                    status='approved'
+                ).values_list('date', flat=True)
+            )
+            
+            late_days = Attendance.objects.filter(
+                user=user, 
+                date__range=(first_day, last_day),
+                status='late'
+            ).exclude(date__in=approved_perm_dates).count()
+            
+            present_att = Attendance.objects.filter(
+                user=user, 
+                date__range=(first_day, last_day)
+            )
+            
+            present_days = 0
+            absent_days = 0
+            approved_leaves = 0
+            unapproved_leaves = 0
+            
+            current_date = first_day
+            while current_date <= last_day:
+                att_rec = present_att.filter(date=current_date).first()
+                if att_rec:
+                    if att_rec.status in ['present', 'late']:
+                        present_days += 1
+                    elif att_rec.status == 'half_day':
+                        present_days += 0.5
+                        absent_days += 0.5
+                    elif att_rec.status == 'on_leave':
+                        leave = LeaveRequest.objects.filter(
+                            user=user, 
+                            start_date__lte=current_date, 
+                            end_date__gte=current_date, 
+                            status='approved'
+                        ).first()
+                        if leave:
+                            approved_leaves += 1
+                        else:
+                            unapproved_leaves += 1
+                else:
+                    leave = LeaveRequest.objects.filter(
+                        user=user, 
+                        start_date__lte=current_date, 
+                        end_date__gte=current_date, 
+                        status='approved'
+                    ).first()
+                    if leave:
+                        approved_leaves += 1
+                    else:
+                        absent_days += 1
+                        unapproved_leaves += 1
+                        
+                current_date += datetime.timedelta(days=1)
+            
+            global_policy = GlobalPermissionPolicy.get_policy()
+            late_thresh = max(1, global_policy.late_threshold_for_half_day_deduction or 4)
+            
+            lop_days_to_deduct = Decimal(str(max(0, unapproved_leaves - 4)))
+            per_day_rate = config.monthly_base_salary / Decimal(str(days_in_month)) if days_in_month > 0 else Decimal('0')
+            half_day_rate = per_day_rate / Decimal('2')
+            
+            lop_deduction = lop_days_to_deduct * per_day_rate
+            late_half_days = Decimal(str(late_days // late_thresh))
+            late_deduction = late_half_days * half_day_rate
+            
+            total_deductions = late_deduction + lop_deduction
+            net_salary = max(Decimal('0.00'), config.monthly_base_salary - total_deductions)
+                
+            MonthlyPayroll.objects.create(
+                user=user,
+                month=month,
+                year=year,
+                present_days=present_days,
+                absent_days=absent_days,
+                late_days=late_days,
+                approved_leaves=approved_leaves,
+                unapproved_leaves=unapproved_leaves,
+                base_salary=config.monthly_base_salary,
+                deductions=total_deductions,
+                net_salary=net_salary,
+                processed_by=request_user if (request_user and request_user.is_authenticated) else None,
+                status='draft'
+            )
+
+
+@login_required
+def pay_slips_view(request):
+    if not is_owner(request.user):
+        messages.error(request, 'Unauthorized access.')
+        return redirect('attendance:dashboard')
+        
+    today = timezone.localdate()
+    selected_month = int(request.GET.get('month', today.month))
+    selected_year = int(request.GET.get('year', today.year))
+    
+    # Auto-ensure monthly payroll records exist for all users
+    ensure_monthly_payrolls(selected_month, selected_year, request.user)
+    
+    raw_month_payrolls = MonthlyPayroll.objects.filter(month=selected_month, year=selected_year)
+    
+    total_base = raw_month_payrolls.aggregate(Sum('base_salary'))['base_salary__sum'] or Decimal('0.00')
+    total_deductions = raw_month_payrolls.aggregate(Sum('deductions'))['deductions__sum'] or Decimal('0.00')
+    total_net = raw_month_payrolls.aggregate(Sum('net_salary'))['net_salary__sum'] or Decimal('0.00')
+    paid_count = raw_month_payrolls.filter(status='paid').count()
+    draft_count = raw_month_payrolls.filter(status='draft').count()
+    total_staff_payrolls = raw_month_payrolls.count()
+
+    payrolls = raw_month_payrolls
+    q_payroll = request.GET.get('q_payroll', '').strip()
+    branch_payroll = request.GET.get('branch_payroll', '').strip()
+    status_payroll = request.GET.get('status_payroll', '').strip()
+
+    if q_payroll:
+        payrolls = payrolls.filter(
+            Q(user__username__icontains=q_payroll) | 
+            Q(user__employee_id__icontains=q_payroll) |
+            Q(user__first_name__icontains=q_payroll) |
+            Q(user__last_name__icontains=q_payroll)
+        )
+    if branch_payroll:
+        payrolls = payrolls.filter(user__branches__id=branch_payroll)
+    if status_payroll and status_payroll in ['draft', 'paid']:
+        payrolls = payrolls.filter(status=status_payroll)
+
+    payrolls = payrolls.distinct().order_by('user__username')
+    branches = Branch.objects.all().order_by('name')
+    
+    context = {
         'payrolls': payrolls,
         'selected_month': selected_month,
         'selected_year': selected_year,
         'months': range(1, 13),
         'years': range(today.year - 2, today.year + 2),
         'branches': branches,
-        'q_staff': q_staff,
-        'selected_branch_id': branch_staff,
-        'active_tab': active_tab,
+        'q_payroll': q_payroll,
+        'branch_payroll': branch_payroll,
+        'status_payroll': status_payroll,
+        'total_base': total_base,
+        'total_deductions': total_deductions,
+        'total_net': total_net,
+        'paid_count': paid_count,
+        'draft_count': draft_count,
+        'total_staff_payrolls': total_staff_payrolls,
     }
-    return render(request, 'attendance/payroll.html', context)
+    return render(request, 'attendance/pay_slips.html', context)
 
 @login_required
 def salary_config_view(request, user_id):
@@ -771,19 +963,10 @@ def salary_config_view(request, user_id):
     if request.method == 'POST':
         try:
             base = request.POST.get('monthly_base_salary', '0')
-            late = request.POST.get('late_deduction_amount', '0')
-            lop = request.POST.get('lop_deduction_amount', '0')
-            max_perms = request.POST.get('max_permissions_per_month', '2')
-            max_hours = request.POST.get('max_hours_per_permission', '2.00')
-            
             config.monthly_base_salary = Decimal(base)
-            config.late_deduction_amount = Decimal(late)
-            config.lop_deduction_amount = Decimal(lop)
-            config.max_permissions_per_month = int(max_perms)
-            config.max_hours_per_permission = Decimal(max_hours)
             config.save()
             
-            messages.success(request, f'Salary & Permission configuration updated for {user_obj.username}.')
+            messages.success(request, f'Monthly Base Salary updated for {user_obj.username}.')
             return redirect('attendance:payroll_list')
         except (ValueError, TypeError, Exception) as e:
             messages.error(request, f'Failed to update configuration: {e}')
@@ -804,8 +987,8 @@ def generate_payroll(request):
             month = int(request.POST.get('month'))
             year = int(request.POST.get('year'))
             
-            # Find all users
-            users = User.objects.exclude(role='owner')
+            # Find all users (including admins/managers)
+            users = User.objects.all().order_by('username')
             
             # Setup month date ranges
             first_day = datetime.date(year, month, 1)
@@ -820,12 +1003,20 @@ def generate_payroll(request):
                     with transaction.atomic():
                         config, _ = SalaryConfig.objects.get_or_create(user=user)
                         
-                        # Fetch attendance summary for this month
+                        # Exclude dates where short permission was approved
+                        approved_perm_dates = set(
+                            PermissionRequest.objects.filter(
+                                user=user,
+                                date__range=(first_day, last_day),
+                                status='approved'
+                            ).values_list('date', flat=True)
+                        )
+                        
                         late_days = Attendance.objects.filter(
                             user=user, 
                             date__range=(first_day, last_day),
                             status='late'
-                        ).count()
+                        ).exclude(date__in=approved_perm_dates).count()
                         
                         present_att = Attendance.objects.filter(
                             user=user, 
@@ -873,15 +1064,19 @@ def generate_payroll(request):
                                     
                             current_date += datetime.timedelta(days=1)
                         
-                        lop_days_to_deduct = max(0, unapproved_leaves - 4)
+                        global_policy = GlobalPermissionPolicy.get_policy()
+                        late_thresh = max(1, global_policy.late_threshold_for_half_day_deduction or 4)
                         
-                        late_deduction = late_days * config.late_deduction_amount
-                        lop_deduction = lop_days_to_deduct * config.lop_deduction_amount
+                        lop_days_to_deduct = Decimal(str(max(0, unapproved_leaves - 4)))
+                        per_day_rate = config.monthly_base_salary / Decimal(str(days_in_month)) if days_in_month > 0 else Decimal('0')
+                        half_day_rate = per_day_rate / Decimal('2')
+                        
+                        lop_deduction = lop_days_to_deduct * per_day_rate
+                        late_half_days = Decimal(str(late_days // late_thresh))
+                        late_deduction = late_half_days * half_day_rate
+                        
                         total_deductions = late_deduction + lop_deduction
-                        
-                        net_salary = config.monthly_base_salary - total_deductions
-                        if net_salary < 0:
-                            net_salary = 0
+                        net_salary = max(Decimal('0.00'), config.monthly_base_salary - total_deductions)
                             
                         MonthlyPayroll.objects.update_or_create(
                             user=user,
@@ -909,15 +1104,12 @@ def generate_payroll(request):
             else:
                 messages.success(request, f"Payroll generated successfully for all {success_count} staff members.")
                 
-            return redirect(f"{reverse('attendance:payroll_list')}?month={month}&year={year}")
+            return redirect(f"{reverse('attendance:pay_slips')}?month={month}&year={year}")
         except Exception as e:
             messages.error(request, f"Error generating payroll: {e}")
-            return redirect('attendance:payroll_list')
-        except Exception as e:
-            messages.error(request, f"Error generating payroll: {e}")
-            return redirect('attendance:payroll_list')
+            return redirect('attendance:pay_slips')
             
-    return redirect('attendance:payroll_list')
+    return redirect('attendance:pay_slips')
 
 @login_required
 def mark_payroll_paid(request, payroll_id):
@@ -929,7 +1121,28 @@ def mark_payroll_paid(request, payroll_id):
     payroll.status = 'paid'
     payroll.save()
     messages.success(request, f"Salary of Rs.{payroll.net_salary} for {payroll.user.username} marked as PAID.")
-    return redirect(f"{reverse('attendance:payroll_list')}?month={payroll.month}&year={payroll.year}")
+    return redirect(f"{reverse('attendance:pay_slips')}?month={payroll.month}&year={payroll.year}")
+
+@login_required
+def mark_all_payrolls_paid(request):
+    if not is_owner(request.user):
+        messages.error(request, 'Unauthorized.')
+        return redirect('attendance:dashboard')
+        
+    if request.method == 'POST':
+        month = request.POST.get('month')
+        year = request.POST.get('year')
+        if month and year:
+            updated_count = MonthlyPayroll.objects.filter(
+                month=month,
+                year=year,
+                status='draft'
+            ).update(status='paid')
+            
+            messages.success(request, f"Successfully marked all {updated_count} draft pay slips as PAID for {month}/{year}.")
+            return redirect(f"{reverse('attendance:pay_slips')}?month={month}&year={year}")
+            
+    return redirect('attendance:pay_slips')
 
 @login_required
 def edit_attendance_ajax(request, pk):
