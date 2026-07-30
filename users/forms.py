@@ -84,14 +84,10 @@ class StaffForm(forms.ModelForm):
         widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3'}),
         required=False
     )
-    grace_period_minutes = forms.IntegerField(
-        widget=forms.NumberInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Grace Period (minutes)'}),
-        required=False
-    )
     
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'role', 'branches', 'employee_id', 'mobile_number', 'address', 'is_active', 'date_of_joining', 'has_pos_access', 'has_attendance_access', 'shift_start_time', 'shift_end_time', 'grace_period_minutes']
+        fields = ['username', 'first_name', 'last_name', 'role', 'branches', 'employee_id', 'mobile_number', 'address', 'is_active', 'date_of_joining', 'has_pos_access', 'has_attendance_access', 'shift_start_time', 'shift_end_time']
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Username', 'autocomplete': 'new-username'}),
             'first_name': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'First Name', 'autocomplete': 'off'}),

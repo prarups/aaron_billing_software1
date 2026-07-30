@@ -32,46 +32,56 @@
                         </span>
                     </div>
 
-                    <form method="post" action="{% url 'attendance:update_global_policy' %}" class="row g-3 align-items-end">
+                    <form method="post" action="{% url 'attendance:update_global_policy' %}">
                         {% csrf_token %}
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted mb-1">Max Permissions / Month</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0 rounded-start-3 text-muted"><i class="bi bi-calendar-check"></i></span>
-                                <input type="number" name="max_permissions_per_month" value="{{ global_policy.max_permissions_per_month }}" min="1" max="30" class="form-control border-start-0 rounded-end-3" required>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6 col-lg-3">
+                                <label class="form-label small fw-bold text-muted mb-1">Max Permissions / Month</label>
+                                <div class="input-group shadow-sm rounded-3">
+                                    <span class="input-group-text bg-light border-end-0 rounded-start-3 text-muted"><i class="bi bi-calendar-check"></i></span>
+                                    <input type="number" name="max_permissions_per_month" value="{{ global_policy.max_permissions_per_month }}" min="1" max="30" class="form-control border-start-0 rounded-end-3" required>
+                                </div>
+                                <span class="text-muted text-xxs d-block mt-1">Allowed count per month</span>
                             </div>
-                            <span class="text-muted text-xxs d-block mt-1">Allowed count per month</span>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted mb-1">Max Hours / Permission</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0 rounded-start-3 text-muted"><i class="bi bi-clock"></i></span>
-                                <select name="max_hours_per_permission" class="form-select border-start-0 rounded-end-3" required>
-                                    <option value="0.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "0.50" %}selected{% endif %}>30 Mins (0.5 hrs)</option>
-                                    <option value="1.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "1.00" %}selected{% endif %}>1 Hour (1.0 hr)</option>
-                                    <option value="1.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "1.50" %}selected{% endif %}>1 Hour 30 Mins (1.5 hrs)</option>
-                                    <option value="2.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "2.00" %}selected{% endif %}>2 Hours (2.0 hrs)</option>
-                                    <option value="2.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "2.50" %}selected{% endif %}>2 Hours 30 Mins (2.5 hrs)</option>
-                                    <option value="3.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "3.00" %}selected{% endif %}>3 Hours (3.0 hrs)</option>
-                                    <option value="3.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "3.50" %}selected{% endif %}>3 Hours 30 Mins (3.5 hrs)</option>
-                                    <option value="4.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "4.00" %}selected{% endif %}>4 Hours (4.0 hrs)</option>
-                                    <option value="5.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "5.00" %}selected{% endif %}>5 Hours (5.0 hrs)</option>
-                                    <option value="6.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "6.00" %}selected{% endif %}>6 Hours (6.0 hrs)</option>
-                                </select>
+                            <div class="col-md-6 col-lg-3">
+                                <label class="form-label small fw-bold text-muted mb-1">Max Hours / Permission</label>
+                                <div class="input-group shadow-sm rounded-3">
+                                    <span class="input-group-text bg-light border-end-0 rounded-start-3 text-muted"><i class="bi bi-clock"></i></span>
+                                    <select name="max_hours_per_permission" class="form-select border-start-0 rounded-end-3" required>
+                                        <option value="0.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "0.50" %}selected{% endif %}>30 Mins (0.5 hrs)</option>
+                                        <option value="1.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "1.00" %}selected{% endif %}>1 Hour (1.0 hr)</option>
+                                        <option value="1.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "1.50" %}selected{% endif %}>1 Hour 30 Mins (1.5 hrs)</option>
+                                        <option value="2.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "2.00" %}selected{% endif %}>2 Hours (2.0 hrs)</option>
+                                        <option value="2.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "2.50" %}selected{% endif %}>2 Hours 30 Mins (2.5 hrs)</option>
+                                        <option value="3.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "3.00" %}selected{% endif %}>3 Hours (3.0 hrs)</option>
+                                        <option value="3.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "3.50" %}selected{% endif %}>3 Hours 30 Mins (3.5 hrs)</option>
+                                        <option value="4.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "4.00" %}selected{% endif %}>4 Hours (4.0 hrs)</option>
+                                        <option value="5.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "5.00" %}selected{% endif %}>5 Hours (5.0 hrs)</option>
+                                        <option value="6.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "6.00" %}selected{% endif %}>6 Hours (6.0 hrs)</option>
+                                    </select>
+                                </div>
+                                <span class="text-muted text-xxs d-block mt-1">Maximum time per request</span>
                             </div>
-                            <span class="text-muted text-xxs d-block mt-1">Maximum time per request</span>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted mb-1">Lates For Half-Day Cut</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0 rounded-start-3 text-muted"><i class="bi bi-exclamation-triangle"></i></span>
-                                <input type="number" name="late_threshold_for_half_day_deduction" value="{{ global_policy.late_threshold_for_half_day_deduction|default:4 }}" min="1" max="30" class="form-control border-start-0 rounded-end-3" required>
+                            <div class="col-md-6 col-lg-3">
+                                <label class="form-label small fw-bold text-muted mb-1">Grace Period (Minutes)</label>
+                                <div class="input-group shadow-sm rounded-3">
+                                    <span class="input-group-text bg-light border-end-0 rounded-start-3 text-muted"><i class="bi bi-stopwatch"></i></span>
+                                    <input type="number" name="grace_period_minutes" value="{{ global_policy.grace_period_minutes|default:15 }}" min="0" max="120" class="form-control border-start-0 rounded-end-3" required>
+                                </div>
+                                <span class="text-muted text-xxs d-block mt-1">Grace mins before Late status</span>
                             </div>
-                            <span class="text-muted text-xxs d-block mt-1">Late count triggering 0.5 day cut</span>
+                            <div class="col-md-6 col-lg-3">
+                                <label class="form-label small fw-bold text-muted mb-1">Lates For Half-Day Cut</label>
+                                <div class="input-group shadow-sm rounded-3">
+                                    <span class="input-group-text bg-light border-end-0 rounded-start-3 text-muted"><i class="bi bi-exclamation-triangle"></i></span>
+                                    <input type="number" name="late_threshold_for_half_day_deduction" value="{{ global_policy.late_threshold_for_half_day_deduction|default:4 }}" min="1" max="30" class="form-control border-start-0 rounded-end-3" required>
+                                </div>
+                                <span class="text-muted text-xxs d-block mt-1">Late count triggering 0.5 day cut</span>
+                            </div>
                         </div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn text-white rounded-pill w-100 py-2 fw-semibold shadow-sm" style="background: linear-gradient(135deg, #4f46e5, #6366f1); border: none;">
-                                <i class="bi bi-save-fill me-1"></i> Save Global Policy
+                        <div class="d-flex justify-content-end border-top pt-3 mt-1">
+                            <button type="submit" class="btn text-white rounded-pill px-4 py-2 fw-semibold shadow-sm" style="background: linear-gradient(135deg, #4f46e5, #6366f1); border: none;">
+                                <i class="bi bi-check-circle-fill me-1"></i> Save Global Policy
                             </button>
                         </div>
                     </form>
@@ -162,8 +172,9 @@
                     <form method="post" action="{% url 'attendance:permission_request' %}">
                         {% csrf_token %}
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted">Date</label>
-                            <input type="date" name="date" class="form-control rounded-3" required>
+                            <label class="form-label small fw-bold text-muted">Date <span class="text-primary fw-normal">({{ current_month_name }})</span></label>
+                            <input type="date" name="date" min="{{ current_month_start }}" max="{{ current_month_end }}" class="form-control rounded-3" required>
+                            <div class="form-text text-muted" style="font-size: 0.75rem;">Permissions can only be requested for dates within the current month.</div>
                         </div>
                         
                         <div class="row mb-3">

@@ -197,22 +197,29 @@ def check_in(request):
             
             # Check-in time threshold for late mark (using user's specific shift and grace period)
             now = timezone.localtime(timezone.now())
-            status = 'present'
-            
-            # Combine today's date with the user's shift start time in local timezone
+            # Tiered late / half-day / absent status evaluation
             shift_start = request.user.shift_start_time
-            grace_mins = request.user.grace_period_minutes
+            global_policy = GlobalPermissionPolicy.get_policy()
+            grace_mins = global_policy.grace_period_minutes
             
             local_shift_datetime = timezone.make_aware(
                 datetime.datetime.combine(today, shift_start),
                 timezone.get_current_timezone()
             )
             
-            # Calculate late threshold
-            late_threshold = local_shift_datetime + datetime.timedelta(minutes=grace_mins)
-            
-            if now > late_threshold:
+            delay_minutes = (now - local_shift_datetime).total_seconds() / 60.0
+
+            if delay_minutes <= grace_mins:
+                status = 'present'
+            elif delay_minutes <= 60:
+                # Arrived after grace period up to 1 hour late
                 status = 'late'
+            elif delay_minutes <= 240:
+                # Arrived between 1 and 4 hours late -> Half Day
+                status = 'half_day'
+            else:
+                # Arrived after 4 hours late -> Absent
+                status = 'absent'
                 
             # If there's an approved leave for today, set status to 'on_leave'
             on_leave = LeaveRequest.objects.filter(
@@ -400,6 +407,11 @@ def permission_list(request):
 
     # Count how many permissions the user has requested/approved in the current month (excluding rejected)
     today_date = timezone.localdate()
+    _, last_day = calendar.monthrange(today_date.year, today_date.month)
+    current_month_start = today_date.replace(day=1).strftime('%Y-%m-%d')
+    current_month_end = today_date.replace(day=last_day).strftime('%Y-%m-%d')
+    current_month_name = today_date.strftime('%B %Y')
+
     permissions_used_this_month = PermissionRequest.objects.filter(
         user=user,
         date__year=today_date.year,
@@ -417,6 +429,9 @@ def permission_list(request):
         'max_permissions': max_permissions,
         'max_hours': max_hours,
         'permissions_used_this_month': permissions_used_this_month,
+        'current_month_start': current_month_start,
+        'current_month_end': current_month_end,
+        'current_month_name': current_month_name,
         'is_owner': is_owner(user),
         'is_owner_or_manager': is_manager_or_owner(user),
     }
@@ -433,6 +448,7 @@ def update_global_permission_policy(request):
             max_perms = int(request.POST.get('max_permissions_per_month', 2))
             max_hours = Decimal(request.POST.get('max_hours_per_permission', '2.00'))
             late_thresh = int(request.POST.get('late_threshold_for_half_day_deduction', 4))
+            grace_mins = int(request.POST.get('grace_period_minutes', 15))
             
             if max_perms < 1:
                 messages.error(request, 'Max permissions per month must be at least 1.')
@@ -443,13 +459,20 @@ def update_global_permission_policy(request):
             if late_thresh < 1:
                 messages.error(request, 'Late threshold must be at least 1 day.')
                 return redirect('attendance:permission_list')
+            if grace_mins < 0:
+                messages.error(request, 'Grace period minutes cannot be negative.')
+                return redirect('attendance:permission_list')
                 
             policy = GlobalPermissionPolicy.get_policy()
             policy.max_permissions_per_month = max_perms
             policy.max_hours_per_permission = max_hours
             policy.late_threshold_for_half_day_deduction = late_thresh
+            policy.grace_period_minutes = grace_mins
             policy.updated_by = request.user
             policy.save()
+            
+            # Sync all User objects so global grace period applies everywhere
+            User.objects.all().update(grace_period_minutes=grace_mins)
             
             # Sync all SalaryConfig objects so that user defaults stay aligned
             SalaryConfig.objects.all().update(
@@ -462,7 +485,7 @@ def update_global_permission_policy(request):
             
             messages.success(
                 request,
-                f'Global permission policy updated! All employees are now permitted {max_perms} requests per month and max {policy_dur_str} per request.'
+                f'Global permission policy updated! All employees have grace period of {grace_mins} mins, {max_perms} permissions/month, and max {policy_dur_str} per request.'
             )
         except Exception as e:
             messages.error(request, f'Failed to update global permission policy: {e}')
@@ -482,6 +505,15 @@ def permission_request(request):
             start_time = datetime.datetime.strptime(start_time_str, '%H:%M').time()
             end_time = datetime.datetime.strptime(end_time_str, '%H:%M').time()
             
+            # 0. Validate that date is within current month
+            today_date = timezone.localdate()
+            if date_val.year != today_date.year or date_val.month != today_date.month:
+                messages.error(
+                    request,
+                    f'Failed to submit request: Permission can only be applied for dates within the current month ({today_date.strftime("%B %Y")}).'
+                )
+                return redirect('attendance:permission_list')
+
             # 1. Calculate duration and validate hourly limit
             start_dt = datetime.datetime.combine(date_val, start_time)
             end_dt = datetime.datetime.combine(date_val, end_time)

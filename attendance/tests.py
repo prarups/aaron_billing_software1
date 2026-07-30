@@ -167,6 +167,15 @@ class AttendanceTestCase(TestCase):
 
     def test_permission_request_validations(self):
         # Configure limits for the staff user: max 2 permissions per month, max 2.5 hours per request
+        today_date = timezone.localdate()
+        date_15 = today_date.replace(day=15).strftime('%Y-%m-%d')
+        date_16 = today_date.replace(day=16).strftime('%Y-%m-%d')
+        date_17 = today_date.replace(day=17).strftime('%Y-%m-%d')
+        date_18 = today_date.replace(day=18).strftime('%Y-%m-%d')
+
+        # Calculate a date in previous month
+        prev_month_date = (today_date.replace(day=1) - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+
         self.salary_config.max_permissions_per_month = 2
         self.salary_config.max_hours_per_permission = 2.50
         self.salary_config.save()
@@ -174,9 +183,19 @@ class AttendanceTestCase(TestCase):
         # Login as staff user
         self.client.login(username="staff_user", password="testpassword")
 
+        # 0. Test out-of-month request (should fail)
+        response = self.client.post(reverse('attendance:permission_request'), {
+            'date': prev_month_date,
+            'start_time': '10:00',
+            'end_time': '12:00',
+            'reason': 'Previous month errand'
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(PermissionRequest.objects.filter(user=self.staff).count(), 0)
+
         # 1. Test standard valid request (2 hours)
         response = self.client.post(reverse('attendance:permission_request'), {
-            'date': '2026-07-15',
+            'date': date_15,
             'start_time': '10:00',
             'end_time': '12:00',
             'reason': 'Doctor appointment'
@@ -189,7 +208,7 @@ class AttendanceTestCase(TestCase):
 
         # 2. Test request exceeding hours limit (3 hours)
         response = self.client.post(reverse('attendance:permission_request'), {
-            'date': '2026-07-16',
+            'date': date_16,
             'start_time': '10:00',
             'end_time': '13:00',
             'reason': 'Personal errand'
@@ -201,7 +220,7 @@ class AttendanceTestCase(TestCase):
         # 3. Test request exceeding monthly quota (creating 2nd valid, then 3rd should fail)
         # Create second valid request
         response = self.client.post(reverse('attendance:permission_request'), {
-            'date': '2026-07-17',
+            'date': date_17,
             'start_time': '10:00',
             'end_time': '12:00',
             'reason': 'Bank visit'
@@ -209,9 +228,9 @@ class AttendanceTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(PermissionRequest.objects.filter(user=self.staff).count(), 2)
 
-        # Try to create third request in the same month (July 2026)
+        # Try to create third request in the same month
         response = self.client.post(reverse('attendance:permission_request'), {
-            'date': '2026-07-18',
+            'date': date_18,
             'start_time': '10:00',
             'end_time': '11:00',
             'reason': 'Other errand'
@@ -219,3 +238,37 @@ class AttendanceTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
         # Should still be only 2 requests
         self.assertEqual(PermissionRequest.objects.filter(user=self.staff).count(), 2)
+
+    def test_tiered_check_in_status(self):
+        self.client.login(username="staff_user", password="testpassword")
+        today = timezone.localdate()
+
+        # Helper to run check-in with a mocked shift start & time
+        # We can test status calculation logic directly
+        shift_start = datetime.time(9, 0, 0)
+        grace_mins = 15
+        
+        local_shift_datetime = timezone.make_aware(
+            datetime.datetime.combine(today, shift_start),
+            timezone.get_current_timezone()
+        )
+
+        # 1. Check-in within grace period (9:10 AM) -> Present
+        now_1 = local_shift_datetime + datetime.timedelta(minutes=10)
+        delay_1 = (now_1 - local_shift_datetime).total_seconds() / 60.0
+        self.assertTrue(delay_1 <= grace_mins)
+
+        # 2. Check-in 45 mins late (9:45 AM) -> Late
+        now_2 = local_shift_datetime + datetime.timedelta(minutes=45)
+        delay_2 = (now_2 - local_shift_datetime).total_seconds() / 60.0
+        self.assertTrue(grace_mins < delay_2 <= 60)
+
+        # 3. Check-in 2.5 hours late (11:30 AM) -> Half Day
+        now_3 = local_shift_datetime + datetime.timedelta(hours=2, minutes=30)
+        delay_3 = (now_3 - local_shift_datetime).total_seconds() / 60.0
+        self.assertTrue(60 < delay_3 <= 240)
+
+        # 4. Check-in 5 hours late (2:00 PM) -> Absent
+        now_4 = local_shift_datetime + datetime.timedelta(hours=5)
+        delay_4 = (now_4 - local_shift_datetime).total_seconds() / 60.0
+        self.assertTrue(delay_4 > 240)

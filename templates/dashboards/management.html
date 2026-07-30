@@ -648,7 +648,7 @@
                                     {{ staff.first_name }} {{ staff.last_name }}
                                     {% if not staff.first_name and not staff.last_name %}<span class="text-muted">{{ staff.username }}</span>{% endif %}
                                 </div>
-                                <div style="font-size:0.71rem;color:#94a3b8;">@{{ staff.username }} &middot; {{ staff.employee_id|default:"No ID" }} &middot; <i class="bi bi-clock"></i> {{ staff.shift_start_time|time:"h:i A" }} - {{ staff.shift_end_time|time:"h:i A" }} ({{ staff.grace_period_minutes }}m grace)</div>
+                                <div style="font-size:0.71rem;color:#94a3b8;">@{{ staff.username }} &middot; {{ staff.employee_id|default:"No ID" }} &middot; <i class="bi bi-clock"></i> {{ staff.shift_start_time|time:"h:i A" }} - {{ staff.shift_end_time|time:"h:i A" }}</div>
                             </div>
                         </div>
                         <!-- Hidden search spans -->
@@ -973,10 +973,6 @@
                                         <div class="col-6 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Shift End Time</label>
                                             {{ staff_form.shift_end_time }}
-                                        </div>
-                                        <div class="col-12 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Grace Period (Minutes)</label>
-                                            {{ staff_form.grace_period_minutes }}
                                         </div>
                                     </div>
                                 </div>
