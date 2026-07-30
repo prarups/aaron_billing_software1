@@ -20,13 +20,18 @@
     <!-- Main Navigation Tabs -->
     <ul class="nav nav-pills mb-4 gap-2" id="reportsTab" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="btn btn-outline-success {% if active_tab != 'logs' %}active{% endif %} rounded-pill px-4" id="grid-tab" data-bs-toggle="pill" data-bs-target="#gridSection" type="button" role="tab">
+            <button class="btn btn-outline-success {% if active_tab == 'grid' or not active_tab or active_tab != 'logs' and active_tab != 'audit' %}active{% endif %} rounded-pill px-4" id="grid-tab" data-bs-toggle="pill" data-bs-target="#gridSection" type="button" role="tab">
                 <i class="bi bi-grid-3x3-gap-fill me-1"></i> Monthly Visual Grid
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="btn btn-outline-success {% if active_tab == 'logs' %}active{% endif %} rounded-pill px-4" id="logs-tab" data-bs-toggle="pill" data-bs-target="#logsSection" type="button" role="tab">
                 <i class="bi bi-list-task me-1"></i> Detailed Daily Logs
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="btn btn-outline-success {% if active_tab == 'audit' %}active{% endif %} rounded-pill px-4" id="audit-tab" data-bs-toggle="pill" data-bs-target="#auditSection" type="button" role="tab">
+                <i class="bi bi-shield-check me-1"></i> Edit Audit History Log
             </button>
         </li>
     </ul>
@@ -37,19 +42,22 @@
             <!-- Grid Filter Form -->
             <div class="card border-0 shadow-sm mb-4 bg-white" style="border-radius: 1rem;">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold text-success mb-3"><i class="bi bi-calendar-range me-2"></i>Monthly Grid Filter</h5>
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="fw-bold text-success mb-0"><i class="bi bi-calendar-range me-2"></i>Monthly Grid Filter</h5>
+                        <span class="badge bg-light text-success border rounded-pill px-3 py-1 fw-normal small">Filter by Branch, Month & Year</span>
+                    </div>
                     <form method="get" class="row g-3 align-items-end">
                         <input type="hidden" name="tab" value="grid">
-                        <div class="col-md-3">
+                        <div class="col-lg-3 col-md-4">
                             <label class="form-label small fw-bold text-muted">Branch</label>
                             <select name="branch" class="form-select rounded-3 no-search" data-no-search="true">
                                 <option value="">All Branches</option>
                                 {% for b in branches %}
                                     <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
-                                    {% endfor %}
+                                {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-lg-3 col-md-4">
                             <label class="form-label small fw-bold text-muted">Month</label>
                             <select name="grid_month" class="form-select rounded-3 no-search" data-no-search="true">
                                 <option value="1" {% if grid_month == 1 %}selected{% endif %}>January</option>
@@ -66,7 +74,7 @@
                                 <option value="12" {% if grid_month == 12 %}selected{% endif %}>December</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-lg-2 col-md-4">
                             <label class="form-label small fw-bold text-muted">Year</label>
                             <select name="grid_year" class="form-select rounded-3 no-search" data-no-search="true">
                                 {% for y in years %}
@@ -74,10 +82,13 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn btn-success w-100 rounded-pill py-2">
-                                <i class="bi bi-arrow-repeat me-1"></i> Update Grid
+                        <div class="col-lg-4 col-md-12 d-flex gap-2">
+                            <button type="submit" class="btn text-white rounded-pill px-4 py-2.5 fw-semibold shadow-sm w-50" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); border: none;">
+                                <i class="bi bi-arrow-repeat me-1.5"></i> Update Grid
                             </button>
+                            <a href="?tab=grid&branch={{ selected_branch }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}&export=grid_csv" class="btn text-white rounded-pill px-4 py-2.5 fw-semibold shadow-sm w-50 d-flex align-items-center justify-content-center text-nowrap" style="background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%); border: none;" title="Export Monthly Grid as CSV">
+                                <i class="bi bi-file-earmark-spreadsheet-fill me-1.5"></i> Export CSV
+                            </a>
                         </div>
                     </form>
                 </div>
@@ -87,7 +98,9 @@
             <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
                 <div class="card-body p-4">
                     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
-                        <h5 class="fw-bold text-primary mb-0"><i class="bi bi-calendar3 me-2"></i>Monthly Sheet: {{ grid_month }}/{{ grid_year }}</h5>
+                        <div class="d-flex align-items-center gap-3">
+                            <h5 class="fw-bold text-primary mb-0"><i class="bi bi-calendar3 me-2"></i>Monthly Sheet: {{ grid_month }}/{{ grid_year }}</h5>
+                        </div>
                         
                         <!-- Legend -->
                         <div class="d-flex flex-wrap gap-2 small">
@@ -126,19 +139,20 @@
                                     {% for day in item.days %}
                                         <td class="p-1">
                                             {% if day.status == 'present' %}
-                                                <span class="badge rounded-circle bg-success d-inline-flex align-items-center justify-content-center cursor-pointer" style="width: 22px; height: 22px;" title="Present" 
-                                                      {% if day.record_id %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'present', '')"{% endif %}>P</span>
+                                                <span class="badge rounded-circle bg-success d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Present{% endif %}" 
+                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'present', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>P</span>
                                             {% elif day.status == 'late' %}
-                                                <span class="badge rounded-circle bg-warning d-inline-flex align-items-center justify-content-center cursor-pointer text-dark" style="width: 22px; height: 22px;" title="Late Check-in"
-                                                      {% if day.record_id %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'late', '')"{% endif %}>L</span>
+                                                <span class="badge rounded-circle bg-warning d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %} text-dark" style="width: 22px; height: 22px;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Late Check-in{% endif %}"
+                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'late', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>L</span>
                                             {% elif day.status == 'half_day' %}
-                                                <span class="badge rounded-circle bg-secondary d-inline-flex align-items-center justify-content-center cursor-pointer" style="width: 22px; height: 22px;" title="Half Day"
-                                                      {% if day.record_id %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'half_day', '')"{% endif %}>H</span>
+                                                <span class="badge rounded-circle bg-secondary d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Half Day{% endif %}"
+                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'half_day', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>H</span>
                                             {% elif day.status == 'on_leave' %}
-                                                <span class="badge rounded-circle bg-info d-inline-flex align-items-center justify-content-center cursor-pointer" style="width: 22px; height: 22px;" title="On Approved Leave"
-                                                      {% if day.record_id %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'on_leave', '')"{% endif %}>V</span>
+                                                <span class="badge rounded-circle bg-info d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}On Approved Leave{% endif %}"
+                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'on_leave', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>V</span>
                                             {% elif day.status == 'absent' %}
-                                                <span class="badge rounded-circle bg-danger d-inline-flex align-items-center justify-content-center cursor-pointer" style="width: 22px; height: 22px;" title="Absent">A</span>
+                                                <span class="badge rounded-circle bg-danger d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Absent / Unrecorded{% endif %}"
+                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'absent', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>A</span>
                                             {% else %}
                                                 <span class="text-muted opacity-25">-</span>
                                             {% endif %}
@@ -332,6 +346,7 @@
                                     
                                     <!-- Action button -->
                                     <td>
+                                        {% if is_owner %}
                                         <button class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 d-flex align-items-center gap-1" 
                                                 type="button" 
                                                 data-bs-toggle="modal" 
@@ -340,6 +355,9 @@
                                             <i class="bi bi-pencil-fill" style="font-size: 0.75rem;"></i>
                                             <span>Edit</span>
                                         </button>
+                                        {% else %}
+                                        <span class="text-muted small"><i class="bi bi-lock-fill me-1"></i>View Only</span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -373,6 +391,155 @@
                                 </li>
                                 <li class="page-item">
                                     <a class="page-link rounded-end-pill px-3 border-0 shadow-sm text-success" href="?page={{ page_obj.paginator.num_pages }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Last Page">Last &raquo;</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: Edit Audit History Log -->
+        <div class="tab-pane fade {% if active_tab == 'audit' %}show active{% endif %}" id="auditSection" role="tabpanel">
+            <!-- Audit Logs Filter Form -->
+            <div class="card border-0 shadow-sm mb-4 bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="fw-bold text-primary mb-0"><i class="bi bi-funnel-fill me-2"></i>Filter Audit Logs</h5>
+                        <span class="badge bg-light text-primary border rounded-pill px-3 py-1 fw-normal small">Filter by Branch, Staff or Date Range</span>
+                    </div>
+                    <form method="get" class="row g-3 align-items-end">
+                        <input type="hidden" name="tab" value="audit">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">Branch</label>
+                            <select name="branch" class="form-select rounded-3 no-search" data-no-search="true">
+                                <option value="">All Branches</option>
+                                {% for b in branches %}
+                                    <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">Staff Employee</label>
+                            <select name="user" class="form-select rounded-3 no-search" data-no-search="true">
+                                <option value="">All Employees</option>
+                                {% for u in users %}
+                                    <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"i" %}selected{% endif %}>{{ u.first_name }} {{ u.last_name }} (@{{ u.username }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold text-muted">Start Date</label>
+                            <input type="date" name="start_date" value="{{ start_date_val }}" class="form-control rounded-3">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold text-muted">End Date</label>
+                            <input type="date" name="end_date" value="{{ end_date_val }}" class="form-control rounded-3">
+                        </div>
+                        <div class="col-md-2 d-flex gap-2">
+                            <button type="submit" class="btn text-white rounded-pill w-100 py-2 fw-semibold shadow-sm" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); border: none;">
+                                <i class="bi bi-funnel me-1"></i> Filter
+                            </button>
+                            <a href="?tab=audit" class="btn btn-outline-secondary rounded-pill w-100 py-2 d-flex align-items-center justify-content-center">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Audit Logs Table Card -->
+            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
+                <div class="card-body p-4">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+                        <div>
+                            <h5 class="card-title fw-bold text-primary mb-1"><i class="bi bi-shield-check me-2"></i>Attendance Edit History & Audit Logs</h5>
+                            <p class="small text-muted mb-0">Full audit trail of all manual attendance corrections, status modifications, and admin notes.</p>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="?tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}&export=audit_csv" class="btn text-white rounded-pill px-4 py-2 fw-semibold shadow-sm text-nowrap" style="background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); border: none;">
+                                <i class="bi bi-file-earmark-spreadsheet-fill me-1.5"></i> Export Audit CSV
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Edited At</th>
+                                    <th>Employee</th>
+                                    <th>Attendance Date</th>
+                                    <th>Branch</th>
+                                    <th>Edited By</th>
+                                    <th>Status Change</th>
+                                    <th>Correction Reason / Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in audit_page_obj %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ log.timestamp|date:"d M Y, h:i A" }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ log.attendance.user.first_name }} {{ log.attendance.user.last_name }}</div>
+                                        <div class="text-muted text-xxs">@{{ log.attendance.user.username }} &middot; ID: {{ log.attendance.user.employee_id|default:"-" }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1">{{ log.attendance.date|date:"d M Y" }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="small text-muted">{{ log.attendance.branch.name|default:"-" }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge rounded-pill px-2.5 py-1" style="background-color: #ede9fe; color: #7c3aed; font-weight: 600;">
+                                            <i class="bi bi-person-badge-fill me-1"></i>@{{ log.edited_by.username|default:"System" }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-1.5">
+                                            <span class="badge bg-secondary rounded-pill px-2 opacity-75">{{ log.old_status|default:"absent"|capfirst }}</span>
+                                            <i class="bi bi-arrow-right text-muted small"></i>
+                                            <span class="badge bg-success rounded-pill px-2">{{ log.new_status|capfirst }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <p class="mb-0 text-muted text-wrap" style="max-width: 300px;">{{ log.notes|default:"No reason specified" }}</p>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">No attendance edit audit logs match the filter criteria.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if audit_page_obj.has_other_pages %}
+                    <nav aria-label="Audit Page navigation" class="mt-4">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if audit_page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link rounded-start-pill px-3 border-0 shadow-sm text-primary" href="?audit_page=1&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="First Page">&laquo; First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link px-3 border-0 shadow-sm text-primary" href="?audit_page={{ audit_page_obj.previous_page_number }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Previous Page">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item disabled">
+                                <span class="page-link px-3 border-0 shadow-sm bg-light text-dark">Page {{ audit_page_obj.number }} of {{ audit_page_obj.paginator.num_pages }}</span>
+                            </li>
+
+                            {% if audit_page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link px-3 border-0 shadow-sm text-primary" href="?audit_page={{ audit_page_obj.next_page_number }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Next Page">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link rounded-end-pill px-3 border-0 shadow-sm text-primary" href="?audit_page={{ audit_page_obj.paginator.num_pages }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Last Page">Last &raquo;</a>
                                 </li>
                             {% endif %}
                         </ul>
@@ -421,6 +588,8 @@
 
                 <form id="editAttendanceForm">
                     <input type="hidden" id="editRecordId">
+                    <input type="hidden" id="editUserId">
+                    <input type="hidden" id="editIsoDate">
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-muted">Status</label>
                         <select id="editStatus" class="form-select rounded-3" required>
@@ -434,7 +603,7 @@
 
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-muted">Correction Notes / Reason</label>
-                        <textarea id="editNotes" rows="3" class="form-control rounded-3" placeholder="Explain the reason for manual adjustment..." required></textarea>
+                        <textarea id="editNotes" rows="3" class="form-control rounded-3" placeholder="Explain the reason for manual adjustment (e.g., Technical issue check-in correction)..." required></textarea>
                     </div>
 
                     <div class="d-flex gap-2">
@@ -455,18 +624,22 @@
         document.getElementById('photoModalLabel').textContent = label;
     }
 
-    function initEditModal(id, username, date, status, notes) {
-        document.getElementById('editRecordId').value = id;
+    function initEditModal(id, username, date, status, notes, userId, isoDate) {
+        document.getElementById('editRecordId').value = id || 0;
+        document.getElementById('editUserId').value = userId || '';
+        document.getElementById('editIsoDate').value = isoDate || '';
         document.getElementById('editEmpName').textContent = username;
         document.getElementById('editEmpDate').textContent = date;
-        document.getElementById('editStatus').value = status;
-        document.getElementById('editNotes').value = notes;
+        document.getElementById('editStatus').value = (status && status !== 'future') ? status : 'present';
+        document.getElementById('editNotes').value = notes || '';
     }
 
     document.getElementById('editAttendanceForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
-        const id = document.getElementById('editRecordId').value;
+        const id = document.getElementById('editRecordId').value || 0;
+        const userId = document.getElementById('editUserId').value;
+        const isoDate = document.getElementById('editIsoDate').value;
         const status = document.getElementById('editStatus').value;
         const notes = document.getElementById('editNotes').value;
         
@@ -479,6 +652,8 @@
                 'X-CSRFToken': '{{ csrf_token }}'
             },
             body: JSON.stringify({
+                user_id: userId,
+                date: isoDate,
                 status: status,
                 notes: notes
             })

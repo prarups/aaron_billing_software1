@@ -33,6 +33,8 @@ class Attendance(models.Model):
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='present')
     notes = models.TextField(blank=True, null=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='edited_attendances')
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ('user', 'date')
@@ -40,6 +42,24 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.date} - {self.status}"
+
+
+class AttendanceAuditLog(models.Model):
+    attendance = models.ForeignKey(Attendance, on_delete=models.CASCADE, related_name='audit_logs')
+    edited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='attendance_edits')
+    timestamp = models.DateTimeField(auto_now_add=True)
+    old_status = models.CharField(max_length=50, blank=True, null=True)
+    new_status = models.CharField(max_length=50)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name = 'Attendance Audit Log'
+        verbose_name_plural = 'Attendance Audit Logs'
+
+    def __str__(self):
+        return f"{self.attendance.user.username} - {self.attendance.date} edited by {self.edited_by.username if self.edited_by else 'System'}"
+
 
 
 class LeaveRequest(models.Model):

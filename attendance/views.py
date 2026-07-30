@@ -17,7 +17,7 @@ from django.db.models import Count, Q, Sum
 from django.conf import settings
 from users.models import User
 from core.models import Branch
-from .models import Attendance, LeaveRequest, PermissionRequest, SalaryConfig, MonthlyPayroll, GlobalPermissionPolicy
+from .models import Attendance, LeaveRequest, PermissionRequest, SalaryConfig, MonthlyPayroll, GlobalPermissionPolicy, AttendanceAuditLog
 import datetime
 import calendar
 from decimal import Decimal
@@ -54,7 +54,7 @@ def get_file_from_base64(base64_str, filename):
     return None
 
 def is_owner(user):
-    return user.role == 'owner'
+    return user.is_superuser or user.role == 'owner'
 
 def is_manager_or_owner(user):
     return user.role in ['owner', 'regional_manager', 'manager', 'assistant_manager']
@@ -417,14 +417,15 @@ def permission_list(request):
         'max_permissions': max_permissions,
         'max_hours': max_hours,
         'permissions_used_this_month': permissions_used_this_month,
+        'is_owner': is_owner(user),
         'is_owner_or_manager': is_manager_or_owner(user),
     }
     return render(request, 'attendance/permission_list.html', context)
 
 @login_required
 def update_global_permission_policy(request):
-    if not is_manager_or_owner(request.user):
-        messages.error(request, 'Unauthorized access: Manager or Owner privilege required.')
+    if not is_owner(request.user):
+        messages.error(request, 'Unauthorized access: Admin privilege required.')
         return redirect('attendance:permission_list')
         
     if request.method == 'POST':
@@ -685,11 +686,13 @@ def attendance_reports(request):
             d_date = datetime.date(grid_year, grid_month, d)
             status = ''
             rec_id = None
+            notes = ''
             
             if d in atts_by_day:
                 att = atts_by_day[d]
                 status = att.status
                 rec_id = att.id
+                notes = att.notes or ''
                 if status == 'present': p_cnt += 1
                 elif status == 'late': l_cnt += 1
                 elif status == 'half_day': h_cnt += 1
@@ -708,6 +711,7 @@ def attendance_reports(request):
                     ).first()
                     if leave:
                         status = 'on_leave'
+                        notes = leave.reason or 'Approved Leave'
                         lv_cnt += 1
                     else:
                         status = 'absent'
@@ -716,7 +720,8 @@ def attendance_reports(request):
             u_days.append({
                 'day': d,
                 'status': status,
-                'record_id': rec_id
+                'record_id': rec_id,
+                'notes': notes
             })
             
         grid_data.append({
@@ -731,8 +736,92 @@ def attendance_reports(request):
             }
         })
         
+    # Grid CSV Export
+    if request.GET.get('export') == 'grid_csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="monthly_attendance_grid_{grid_month}_{grid_year}.csv"'
+        writer = csv.writer(response)
+        
+        header = ['Employee ID', 'Employee Name', 'Username', 'Branch'] + [f"Day {d}" for d in day_numbers] + ['Present (P)', 'Late (L)', 'Half Day (H)', 'Leave (V)', 'Absent (A)']
+        writer.writerow(header)
+        
+        status_map = {
+            'present': 'P',
+            'late': 'L',
+            'half_day': 'H',
+            'on_leave': 'V',
+            'absent': 'A',
+            'future': '-'
+        }
+        
+        for item in grid_data:
+            u = item['user']
+            emp_name = f"{u.first_name} {u.last_name}".strip() or u.username
+            branches_str = ", ".join([b.name for b in u.branches.all()]) if u.branches.exists() else ''
+            
+            day_cols = [status_map.get(d['status'], '-') for d in item['days']]
+            summary = item['summary']
+            
+            row = [
+                u.employee_id or '',
+                emp_name,
+                u.username,
+                branches_str
+            ] + day_cols + [
+                summary['present'],
+                summary['late'],
+                summary['half_day'],
+                summary['leave'],
+                summary['absent']
+            ]
+            writer.writerow(row)
+            
+        return response
+        
+    # Audit logs for history
+    audit_logs_qs = AttendanceAuditLog.objects.select_related('attendance', 'attendance__user', 'attendance__branch', 'edited_by').order_by('-timestamp')
+    if selected_branch:
+        audit_logs_qs = audit_logs_qs.filter(attendance__branch_id=selected_branch)
+    if selected_user:
+        audit_logs_qs = audit_logs_qs.filter(attendance__user_id=selected_user)
+
+    if request.GET.get('export') == 'audit_csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="attendance_audit_logs_{today}.csv"'
+        writer = csv.writer(response)
+        
+        writer.writerow(['Timestamp', 'Employee ID', 'Employee Name', 'Username', 'Attendance Date', 'Branch', 'Edited By', 'Old Status', 'New Status', 'Correction Notes'])
+        
+        for log in audit_logs_qs:
+            u = log.attendance.user
+            emp_name = f"{u.first_name} {u.last_name}".strip() or u.username
+            branch_name = log.attendance.branch.name if log.attendance.branch else ''
+            edited_by = log.edited_by.username if log.edited_by else 'System'
+            edited_time = timezone.localtime(log.timestamp).strftime('%Y-%m-%d %I:%M %p') if log.timestamp else ''
+            
+            writer.writerow([
+                edited_time,
+                u.employee_id or '',
+                emp_name,
+                u.username,
+                log.attendance.date,
+                branch_name,
+                edited_by,
+                log.old_status or 'absent',
+                log.new_status,
+                log.notes or ''
+            ])
+            
+        return response
+        
+    # Audit logs pagination
+    audit_paginator = Paginator(audit_logs_qs, 20)
+    audit_page_number = request.GET.get('audit_page', 1)
+    audit_page_obj = audit_paginator.get_page(audit_page_number)
+        
     context = {
         'page_obj': page_obj,  # paginated page object
+        'audit_page_obj': audit_page_obj, # paginated audit logs object
         'branches': branches,
         'users': users,
         'selected_branch': selected_branch,
@@ -748,6 +837,7 @@ def attendance_reports(request):
         'grid_year': grid_year,
         'months': range(1, 13),
         'years': range(today.year - 2, today.year + 2),
+        'is_owner': is_owner(request.user),
     }
     return render(request, 'attendance/reports.html', context)
 
@@ -1146,27 +1236,49 @@ def mark_all_payrolls_paid(request):
 
 @login_required
 def edit_attendance_ajax(request, pk):
-    if not is_manager_or_owner(request.user):
-        return JsonResponse({'success': False, 'message': 'Unauthorized access.'})
+    if not is_owner(request.user):
+        return JsonResponse({'success': False, 'message': 'Unauthorized access. Only Admin can edit attendance records.'})
         
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             status = data.get('status')
-            notes = data.get('notes')
+            notes = data.get('notes', '')
+            user_id = data.get('user_id')
+            date_str = data.get('date')
             
-            att = get_object_or_404(Attendance, pk=pk)
-            
-            # Manager check
-            if not is_owner(request.user):
-                user_branches = request.user.get_accessible_branches()
-                if att.branch not in user_branches:
-                    return JsonResponse({'success': False, 'message': 'Unauthorized for this branch.'})
-                    
+            old_status = None
+            if pk and int(pk) > 0:
+                att = get_object_or_404(Attendance, pk=pk)
+                old_status = att.status
+            else:
+                if not user_id or not date_str:
+                    return JsonResponse({'success': False, 'message': 'User ID and Date are required for creating new attendance entries.'})
+                target_user = get_object_or_404(User, pk=user_id)
+                att_date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+                branch = target_user.active_branch or target_user.branches.first()
+                att, created = Attendance.objects.get_or_create(
+                    user=target_user,
+                    date=att_date,
+                    defaults={'branch': branch}
+                )
+                old_status = 'absent' if created else att.status
+                
             att.status = status
-            att.notes = notes
+            att.updated_by = request.user
+            if notes:
+                att.notes = notes
             att.save()
-            return JsonResponse({'success': True, 'message': 'Attendance updated successfully!'})
+
+            # Create Audit Log record
+            AttendanceAuditLog.objects.create(
+                attendance=att,
+                edited_by=request.user,
+                old_status=old_status,
+                new_status=status,
+                notes=notes or att.notes
+            )
+            return JsonResponse({'success': True, 'message': 'Attendance updated and audit log saved successfully!'})
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
             
