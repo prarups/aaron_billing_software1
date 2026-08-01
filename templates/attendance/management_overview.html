@@ -13,10 +13,66 @@
             </h5>
             <small class="text-muted" style="font-size: 0.75rem;">Real-time staff check-ins, attendance status, and pending approvals.</small>
         </div>
-        <div>
+        <div class="d-flex align-items-center gap-2 mt-2 mt-sm-0">
             <span class="badge bg-light text-dark border px-3 py-1.5 rounded-pill fw-semibold" style="font-size: 0.75rem;">
-                <i class="bi bi-calendar-event me-1 text-primary"></i> {% now "d M Y" %}
+                <i class="bi bi-calendar-event me-1 text-primary"></i> {{ selected_date|date:"d M Y" }}
             </span>
+        </div>
+    </div>
+
+    <!-- Filter Bar for Easy Access -->
+    <div class="card border-0 shadow-sm bg-white rounded-3 mb-3">
+        <div class="card-body p-2.5">
+            <form method="get" action="{% url 'attendance:management_overview' %}" class="row g-2 align-items-center m-0">
+                <!-- Date Filter -->
+                <div class="col-6 col-md-3 col-lg-2">
+                    <label class="form-label text-muted fw-semibold mb-0" style="font-size: 0.68rem;">Date</label>
+                    <input type="date" name="date" value="{{ selected_date_str }}" class="form-control form-control-sm rounded-2" onchange="this.form.submit()">
+                </div>
+
+                <!-- Branch Filter -->
+                <div class="col-6 col-md-3 col-lg-2">
+                    <label class="form-label text-muted fw-semibold mb-0" style="font-size: 0.68rem;">Branch</label>
+                    <select name="branch" class="form-select form-select-sm rounded-2" onchange="this.form.submit()">
+                        <option value="">All Branches</option>
+                        {% for b in branches %}
+                            <option value="{{ b.id }}" {% if selected_branch_id == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Status Filter -->
+                <div class="col-6 col-md-3 col-lg-2">
+                    <label class="form-label text-muted fw-semibold mb-0" style="font-size: 0.68rem;">Status</label>
+                    <select name="status" class="form-select form-select-sm rounded-2" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        <option value="checked_in" {% if status_filter == 'checked_in' %}selected{% endif %}>Checked In</option>
+                        <option value="late" {% if status_filter == 'late' %}selected{% endif %}>Late</option>
+                        <option value="half_day" {% if status_filter == 'half_day' %}selected{% endif %}>Half Day</option>
+                        <option value="on_leave" {% if status_filter == 'on_leave' %}selected{% endif %}>On Leave</option>
+                        <option value="absent" {% if status_filter == 'absent' %}selected{% endif %}>Absent</option>
+                    </select>
+                </div>
+
+                <!-- Search Input -->
+                <div class="col-12 col-md-3 col-lg-4">
+                    <label class="form-label text-muted fw-semibold mb-0" style="font-size: 0.68rem;">Search Staff</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search" style="font-size: 0.7rem;"></i></span>
+                        <input type="text" name="q" value="{{ q_search }}" class="form-control border-start-0 rounded-end-2" placeholder="Search name or ID..." style="font-size: 0.75rem;">
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="col-12 col-lg-2 d-flex gap-1.5 align-self-end mt-2 mt-lg-0">
+                    <button type="submit" class="btn btn-xs btn-primary rounded-pill px-3 py-1.5 fw-semibold w-100">
+                        <i class="bi bi-funnel-fill me-1"></i> Filter
+                    </button>
+                    <a href="{% url 'attendance:management_overview' %}" class="btn btn-xs btn-outline-secondary rounded-pill px-3 py-1.5 w-100 text-center text-decoration-none">
+                        Reset
+                    </a>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -212,14 +268,14 @@
                                 <div class="d-flex justify-content-between align-items-start mb-1">
                                     <div>
                                         <strong class="text-dark">{{ p.user.username }}</strong>
-                                        <span class="text-muted d-block" style="font-size: 0.68rem;">{{ p.date|date:"d M" }} &middot; {{ p.start_time|time:"h:i A" }} ({{ p.duration_minutes }}m)</span>
+                                        <span class="text-muted d-block" style="font-size: 0.68rem;">{{ p.date|date:"d M" }} &middot; {{ p.start_time|time:"g:i A" }} to {{ p.end_time|time:"g:i A" }} ({{ p.duration_minutes }}m)</span>
                                     </div>
                                     <span class="badge bg-warning bg-opacity-20 text-warning-dark fw-bold rounded-pill px-2 py-0.5" style="font-size: 0.6rem;">Pending</span>
                                 </div>
                                 <p class="text-muted mb-1.5 bg-light p-1.5 rounded border text-wrap" style="font-size: 0.7rem;">{{ p.reason }}</p>
                                 <div class="d-flex gap-1.5">
-                                    <a href="{% url 'attendance:permission_approve' p.pk 'approve' %}" class="btn btn-xs btn-success rounded-pill px-2.5 py-0.5 fw-semibold" style="font-size: 0.7rem;">Approve</a>
-                                    <a href="{% url 'attendance:permission_approve' p.pk 'reject' %}" class="btn btn-xs btn-outline-danger rounded-pill px-2.5 py-0.5" style="font-size: 0.7rem;">Reject</a>
+                                    <a href="{% url 'attendance:permission_approve' p.pk 'approve' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-xs btn-success rounded-pill px-2.5 py-0.5 fw-semibold js-perm-action" style="font-size: 0.7rem;">Approve</a>
+                                    <a href="{% url 'attendance:permission_approve' p.pk 'reject' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-xs btn-outline-danger rounded-pill px-2.5 py-0.5 js-perm-action" style="font-size: 0.7rem;">Reject</a>
                                 </div>
                             </div>
                         {% empty %}
@@ -253,51 +309,42 @@
 
 {% block extra_js %}
 <script>
+    // Photo modal viewer
     function showFullPhoto(url, label) {
         document.getElementById('fullPhotoEl').src = url;
         document.getElementById('photoModalLabel').textContent = label;
     }
 
-    // Dynamic Geocoder script to show area names
-    document.addEventListener("DOMContentLoaded", function() {
-        const coords = Array.from(document.querySelectorAll('.gps-coord'));
-        let delay = 0;
-        const cache = {};
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.js-perm-action');
+        if (!btn) return;
+        e.preventDefault();
 
-        coords.forEach(el => {
-            const lat = parseFloat(el.dataset.lat);
-            const lng = parseFloat(el.dataset.lng);
-            if (isNaN(lat) || isNaN(lng)) return;
+        const originalText = btn.innerHTML;
+        btn.style.pointerEvents = 'none';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" style="width:0.65rem;height:0.65rem;"></span>';
 
-            const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
-            if (cache[cacheKey]) {
-                el.textContent = cache[cacheKey];
-                return;
-            }
-
-            setTimeout(async () => {
-                try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14`, {
-                        headers: {
-                            'User-Agent': 'AaronHR-Overview-Locator'
-                        }
-                    });
-                    const data = await res.json();
-                    if (data && data.address) {
-                        const addr = data.address;
-                        const area = addr.suburb || addr.neighbourhood || addr.residential || addr.commercial || addr.village || addr.subdistrict || addr.city_district || addr.city || '';
-                        if (area) {
-                            const displayText = `(${area})`;
-                            cache[cacheKey] = displayText;
-                            el.textContent = displayText;
-                        }
-                    }
-                } catch (e) {
-                    console.error("Error geocoding:", e);
+        fetch(btn.href + (btn.href.includes('?') ? '&' : '?') + 'ajax=1', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const container = btn.closest('.list-group-item') || btn.closest('tr');
+                if (container) {
+                    container.style.transition = 'all 0.25s ease';
+                    container.style.opacity = '0';
+                    container.style.transform = 'scale(0.96)';
+                    setTimeout(() => container.remove(), 250);
                 }
-            }, delay);
-            
-            delay += 600; // 600ms spacing to respect OpenStreetMap rate limits
+            } else {
+                alert(data.message || 'Error processing request');
+                btn.style.pointerEvents = 'auto';
+                btn.innerHTML = originalText;
+            }
+        })
+        .catch(() => {
+            window.location.href = btn.href;
         });
     });
 </script>

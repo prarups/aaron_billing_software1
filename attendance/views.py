@@ -594,9 +594,15 @@ def permission_request(request):
 
 @login_required
 def permission_approve(request, pk, action):
+    next_url = request.GET.get('next') or request.POST.get('next') or request.META.get('HTTP_REFERER') or 'attendance:permission_list'
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.GET.get('ajax') == '1'
+    
     if not is_manager_or_owner(request.user):
-        messages.error(request, 'Unauthorized access.')
-        return redirect('attendance:permission_list')
+        msg = 'Unauthorized access.'
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': msg}, status=403)
+        messages.error(request, msg)
+        return redirect(next_url)
         
     perm = get_object_or_404(PermissionRequest, pk=pk)
     
@@ -605,24 +611,41 @@ def permission_approve(request, pk, action):
         user_branches = request.user.get_accessible_branches()
         overlap = perm.user.branches.filter(id__in=user_branches.values_list('id', flat=True))
         if not overlap.exists():
-            messages.error(request, 'You do not have permission to approve permissions for this staff.')
-            return redirect('attendance:permission_list')
+            msg = 'You do not have permission to approve permissions for this staff.'
+            if is_ajax:
+                return JsonResponse({'success': False, 'message': msg}, status=403)
+            messages.error(request, msg)
+            return redirect(next_url)
             
     try:
         if action == 'approve':
             perm.status = 'approved'
             perm.approved_by = request.user
             perm.save()
-            messages.success(request, f'Permission for {perm.user.username} approved.')
+            msg = f'Permission for {perm.user.username} approved.'
+            messages.success(request, msg)
         elif action == 'reject':
             perm.status = 'rejected'
             perm.approved_by = request.user
             perm.save()
-            messages.success(request, f'Permission for {perm.user.username} rejected.')
+            msg = f'Permission for {perm.user.username} rejected.'
+            messages.success(request, msg)
+        else:
+            msg = 'Invalid action.'
+            if is_ajax:
+                return JsonResponse({'success': False, 'message': msg}, status=400)
+            messages.error(request, msg)
+            return redirect(next_url)
+
+        if is_ajax:
+            return JsonResponse({'success': True, 'action': action, 'message': msg, 'pk': pk})
     except Exception as e:
-        messages.error(request, f'Error processing permission approval: {e}')
+        msg = f'Error processing permission approval: {e}'
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': msg}, status=500)
+        messages.error(request, msg)
         
-    return redirect('attendance:permission_list')
+    return redirect(next_url)
 
 
 # --- Reports Views ---
@@ -1471,46 +1494,111 @@ def management_overview_view(request):
         return redirect('attendance:dashboard')
         
     today = timezone.localdate()
+    
+    # 1. Date Filter
+    date_str = request.GET.get('date', '').strip()
+    selected_date = today
+    if date_str:
+        try:
+            import datetime as dt_mod
+            selected_date = dt_mod.datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            selected_date = today
+
+    # 2. Branch Filter
+    selected_branch_id = request.GET.get('branch', '').strip()
     branches = request.user.get_accessible_branches()
+    
     branch_users = User.objects.filter(branches__in=branches).distinct().exclude(role='owner')
     if is_owner(request.user):
         branch_users = User.objects.all().exclude(role='owner')
         
+    if selected_branch_id:
+        branch_users = branch_users.filter(branches__id=selected_branch_id)
+        
     total_staff_count = branch_users.count()
     
-    # Today's checkins
-    today_records = Attendance.objects.filter(date=today)
+    # 3. Selected Date's checkins
+    date_records = Attendance.objects.filter(date=selected_date)
     if not is_owner(request.user):
-        today_records = today_records.filter(branch__in=branches)
+        date_records = date_records.filter(branch__in=branches)
+    if selected_branch_id:
+        date_records = date_records.filter(branch__id=selected_branch_id)
         
-    checked_in_count = today_records.filter(check_in__isnull=False).count()
-    late_count = today_records.filter(status='late').count()
-    half_day_count = today_records.filter(status='half_day').count()
-    leave_count = today_records.filter(status='on_leave').count()
+    stats = date_records.aggregate(
+        checked_in_cnt=Count('id', filter=Q(check_in__isnull=False)),
+        late_cnt=Count('id', filter=Q(status='late')),
+        half_day_cnt=Count('id', filter=Q(status='half_day')),
+        leave_cnt=Count('id', filter=Q(status='on_leave'))
+    )
+    checked_in_count = stats['checked_in_cnt'] or 0
+    late_count = stats['late_cnt'] or 0
+    half_day_count = stats['half_day_cnt'] or 0
+    leave_count = stats['leave_cnt'] or 0
     absent_count = total_staff_count - (checked_in_count + leave_count)
     if absent_count < 0:
         absent_count = 0
         
     # Pending approvals
-    pending_leaves = LeaveRequest.objects.filter(status='pending')
-    pending_permissions = PermissionRequest.objects.filter(status='pending')
+    pending_leaves = LeaveRequest.objects.filter(status='pending').select_related('user')
+    pending_permissions = PermissionRequest.objects.filter(status='pending').select_related('user')
     if not is_owner(request.user):
         pending_leaves = pending_leaves.filter(user__branches__in=branches).distinct()
         pending_permissions = pending_permissions.filter(user__branches__in=branches).distinct()
+    if selected_branch_id:
+        pending_leaves = pending_leaves.filter(user__branches__id=selected_branch_id)
+        pending_permissions = pending_permissions.filter(user__branches__id=selected_branch_id)
+
+    # 4. Status Filter & Search Query
+    status_filter = request.GET.get('status', '').strip()
+    q_search = request.GET.get('q', '').strip()
         
-    # Also fetch all staff checking-in details today for overview log
+    # Build dictionary map of date's attendance in 1 single query
+    date_records_map = {rec.user_id: rec for rec in date_records.select_related('user', 'branch')}
     staff_today_status = []
     for staff in branch_users:
-        rec = today_records.filter(user=staff).first()
-        status = rec.status if rec else 'absent'
+        rec = date_records_map.get(staff.id)
+        st = rec.status if rec else 'absent'
+
+        # Apply Status Filter
+        if status_filter:
+            if status_filter == 'checked_in' and not (rec and rec.check_in):
+                continue
+            elif status_filter == 'late' and st != 'late':
+                continue
+            elif status_filter == 'half_day' and st != 'half_day':
+                continue
+            elif status_filter == 'on_leave' and st != 'on_leave':
+                continue
+            elif status_filter == 'absent' and st != 'absent':
+                continue
+
+        # Apply Search Filter
+        if q_search:
+            q_lower = q_search.lower()
+            name_match = (
+                q_lower in staff.username.lower() or
+                q_lower in (staff.first_name or '').lower() or
+                q_lower in (staff.last_name or '').lower() or
+                q_lower in (staff.employee_id or '').lower()
+            )
+            if not name_match:
+                continue
+
         staff_today_status.append({
             'user': staff,
             'record': rec,
-            'status': status
+            'status': st
         })
         
     context = {
         'today': today,
+        'selected_date': selected_date,
+        'selected_date_str': selected_date.strftime('%Y-%m-%d'),
+        'branches': branches,
+        'selected_branch_id': selected_branch_id,
+        'status_filter': status_filter,
+        'q_search': q_search,
         'total_staff_count': total_staff_count,
         'checked_in_count': checked_in_count,
         'late_count': late_count,
