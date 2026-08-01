@@ -183,6 +183,7 @@ LOGIN_REDIRECT_URL = 'portal_choice'
 LOGOUT_REDIRECT_URL = 'login'
 
 # Railway / Render / Production settings
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']  # add mobile IP as needed at runtime
 
 railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
