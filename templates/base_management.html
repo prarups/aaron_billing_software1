@@ -321,6 +321,12 @@
                             <span>Staff & Assigning</span>
                         </a>
                     </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link {% if active_tab == 'role_policies' %}active{% endif %}" href="{% url 'role_shift_policy_list' %}">
+                            <i class="bi bi-clock-history"></i>
+                            <span>Role Shift Policies</span>
+                        </a>
+                    </li>
                     {% if user.role == 'owner' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link" href="{% url 'admin:core_branch_changelist' %}">
@@ -380,6 +386,12 @@
                         <a class="sidebar-link {% if active_tab == 'staff' %}active{% endif %}" href="{% url 'branch_staff_management' %}?tab=staff">
                             <i class="bi bi-people-fill"></i>
                             <span>Staff & Assigning</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link {% if active_tab == 'role_policies' %}active{% endif %}" href="{% url 'role_shift_policy_list' %}">
+                            <i class="bi bi-clock-history"></i>
+                            <span>Role Shift Policies</span>
                         </a>
                     </li>
                     {% if user.role == 'owner' %}

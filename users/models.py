@@ -65,6 +65,57 @@ class CustomRole(models.Model):
             pass
 
 
+class RoleShiftPolicy(models.Model):
+    role = models.CharField(max_length=50, unique=True, db_index=True)
+    role_name = models.CharField(max_length=100, blank=True)
+    shift_start_time = models.TimeField(default="09:00:00")
+    shift_end_time = models.TimeField(default="17:00:00")
+    monthly_off_count = models.IntegerField(default=4, help_text="Number of monthly week-offs allowed for this role")
+
+    def __str__(self):
+        return f"{self.role_name or self.role} Policy ({self.shift_start_time} - {self.shift_end_time}, {self.monthly_off_count} Offs/Month)"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        try:
+            from django.apps import apps
+            User = apps.get_model('users', 'User')
+            User.objects.filter(role=self.role).update(
+                shift_start_time=self.shift_start_time,
+                shift_end_time=self.shift_end_time,
+                monthly_off_count=self.monthly_off_count
+            )
+        except Exception:
+            pass
+
+    @classmethod
+    def get_policy_for_role(cls, role_code):
+        policy = cls.objects.filter(role=role_code).first()
+        if not policy:
+            role_names = {
+                'owner': 'Admin',
+                'regional_manager': 'Regional Manager',
+                'manager': 'Manager',
+                'assistant_manager': 'Assistant Manager',
+                'sales_staff': 'Sales Staff',
+            }
+            name = role_names.get(role_code)
+            if not name:
+                try:
+                    crole = CustomRole.objects.get(code=role_code)
+                    name = crole.name
+                except Exception:
+                    name = role_code.replace('_', ' ').title()
+            policy = cls.objects.create(
+                role=role_code,
+                role_name=name,
+                shift_start_time="09:00:00",
+                shift_end_time="17:00:00",
+                monthly_off_count=4
+            )
+        return policy
+
+
 class User(AbstractUser):
     ROLE_CHOICES = (
         ('owner', 'Admin'),
@@ -88,6 +139,7 @@ class User(AbstractUser):
     address = models.TextField(blank=True, null=True)
     shift_start_time = models.TimeField(default="09:00:00", help_text="Shift start time")
     shift_end_time = models.TimeField(default="17:00:00", help_text="Shift end time")
+    monthly_off_count = models.IntegerField(default=4, help_text="Monthly week offs count")
     grace_period_minutes = models.IntegerField(default=15, help_text="Grace period in minutes before marked Late")
     last_activity = models.DateTimeField(null=True, blank=True)
 
@@ -136,7 +188,16 @@ class User(AbstractUser):
         if not self.employee_id:
             self.employee_id = generate_employee_id_for_user(self)
         
-        # Shift fields defaults fallback
+        # Shift fields & week-offs from Role policy
+        if self.role:
+            try:
+                policy = RoleShiftPolicy.get_policy_for_role(self.role)
+                self.shift_start_time = policy.shift_start_time
+                self.shift_end_time = policy.shift_end_time
+                self.monthly_off_count = policy.monthly_off_count
+            except Exception:
+                pass
+
         if self.shift_start_time is None:
             self.shift_start_time = "09:00:00"
         if self.shift_end_time is None:

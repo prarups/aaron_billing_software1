@@ -214,12 +214,9 @@ def check_in(request):
             elif delay_minutes <= 60:
                 # Arrived after grace period up to 1 hour late
                 status = 'late'
-            elif delay_minutes <= 240:
-                # Arrived between 1 and 4 hours late -> Half Day
-                status = 'half_day'
             else:
-                # Arrived after 4 hours late -> Absent
-                status = 'absent'
+                # Arrived after 1 hour late -> Half Day (Checked-in employees are never marked Absent)
+                status = 'half_day'
                 
             # If there's an approved leave for today, set status to 'on_leave'
             on_leave = LeaveRequest.objects.filter(
@@ -322,10 +319,35 @@ def check_out(request):
             if not photo_file:
                 return JsonResponse({'success': False, 'message': 'Photo capture is required.'})
                 
-            attendance.check_out = timezone.now()
+            now_dt = timezone.now()
+            attendance.check_out = now_dt
             attendance.check_out_photo = photo_file
             attendance.check_out_lat = lat
             attendance.check_out_lng = lng
+
+            # Calculate assigned shift duration for user (e.g., 12 hrs for 9:30-9:30, 8 hrs for 10:00-6:00)
+            user_start = request.user.shift_start_time or datetime.time(9, 30)
+            user_end = request.user.shift_end_time or datetime.time(21, 30)
+
+            start_mins = user_start.hour * 60 + user_start.minute
+            end_mins = user_end.hour * 60 + user_end.minute
+            if end_mins <= start_mins:
+                end_mins += 24 * 60  # Handle overnight shift
+
+            shift_duration_mins = end_mins - start_mins
+            half_day_threshold_mins = shift_duration_mins / 2.0  # 50% of shift duration (6h for 12h shift, 4h for 8h shift)
+            full_day_threshold_mins = shift_duration_mins - 60   # 1 hour grace before full shift completion
+
+            # Evaluate actual worked hours (Check-In to Check-Out duration)
+            if attendance.check_in:
+                worked_minutes = (now_dt - attendance.check_in).total_seconds() / 60.0
+                if worked_minutes < half_day_threshold_mins:
+                    # Worked less than 50% of assigned shift duration -> Absent
+                    attendance.status = 'absent'
+                elif worked_minutes < full_day_threshold_mins:
+                    # Worked at least 50% of shift duration -> Half Day
+                    attendance.status = 'half_day'
+
             attendance.save()
             
             return JsonResponse({
@@ -639,7 +661,7 @@ def attendance_reports(request):
         except ValueError:
             pass
             
-    records = Attendance.objects.filter(date__range=(start_date, end_date))
+    records = Attendance.objects.filter(date__range=(start_date, end_date)).select_related('user', 'branch')
     
     if not is_owner(request.user):
         records = records.filter(branch__in=branches)
@@ -691,12 +713,37 @@ def attendance_reports(request):
     day_numbers = list(range(1, days_in_month + 1))
     
     # Filter users based on selected branch/user if any
-    grid_users = users.exclude(role='owner')
+    grid_users_qs = users.exclude(role='owner').order_by('username')
     if selected_branch:
-        grid_users = grid_users.filter(branches__id=selected_branch).distinct()
+        grid_users_qs = grid_users_qs.filter(branches__id=selected_branch).distinct()
     if selected_user:
-        grid_users = grid_users.filter(id=selected_user)
-        
+        grid_users_qs = grid_users_qs.filter(id=selected_user)
+
+    grid_users = list(grid_users_qs)
+    grid_user_ids = [u.id for u in grid_users]
+
+    # Bulk fetch ALL Attendance records for this grid month
+    all_grid_atts = Attendance.objects.filter(
+        user_id__in=grid_user_ids,
+        date__year=grid_year,
+        date__month=grid_month
+    )
+    atts_dict = {(att.user_id, att.date.day): att for att in all_grid_atts}
+
+    # Bulk fetch ALL Approved Leave requests for this grid month
+    grid_start_date = datetime.date(grid_year, grid_month, 1)
+    grid_end_date = datetime.date(grid_year, grid_month, days_in_month)
+    all_grid_leaves = LeaveRequest.objects.filter(
+        user_id__in=grid_user_ids,
+        start_date__lte=grid_end_date,
+        end_date__gte=grid_start_date,
+        status='approved'
+    ).values_list('user_id', 'start_date', 'end_date', 'reason')
+
+    leave_dict = {}
+    for uid, sdate, edate, reason in all_grid_leaves:
+        leave_dict.setdefault(uid, []).append((sdate, edate, reason))
+
     grid_data = []
     for u in grid_users:
         u_days = []
@@ -706,22 +753,16 @@ def attendance_reports(request):
         lv_cnt = 0
         h_cnt = 0
         
-        # Load all records for this user for this month
-        month_atts = Attendance.objects.filter(
-            user=u,
-            date__year=grid_year,
-            date__month=grid_month
-        )
-        atts_by_day = {a.date.day: a for a in month_atts}
-        
+        user_leaves = leave_dict.get(u.id, [])
+
         for d in day_numbers:
             d_date = datetime.date(grid_year, grid_month, d)
             status = ''
             rec_id = None
             notes = ''
             
-            if d in atts_by_day:
-                att = atts_by_day[d]
+            att = atts_dict.get((u.id, d))
+            if att:
                 status = att.status
                 rec_id = att.id
                 notes = att.notes or ''
@@ -734,16 +775,10 @@ def attendance_reports(request):
                 if d_date > today:
                     status = 'future'
                 else:
-                    # Check approved leaves
-                    leave = LeaveRequest.objects.filter(
-                        user=u,
-                        start_date__lte=d_date,
-                        end_date__gte=d_date,
-                        status='approved'
-                    ).first()
-                    if leave:
+                    leave_match = next((reason for sdate, edate, reason in user_leaves if sdate <= d_date <= edate), None)
+                    if leave_match is not None:
                         status = 'on_leave'
-                        notes = leave.reason or 'Approved Leave'
+                        notes = leave_match or 'Approved Leave'
                         lv_cnt += 1
                     else:
                         status = 'absent'
@@ -912,104 +947,127 @@ def salary_list(request):
     return render(request, 'attendance/payroll.html', context)
 
 
-def ensure_monthly_payrolls(month, year, request_user=None):
-    users = User.objects.all().order_by('username')
+def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=True):
+    if force_recalculate:
+        # Process users whose payroll is missing or still in 'draft'
+        paid_user_ids = set(MonthlyPayroll.objects.filter(month=month, year=year, status='paid').values_list('user_id', flat=True))
+        users_to_process = list(User.objects.exclude(id__in=paid_user_ids).order_by('username'))
+    else:
+        existing_user_ids = set(MonthlyPayroll.objects.filter(month=month, year=year).values_list('user_id', flat=True))
+        users_to_process = list(User.objects.exclude(id__in=existing_user_ids).order_by('username'))
+
+    if not users_to_process:
+        return
+
     first_day = datetime.date(year, month, 1)
     days_in_month = calendar.monthrange(year, month)[1]
     last_day = datetime.date(year, month, days_in_month)
-    
-    for user in users:
-        config, _ = SalaryConfig.objects.get_or_create(user=user)
-        if not MonthlyPayroll.objects.filter(user=user, month=month, year=year).exists():
-            # Exclude dates where short permission was approved
-            approved_perm_dates = set(
-                PermissionRequest.objects.filter(
-                    user=user,
-                    date__range=(first_day, last_day),
-                    status='approved'
-                ).values_list('date', flat=True)
-            )
-            
-            late_days = Attendance.objects.filter(
-                user=user, 
-                date__range=(first_day, last_day),
-                status='late'
-            ).exclude(date__in=approved_perm_dates).count()
-            
-            present_att = Attendance.objects.filter(
-                user=user, 
-                date__range=(first_day, last_day)
-            )
-            
-            present_days = 0
-            absent_days = 0
-            approved_leaves = 0
-            unapproved_leaves = 0
-            
-            current_date = first_day
-            while current_date <= last_day:
-                att_rec = present_att.filter(date=current_date).first()
-                if att_rec:
-                    if att_rec.status in ['present', 'late']:
-                        present_days += 1
-                    elif att_rec.status == 'half_day':
-                        present_days += 0.5
-                        absent_days += 0.5
-                    elif att_rec.status == 'on_leave':
-                        leave = LeaveRequest.objects.filter(
-                            user=user, 
-                            start_date__lte=current_date, 
-                            end_date__gte=current_date, 
-                            status='approved'
-                        ).first()
-                        if leave:
-                            approved_leaves += 1
-                        else:
-                            unapproved_leaves += 1
+    proc_user_ids = [u.id for u in users_to_process]
+
+    # 1. Bulk get or create SalaryConfigs
+    salary_configs = {sc.user_id: sc for sc in SalaryConfig.objects.filter(user_id__in=proc_user_ids)}
+    new_configs = []
+    for u in users_to_process:
+        if u.id not in salary_configs:
+            new_configs.append(SalaryConfig(user=u, monthly_base_salary=Decimal('0.00')))
+    if new_configs:
+        SalaryConfig.objects.bulk_create(new_configs)
+        salary_configs = {sc.user_id: sc for sc in SalaryConfig.objects.filter(user_id__in=proc_user_ids)}
+
+    # 2. Bulk fetch Attendance records into dictionary: {(user_id, date): att_obj}
+    all_att = Attendance.objects.filter(user_id__in=proc_user_ids, date__range=(first_day, last_day))
+    att_dict = {(att.user_id, att.date): att for att in all_att}
+
+    # 3. Bulk fetch Approved Permission dates into dictionary: {user_id: set(dates)}
+    all_perms = PermissionRequest.objects.filter(
+        user_id__in=proc_user_ids,
+        date__range=(first_day, last_day),
+        status='approved'
+    ).values_list('user_id', 'date')
+    perm_dict = {}
+    for uid, pdate in all_perms:
+        perm_dict.setdefault(uid, set()).add(pdate)
+
+    # 4. Bulk fetch Approved Leave requests into dictionary: {user_id: [(start_date, end_date)]}
+    all_leaves = LeaveRequest.objects.filter(
+        user_id__in=proc_user_ids,
+        start_date__lte=last_day,
+        end_date__gte=first_day,
+        status='approved'
+    ).values_list('user_id', 'start_date', 'end_date')
+    leave_dict = {}
+    for uid, sdate, edate in all_leaves:
+        leave_dict.setdefault(uid, []).append((sdate, edate))
+
+    global_policy = GlobalPermissionPolicy.get_policy()
+    late_thresh = max(1, global_policy.late_threshold_for_half_day_deduction or 4)
+
+    for user in users_to_process:
+        config = salary_configs.get(user.id)
+        base_salary = config.monthly_base_salary if config else Decimal('0.00')
+
+        user_perm_dates = perm_dict.get(user.id, set())
+
+        present_days = 0
+        absent_days = 0
+        late_days = 0
+        unapproved_leaves = 0
+
+        current_date = first_day
+        while current_date <= last_day:
+            att_rec = att_dict.get((user.id, current_date))
+
+            if att_rec:
+                if att_rec.status == 'present':
+                    present_days += 1
+                elif att_rec.status == 'late':
+                    if current_date not in user_perm_dates:
+                        late_days += 1
+                    present_days += 1
+                elif att_rec.status == 'half_day':
+                    present_days += 0.5
+                    absent_days += 0.5
                 else:
-                    leave = LeaveRequest.objects.filter(
-                        user=user, 
-                        start_date__lte=current_date, 
-                        end_date__gte=current_date, 
-                        status='approved'
-                    ).first()
-                    if leave:
-                        approved_leaves += 1
-                    else:
-                        absent_days += 1
-                        unapproved_leaves += 1
-                        
-                current_date += datetime.timedelta(days=1)
-            
-            global_policy = GlobalPermissionPolicy.get_policy()
-            late_thresh = max(1, global_policy.late_threshold_for_half_day_deduction or 4)
-            
-            lop_days_to_deduct = Decimal(str(max(0, unapproved_leaves - 4)))
-            per_day_rate = config.monthly_base_salary / Decimal(str(days_in_month)) if days_in_month > 0 else Decimal('0')
-            half_day_rate = per_day_rate / Decimal('2')
-            
-            lop_deduction = lop_days_to_deduct * per_day_rate
-            late_half_days = Decimal(str(late_days // late_thresh))
-            late_deduction = late_half_days * half_day_rate
-            
-            total_deductions = late_deduction + lop_deduction
-            net_salary = max(Decimal('0.00'), config.monthly_base_salary - total_deductions)
-                
-            MonthlyPayroll.objects.create(
-                user=user,
-                month=month,
-                year=year,
-                present_days=present_days,
-                absent_days=absent_days,
-                late_days=late_days,
-                approved_leaves=approved_leaves,
-                unapproved_leaves=unapproved_leaves,
-                base_salary=config.monthly_base_salary,
-                deductions=total_deductions,
-                net_salary=net_salary,
-                processed_by=request_user if (request_user and request_user.is_authenticated) else None,
-                status='draft'
-            )
+                    absent_days += 1
+                    unapproved_leaves += 1
+            else:
+                absent_days += 1
+                unapproved_leaves += 1
+
+            current_date += datetime.timedelta(days=1)
+
+        allowed_offs = getattr(user, 'monthly_off_count', 4)
+        if present_days == 0:
+            lop_days_to_deduct = Decimal(str(unapproved_leaves))
+        else:
+            lop_days_to_deduct = Decimal(str(max(0, unapproved_leaves - allowed_offs)))
+        per_day_rate = base_salary / Decimal(str(days_in_month)) if days_in_month > 0 else Decimal('0')
+        half_day_rate = per_day_rate / Decimal('2')
+
+        lop_deduction = lop_days_to_deduct * per_day_rate
+        late_half_days = Decimal(str(late_days // late_thresh))
+        late_deduction = late_half_days * half_day_rate
+
+        total_deductions = late_deduction + lop_deduction
+        net_salary = max(Decimal('0.00'), base_salary - total_deductions)
+
+        MonthlyPayroll.objects.update_or_create(
+            user=user,
+            month=month,
+            year=year,
+            defaults={
+                'present_days': present_days,
+                'absent_days': absent_days,
+                'late_days': late_days,
+                'approved_leaves': 0,
+                'unapproved_leaves': unapproved_leaves,
+                'base_salary': base_salary,
+                'deductions': total_deductions,
+                'net_salary': net_salary,
+                'processed_by': request_user if (request_user and request_user.is_authenticated) else None,
+                'status': 'draft',
+            }
+        )
 
 
 @login_required
@@ -1023,9 +1081,9 @@ def pay_slips_view(request):
     selected_year = int(request.GET.get('year', today.year))
     
     # Auto-ensure monthly payroll records exist for all users
-    ensure_monthly_payrolls(selected_month, selected_year, request.user)
+    ensure_monthly_payrolls(selected_month, selected_year, request.user, force_recalculate=True)
     
-    raw_month_payrolls = MonthlyPayroll.objects.filter(month=selected_month, year=selected_year)
+    raw_month_payrolls = MonthlyPayroll.objects.filter(month=selected_month, year=selected_year).select_related('user')
     
     total_base = raw_month_payrolls.aggregate(Sum('base_salary'))['base_salary__sum'] or Decimal('0.00')
     total_deductions = raw_month_payrolls.aggregate(Sum('deductions'))['deductions__sum'] or Decimal('0.00')

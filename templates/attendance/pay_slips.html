@@ -169,16 +169,23 @@
                                     <span class="badge rounded-pill px-2 py-0.5" style="background-color: #d1fae5; color: #047857; font-size: 0.65rem; font-weight: 600;">
                                         P: {{ payroll.present_days }}d
                                     </span>
+                                    {% if payroll.late_days > 0 %}
                                     <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fef3c7; color: #b45309; font-size: 0.65rem; font-weight: 600;">
-                                        L: {{ payroll.late_days }}d
+                                        Late: {{ payroll.late_days }}d
                                     </span>
+                                    {% endif %}
                                     <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fee2e2; color: #b91c1c; font-size: 0.65rem; font-weight: 600;">
-                                        LOP: {% if payroll.unapproved_leaves > 4 %}{{ payroll.unapproved_leaves|add:"-4" }}{% else %}0{% endif %}d
+                                        LOP: {{ payroll.lop_days }}d
                                     </span>
                                 </div>
                             </td>
                             <td class="fw-bold text-dark">₹ {{ payroll.base_salary }}</td>
-                            <td class="text-danger fw-bold">- ₹ {{ payroll.deductions }}</td>
+                            <td class="text-danger fw-bold">
+                                <div>- ₹ {{ payroll.deductions }}</div>
+                                {% if payroll.late_deduction_amount > 0 %}
+                                    <small class="text-muted d-block" style="font-size: 0.65rem; font-weight: normal;">Late Cut: -₹ {{ payroll.late_deduction_amount }}</small>
+                                {% endif %}
+                            </td>
                             <td class="text-success fw-bold">₹ {{ payroll.net_salary }}</td>
                             <td>
                                 {% if payroll.status == 'paid' %}
@@ -189,7 +196,7 @@
                             </td>
                             <td class="text-end">
                                 <div class="d-flex align-items-center justify-content-end gap-1">
-                                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2.5 py-0.5" onclick="openPayslipModal('{{ payroll.user.username }}', '{{ payroll.user.employee_id|default:"-" }}', '{{ payroll.base_salary }}', '{{ payroll.deductions }}', '{{ payroll.net_salary }}', '{{ payroll.present_days }}', '{{ payroll.late_days }}', '{% if payroll.unapproved_leaves > 4 %}{{ payroll.unapproved_leaves|add:"-4" }}{% else %}0{% endif %}', '{{ selected_month }}/{{ selected_year }}', '{{ payroll.status }}')">
+                                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2.5 py-0.5" onclick="openPayslipModal('{{ payroll.user.username }}', '{{ payroll.user.employee_id|default:"-" }}', '{{ payroll.base_salary }}', '{{ payroll.deductions }}', '{{ payroll.net_salary }}', '{{ payroll.present_days }}', '{{ payroll.late_days }}', '{{ payroll.lop_days }}', '{{ selected_month }}/{{ selected_year }}', '{{ payroll.status }}', '{{ payroll.late_deduction_amount }}', '{{ payroll.lop_deduction_amount }}')">
                                         <i class="bi bi-file-earmark-text me-1"></i> View Slip
                                     </button>
 
@@ -220,86 +227,143 @@
     </div>
 </div>
 
-<!-- PAYSLIP PREVIEW MODAL -->
+<!-- PAYSLIP PREVIEW & PRINT MODAL -->
 <div class="modal fade" id="payslipModal" tabindex="-1" aria-labelledby="payslipModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4">
-            <div class="modal-header border-0 text-white py-2.5 px-3" style="background: linear-gradient(135deg, #4f46e5, #6366f1); border-radius: 1rem 1rem 0 0;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <!-- Modal Header (Screen Only) -->
+            <div class="modal-header border-0 text-white py-2.5 px-3 no-print" style="background: linear-gradient(135deg, #1e293b, #0f172a);">
                 <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-receipt fs-5"></i>
+                    <i class="bi bi-file-earmark-pdf-fill text-warning fs-5"></i>
                     <div>
-                        <h6 class="modal-title fw-bold text-white mb-0" id="payslipModalLabel">Employee Pay Slip</h6>
+                        <h6 class="modal-title fw-bold text-white mb-0" id="payslipModalLabel">Corporate Salary Slip</h6>
                         <span id="payslipPeriod" class="text-xxs text-white-50">Period</span>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-3.5 bg-light">
-                <div class="card border-0 shadow-sm bg-white p-3 rounded-3 mb-2.5">
-                    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+
+            <!-- Printable Payslip Document Container -->
+            <div class="modal-body p-4 bg-white" id="printablePayslip">
+                <!-- Company Logo & Title Header -->
+                <div class="d-flex justify-content-between align-items-center pb-3 mb-3 border-bottom border-2 border-dark">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-3 p-2 bg-dark text-white d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px;">
+                            <i class="bi bi-shop-window fs-3 text-warning"></i>
+                        </div>
                         <div>
-                            <h6 class="fw-bold text-primary mb-0">Aaron HR Payroll</h6>
-                            <span class="text-muted text-xxs">Official Salary Slip</span>
+                            <h4 class="fw-bold text-dark mb-0 tracking-tight" style="letter-spacing: -0.5px;">AARON GARMENTS</h4>
+                            <span class="text-muted small fw-semibold">Official Employee Salary Statement & Payslip</span>
                         </div>
-                        <span id="slipStatusBadge" class="badge bg-success rounded-pill px-2.5 py-1 text-xxs">Paid</span>
                     </div>
-                    <div class="row g-2 text-xxs">
-                        <div class="col-6">
-                            <span class="text-muted d-block">Employee Name:</span>
-                            <strong id="slipEmpName" class="text-dark">--</strong>
+                    <div class="text-end">
+                        <span id="slipStatusBadge" class="badge rounded-pill px-3 py-1.5 fw-bold text-xs shadow-xs" style="background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0;">
+                            PAID (SETTLED)
+                        </span>
+                        <div class="text-muted text-xxs mt-1" id="slipPrintDate">Issued: {% now "d M Y" %}</div>
+                    </div>
+                </div>
+
+                <!-- Employee & Period Information Grid -->
+                <div class="p-3 bg-light rounded-3 border mb-3">
+                    <div class="row g-2 text-xs">
+                        <div class="col-6 col-sm-3">
+                            <span class="text-muted d-block text-xxs text-uppercase fw-semibold">Employee Name</span>
+                            <strong id="slipEmpName" class="text-dark fs-6">--</strong>
                         </div>
-                        <div class="col-6">
-                            <span class="text-muted d-block">Employee ID:</span>
-                            <strong id="slipEmpId" class="text-dark">--</strong>
+                        <div class="col-6 col-sm-3">
+                            <span class="text-muted d-block text-xxs text-uppercase fw-semibold">Employee ID</span>
+                            <strong id="slipEmpId" class="text-dark fs-6">--</strong>
+                        </div>
+                        <div class="col-6 col-sm-3">
+                            <span class="text-muted d-block text-xxs text-uppercase fw-semibold">Pay Period</span>
+                            <strong id="slipPeriodText" class="text-dark fs-6">--/--</strong>
+                        </div>
+                        <div class="col-6 col-sm-3 text-sm-end">
+                            <span class="text-muted d-block text-xxs text-uppercase fw-semibold">Organization</span>
+                            <strong class="text-dark fs-6">Aaron Garments</strong>
                         </div>
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-sm bg-white p-3 rounded-3 mb-2.5">
-                    <span class="text-xxs fw-bold text-muted text-uppercase mb-2 d-block">Attendance Breakdown</span>
-                    <div class="row text-center g-1 text-xxs">
+                <!-- Attendance Breakdown Summary Pills -->
+                <div class="p-2.5 bg-white border rounded-3 mb-3">
+                    <span class="text-xxs fw-bold text-muted text-uppercase d-block mb-1.5">Monthly Attendance Record</span>
+                    <div class="row text-center g-2 text-xs">
                         <div class="col-4">
-                            <div class="p-1.5 rounded-2 bg-success bg-opacity-10 text-success fw-bold">
-                                Present: <span id="slipPresentDays">0</span>d
+                            <div class="py-1.5 px-2 rounded-2 bg-success bg-opacity-10 text-success fw-bold border border-success border-opacity-20">
+                                Days Present: <span id="slipPresentDays">0</span>d
                             </div>
                         </div>
                         <div class="col-4">
-                            <div class="p-1.5 rounded-2 bg-warning bg-opacity-10 text-warning fw-bold">
-                                Late: <span id="slipLateDays">0</span>d
+                            <div class="py-1.5 px-2 rounded-2 bg-warning bg-opacity-10 text-dark fw-bold border border-warning border-opacity-20">
+                                Late Marks: <span id="slipLateDays">0</span>d
                             </div>
                         </div>
                         <div class="col-4">
-                            <div class="p-1.5 rounded-2 bg-danger bg-opacity-10 text-danger fw-bold">
-                                LOP: <span id="slipLopDays">0</span>d
+                            <div class="py-1.5 px-2 rounded-2 bg-danger bg-opacity-10 text-danger fw-bold border border-danger border-opacity-20">
+                                LOP Absences: <span id="slipLopDays">0</span>d
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-sm bg-white p-3 rounded-3">
-                    <span class="text-xxs fw-bold text-muted text-uppercase mb-2 d-block">Salary Calculation</span>
-                    <table class="table table-sm table-borderless mb-0 text-xxs">
+                <!-- Itemized Earnings & Deductions Breakdown Table -->
+                <div class="table-responsive mb-3">
+                    <table class="table table-bordered align-middle text-xs mb-0">
+                        <thead class="table-dark text-uppercase text-xxs" style="background-color: #0f172a;">
+                            <tr>
+                                <th>Earnings Description</th>
+                                <th class="text-end">Amount (₹)</th>
+                                <th>Deductions Description</th>
+                                <th class="text-end">Amount (₹)</th>
+                            </tr>
+                        </thead>
                         <tbody>
-                            <tr class="border-bottom">
-                                <td class="text-muted">Base Salary</td>
+                            <tr>
+                                <td class="fw-semibold text-dark">Monthly Base Salary</td>
                                 <td class="text-end fw-bold text-dark" id="slipBaseSalary">₹ 0.00</td>
+                                <td class="fw-semibold text-muted">Late Check-in Deduction</td>
+                                <td class="text-end fw-bold text-danger" id="slipLateDeduction">- ₹ 0.00</td>
                             </tr>
-                            <tr class="border-bottom">
-                                <td class="text-muted">Total Deductions (Late/LOP)</td>
-                                <td class="text-end fw-bold text-danger" id="slipDeductions">- ₹ 0.00</td>
+                            <tr>
+                                <td class="text-muted">Allowances / Bonuses</td>
+                                <td class="text-end text-muted">₹ 0.00</td>
+                                <td class="fw-semibold text-muted">Loss of Pay (LOP) Deduction</td>
+                                <td class="text-end fw-bold text-danger" id="slipLopDeduction">- ₹ 0.00</td>
                             </tr>
-                            <tr class="bg-light rounded-2">
-                                <td class="fw-bold text-dark">Net Payable Salary</td>
-                                <td class="text-end fw-bold text-success fs-6" id="slipNetSalary">₹ 0.00</td>
+                            <tr class="table-light fw-bold">
+                                <td>Gross Earnings</td>
+                                <td class="text-end text-dark" id="slipGrossEarnings">₹ 0.00</td>
+                                <td>Total Deductions</td>
+                                <td class="text-end text-danger" id="slipDeductions">- ₹ 0.00</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Net Payable Highlight Banner -->
+                <div class="p-3 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-30 d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <span class="text-uppercase fw-bold text-success text-xxs d-block" style="letter-spacing: 0.5px;">Net Payable Amount</span>
+                        <small class="text-muted" style="font-size: 0.7rem;">Direct Bank Credit / Cash Settlement</small>
+                    </div>
+                    <div class="text-end">
+                        <h3 class="fw-bold text-success mb-0" id="slipNetSalary">₹ 0.00</h3>
+                    </div>
+                </div>
+
+                <!-- Footer Computer Verification Note (No Signatures Required) -->
+                <div class="pt-2 border-top text-center text-muted text-xxs">
+                    <i class="bi bi-shield-check me-1 text-success"></i> This is a computer-generated salary statement for Aaron Garments. No physical signature required.
+                </div>
             </div>
-            <div class="modal-footer border-0 bg-white py-2 px-3 d-flex justify-content-between">
-                <button type="button" class="btn btn-sm btn-light rounded-pill px-3" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" onclick="window.print()">
-                    <i class="bi bi-printer me-1"></i> Print Slip
+
+            <!-- Modal Footer (Screen Only) -->
+            <div class="modal-footer border-0 bg-light py-2 px-3 d-flex justify-content-between no-print">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-sm btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
+                    <i class="bi bi-printer-fill me-1"></i> Print Pay Slip
                 </button>
             </div>
         </div>
@@ -309,32 +373,73 @@
 
 {% block extra_js %}
 <script>
-    function openPayslipModal(username, empId, base, deductions, net, present, late, lop, period, status) {
-        document.getElementById('slipEmpName').textContent = username;
-        document.getElementById('slipEmpId').textContent = empId;
-        document.getElementById('slipBaseSalary').textContent = '₹ ' + parseFloat(base).toFixed(2);
-        document.getElementById('slipDeductions').textContent = '- ₹ ' + parseFloat(deductions).toFixed(2);
-        document.getElementById('slipNetSalary').textContent = '₹ ' + parseFloat(net).toFixed(2);
-        document.getElementById('slipPresentDays').textContent = present;
-        document.getElementById('slipLateDays').textContent = late;
-        document.getElementById('slipLopDays').textContent = lop;
-        document.getElementById('payslipPeriod').textContent = 'Period: ' + period;
+    function openPayslipModal(username, empId, base, deductions, net, present, late, lop, period, status, lateDed, lopDed) {
+        if (document.getElementById('slipEmpName')) document.getElementById('slipEmpName').textContent = username;
+        if (document.getElementById('slipEmpId')) document.getElementById('slipEmpId').textContent = empId;
+        if (document.getElementById('slipBaseSalary')) document.getElementById('slipBaseSalary').textContent = '₹ ' + parseFloat(base || 0).toFixed(2);
+        if (document.getElementById('slipGrossEarnings')) document.getElementById('slipGrossEarnings').textContent = '₹ ' + parseFloat(base || 0).toFixed(2);
+        if (document.getElementById('slipLateDeduction')) document.getElementById('slipLateDeduction').textContent = '- ₹ ' + parseFloat(lateDed || 0).toFixed(2);
+        if (document.getElementById('slipLopDeduction')) document.getElementById('slipLopDeduction').textContent = '- ₹ ' + parseFloat(lopDed || 0).toFixed(2);
+        if (document.getElementById('slipDeductions')) document.getElementById('slipDeductions').textContent = '- ₹ ' + parseFloat(deductions || 0).toFixed(2);
+        if (document.getElementById('slipNetSalary')) document.getElementById('slipNetSalary').textContent = '₹ ' + parseFloat(net || 0).toFixed(2);
+        if (document.getElementById('slipPresentDays')) document.getElementById('slipPresentDays').textContent = present || 0;
+        if (document.getElementById('slipLateDays')) document.getElementById('slipLateDays').textContent = late || 0;
+        if (document.getElementById('slipLopDays')) document.getElementById('slipLopDays').textContent = lop || 0;
+        if (document.getElementById('payslipPeriod')) document.getElementById('payslipPeriod').textContent = period || '';
+        if (document.getElementById('slipPeriodText')) document.getElementById('slipPeriodText').textContent = period || '';
 
         const badge = document.getElementById('slipStatusBadge');
-        if (status === 'paid') {
-            badge.className = 'badge rounded-pill px-2.5 py-1 text-xxs fw-bold';
-            badge.style.backgroundColor = '#d1fae5';
-            badge.style.color = '#047857';
-            badge.textContent = 'Paid (Settled)';
-        } else {
-            badge.className = 'badge rounded-pill px-2.5 py-1 text-xxs fw-bold';
-            badge.style.backgroundColor = '#fef3c7';
-            badge.style.color = '#b45309';
-            badge.textContent = 'Draft (Pending)';
+        if (badge) {
+            if (status === 'paid') {
+                badge.className = 'badge rounded-pill px-3 py-1.5 fw-bold text-xs shadow-xs';
+                badge.style.backgroundColor = '#d1fae5';
+                badge.style.color = '#047857';
+                badge.style.border = '1px solid #a7f3d0';
+                badge.textContent = 'PAID (SETTLED)';
+            } else {
+                badge.className = 'badge rounded-pill px-3 py-1.5 fw-bold text-xs shadow-xs';
+                badge.style.backgroundColor = '#fef3c7';
+                badge.style.color = '#b45309';
+                badge.style.border = '1px solid #fde68a';
+                badge.textContent = 'DRAFT (PENDING)';
+            }
         }
 
-        const payslipModal = new bootstrap.Modal(document.getElementById('payslipModal'));
-        payslipModal.show();
+        const modalElem = document.getElementById('payslipModal');
+        if (modalElem) {
+            const payslipModal = bootstrap.Modal.getOrCreateInstance(modalElem);
+            payslipModal.show();
+        }
     }
 </script>
+<style>
+    @media print {
+        @page {
+            size: A4 portrait;
+            margin: 8mm;
+        }
+        body * {
+            visibility: hidden !important;
+        }
+        #printablePayslip, #printablePayslip * {
+            visibility: visible !important;
+        }
+        #printablePayslip {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            font-family: system-ui, -apple-system, sans-serif !important;
+            border: 1.5px solid #1e293b !important;
+            border-radius: 8px !important;
+            padding: 20px !important;
+        }
+        .no-print {
+            display: none !important;
+        }
+    }
+</style>
 {% endblock %}

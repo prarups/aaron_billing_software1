@@ -741,7 +741,7 @@
                     <td class="text-center">
                         <div class="d-flex align-items-center justify-content-center gap-2">
                             <button class="s-act-btn s-act-edit" title="Edit Staff"
-                                onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}', '{{ staff.date_of_joining|date:"Y-m-d"|default:'' }}', {% if staff.has_pos_access %}true{% else %}false{% endif %}, {% if staff.has_attendance_access %}true{% else %}false{% endif %}, '{{ staff.shift_start_time|time:"H:i" }}', '{{ staff.shift_end_time|time:"H:i" }}', {{ staff.grace_period_minutes }})">
+                                onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}', '{{ staff.date_of_joining|date:"Y-m-d"|default:'' }}', {% if staff.has_pos_access %}true{% else %}false{% endif %}, {% if staff.has_attendance_access %}true{% else %}false{% endif %})">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
                         </div>
@@ -760,8 +760,6 @@
                 {% endfor %}
                 </tbody>
             </table>
-        </div>
-
         <!-- Footer -->
         <div class="d-flex justify-content-between align-items-center px-4 py-2" style="background:#f8fafc;border-top:1px solid #f1f5f9;">
             <div id="staff-count-info" style="font-size:0.75rem;color:#94a3b8;">Showing all {{ staff_list|length }} staff members</div>
@@ -966,14 +964,6 @@
                                             <label class="form-label small text-muted fw-bold text-uppercase">Attendance Access</label>
                                             {{ staff_form.has_attendance_access }}
                                         </div>
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Shift Start Time</label>
-                                            {{ staff_form.shift_start_time }}
-                                        </div>
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Shift End Time</label>
-                                            {{ staff_form.shift_end_time }}
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1084,18 +1074,6 @@
                                                 <input class="form-check-input" type="checkbox" name="has_attendance_access" id="editStaffAttendanceAccess" style="transform: scale(1.15);">
                                             </div>
                                         </div>
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Shift Start Time</label>
-                                            <input type="time" name="shift_start_time" id="editStaffShiftStart" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
-                                        </div>
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Shift End Time</label>
-                                            <input type="time" name="shift_end_time" id="editStaffShiftEnd" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
-                                        </div>
-                                        <div class="col-12 mb-2">
-                                            <label class="form-label small text-muted fw-bold text-uppercase">Grace Period (Minutes)</label>
-                                            <input type="number" name="grace_period_minutes" id="editStaffGracePeriod" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Grace minutes" required>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1123,6 +1101,59 @@
                 <div class="modal-footer bg-light border-0 p-3">
                     <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary rounded-pill px-4">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Role Policy Modal -->
+<div class="modal fade" id="editRolePolicyModal" tabindex="-1" aria-labelledby="editRolePolicyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden animate-fade-in">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold" id="editRolePolicyModalLabel"><i class="bi bi-clock-history text-primary me-2"></i>Edit Role Shift & Week Off Policy</h5>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editRolePolicyForm" method="post" action="{% url 'update_role_shift_policy' %}">
+                {% csrf_token %}
+                <input type="hidden" name="policy_id" id="policyId">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted fw-bold text-uppercase">Role Name</label>
+                        <input type="text" id="policyRoleName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" readonly disabled>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-6 mb-2">
+                            <label class="form-label small text-muted fw-bold text-uppercase">Shift Start Time</label>
+                            <input type="time" name="shift_start_time" id="policyShiftStart" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <label class="form-label small text-muted fw-bold text-uppercase">Shift End Time</label>
+                            <input type="time" name="shift_end_time" id="policyShiftEnd" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <label class="form-label small text-muted fw-bold text-uppercase">Weekly Off Day</label>
+                            <select name="weekly_off_day" id="policyWeeklyOff" class="form-select rounded-pill shadow-sm border-0 bg-light px-3" required>
+                                <option value="Sunday">Sunday</option>
+                                <option value="Monday">Monday</option>
+                                <option value="Tuesday">Tuesday</option>
+                                <option value="Wednesday">Wednesday</option>
+                                <option value="Thursday">Thursday</option>
+                                <option value="Friday">Friday</option>
+                                <option value="Saturday">Saturday</option>
+                                <option value="Rotational">Rotational / Flexible</option>
+                            </select>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <label class="form-label small text-muted fw-bold text-uppercase">Monthly Off Count</label>
+                            <input type="number" name="monthly_off_count" id="policyMonthlyCount" min="0" max="15" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required placeholder="e.g. 4">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0 p-3">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Save Policy</button>
                 </div>
             </form>
         </div>
@@ -1256,6 +1287,18 @@
             }
         }
     }
+
+    function openEditRolePolicyModal(id, roleName, shiftStart, shiftEnd, weeklyOff, monthlyCount) {
+        document.getElementById('policyId').value = id;
+        document.getElementById('policyRoleName').value = roleName;
+        document.getElementById('policyShiftStart').value = shiftStart || '09:00';
+        document.getElementById('policyShiftEnd').value = shiftEnd || '17:00';
+        document.getElementById('policyWeeklyOff').value = weeklyOff || 'Sunday';
+        document.getElementById('policyMonthlyCount').value = monthlyCount || 4;
+
+        const modal = new bootstrap.Modal(document.getElementById('editRolePolicyModal'));
+        modal.show();
+    }
     
     function openEditBranchModal(id, name, location, contact, prefix) {
         document.getElementById('editBranchForm').action = `/users/branch/edit/${id}/`;
@@ -1281,7 +1324,7 @@
         modal.show();
     }
 
-    function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId, mobileNumber, address, dateOfJoining, hasPosAccess, hasAttendanceAccess, shiftStart, shiftEnd, gracePeriod) {
+    function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId, mobileNumber, address, dateOfJoining, hasPosAccess, hasAttendanceAccess) {
         document.getElementById('editStaffForm').action = `/users/staff/edit/${id}/`;
         document.getElementById('editStaffUsername').value = username;
         document.getElementById('editStaffFirstName').value = firstName;
@@ -1293,9 +1336,6 @@
         document.getElementById('editStaffDateOfJoining').value = (dateOfJoining === 'None' || !dateOfJoining) ? '' : dateOfJoining;
         document.getElementById('editStaffPosAccess').checked = hasPosAccess;
         document.getElementById('editStaffAttendanceAccess').checked = hasAttendanceAccess;
-        document.getElementById('editStaffShiftStart').value = shiftStart || '09:00';
-        document.getElementById('editStaffShiftEnd').value = shiftEnd || '17:00';
-        document.getElementById('editStaffGracePeriod').value = gracePeriod !== undefined ? gracePeriod : 15;
 
         const roleEl = document.getElementById('editStaffRole');
         if (roleEl && roleEl.tomselect) {

@@ -1238,6 +1238,14 @@ def branch_staff_management(request):
     staff_qs = User.objects.all().prefetch_related('branches').order_by('employee_id', 'username')
     custom_roles = CustomRole.objects.all()
     
+    from users.models import RoleShiftPolicy
+    standard_roles = ['owner', 'regional_manager', 'manager', 'assistant_manager', 'sales_staff']
+    for rcode in standard_roles:
+        RoleShiftPolicy.get_policy_for_role(rcode)
+    for crole in custom_roles:
+        RoleShiftPolicy.get_policy_for_role(crole.code)
+    role_policies = RoleShiftPolicy.objects.all()
+
     from users.forms import BranchForm, StaffForm
     branch_form = BranchForm()
     staff_form = StaffForm()
@@ -1248,11 +1256,70 @@ def branch_staff_management(request):
         'branch_search': branch_search,
         'staff_list': staff_qs,
         'custom_roles': custom_roles,
+        'role_policies': role_policies,
         'all_branches': Branch.objects.all(),
         'branch_form': branch_form,
         'staff_form': staff_form,
         'active_tab': active_tab,
     }
     return render(request, 'dashboards/management.html', context)
+
+
+@login_required
+def role_shift_policy_list(request):
+    """Dedicated page to manage Role Shift & Week Off Policies."""
+    if not (request.user.is_owner() or request.user.role == 'regional_manager'):
+        messages.error(request, "Permission denied.")
+        return redirect('dashboard')
+    
+    from users.models import RoleShiftPolicy, CustomRole
+    standard_roles = ['owner', 'regional_manager', 'manager', 'assistant_manager', 'sales_staff']
+    for rcode in standard_roles:
+        RoleShiftPolicy.get_policy_for_role(rcode)
+    for crole in CustomRole.objects.all():
+        RoleShiftPolicy.get_policy_for_role(crole.code)
+        
+    role_policies = RoleShiftPolicy.objects.all()
+    
+    context = {
+        'role_policies': role_policies,
+        'active_tab': 'role_policies',
+    }
+    return render(request, 'dashboards/role_policies.html', context)
+
+
+@login_required
+def update_role_shift_policy(request):
+    """AJAX / POST endpoint to update RoleShiftPolicy settings."""
+    if not (request.user.is_owner() or request.user.role == 'regional_manager'):
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
+            return JsonResponse({'success': False, 'message': 'Permission denied.'})
+        messages.error(request, 'Permission denied.')
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        policy_id = request.POST.get('policy_id')
+        shift_start = request.POST.get('shift_start_time', '09:00:00')
+        shift_end = request.POST.get('shift_end_time', '17:00:00')
+        monthly_count = request.POST.get('monthly_off_count', 4)
+
+        try:
+            from users.models import RoleShiftPolicy
+            policy = get_object_or_404(RoleShiftPolicy, pk=policy_id)
+            policy.shift_start_time = shift_start
+            policy.shift_end_time = shift_end
+            policy.monthly_off_count = int(monthly_count)
+            policy.save()
+
+            messages.success(request, f"Shift & Week-Off Policy for '{policy.role_name or policy.role}' updated successfully.")
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
+                return JsonResponse({'success': True, 'message': 'Policy updated successfully.'})
+        except Exception as e:
+            messages.error(request, f"Error updating policy: {str(e)}")
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
+                return JsonResponse({'success': False, 'message': str(e)})
+
+    return redirect('role_shift_policy_list')
+
 
 

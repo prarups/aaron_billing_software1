@@ -4,27 +4,29 @@
 {% block title %}My Attendance Summary - Aaron Billing{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%); border-radius: 1rem;">
-                <div class="card-body p-4 text-white">
-                    <h3 class="fw-bold mb-1"><i class="bi bi-person-badge-fill me-2"></i>My Attendance & Salary Summary</h3>
-                    <p class="mb-0 text-white-50">Track your daily clock-in history, salary rules, and download monthly pay slips.</p>
-                </div>
-            </div>
+<div class="container-fluid py-3 px-3">
+    <!-- Header Row -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 bg-white p-3 rounded-3 shadow-sm border">
+        <div>
+            <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-person-badge-fill text-primary"></i> My Attendance & Salary Summary
+            </h5>
+            <small class="text-muted" style="font-size: 0.75rem;">Track your daily clock-in history, salary details, and view monthly pay slips.</small>
+        </div>
+        <div>
+            <span class="badge bg-light text-dark border px-3 py-1.5 rounded-pill fw-semibold" style="font-size: 0.75rem;">
+                <i class="bi bi-calendar-event me-1 text-primary"></i> {% now "d M Y" %}
+            </span>
         </div>
     </div>
 
     <!-- Month Filter -->
-    <div class="card border-0 shadow-sm mb-4 bg-white" style="border-radius: 1rem;">
-        <div class="card-body p-4">
-            <h5 class="fw-bold text-success mb-3"><i class="bi bi-funnel-fill me-2"></i>Select Month & Year</h5>
-            <form method="get" class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label class="form-label small fw-bold text-muted">Month</label>
-                    <select name="month" class="form-select rounded-3">
+    <div class="card border-0 shadow-sm mb-3 bg-white rounded-3">
+        <div class="card-body p-2.5">
+            <form method="get" class="row g-2 align-items-end" style="font-size: 0.75rem;">
+                <div class="col-md-5">
+                    <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Month</label>
+                    <select name="month" class="form-select form-select-sm rounded-3">
                         <option value="1" {% if selected_month == 1 %}selected{% endif %}>January</option>
                         <option value="2" {% if selected_month == 2 %}selected{% endif %}>February</option>
                         <option value="3" {% if selected_month == 3 %}selected{% endif %}>March</option>
@@ -40,15 +42,15 @@
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label small fw-bold text-muted">Year</label>
-                    <select name="year" class="form-select rounded-3">
+                    <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Year</label>
+                    <select name="year" class="form-select form-select-sm rounded-3">
                         {% for y in years %}
                             <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <button type="submit" class="btn btn-success w-100 rounded-pill py-2">
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-sm btn-success w-100 rounded-pill py-1.5 fw-semibold" style="font-size: 0.75rem;">
                         <i class="bi bi-arrow-repeat me-1"></i> Retrieve Summary
                     </button>
                 </div>
@@ -56,118 +58,125 @@
         </div>
     </div>
 
-    <!-- Monthly Statistics Widgets -->
-    <div class="row mb-4">
+    <!-- Compact Statistics Cards -->
+    <div class="row g-2 mb-3">
         <!-- Card 1: Present -->
-        <div class="col-xl-4 col-sm-6 mb-3">
-            <div class="card border-0 shadow-sm bg-success text-white rounded-3 h-100">
-                <div class="card-body p-3.5 d-flex align-items-center justify-content-between">
+        <div class="col-xl-4 col-sm-6">
+            <div class="card border-0 shadow-sm rounded-3 bg-white border-start border-success border-4 h-100">
+                <div class="card-body p-2.5 d-flex align-items-center justify-content-between">
                     <div>
-                        <span class="small text-white-50 d-block">Days Present</span>
-                        <h3 class="fw-bold mb-0 mt-1">{{ present_cnt }}</h3>
+                        <span class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.65rem; letter-spacing: 0.5px;">Days Present</span>
+                        <h4 class="fw-bold text-dark mb-0 mt-0.5" style="font-size: 1.25rem;">{{ present_cnt }}</h4>
                     </div>
-                    <i class="bi bi-check-circle-fill fs-1 opacity-50"></i>
+                    <div class="rounded-circle p-2 bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                        <i class="bi bi-check-circle-fill fs-6"></i>
+                    </div>
                 </div>
             </div>
         </div>
         <!-- Card 2: Late -->
-        <div class="col-xl-4 col-sm-6 mb-3">
-            <div class="card border-0 shadow-sm bg-warning text-white rounded-3 h-100">
-                <div class="card-body p-3.5 d-flex align-items-center justify-content-between">
+        <div class="col-xl-4 col-sm-6">
+            <div class="card border-0 shadow-sm rounded-3 bg-white border-start border-warning border-4 h-100">
+                <div class="card-body p-2.5 d-flex align-items-center justify-content-between">
                     <div>
-                        <span class="small text-white-50 d-block">Late Check-ins</span>
-                        <h3 class="fw-bold mb-0 mt-1">{{ late_cnt }}</h3>
+                        <span class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.65rem; letter-spacing: 0.5px;">Late Check-Ins</span>
+                        <h4 class="fw-bold text-dark mb-0 mt-0.5" style="font-size: 1.25rem;">{{ late_cnt }}</h4>
                     </div>
-                    <i class="bi bi-clock-fill fs-1 opacity-50"></i>
+                    <div class="rounded-circle p-2 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                        <i class="bi bi-clock-fill fs-6"></i>
+                    </div>
                 </div>
             </div>
         </div>
         <!-- Card 3: Absent -->
-        <div class="col-xl-4 col-sm-6 mb-3">
-            <div class="card border-0 shadow-sm bg-danger text-white rounded-3 h-100">
-                <div class="card-body p-3.5 d-flex align-items-center justify-content-between">
+        <div class="col-xl-4 col-sm-6">
+            <div class="card border-0 shadow-sm rounded-3 bg-white border-start border-danger border-4 h-100">
+                <div class="card-body p-2.5 d-flex align-items-center justify-content-between">
                     <div>
-                        <span class="small text-white-50 d-block">Absent (Loss of Pay)</span>
-                        <h3 class="fw-bold mb-0 mt-1">{{ absent_cnt }}</h3>
+                        <span class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.65rem; letter-spacing: 0.5px;">Absent (Loss of Pay)</span>
+                        <h4 class="fw-bold text-dark mb-0 mt-0.5" style="font-size: 1.25rem;">{{ absent_cnt }}</h4>
                     </div>
-                    <i class="bi bi-exclamation-triangle-fill fs-1 opacity-50"></i>
+                    <div class="rounded-circle p-2 bg-danger bg-opacity-10 text-danger d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                        <i class="bi bi-exclamation-triangle-fill fs-6"></i>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Daily Log Sheet & Salary Section -->
-    <div class="row">
+    <div class="row g-3">
         <!-- Daily logs calendar list -->
-        <div class="col-lg-8 mb-4">
-            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
-                <div class="card-body p-4">
-                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-calendar-check me-2"></i>Daily Log Sheet ({{ selected_month }}/{{ selected_year }})</h5>
-                    
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm bg-white rounded-3">
+                <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex align-items-center justify-content-between">
+                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
+                        <i class="bi bi-calendar-check"></i> Daily Log Sheet ({{ selected_month }}/{{ selected_year }})
+                    </h6>
+                </div>
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0 small">
-                            <thead class="table-light">
+                        <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.75rem;">
+                            <thead class="table-light text-muted" style="font-size: 0.7rem;">
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Status</th>
-                                    <th>1. Check-In</th>
-                                    <th>2. Mid-Day</th>
-                                    <th>3. Check-Out</th>
+                                    <th class="ps-3 py-2">Date</th>
+                                    <th class="py-2">Status</th>
+                                    <th class="py-2">1. Check-In</th>
+                                    <th class="py-2">2. Mid-Day</th>
+                                    <th class="pe-3 py-2">3. Check-Out</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for day in day_list %}
                                 <tr>
-                                    <td class="fw-bold text-dark">{{ day.date|date:"d M (D)" }}</td>
-                                    <td>
+                                    <td class="ps-3 py-2 fw-bold text-dark">{{ day.date|date:"d M (D)" }}</td>
+                                    <td class="py-2">
                                         {% if day.status == 'present' %}
-                                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2">Present</span>
+                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #d1fae5; color: #047857; font-size: 0.65rem; font-weight: 600;">Present</span>
                                         {% elif day.status == 'late' %}
-                                            <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-2">Late Check-in</span>
-                                        {% elif day.status == 'on_leave' %}
-                                            <span class="badge bg-info bg-opacity-10 text-info rounded-pill px-2">On Leave</span>
+                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fef3c7; color: #b45309; font-size: 0.65rem; font-weight: 600;">Late Check-in</span>
                                         {% elif day.status == 'half_day' %}
-                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2">Half Day</span>
+                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #e5e7eb; color: #374151; font-size: 0.65rem; font-weight: 600;">Half Day</span>
                                         {% elif day.status == 'absent' %}
-                                            <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2">Absent</span>
+                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fee2e2; color: #b91c1c; font-size: 0.65rem; font-weight: 600;">Absent</span>
                                         {% else %}
                                             <span class="text-muted opacity-50">-</span>
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="py-2">
                                         {% if day.record and day.record.check_in %}
-                                            <div class="d-flex align-items-center gap-2">
+                                            <div class="d-flex align-items-center gap-1.5">
                                                 {% if day.record.check_in_photo %}
-                                                    <img src="{{ day.record.check_in_photo|cloudinary_optimize:"w_80,h_60" }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ day.record.check_in_photo|cloudinary_optimize }}', 'Check-In Photo')"/>
+                                                    <img src="{{ day.record.check_in_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 28px; height: 20px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ day.record.check_in_photo|cloudinary_optimize }}', 'Check-In Photo')"/>
                                                 {% endif %}
-                                                <span class="text-dark">{{ day.record.check_in|date:"h:i A" }}</span>
+                                                <span class="fw-semibold text-dark">{{ day.record.check_in|date:"h:i A" }}</span>
                                             </div>
                                         {% else %}
-                                            <span class="text-muted">-</span>
+                                            <span class="text-muted opacity-50">-</span>
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="py-2">
                                         {% if day.record and day.record.mid_day_time %}
-                                            <div class="d-flex align-items-center gap-2">
+                                            <div class="d-flex align-items-center gap-1.5">
                                                 {% if day.record.mid_day_photo %}
-                                                    <img src="{{ day.record.mid_day_photo|cloudinary_optimize:"w_80,h_60" }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ day.record.mid_day_photo|cloudinary_optimize }}', 'Mid-Day Photo')"/>
+                                                    <img src="{{ day.record.mid_day_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 28px; height: 20px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ day.record.mid_day_photo|cloudinary_optimize }}', 'Mid-Day Photo')"/>
                                                 {% endif %}
-                                                <span class="text-dark">{{ day.record.mid_day_time|date:"h:i A" }}</span>
+                                                <span class="fw-semibold text-dark">{{ day.record.mid_day_time|date:"h:i A" }}</span>
                                             </div>
                                         {% else %}
-                                            <span class="text-muted">-</span>
+                                            <span class="text-muted opacity-50">-</span>
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="pe-3 py-2">
                                         {% if day.record and day.record.check_out %}
-                                            <div class="d-flex align-items-center gap-2">
+                                            <div class="d-flex align-items-center gap-1.5">
                                                 {% if day.record.check_out_photo %}
-                                                    <img src="{{ day.record.check_out_photo|cloudinary_optimize:"w_80,h_60" }}" class="rounded cursor-zoom" style="width: 32px; height: 24px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ day.record.check_out_photo|cloudinary_optimize }}', 'Check-Out Photo')"/>
+                                                    <img src="{{ day.record.check_out_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 28px; height: 20px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ day.record.check_out_photo|cloudinary_optimize }}', 'Check-Out Photo')"/>
                                                 {% endif %}
-                                                <span class="text-dark">{{ day.record.check_out|date:"h:i A" }}</span>
+                                                <span class="fw-semibold text-dark">{{ day.record.check_out|date:"h:i A" }}</span>
                                             </div>
                                         {% else %}
-                                            <span class="text-muted">-</span>
+                                            <span class="text-muted opacity-50">-</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -182,46 +191,54 @@
         <!-- Sidebar salary config & recent payslips -->
         <div class="col-lg-4">
             <!-- Salary rules -->
-            <div class="card border-0 shadow-sm bg-white mb-4" style="border-radius: 1rem;">
-                <div class="card-body p-4">
-                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-cash-stack me-2"></i>Salary Config</h6>
+            <div class="card border-0 shadow-sm bg-white mb-3 rounded-3">
+                <div class="card-header bg-white border-bottom py-2.5 px-3">
+                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
+                        <i class="bi bi-cash-stack"></i> Salary Config
+                    </h6>
+                </div>
+                <div class="card-body p-3">
                     {% if sal_config %}
-                        <div class="d-flex justify-content-between mb-2 pb-2 border-bottom small">
+                        <div class="d-flex justify-content-between mb-2 pb-1.5 border-bottom" style="font-size: 0.75rem;">
                             <span class="text-muted">Base Salary:</span>
-                            <strong class="text-dark">Rs. {{ sal_config.monthly_base_salary }}</strong>
+                            <strong class="text-dark">₹ {{ sal_config.monthly_base_salary }}</strong>
                         </div>
-                        <div class="d-flex justify-content-between mb-2 pb-2 border-bottom small">
+                        <div class="d-flex justify-content-between mb-2 pb-1.5 border-bottom" style="font-size: 0.75rem;">
                             <span class="text-muted">Late Deduction:</span>
-                            <strong class="text-danger">Rs. {{ sal_config.late_deduction_amount }}</strong>
+                            <strong class="text-danger">₹ {{ sal_config.late_deduction_amount }}</strong>
                         </div>
-                        <div class="d-flex justify-content-between small">
-                            <span class="text-muted">LOP Deduction:</span>
-                            <strong class="text-danger">Rs. {{ sal_config.lop_deduction_amount }}</strong>
+                        <div class="d-flex justify-content-between" style="font-size: 0.75rem;">
+                            <span class="text-muted">LOP Deduction Rate:</span>
+                            <strong class="text-danger">₹ {{ sal_config.lop_deduction_amount }} / day</strong>
                         </div>
                     {% else %}
-                        <p class="text-muted small mb-0">Salary configuration not set by admin yet.</p>
+                        <p class="text-muted mb-0 py-1" style="font-size: 0.75rem;">Salary configuration not set by admin yet.</p>
                     {% endif %}
                 </div>
             </div>
 
             <!-- Pay slips -->
-            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
-                <div class="card-body p-4">
-                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-wallet2 me-2"></i>Generated Pay Slips</h6>
-                    <div class="list-group list-group-flush small">
+            <div class="card border-0 shadow-sm bg-white rounded-3">
+                <div class="card-header bg-white border-bottom py-2.5 px-3">
+                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
+                        <i class="bi bi-wallet2"></i> Generated Pay Slips
+                    </h6>
+                </div>
+                <div class="card-body p-2.5">
+                    <div class="list-group list-group-flush" style="font-size: 0.75rem;">
                         {% for p in payslips %}
-                            <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <div class="list-group-item d-flex justify-content-between align-items-center px-1 py-2">
                                 <div>
                                     <strong class="text-dark">{{ p.month }}/{{ p.year }}</strong>
-                                    <span class="text-success fw-bold d-block mt-0.5">Rs. {{ p.net_salary }}</span>
+                                    <span class="text-success fw-bold d-block" style="font-size: 0.72rem;">₹ {{ p.net_salary }}</span>
                                 </div>
-                                <button class="btn btn-xs btn-outline-primary rounded-pill" type="button" data-bs-toggle="modal" data-bs-target="#payslipModal"
+                                <button class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-0.5" type="button" data-bs-toggle="modal" data-bs-target="#payslipModal"
                                         onclick="showPayslip('{{ p.month }}', '{{ p.year }}', '{{ p.base_salary }}', '{{ p.present_days }}', '{{ p.late_days }}', '{{ p.late_deductions }}', '{{ p.lop_days }}', '{{ p.lop_deductions }}', '{{ p.net_salary }}', '{{ p.status }}')">
-                                    Slip
+                                    <i class="bi bi-file-earmark-text me-1"></i> Slip
                                 </button>
                             </div>
                         {% empty %}
-                            <p class="text-muted small mb-0 py-2">No pay slips found.</p>
+                            <p class="text-muted mb-0 py-2 text-center" style="font-size: 0.75rem;">No pay slips found.</p>
                         {% endfor %}
                     </div>
                 </div>
@@ -234,8 +251,8 @@
 <div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header border-0 bg-dark text-white py-3">
-                <h6 class="modal-title fw-bold" id="photoModalLabel">Verification Photo</h6>
+            <div class="modal-header border-0 bg-dark text-white py-2.5 px-3">
+                <h6 class="modal-title fw-bold" id="photoModalLabel" style="font-size: 0.85rem;">Verification Photo</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-0 bg-black">
@@ -247,88 +264,142 @@
 
 <!-- PAYSLIP MODAL -->
 <div class="modal fade" id="payslipModal" tabindex="-1" aria-labelledby="payslipModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header border-0 bg-primary text-white py-3">
-                <h6 class="modal-title fw-bold" id="payslipModalLabel"><i class="bi bi-file-earmark-pdf-fill me-2"></i>Salary Pay Slip</h6>
+            <!-- Modal Header (Screen Only) -->
+            <div class="modal-header border-0 text-white py-2.5 px-3 no-print" style="background: linear-gradient(135deg, #1e293b, #0f172a);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-file-earmark-pdf-fill text-warning fs-5"></i>
+                    <div>
+                        <h6 class="modal-title fw-bold text-white mb-0" id="payslipModalLabel">Corporate Salary Slip</h6>
+                        <span id="slipPeriodHeader" class="text-xxs text-white-50">Period</span>
+                    </div>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div id="printArea" class="modal-body p-4 bg-white">
-                <div class="text-center mb-3">
-                    <h5 class="fw-bold text-dark mb-0">AARON BILLING SOFTWARE</h5>
-                    <span class="text-muted small">Staff Monthly Payslip</span>
-                    <hr class="my-2" />
-                </div>
 
-                <div class="row small mb-3">
-                    <div class="col-6">
-                        <span class="text-muted d-block">Employee Name:</span>
-                        <strong class="text-dark">{{ user.username }}</strong>
+            <!-- Printable Payslip Document Container -->
+            <div class="modal-body p-4 bg-white" id="printablePayslip">
+                <!-- Company Logo & Title Header -->
+                <div class="d-flex justify-content-between align-items-center pb-3 mb-3 border-bottom border-2 border-dark">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-3 p-2 bg-dark text-white d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px;">
+                            <i class="bi bi-shop-window fs-3 text-warning"></i>
+                        </div>
+                        <div>
+                            <h4 class="fw-bold text-dark mb-0 tracking-tight" style="letter-spacing: -0.5px;">AARON GARMENTS</h4>
+                            <span class="text-muted small fw-semibold">Official Employee Salary Statement & Payslip</span>
+                        </div>
                     </div>
-                    <div class="col-6 text-end">
-                        <span class="text-muted d-block">Pay Period:</span>
-                        <strong id="slipPeriod" class="text-dark">--/--</strong>
+                    <div class="text-end">
+                        <span id="slipStatusBadge" class="badge rounded-pill px-3 py-1.5 fw-bold text-xs shadow-xs" style="background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0;">
+                            PAID (SETTLED)
+                        </span>
+                        <div class="text-muted text-xxs mt-1">Issued: {% now "d M Y" %}</div>
                     </div>
                 </div>
 
-                <table class="table table-sm table-bordered small mb-3">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Earnings</th>
-                            <th class="text-end">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Basic Salary</td>
-                            <td id="slipBaseSalary" class="text-end">Rs. 0.00</td>
-                        </tr>
-                        <tr class="fw-bold table-light">
-                            <td>Gross Earnings</td>
-                            <td id="slipGross" class="text-end">Rs. 0.00</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <table class="table table-sm table-bordered small mb-3">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Deductions</th>
-                            <th>Details</th>
-                            <th class="text-end">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Late Penalty</td>
-                            <td id="slipLateDays">0 days</td>
-                            <td id="slipLateDeductions" class="text-end text-danger">Rs. 0.00</td>
-                        </tr>
-                        <tr>
-                            <td>Loss of Pay (LOP)</td>
-                            <td id="slipLopDays">0 days</td>
-                            <td id="slipLopDeductions" class="text-end text-danger">Rs. 0.00</td>
-                        </tr>
-                        <tr class="fw-bold table-light">
-                            <td colspan="2">Total Deductions</td>
-                            <td id="slipTotalDeductions" class="text-end text-danger">Rs. 0.00</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div class="alert alert-success border-0 rounded-3 py-2 px-3 d-flex justify-content-between align-items-center mb-0">
-                    <strong class="text-success small">NET PAYABLE:</strong>
-                    <h5 id="slipNetSalary" class="fw-bold text-success mb-0">Rs. 0.00</h5>
+                <!-- Employee & Period Information Grid -->
+                <div class="p-3 bg-light rounded-3 border mb-3">
+                    <div class="row g-2 text-xs">
+                        <div class="col-6 col-sm-3">
+                            <span class="text-muted d-block text-xxs text-uppercase fw-semibold">Employee Name</span>
+                            <strong class="text-dark fs-6">{{ user.first_name }} {{ user.last_name }}</strong>
+                            {% if not user.first_name and not user.last_name %}<strong class="text-dark fs-6">{{ user.username }}</strong>{% endif %}
+                        </div>
+                        <div class="col-6 col-sm-3">
+                            <span class="text-muted d-block text-xxs text-uppercase fw-semibold">Employee ID</span>
+                            <strong class="text-dark fs-6">{{ user.employee_id|default:"-" }}</strong>
+                        </div>
+                        <div class="col-6 col-sm-3">
+                            <span class="text-muted d-block text-xxs text-uppercase fw-semibold">Pay Period</span>
+                            <strong id="slipPeriod" class="text-dark fs-6">--/--</strong>
+                        </div>
+                        <div class="col-6 col-sm-3 text-sm-end">
+                            <span class="text-muted d-block text-xxs text-uppercase fw-semibold">Organization</span>
+                            <strong class="text-dark fs-6">Aaron Garments</strong>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="mt-2 text-center text-muted small">
-                    Status: <span id="slipStatus" class="fw-bold">Paid</span>
+
+                <!-- Attendance Breakdown Summary Pills -->
+                <div class="p-2.5 bg-white border rounded-3 mb-3">
+                    <span class="text-xxs fw-bold text-muted text-uppercase d-block mb-1.5">Monthly Attendance Record</span>
+                    <div class="row text-center g-2 text-xs">
+                        <div class="col-4">
+                            <div class="py-1.5 px-2 rounded-2 bg-success bg-opacity-10 text-success fw-bold border border-success border-opacity-20">
+                                Days Present: <span id="slipPresentDays">0</span>d
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="py-1.5 px-2 rounded-2 bg-warning bg-opacity-10 text-dark fw-bold border border-warning border-opacity-20">
+                                Late Marks: <span id="slipLateDays">0</span>d
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="py-1.5 px-2 rounded-2 bg-danger bg-opacity-10 text-danger fw-bold border border-danger border-opacity-20">
+                                LOP Absences: <span id="slipLopDays">0</span>d
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Itemized Earnings & Deductions Breakdown Table -->
+                <div class="table-responsive mb-3">
+                    <table class="table table-bordered align-middle text-xs mb-0">
+                        <thead class="table-dark text-uppercase text-xxs" style="background-color: #0f172a;">
+                            <tr>
+                                <th>Earnings Description</th>
+                                <th class="text-end">Amount (₹)</th>
+                                <th>Deductions Description</th>
+                                <th class="text-end">Amount (₹)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="fw-semibold text-dark">Monthly Base Salary</td>
+                                <td class="text-end fw-bold text-dark" id="slipBaseSalary">₹ 0.00</td>
+                                <td class="fw-semibold text-muted">Late Check-in Deduction</td>
+                                <td class="text-end fw-bold text-danger" id="slipLateDeduction">- ₹ 0.00</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Allowances / Bonuses</td>
+                                <td class="text-end text-muted">₹ 0.00</td>
+                                <td class="fw-semibold text-muted">Loss of Pay (LOP) Deduction</td>
+                                <td class="text-end fw-bold text-danger" id="slipLopDeductions">- ₹ 0.00</td>
+                            </tr>
+                            <tr class="table-light fw-bold">
+                                <td>Gross Earnings</td>
+                                <td class="text-end text-dark" id="slipGross">₹ 0.00</td>
+                                <td>Total Deductions</td>
+                                <td class="text-end text-danger" id="slipTotalDeductions">- ₹ 0.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Net Payable Highlight Banner -->
+                <div class="p-3 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-30 d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <span class="text-uppercase fw-bold text-success text-xxs d-block" style="letter-spacing: 0.5px;">Net Payable Amount</span>
+                        <small class="text-muted" style="font-size: 0.7rem;">Direct Bank Credit / Cash Settlement</small>
+                    </div>
+                    <div class="text-end">
+                        <h3 class="fw-bold text-success mb-0" id="slipNetSalary">₹ 0.00</h3>
+                    </div>
+                </div>
+
+                <!-- Footer Computer Verification Note (No Signatures Required) -->
+                <div class="pt-2 border-top text-center text-muted text-xxs">
+                    <i class="bi bi-shield-check me-1 text-success"></i> This is a computer-generated salary statement for Aaron Garments. No physical signature required.
                 </div>
             </div>
-            <div class="modal-footer bg-light border-0">
-                <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary rounded-pill" onclick="window.print()">
-                    <i class="bi bi-printer-fill me-1"></i> Print Slip
+
+            <!-- Modal Footer (Screen Only) -->
+            <div class="modal-footer border-0 bg-light py-2 px-3 d-flex justify-content-between no-print">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-sm btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
+                    <i class="bi bi-printer-fill me-1"></i> Print Pay Slip
                 </button>
             </div>
         </div>
@@ -344,27 +415,40 @@
     }
 
     function showPayslip(month, year, base, pDays, lateDays, lateDed, lopDays, lopDed, net, status) {
-        document.getElementById('slipPeriod').textContent = month + ' / ' + year;
-        document.getElementById('slipBaseSalary').textContent = 'Rs. ' + base;
-        document.getElementById('slipGross').textContent = 'Rs. ' + base;
-        document.getElementById('slipLateDays').textContent = lateDays + ' late days';
-        document.getElementById('slipLateDeductions').textContent = '- Rs. ' + lateDed;
-        const totalLopDays = parseInt(lopDays);
-        const actualLopDeductedDays = Math.max(0, totalLopDays - 4);
-        const weekOffsUsed = Math.min(4, totalLopDays);
-        document.getElementById('slipLopDays').textContent = actualLopDeductedDays + ' LOP days (after ' + weekOffsUsed + ' week offs)';
-        document.getElementById('slipLopDeductions').textContent = '- Rs. ' + lopDed;
+        if (document.getElementById('slipPeriod')) document.getElementById('slipPeriod').textContent = month + ' / ' + year;
+        if (document.getElementById('slipPeriodHeader')) document.getElementById('slipPeriodHeader').textContent = month + ' / ' + year;
+        if (document.getElementById('slipBaseSalary')) document.getElementById('slipBaseSalary').textContent = '₹ ' + parseFloat(base || 0).toFixed(2);
+        if (document.getElementById('slipGross')) document.getElementById('slipGross').textContent = '₹ ' + parseFloat(base || 0).toFixed(2);
         
-        const totalDed = parseFloat(lateDed) + parseFloat(lopDed);
-        document.getElementById('slipTotalDeductions').textContent = 'Rs. ' + totalDed.toFixed(2);
-        document.getElementById('slipNetSalary').textContent = 'Rs. ' + net;
+        const lopDaysVal = parseInt(lopDays || 0);
+        if (document.getElementById('slipPresentDays')) document.getElementById('slipPresentDays').textContent = pDays || 0;
+        if (document.getElementById('slipLateDays')) document.getElementById('slipLateDays').textContent = lateDays || 0;
+        if (document.getElementById('slipLopDays')) document.getElementById('slipLopDays').textContent = lopDaysVal;
         
-        const statusEl = document.getElementById('slipStatus');
-        statusEl.textContent = status.toUpperCase();
-        if (status === 'paid') {
-            statusEl.className = "fw-bold text-success";
-        } else {
-            statusEl.className = "fw-bold text-secondary";
+        const lopDedVal = parseFloat(lopDed || 0);
+        const lateDedVal = parseFloat(lateDed || 0);
+        const totalDedVal = lopDedVal + lateDedVal;
+
+        if (document.getElementById('slipLateDeduction')) document.getElementById('slipLateDeduction').textContent = '- ₹ ' + lateDedVal.toFixed(2);
+        if (document.getElementById('slipLopDeductions')) document.getElementById('slipLopDeductions').textContent = '- ₹ ' + lopDedVal.toFixed(2);
+        if (document.getElementById('slipTotalDeductions')) document.getElementById('slipTotalDeductions').textContent = '- ₹ ' + totalDedVal.toFixed(2);
+        if (document.getElementById('slipNetSalary')) document.getElementById('slipNetSalary').textContent = '₹ ' + parseFloat(net || 0).toFixed(2);
+        
+        const badge = document.getElementById('slipStatusBadge');
+        if (badge) {
+            if (status === 'paid') {
+                badge.className = 'badge rounded-pill px-3 py-1.5 fw-bold text-xs shadow-xs';
+                badge.style.backgroundColor = '#d1fae5';
+                badge.style.color = '#047857';
+                badge.style.border = '1px solid #a7f3d0';
+                badge.textContent = 'PAID (SETTLED)';
+            } else {
+                badge.className = 'badge rounded-pill px-3 py-1.5 fw-bold text-xs shadow-xs';
+                badge.style.backgroundColor = '#fef3c7';
+                badge.style.color = '#b45309';
+                badge.style.border = '1px solid #fde68a';
+                badge.textContent = 'DRAFT (PENDING)';
+            }
         }
     }
 </script>
@@ -374,74 +458,38 @@
         transition: transform 0.2s ease;
     }
     .cursor-zoom:hover {
-        transform: scale(1.05);
+        transform: scale(1.08);
     }
     .btn-xs {
-        font-size: 0.75rem !important;
-        padding: 0.25rem 0.5rem !important;
+        font-size: 0.7rem !important;
+        padding: 0.15rem 0.4rem !important;
     }
     @media print {
+        @page {
+            size: A4 portrait;
+            margin: 8mm;
+        }
         body * {
-            visibility: hidden;
+            visibility: hidden !important;
         }
-        #printArea, #printArea * {
-            visibility: visible;
+        #printablePayslip, #printablePayslip * {
+            visibility: visible !important;
         }
-        #printArea {
-            position: absolute;
-            left: 5%;
-            top: 40px;
-            width: 90% !important;
-            padding: 30px !important;
-            border: 1px solid #ddd !important;
-            border-radius: 12px !important;
-            background-color: #fff !important;
-            color: #000 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-        }
-        /* Enforce row/col side-by-side layout in print */
-        #printArea .row {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            justify-content: space-between !important;
+        #printablePayslip {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 100% !important;
-            margin-left: 0 !important;
-            margin-right: 0 !important;
+            height: auto !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            font-family: system-ui, -apple-system, sans-serif !important;
+            border: 1.5px solid #1e293b !important;
+            border-radius: 8px !important;
+            padding: 20px !important;
         }
-        #printArea .col-6 {
-            flex: 0 0 50% !important;
-            max-width: 50% !important;
-            width: 50% !important;
-        }
-        #printArea .text-end {
-            text-align: right !important;
-            margin-left: auto !important;
-        }
-        /* Render tables and borders properly */
-        #printArea .table {
-            width: 100% !important;
-            margin-bottom: 1rem !important;
-            border-collapse: collapse !important;
-            background-color: transparent !important;
-        }
-        #printArea .table-bordered th,
-        #printArea .table-bordered td {
-            border: 1px solid #dee2e6 !important;
-            padding: 6px 10px !important;
-        }
-        #printArea .table-light {
-            background-color: #f8f9fa !important;
-        }
-        /* Render alert box colors correctly */
-        #printArea .alert-success {
-            background-color: #d1e7dd !important;
-            color: #0f5132 !important;
-            border: 0 !important;
-            display: flex !important;
-            justify-content: space-between !important;
-            align-items: center !important;
+        .no-print {
+            display: none !important;
         }
     }
 </style>

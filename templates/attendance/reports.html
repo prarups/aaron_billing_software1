@@ -4,33 +4,36 @@
 {% block title %}Attendance Reports - Aaron Billing{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 1rem;">
-                <div class="card-body p-4 text-white">
-                    <h3 class="fw-bold mb-1"><i class="bi bi-person-check-fill me-2"></i>Attendance Reports</h3>
-                    <p class="mb-0 text-white-50">Audit employee attendance, verify photo captures, check GPS locations, view monthly grids, and export reports.</p>
-                </div>
-            </div>
+<div class="container-fluid py-3 px-3">
+    <!-- Header Row -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 bg-white p-3 rounded-3 shadow-sm border">
+        <div>
+            <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-person-check-fill text-success"></i> Attendance Reports
+            </h5>
+            <small class="text-muted" style="font-size: 0.75rem;">Audit employee attendance, verify photo captures, view monthly grid, and export reports.</small>
+        </div>
+        <div>
+            <span class="badge bg-light text-dark border px-3 py-1.5 rounded-pill fw-semibold" style="font-size: 0.75rem;">
+                <i class="bi bi-calendar-event me-1 text-success"></i> {% now "d M Y" %}
+            </span>
         </div>
     </div>
 
     <!-- Main Navigation Tabs -->
-    <ul class="nav nav-pills mb-4 gap-2" id="reportsTab" role="tablist">
+    <ul class="nav nav-pills mb-3 gap-2" id="reportsTab" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="btn btn-outline-success {% if active_tab == 'grid' or not active_tab or active_tab != 'logs' and active_tab != 'audit' %}active{% endif %} rounded-pill px-4" id="grid-tab" data-bs-toggle="pill" data-bs-target="#gridSection" type="button" role="tab">
+            <button class="btn btn-sm btn-outline-success {% if active_tab == 'grid' or not active_tab or active_tab != 'logs' and active_tab != 'audit' %}active{% endif %} rounded-pill px-3 py-1.5 fw-semibold" style="font-size: 0.78rem;" id="grid-tab" data-bs-toggle="pill" data-bs-target="#gridSection" type="button" role="tab">
                 <i class="bi bi-grid-3x3-gap-fill me-1"></i> Monthly Visual Grid
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="btn btn-outline-success {% if active_tab == 'logs' %}active{% endif %} rounded-pill px-4" id="logs-tab" data-bs-toggle="pill" data-bs-target="#logsSection" type="button" role="tab">
+            <button class="btn btn-sm btn-outline-success {% if active_tab == 'logs' %}active{% endif %} rounded-pill px-3 py-1.5 fw-semibold" style="font-size: 0.78rem;" id="logs-tab" data-bs-toggle="pill" data-bs-target="#logsSection" type="button" role="tab">
                 <i class="bi bi-list-task me-1"></i> Detailed Daily Logs
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="btn btn-outline-success {% if active_tab == 'audit' %}active{% endif %} rounded-pill px-4" id="audit-tab" data-bs-toggle="pill" data-bs-target="#auditSection" type="button" role="tab">
+            <button class="btn btn-sm btn-outline-success {% if active_tab == 'audit' %}active{% endif %} rounded-pill px-3 py-1.5 fw-semibold" style="font-size: 0.78rem;" id="audit-tab" data-bs-toggle="pill" data-bs-target="#auditSection" type="button" role="tab">
                 <i class="bi bi-shield-check me-1"></i> Edit Audit History Log
             </button>
         </li>
@@ -38,19 +41,15 @@
 
     <div class="tab-content" id="reportsTabContent">
         <!-- TAB 1: Visual Monthly Grid -->
-        <div class="tab-pane fade {% if active_tab != 'logs' %}show active{% endif %}" id="gridSection" role="tabpanel">
+        <div class="tab-pane fade {% if active_tab != 'logs' and active_tab != 'audit' %}show active{% endif %}" id="gridSection" role="tabpanel">
             <!-- Grid Filter Form -->
-            <div class="card border-0 shadow-sm mb-4 bg-white" style="border-radius: 1rem;">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <h5 class="fw-bold text-success mb-0"><i class="bi bi-calendar-range me-2"></i>Monthly Grid Filter</h5>
-                        <span class="badge bg-light text-success border rounded-pill px-3 py-1 fw-normal small">Filter by Branch, Month & Year</span>
-                    </div>
-                    <form method="get" class="row g-3 align-items-end">
+            <div class="card border-0 shadow-sm mb-3 bg-white rounded-3">
+                <div class="card-body p-2.5">
+                    <form method="get" class="row g-2 align-items-end" style="font-size: 0.75rem;">
                         <input type="hidden" name="tab" value="grid">
                         <div class="col-lg-3 col-md-4">
-                            <label class="form-label small fw-bold text-muted">Branch</label>
-                            <select name="branch" class="form-select rounded-3 no-search" data-no-search="true">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Branch</label>
+                            <select name="branch" class="form-select form-select-sm rounded-3 no-search" data-no-search="true">
                                 <option value="">All Branches</option>
                                 {% for b in branches %}
                                     <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
@@ -58,8 +57,8 @@
                             </select>
                         </div>
                         <div class="col-lg-3 col-md-4">
-                            <label class="form-label small fw-bold text-muted">Month</label>
-                            <select name="grid_month" class="form-select rounded-3 no-search" data-no-search="true">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Month</label>
+                            <select name="grid_month" class="form-select form-select-sm rounded-3 no-search" data-no-search="true">
                                 <option value="1" {% if grid_month == 1 %}selected{% endif %}>January</option>
                                 <option value="2" {% if grid_month == 2 %}selected{% endif %}>February</option>
                                 <option value="3" {% if grid_month == 3 %}selected{% endif %}>March</option>
@@ -75,102 +74,95 @@
                             </select>
                         </div>
                         <div class="col-lg-2 col-md-4">
-                            <label class="form-label small fw-bold text-muted">Year</label>
-                            <select name="grid_year" class="form-select rounded-3 no-search" data-no-search="true">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Year</label>
+                            <select name="grid_year" class="form-select form-select-sm rounded-3 no-search" data-no-search="true">
                                 {% for y in years %}
                                     <option value="{{ y }}" {% if grid_year == y %}selected{% endif %}>{{ y }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="col-lg-4 col-md-12 d-flex gap-2">
-                            <button type="submit" class="btn text-white rounded-pill px-4 py-2.5 fw-semibold shadow-sm w-50" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); border: none;">
-                                <i class="bi bi-arrow-repeat me-1.5"></i> Update Grid
+                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 py-1.5 fw-semibold w-50" style="font-size: 0.75rem;">
+                                <i class="bi bi-arrow-repeat me-1"></i> Update Grid
                             </button>
-                            <a href="?tab=grid&branch={{ selected_branch }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}&export=grid_csv" class="btn text-white rounded-pill px-4 py-2.5 fw-semibold shadow-sm w-50 d-flex align-items-center justify-content-center text-nowrap" style="background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%); border: none;" title="Export Monthly Grid as CSV">
-                                <i class="bi bi-file-earmark-spreadsheet-fill me-1.5"></i> Export CSV
+                            <a href="?tab=grid&branch={{ selected_branch }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}&export=grid_csv" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 fw-semibold w-50 d-flex align-items-center justify-content-center text-nowrap" style="font-size: 0.75rem;" title="Export Monthly Grid as CSV">
+                                <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> Export CSV
                             </a>
                         </div>
                     </form>
                 </div>
             </div>
 
-            <!-- Visual Grid Table -->
-            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
-                <div class="card-body p-4">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
-                        <div class="d-flex align-items-center gap-3">
-                            <h5 class="fw-bold text-primary mb-0"><i class="bi bi-calendar3 me-2"></i>Monthly Sheet: {{ grid_month }}/{{ grid_year }}</h5>
-                        </div>
-                        
-                        <!-- Legend -->
-                        <div class="d-flex flex-wrap gap-2 small">
-                            <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-success d-inline-block" style="width: 10px; height: 10px;"></span> Present</span>
-                            <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-warning d-inline-block" style="width: 10px; height: 10px;"></span> Late</span>
-                            <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-secondary d-inline-block" style="width: 10px; height: 10px;"></span> Half Day</span>
-                            <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-info d-inline-block" style="width: 10px; height: 10px;"></span> Leave</span>
-                            <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-danger d-inline-block" style="width: 10px; height: 10px;"></span> Absent</span>
-                        </div>
+            <!-- Visual Grid Table Card -->
+            <div class="card border-0 shadow-sm bg-white rounded-3">
+                <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
+                        <i class="bi bi-calendar3"></i> Monthly Sheet: {{ grid_month }}/{{ grid_year }}
+                    </h6>
+                    <!-- Legend -->
+                    <div class="d-flex flex-wrap gap-2 text-xxs" style="font-size: 0.7rem;">
+                        <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-success d-inline-block" style="width: 8px; height: 8px;"></span> Present</span>
+                        <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-warning d-inline-block" style="width: 8px; height: 8px;"></span> Late</span>
+                        <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-secondary d-inline-block" style="width: 8px; height: 8px;"></span> Half Day</span>
+                        <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-danger d-inline-block" style="width: 8px; height: 8px;"></span> Absent</span>
                     </div>
-
+                </div>
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover align-middle text-center small mb-0">
-                            <thead class="table-light">
+                        <table class="table table-sm table-bordered table-hover align-middle text-center mb-0" style="font-size: 0.75rem;">
+                            <thead class="table-light text-muted" style="font-size: 0.7rem;">
                                 <tr>
-                                    <th class="text-start" style="min-width: 120px; position: sticky; left: 0; background: #f8fafc; z-index: 2;">Employee</th>
+                                    <th class="text-start ps-3 py-1.5" style="min-width: 130px; position: sticky; left: 0; background: #f8fafc; z-index: 2;">Employee</th>
                                     {% for d in day_numbers %}
-                                        <th style="width: 32px; min-width: 32px;">{{ d }}</th>
+                                        <th class="py-1.5" style="width: 26px; min-width: 26px; font-size: 0.65rem;">{{ d }}</th>
                                     {% endfor %}
-                                    <th class="bg-light" style="min-width: 150px;">Summary (P/L/H/V/A)</th>
+                                    <th class="bg-light py-1.5" style="min-width: 110px;">Summary (P/L/H/A)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for item in grid_data %}
                                 <tr>
                                     <!-- Employee username -->
-                                    <td class="text-start fw-bold text-dark" style="position: sticky; left: 0; background: #ffffff; z-index: 2; border-right: 2px solid #dee2e6;">
-                                        <div>
+                                    <td class="text-start ps-3 py-1.5 fw-bold text-dark" style="position: sticky; left: 0; background: #ffffff; z-index: 2; border-right: 2px solid #dee2e6;">
+                                        <div style="font-size: 0.78rem;">
                                             {{ item.user.first_name }} {{ item.user.last_name }}
                                             {% if not item.user.first_name and not item.user.last_name %}{{ item.user.username }}{% endif %}
                                         </div>
-                                        <small class="text-muted text-xxs d-block" style="font-weight: normal; font-size: 0.7rem;">@{{ item.user.username }} &middot; ID: {{ item.user.employee_id|default:"-" }}</small>
+                                        <div class="text-muted text-xxs" style="font-weight: normal; font-size: 0.65rem;">@{{ item.user.username }} &middot; ID: {{ item.user.employee_id|default:"-" }}</div>
                                     </td>
                                     
                                     <!-- Days indicators -->
                                     {% for day in item.days %}
-                                        <td class="p-1">
+                                        <td class="p-0.5">
                                             {% if day.status == 'present' %}
-                                                <span class="badge rounded-circle bg-success d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Present{% endif %}" 
+                                                <span class="badge rounded-circle bg-success d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 20px; height: 20px; font-size: 0.6rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Present{% endif %}" 
                                                       {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'present', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>P</span>
                                             {% elif day.status == 'late' %}
-                                                <span class="badge rounded-circle bg-warning d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %} text-dark" style="width: 22px; height: 22px;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Late Check-in{% endif %}"
+                                                <span class="badge rounded-circle bg-warning d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %} text-dark" style="width: 20px; height: 20px; font-size: 0.6rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Late Check-in{% endif %}"
                                                       {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'late', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>L</span>
                                             {% elif day.status == 'half_day' %}
-                                                <span class="badge rounded-circle bg-secondary d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Half Day{% endif %}"
+                                                <span class="badge rounded-circle bg-secondary d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 20px; height: 20px; font-size: 0.6rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Half Day{% endif %}"
                                                       {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'half_day', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>H</span>
-                                            {% elif day.status == 'on_leave' %}
-                                                <span class="badge rounded-circle bg-info d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}On Approved Leave{% endif %}"
-                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'on_leave', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>V</span>
                                             {% elif day.status == 'absent' %}
-                                                <span class="badge rounded-circle bg-danger d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Absent / Unrecorded{% endif %}"
+                                                <span class="badge rounded-circle bg-danger d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 20px; height: 20px; font-size: 0.6rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Absent / Unrecorded{% endif %}"
                                                       {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'absent', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>A</span>
                                             {% else %}
-                                                <span class="text-muted opacity-25">-</span>
+                                                <span class="text-muted opacity-25" style="font-size: 0.65rem;">-</span>
                                             {% endif %}
                                         </td>
                                     {% endfor %}
                                     
                                     <!-- Summary counts -->
-                                    <td class="bg-light fw-bold text-dark">
+                                    <td class="bg-light fw-bold text-dark py-1.5" style="font-size: 0.7rem;">
                                         <span class="text-success">{{ item.summary.present }}</span>/
                                         <span class="text-warning">{{ item.summary.late }}</span>/
                                         <span class="text-secondary">{{ item.summary.half_day }}</span>/
-                                        <span class="text-info">{{ item.summary.leave }}</span>/
                                         <span class="text-danger">{{ item.summary.absent }}</span>
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="{{ day_numbers|length|add:2 }}" class="text-center py-4 text-muted">No employees found.</td>
+                                    <td colspan="{{ day_numbers|length|add:2 }}" class="text-center py-3 text-muted">No employees found.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -183,14 +175,13 @@
         <!-- TAB 2: Detailed Logs list -->
         <div class="tab-pane fade {% if active_tab == 'logs' %}show active{% endif %}" id="logsSection" role="tabpanel">
             <!-- Detailed filters -->
-            <div class="card border-0 shadow-sm mb-4 bg-white" style="border-radius: 1rem;">
-                <div class="card-body p-4">
-                    <h5 class="fw-bold text-success mb-3"><i class="bi bi-filter-square me-2"></i>Logs Filter</h5>
-                    <form method="get" class="row g-3 align-items-end">
+            <div class="card border-0 shadow-sm mb-3 bg-white rounded-3">
+                <div class="card-body p-2.5">
+                    <form method="get" class="row g-2 align-items-end" style="font-size: 0.75rem;">
                         <input type="hidden" name="tab" value="logs">
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted">Branch</label>
-                            <select name="branch" class="form-select rounded-3">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Branch</label>
+                            <select name="branch" class="form-select form-select-sm rounded-3">
                                 <option value="">All Branches</option>
                                 {% for b in branches %}
                                     <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
@@ -198,8 +189,8 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted">Employee</label>
-                            <select name="user" class="form-select rounded-3">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Employee</label>
+                            <select name="user" class="form-select form-select-sm rounded-3">
                                 <option value="">All Employees</option>
                                 {% for u in users %}
                                     <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"i" %}selected{% endif %}>{{ u.username }}</option>
@@ -207,18 +198,18 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label small fw-bold text-muted">Start Date</label>
-                            <input type="date" name="start_date" class="form-control rounded-3" value="{{ start_date_val }}">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Start Date</label>
+                            <input type="date" name="start_date" class="form-control form-control-sm rounded-3" value="{{ start_date_val }}">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label small fw-bold text-muted">End Date</label>
-                            <input type="date" name="end_date" class="form-control rounded-3" value="{{ end_date_val }}">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">End Date</label>
+                            <input type="date" name="end_date" class="form-control form-control-sm rounded-3" value="{{ end_date_val }}">
                         </div>
-                        <div class="col-md-2 d-flex gap-2">
-                            <button type="submit" class="btn btn-success w-100 rounded-pill py-2">
+                        <div class="col-md-2 d-flex gap-1.5">
+                            <button type="submit" class="btn btn-sm btn-success w-100 rounded-pill py-1.5" style="font-size: 0.75rem;">
                                 <i class="bi bi-filter"></i> Filter
                             </button>
-                            <button type="submit" name="export" value="csv" class="btn btn-outline-success rounded-pill px-3 py-2" title="Export to CSV">
+                            <button type="submit" name="export" value="csv" class="btn btn-sm btn-outline-success rounded-pill px-2.5 py-1.5" title="Export to CSV" style="font-size: 0.75rem;">
                                 <i class="bi bi-file-earmark-excel-fill"></i>
                             </button>
                         </div>
@@ -227,142 +218,137 @@
             </div>
 
             <!-- Detailed Logs Table -->
-            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
-                <div class="card-body p-4">
-                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-list-check me-2"></i>Attendance Logs</h5>
-                    
+            <div class="card border-0 shadow-sm bg-white rounded-3">
+                <div class="card-header bg-white border-bottom py-2.5 px-3">
+                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
+                        <i class="bi bi-list-check"></i> Attendance Daily Logs
+                    </h6>
+                </div>
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
+                        <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.75rem;">
+                            <thead class="table-light text-muted" style="font-size: 0.7rem;">
                                 <tr>
-                                    <th>Employee</th>
-                                    <th>Date / Status</th>
-                                    <th>1. Check-In</th>
-                                    <th>2. Mid-Day Check</th>
-                                    <th>3. Check-Out</th>
-                                    <th>Actions</th>
+                                    <th class="ps-3 py-2">Employee</th>
+                                    <th class="py-2">Date / Status</th>
+                                    <th class="py-2">1. Check-In</th>
+                                    <th class="py-2">2. Mid-Day Check</th>
+                                    <th class="py-2">3. Check-Out</th>
+                                    <th class="pe-3 py-2">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for record in page_obj %}
                                 <tr>
                                     <!-- Employee info -->
-                                    <td>
-                                        <div class="fw-bold text-dark">
+                                    <td class="ps-3 py-2">
+                                        <div class="fw-bold text-dark" style="font-size: 0.78rem;">
                                             {{ record.user.first_name }} {{ record.user.last_name }}
                                             {% if not record.user.first_name and not record.user.last_name %}{{ record.user.username }}{% endif %}
                                         </div>
-                                        <div class="text-muted small" style="font-size: 0.75rem;">
+                                        <div class="text-muted text-xxs" style="font-size: 0.68rem;">
                                             @{{ record.user.username }} &middot; ID: {{ record.user.employee_id|default:"No ID" }} &middot; {{ record.user.role_display }}
                                         </div>
-                                        <div class="mt-1">
-                                            <span class="badge text-purple border text-xxs" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.65rem; font-weight: 600;">Branch: {{ record.branch.name }}</span>
+                                        <div class="mt-0.5">
+                                            <span class="badge border" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.6rem; padding: 0.15rem 0.35rem; font-weight: 600;">Branch: {{ record.branch.name }}</span>
                                         </div>
                                     </td>
                                     
                                     <!-- Date & Status -->
-                                    <td>
+                                    <td class="py-2">
                                         <div class="fw-bold text-dark">{{ record.date|date:"d M Y" }}</div>
-                                        <div class="mt-1">
+                                        <div class="mt-0.5">
                                             {% if record.status == 'present' %}
-                                                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2">Present</span>
+                                                <span class="badge rounded-pill px-2 py-0.5" style="background-color: #d1fae5; color: #047857; font-size: 0.65rem; font-weight: 600;">Present</span>
                                             {% elif record.status == 'late' %}
-                                                <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-2">Late Check-in</span>
-                                            {% elif record.status == 'on_leave' %}
-                                                <span class="badge bg-info bg-opacity-10 text-info rounded-pill px-2">On Leave</span>
+                                                <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fef3c7; color: #b45309; font-size: 0.65rem; font-weight: 600;">Late Check-in</span>
                                             {% elif record.status == 'half_day' %}
-                                                <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2">Half Day</span>
+                                                <span class="badge rounded-pill px-2 py-0.5" style="background-color: #e5e7eb; color: #374151; font-size: 0.65rem; font-weight: 600;">Half Day</span>
                                             {% else %}
-                                                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2">Absent</span>
+                                                <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fee2e2; color: #b91c1c; font-size: 0.65rem; font-weight: 600;">Absent</span>
                                             {% endif %}
                                         </div>
                                     </td>
 
                                     <!-- 1. Check In -->
-                                    <td>
+                                    <td class="py-2">
                                         {% if record.check_in %}
-                                            <div class="d-flex align-items-center gap-2">
+                                            <div class="d-flex align-items-center gap-1.5">
                                                 {% if record.check_in_photo %}
-                                                    <img src="{{ record.check_in_photo|cloudinary_optimize:"w_100,h_80" }}" class="rounded border object-fit-cover shadow-sm cursor-zoom" style="width: 48px; height: 36px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.check_in_photo|cloudinary_optimize }}', 'Check-In Photo ({{ record.user.username }})')"/>
-                                                {% else %}
-                                                    <span class="text-muted small">[No Photo]</span>
+                                                    <img src="{{ record.check_in_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 28px; height: 20px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.check_in_photo|cloudinary_optimize }}', 'Check-In Photo ({{ record.user.username }})')"/>
                                                 {% endif %}
                                                 <div class="lh-sm">
-                                                    <span class="small fw-bold text-dark d-block">{{ record.check_in|date:"h:i A" }}</span>
+                                                    <span class="fw-semibold text-dark d-block">{{ record.check_in|date:"h:i A" }}</span>
                                                     {% if record.check_in_lat %}
-                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_in_lat }},{{ record.check_in_lng }}" target="_blank" class="text-xxs text-decoration-none text-primary"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>Map GPS</a>
-                                                        <span class="gps-coord text-xxs text-muted d-block" data-lat="{{ record.check_in_lat }}" data-lng="{{ record.check_in_lng }}"></span>
+                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_in_lat }},{{ record.check_in_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.65rem;"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS</a>
+                                                        <span class="gps-coord text-muted text-xxs d-block" style="font-size: 0.65rem;" data-lat="{{ record.check_in_lat }}" data-lng="{{ record.check_in_lng }}"></span>
                                                     {% endif %}
                                                 </div>
                                             </div>
                                         {% else %}
-                                            <span class="text-muted small">-</span>
+                                            <span class="text-muted opacity-50">-</span>
                                         {% endif %}
                                     </td>
 
                                     <!-- 2. Mid Day check -->
-                                    <td>
+                                    <td class="py-2">
                                         {% if record.mid_day_time %}
-                                            <div class="d-flex align-items-center gap-2">
+                                            <div class="d-flex align-items-center gap-1.5">
                                                 {% if record.mid_day_photo %}
-                                                    <img src="{{ record.mid_day_photo|cloudinary_optimize:"w_100,h_80" }}" class="rounded border object-fit-cover shadow-sm cursor-zoom" style="width: 48px; height: 36px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.mid_day_photo|cloudinary_optimize }}', 'Mid-Day Photo ({{ record.user.username }})')"/>
-                                                {% else %}
-                                                    <span class="text-muted small">[No Photo]</span>
+                                                    <img src="{{ record.mid_day_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 28px; height: 20px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.mid_day_photo|cloudinary_optimize }}', 'Mid-Day Photo ({{ record.user.username }})')"/>
                                                 {% endif %}
                                                 <div class="lh-sm">
-                                                    <span class="small fw-bold text-dark d-block">{{ record.mid_day_time|date:"h:i A" }}</span>
+                                                    <span class="fw-semibold text-dark d-block">{{ record.mid_day_time|date:"h:i A" }}</span>
                                                     {% if record.mid_day_lat %}
-                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.mid_day_lat }},{{ record.mid_day_lng }}" target="_blank" class="text-xxs text-decoration-none text-primary"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>Map GPS</a>
-                                                        <span class="gps-coord text-xxs text-muted d-block" data-lat="{{ record.mid_day_lat }}" data-lng="{{ record.mid_day_lng }}"></span>
+                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.mid_day_lat }},{{ record.mid_day_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.65rem;"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS</a>
+                                                        <span class="gps-coord text-muted text-xxs d-block" style="font-size: 0.65rem;" data-lat="{{ record.mid_day_lat }}" data-lng="{{ record.mid_day_lng }}"></span>
                                                     {% endif %}
                                                 </div>
                                             </div>
                                         {% else %}
-                                            <span class="text-muted small">-</span>
+                                            <span class="text-muted opacity-50">-</span>
                                         {% endif %}
                                     </td>
 
                                     <!-- 3. Check Out -->
-                                    <td>
+                                    <td class="py-2">
                                         {% if record.check_out %}
-                                            <div class="d-flex align-items-center gap-2">
+                                            <div class="d-flex align-items-center gap-1.5">
                                                 {% if record.check_out_photo %}
-                                                    <img src="{{ record.check_out_photo|cloudinary_optimize:"w_100,h_80" }}" class="rounded border object-fit-cover shadow-sm cursor-zoom" style="width: 48px; height: 36px;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.check_out_photo|cloudinary_optimize }}', 'Check-Out Photo ({{ record.user.username }})')"/>
-                                                {% else %}
-                                                    <span class="text-muted small">[No Photo]</span>
+                                                    <img src="{{ record.check_out_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 28px; height: 20px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.check_out_photo|cloudinary_optimize }}', 'Check-Out Photo ({{ record.user.username }})')"/>
                                                 {% endif %}
                                                 <div class="lh-sm">
-                                                    <span class="small fw-bold text-dark d-block">{{ record.check_out|date:"h:i A" }}</span>
+                                                    <span class="fw-semibold text-dark d-block">{{ record.check_out|date:"h:i A" }}</span>
                                                     {% if record.check_out_lat %}
-                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_out_lat }},{{ record.check_out_lng }}" target="_blank" class="text-xxs text-decoration-none text-primary"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>Map GPS</a>
-                                                        <span class="gps-coord text-xxs text-muted d-block" data-lat="{{ record.check_out_lat }}" data-lng="{{ record.check_out_lng }}"></span>
+                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_out_lat }},{{ record.check_out_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.65rem;"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS</a>
+                                                        <span class="gps-coord text-muted text-xxs d-block" style="font-size: 0.65rem;" data-lat="{{ record.check_out_lat }}" data-lng="{{ record.check_out_lng }}"></span>
                                                     {% endif %}
                                                 </div>
                                             </div>
                                         {% else %}
-                                            <span class="text-muted small">-</span>
+                                            <span class="text-muted opacity-50">-</span>
                                         {% endif %}
                                     </td>
                                     
                                     <!-- Action button -->
-                                    <td>
+                                    <td class="pe-3 py-2">
                                         {% if is_owner %}
-                                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 d-flex align-items-center gap-1" 
+                                        <button class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-0.5 d-flex align-items-center gap-1" 
                                                 type="button" 
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#editAttendanceModal"
                                                 onclick="initEditModal('{{ record.id }}', '{{ record.user.username }}', '{{ record.date|date:"d M Y" }}', '{{ record.status }}', '{{ record.notes|default:"" }}')">
-                                            <i class="bi bi-pencil-fill" style="font-size: 0.75rem;"></i>
+                                            <i class="bi bi-pencil-fill" style="font-size: 0.65rem;"></i>
                                             <span>Edit</span>
                                         </button>
                                         {% else %}
-                                        <span class="text-muted small"><i class="bi bi-lock-fill me-1"></i>View Only</span>
+                                        <span class="text-muted" style="font-size: 0.7rem;"><i class="bi bi-lock-fill me-1"></i>View Only</span>
                                         {% endif %}
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">No attendance logs match the filters.</td>
+                                    <td colspan="6" class="text-center py-3 text-muted">No attendance logs match the filters.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -370,27 +356,27 @@
                     </div>
 
                     {% if page_obj.has_other_pages %}
-                    <nav aria-label="Page navigation" class="mt-4">
-                        <ul class="pagination justify-content-center mb-0">
+                    <nav aria-label="Page navigation" class="py-2.5 border-top">
+                        <ul class="pagination pagination-sm justify-content-center mb-0" style="font-size: 0.75rem;">
                             {% if page_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link rounded-start-pill px-3 border-0 shadow-sm text-success" href="?page=1&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="First Page">&laquo; First</a>
+                                    <a class="page-link rounded-start-pill px-3 border-0 text-success" href="?page=1&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="First Page">&laquo; First</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link px-3 border-0 shadow-sm text-success" href="?page={{ page_obj.previous_page_number }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Previous Page">Previous</a>
+                                    <a class="page-link px-3 border-0 text-success" href="?page={{ page_obj.previous_page_number }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Previous Page">Previous</a>
                                 </li>
                             {% endif %}
 
                             <li class="page-item disabled">
-                                <span class="page-link px-3 border-0 shadow-sm bg-light text-dark">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                                <span class="page-link px-3 border-0 bg-light text-dark">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
                             </li>
 
                             {% if page_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link px-3 border-0 shadow-sm text-success" href="?page={{ page_obj.next_page_number }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Next Page">Next</a>
+                                    <a class="page-link px-3 border-0 text-success" href="?page={{ page_obj.next_page_number }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Next Page">Next</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link rounded-end-pill px-3 border-0 shadow-sm text-success" href="?page={{ page_obj.paginator.num_pages }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Last Page">Last &raquo;</a>
+                                    <a class="page-link rounded-end-pill px-3 border-0 text-success" href="?page={{ page_obj.paginator.num_pages }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Last Page">Last &raquo;</a>
                                 </li>
                             {% endif %}
                         </ul>
@@ -403,17 +389,13 @@
         <!-- TAB 3: Edit Audit History Log -->
         <div class="tab-pane fade {% if active_tab == 'audit' %}show active{% endif %}" id="auditSection" role="tabpanel">
             <!-- Audit Logs Filter Form -->
-            <div class="card border-0 shadow-sm mb-4 bg-white" style="border-radius: 1rem;">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <h5 class="fw-bold text-primary mb-0"><i class="bi bi-funnel-fill me-2"></i>Filter Audit Logs</h5>
-                        <span class="badge bg-light text-primary border rounded-pill px-3 py-1 fw-normal small">Filter by Branch, Staff or Date Range</span>
-                    </div>
-                    <form method="get" class="row g-3 align-items-end">
+            <div class="card border-0 shadow-sm mb-3 bg-white rounded-3">
+                <div class="card-body p-2.5">
+                    <form method="get" class="row g-2 align-items-end" style="font-size: 0.75rem;">
                         <input type="hidden" name="tab" value="audit">
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted">Branch</label>
-                            <select name="branch" class="form-select rounded-3 no-search" data-no-search="true">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Branch</label>
+                            <select name="branch" class="form-select form-select-sm rounded-3 no-search" data-no-search="true">
                                 <option value="">All Branches</option>
                                 {% for b in branches %}
                                     <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
@@ -421,8 +403,8 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted">Staff Employee</label>
-                            <select name="user" class="form-select rounded-3 no-search" data-no-search="true">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Staff Employee</label>
+                            <select name="user" class="form-select form-select-sm rounded-3 no-search" data-no-search="true">
                                 <option value="">All Employees</option>
                                 {% for u in users %}
                                     <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"i" %}selected{% endif %}>{{ u.first_name }} {{ u.last_name }} (@{{ u.username }})</option>
@@ -430,18 +412,18 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label small fw-bold text-muted">Start Date</label>
-                            <input type="date" name="start_date" value="{{ start_date_val }}" class="form-control rounded-3">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Start Date</label>
+                            <input type="date" name="start_date" value="{{ start_date_val }}" class="form-control form-control-sm rounded-3">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label small fw-bold text-muted">End Date</label>
-                            <input type="date" name="end_date" value="{{ end_date_val }}" class="form-control rounded-3">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">End Date</label>
+                            <input type="date" name="end_date" value="{{ end_date_val }}" class="form-control form-control-sm rounded-3">
                         </div>
-                        <div class="col-md-2 d-flex gap-2">
-                            <button type="submit" class="btn text-white rounded-pill w-100 py-2 fw-semibold shadow-sm" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); border: none;">
+                        <div class="col-md-2 d-flex gap-1.5">
+                            <button type="submit" class="btn btn-sm btn-primary w-100 rounded-pill py-1.5" style="font-size: 0.75rem;">
                                 <i class="bi bi-funnel me-1"></i> Filter
                             </button>
-                            <a href="?tab=audit" class="btn btn-outline-secondary rounded-pill w-100 py-2 d-flex align-items-center justify-content-center">
+                            <a href="?tab=audit" class="btn btn-sm btn-outline-secondary rounded-pill w-100 py-1.5 d-flex align-items-center justify-content-center" style="font-size: 0.75rem;">
                                 <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
                             </a>
                         </div>
@@ -450,68 +432,67 @@
             </div>
 
             <!-- Audit Logs Table Card -->
-            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
-                <div class="card-body p-4">
-                    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
-                        <div>
-                            <h5 class="card-title fw-bold text-primary mb-1"><i class="bi bi-shield-check me-2"></i>Attendance Edit History & Audit Logs</h5>
-                            <p class="small text-muted mb-0">Full audit trail of all manual attendance corrections, status modifications, and admin notes.</p>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <a href="?tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}&export=audit_csv" class="btn text-white rounded-pill px-4 py-2 fw-semibold shadow-sm text-nowrap" style="background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); border: none;">
-                                <i class="bi bi-file-earmark-spreadsheet-fill me-1.5"></i> Export Audit CSV
-                            </a>
-                        </div>
+            <div class="card border-0 shadow-sm bg-white rounded-3">
+                <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div>
+                        <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
+                            <i class="bi bi-shield-check"></i> Attendance Edit History & Audit Logs
+                        </h6>
                     </div>
+                    <a href="?tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}&export=audit_csv" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold text-nowrap" style="font-size: 0.75rem;">
+                        <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> Export Audit CSV
+                    </a>
+                </div>
 
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0 small">
-                            <thead class="table-light">
+                        <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.75rem;">
+                            <thead class="table-light text-muted" style="font-size: 0.7rem;">
                                 <tr>
-                                    <th>Edited At</th>
-                                    <th>Employee</th>
-                                    <th>Attendance Date</th>
-                                    <th>Branch</th>
-                                    <th>Edited By</th>
-                                    <th>Status Change</th>
-                                    <th>Correction Reason / Notes</th>
+                                    <th class="ps-3 py-2">Edited At</th>
+                                    <th class="py-2">Employee</th>
+                                    <th class="py-2">Attendance Date</th>
+                                    <th class="py-2">Branch</th>
+                                    <th class="py-2">Edited By</th>
+                                    <th class="py-2">Status Change</th>
+                                    <th class="pe-3 py-2">Correction Reason / Notes</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for log in audit_page_obj %}
                                 <tr>
-                                    <td>
+                                    <td class="ps-3 py-2">
                                         <div class="fw-bold text-dark">{{ log.timestamp|date:"d M Y, h:i A" }}</div>
                                     </td>
-                                    <td>
+                                    <td class="py-2">
                                         <div class="fw-bold text-dark">{{ log.attendance.user.first_name }} {{ log.attendance.user.last_name }}</div>
-                                        <div class="text-muted text-xxs">@{{ log.attendance.user.username }} &middot; ID: {{ log.attendance.user.employee_id|default:"-" }}</div>
+                                        <div class="text-muted text-xxs" style="font-size: 0.68rem;">@{{ log.attendance.user.username }} &middot; ID: {{ log.attendance.user.employee_id|default:"-" }}</div>
                                     </td>
-                                    <td>
-                                        <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1">{{ log.attendance.date|date:"d M Y" }}</span>
+                                    <td class="py-2">
+                                        <span class="badge bg-light text-dark border rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">{{ log.attendance.date|date:"d M Y" }}</span>
                                     </td>
-                                    <td>
-                                        <span class="small text-muted">{{ log.attendance.branch.name|default:"-" }}</span>
+                                    <td class="py-2">
+                                        <span class="text-muted" style="font-size: 0.7rem;">{{ log.attendance.branch.name|default:"-" }}</span>
                                     </td>
-                                    <td>
-                                        <span class="badge rounded-pill px-2.5 py-1" style="background-color: #ede9fe; color: #7c3aed; font-weight: 600;">
+                                    <td class="py-2">
+                                        <span class="badge rounded-pill px-2 py-0.5" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.65rem; font-weight: 600;">
                                             <i class="bi bi-person-badge-fill me-1"></i>@{{ log.edited_by.username|default:"System" }}
                                         </span>
                                     </td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1.5">
-                                            <span class="badge bg-secondary rounded-pill px-2 opacity-75">{{ log.old_status|default:"absent"|capfirst }}</span>
-                                            <i class="bi bi-arrow-right text-muted small"></i>
-                                            <span class="badge bg-success rounded-pill px-2">{{ log.new_status|capfirst }}</span>
+                                    <td class="py-2">
+                                        <div class="d-flex align-items-center gap-1">
+                                            <span class="badge bg-secondary rounded-pill px-2 py-0.5 opacity-75" style="font-size: 0.65rem;">{{ log.old_status|default:"absent"|capfirst }}</span>
+                                            <i class="bi bi-arrow-right text-muted" style="font-size: 0.65rem;"></i>
+                                            <span class="badge bg-success rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">{{ log.new_status|capfirst }}</span>
                                         </div>
                                     </td>
-                                    <td>
-                                        <p class="mb-0 text-muted text-wrap" style="max-width: 300px;">{{ log.notes|default:"No reason specified" }}</p>
+                                    <td class="pe-3 py-2">
+                                        <p class="mb-0 text-muted text-wrap" style="max-width: 280px; font-size: 0.7rem;">{{ log.notes|default:"No reason specified" }}</p>
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="7" class="text-center py-4 text-muted">No attendance edit audit logs match the filter criteria.</td>
+                                    <td colspan="7" class="text-center py-3 text-muted">No attendance edit audit logs match the filter criteria.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -519,27 +500,27 @@
                     </div>
 
                     {% if audit_page_obj.has_other_pages %}
-                    <nav aria-label="Audit Page navigation" class="mt-4">
-                        <ul class="pagination justify-content-center mb-0">
+                    <nav aria-label="Audit Page navigation" class="py-2.5 border-top">
+                        <ul class="pagination pagination-sm justify-content-center mb-0" style="font-size: 0.75rem;">
                             {% if audit_page_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link rounded-start-pill px-3 border-0 shadow-sm text-primary" href="?audit_page=1&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="First Page">&laquo; First</a>
+                                    <a class="page-link rounded-start-pill px-3 border-0 text-primary" href="?audit_page=1&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="First Page">&laquo; First</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link px-3 border-0 shadow-sm text-primary" href="?audit_page={{ audit_page_obj.previous_page_number }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Previous Page">Previous</a>
+                                    <a class="page-link px-3 border-0 text-primary" href="?audit_page={{ audit_page_obj.previous_page_number }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Previous Page">Previous</a>
                                 </li>
                             {% endif %}
 
                             <li class="page-item disabled">
-                                <span class="page-link px-3 border-0 shadow-sm bg-light text-dark">Page {{ audit_page_obj.number }} of {{ audit_page_obj.paginator.num_pages }}</span>
+                                <span class="page-link px-3 border-0 bg-light text-dark">Page {{ audit_page_obj.number }} of {{ audit_page_obj.paginator.num_pages }}</span>
                             </li>
 
                             {% if audit_page_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link px-3 border-0 shadow-sm text-primary" href="?audit_page={{ audit_page_obj.next_page_number }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Next Page">Next</a>
+                                    <a class="page-link px-3 border-0 text-primary" href="?audit_page={{ audit_page_obj.next_page_number }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Next Page">Next</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link rounded-end-pill px-3 border-0 shadow-sm text-primary" href="?audit_page={{ audit_page_obj.paginator.num_pages }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Last Page">Last &raquo;</a>
+                                    <a class="page-link rounded-end-pill px-3 border-0 text-primary" href="?audit_page={{ audit_page_obj.paginator.num_pages }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Last Page">Last &raquo;</a>
                                 </li>
                             {% endif %}
                         </ul>
@@ -555,8 +536,8 @@
 <div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header border-0 bg-dark text-white py-3">
-                <h6 class="modal-title fw-bold" id="photoModalLabel">Verification Photo</h6>
+            <div class="modal-header border-0 bg-dark text-white py-2.5 px-3">
+                <h6 class="modal-title fw-bold" id="photoModalLabel" style="font-size: 0.85rem;">Verification Photo</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-0 bg-black">
@@ -570,12 +551,12 @@
 <div class="modal fade" id="editAttendanceModal" tabindex="-1" aria-labelledby="editAttendanceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header border-0 bg-primary text-white py-3">
-                <h6 class="modal-title fw-bold" id="editAttendanceModalLabel"><i class="bi bi-pencil-square me-2"></i>Edit Attendance Record</h6>
+            <div class="modal-header border-0 bg-primary text-white py-2.5 px-3">
+                <h6 class="modal-title fw-bold" id="editAttendanceModalLabel" style="font-size: 0.85rem;"><i class="bi bi-pencil-square me-1.5"></i>Edit Attendance Record</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4 bg-light">
-                <div class="alert alert-secondary border-0 bg-white rounded-3 mb-3 py-2 px-3 small shadow-sm">
+            <div class="modal-body p-3 bg-light">
+                <div class="alert alert-secondary border-0 bg-white rounded-3 mb-3 py-2 px-3 small shadow-sm" style="font-size: 0.75rem;">
                     <div class="d-flex justify-content-between mb-1">
                         <span class="fw-semibold text-muted">Employee:</span>
                         <span id="editEmpName" class="fw-bold text-dark">--</span>
@@ -590,25 +571,24 @@
                     <input type="hidden" id="editRecordId">
                     <input type="hidden" id="editUserId">
                     <input type="hidden" id="editIsoDate">
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted">Status</label>
-                        <select id="editStatus" class="form-select rounded-3" required>
+                    <div class="mb-2.5">
+                        <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Status</label>
+                        <select id="editStatus" class="form-select form-select-sm rounded-3" required style="font-size: 0.75rem;">
                             <option value="present">Present</option>
                             <option value="late">Late</option>
                             <option value="half_day">Half Day</option>
-                            <option value="on_leave">On Leave</option>
                             <option value="absent">Absent</option>
                         </select>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted">Correction Notes / Reason</label>
-                        <textarea id="editNotes" rows="3" class="form-control rounded-3" placeholder="Explain the reason for manual adjustment (e.g., Technical issue check-in correction)..." required></textarea>
+                        <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Correction Notes / Reason</label>
+                        <textarea id="editNotes" rows="2" class="form-control form-control-sm rounded-3" placeholder="Explain the reason for manual adjustment..." required style="font-size: 0.75rem;"></textarea>
                     </div>
 
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-outline-secondary rounded-pill w-50 py-2" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary rounded-pill w-50 py-2">Save Changes</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill w-50 py-1.5" data-bs-dismiss="modal" style="font-size: 0.75rem;">Cancel</button>
+                        <button type="submit" class="btn btn-sm btn-primary rounded-pill w-50 py-1.5" style="font-size: 0.75rem;">Save Changes</button>
                     </div>
                 </form>
             </div>
@@ -725,9 +705,9 @@
         transition: transform 0.2s ease;
     }
     .cursor-zoom:hover {
-        transform: scale(1.05);
+        transform: scale(1.08);
     }
-    .btn-xxs {
+    .btn-xs {
         font-size: 0.7rem !important;
         padding: 0.15rem 0.4rem !important;
     }

@@ -76,18 +76,10 @@ class StaffForm(forms.ModelForm):
         required=False,
         help_text="Leave blank to keep existing password when editing."
     )
-    shift_start_time = forms.TimeField(
-        widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3'}),
-        required=False
-    )
-    shift_end_time = forms.TimeField(
-        widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3'}),
-        required=False
-    )
     
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'role', 'branches', 'employee_id', 'mobile_number', 'address', 'is_active', 'date_of_joining', 'has_pos_access', 'has_attendance_access', 'shift_start_time', 'shift_end_time']
+        fields = ['username', 'first_name', 'last_name', 'role', 'branches', 'employee_id', 'mobile_number', 'address', 'is_active', 'date_of_joining', 'has_pos_access', 'has_attendance_access']
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Username', 'autocomplete': 'new-username'}),
             'first_name': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'First Name', 'autocomplete': 'off'}),

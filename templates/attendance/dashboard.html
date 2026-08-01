@@ -4,236 +4,179 @@
 {% block title %}Attendance Dashboard - Aaron Billing{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Header Card -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-lg overflow-hidden text-white animate-fade-in" style="background: linear-gradient(135deg, #059669, #0ea5e9); border-radius: 1.25rem; position: relative;">
-                <div class="card-body p-4 position-relative" style="z-index: 1;">
-                    <div class="row align-items-center">
-                        <div class="col-md-8 mb-3 mb-md-0">
-                            <h3 class="fw-bold mb-1 text-white"><i class="bi bi-clock-fill me-2"></i>Attendance Portal</h3>
-                            <p class="mb-0" style="color: rgba(255, 255, 255, 0.88); font-size: 0.9rem;">Welcome, <strong>{{ user.username }}</strong> ({% if is_owner_or_manager %}Admin/Manager{% else %}Staff{% endif %}). Facial Verification and GPS Location Logging.</p>
-                            {% if not is_owner_or_manager %}
-                                <a href="{% url 'attendance:my_summary' %}" class="btn btn-sm btn-light text-primary rounded-pill mt-2 px-3 fw-bold shadow-sm">
-                                    <i class="bi bi-person-badge-fill me-1"></i> View My Monthly Summary
-                                </a>
-                            {% else %}
-                                <a href="{% url 'attendance:management_overview' %}" class="btn btn-sm btn-light text-primary rounded-pill mt-2 px-3 fw-bold shadow-sm">
-                                    <i class="bi bi-speedometer2 me-1"></i> View Management Overview
-                                </a>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-4 text-md-end">
-                            <h4 id="liveClock" class="fw-bold mb-0 text-white">--:--:-- --</h4>
-                            <span class="small" style="color: rgba(255, 255, 255, 0.75);">{{ today|date:"l, d M Y" }}</span>
-                        </div>
-                    </div>
-                </div>
-                <!-- Floating decorative shapes -->
-                <div class="position-absolute bg-white rounded-circle" style="width: 150px; height: 150px; top: -50px; right: -50px; z-index: 0; opacity: 0.12;"></div>
-                <div class="position-absolute bg-white rounded-circle" style="width: 250px; height: 250px; bottom: -100px; left: -50px; z-index: 0; opacity: 0.06;"></div>
+<div class="container-fluid py-3 px-3">
+    <!-- Header Row -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 bg-white p-3 rounded-3 shadow-sm border">
+        <div>
+            <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-clock-fill text-success"></i> Attendance Portal
+            </h5>
+            <small class="text-muted" style="font-size: 0.75rem;">Welcome, <strong>{{ user.username }}</strong> ({% if is_owner_or_manager %}Admin/Manager{% else %}Staff{% endif %}). Facial Verification and GPS Location Logging.</small>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-2 mt-sm-0">
+            {% if not is_owner_or_manager %}
+                <a href="{% url 'attendance:my_summary' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.75rem;">
+                    <i class="bi bi-person-badge-fill me-1"></i> My Summary
+                </a>
+            {% else %}
+                <a href="{% url 'attendance:management_overview' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.75rem;">
+                    <i class="bi bi-speedometer2 me-1"></i> Management Overview
+                </a>
+            {% endif %}
+            <div class="bg-light border rounded-pill px-3 py-1 text-end">
+                <span id="liveClock" class="fw-bold text-dark d-block" style="font-size: 0.8rem;">--:--:-- --</span>
+                <span class="text-muted text-xxs d-block" style="font-size: 0.65rem;">{{ today|date:"l, d M Y" }}</span>
             </div>
         </div>
     </div>
 
-    <!-- MAIN INTERACTIVE WORKSPACE (Attendance Action Center & Timeline) -->
-    <div class="row mb-4">
-        <!-- Attendance Action Center Panel -->
-        <div class="col-lg-6 mb-4">
-            <div class="card border-0 shadow-sm h-100 bg-white overflow-hidden" style="border-radius: 1rem;">
-                <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex align-items-center justify-content-between">
-                    <h5 class="card-title fw-bold text-primary mb-0"><i class="bi bi-person-bounding-box me-2"></i>Attendance Actions</h5>
-                    <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-1.5 fw-semibold small">
-                        <i class="bi bi-camera-fill me-1"></i> Camera Verification
-                    </span>
+    <!-- MAIN WORKSPACE (Action Center & Timeline) -->
+    <div class="row g-3 mb-3">
+        <!-- Action Center Panel -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100 bg-white rounded-3">
+                <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex align-items-center justify-content-between">
+                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
+                        <i class="bi bi-person-bounding-box"></i> Attendance Actions
+                    </h6>
+                    {% if not attendance or not attendance.check_in %}
+                        <span class="badge bg-warning bg-opacity-10 text-warning border border-warning rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 0.7rem;">
+                            Not Checked In
+                        </span>
+                    {% elif not attendance.mid_day_time %}
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 0.7rem;">
+                            Checked In (Mid-Day Pending)
+                        </span>
+                    {% elif not attendance.check_out %}
+                        <span class="badge bg-info bg-opacity-10 text-info border border-info rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 0.7rem;">
+                            Mid-Day Verified (Check-Out Pending)
+                        </span>
+                    {% else %}
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 0.7rem;">
+                            Today Completed
+                        </span>
+                    {% endif %}
                 </div>
-                <div class="card-body p-4 d-flex flex-column justify-content-between">
-                    <!-- Status Header Banner -->
-                    <div class="p-3.5 rounded-4 mb-4 text-center border" style="background: linear-gradient(135deg, rgba(5, 150, 105, 0.04), rgba(14, 165, 233, 0.04)); border-color: rgba(5, 150, 105, 0.15) !important;">
-                        <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
-                            <span class="fs-4">
-                                {% if not attendance or not attendance.check_in %}
-                                    ⌛
-                                {% elif not attendance.mid_day_time %}
-                                    🟢
-                                {% elif not attendance.check_out %}
-                                    🛡️
-                                {% else %}
-                                    🎉
-                                {% endif %}
-                            </span>
-                            <h6 class="fw-bold text-dark mb-0">Current Status: 
-                                {% if not attendance or not attendance.check_in %}
-                                    <span class="text-warning">Not Checked In</span>
-                                {% elif not attendance.mid_day_time %}
-                                    <span class="text-success">Checked In (Mid-Day Pending)</span>
-                                {% elif not attendance.check_out %}
-                                    <span class="text-info">Mid-Day Verified (Check-Out Pending)</span>
-                                {% else %}
-                                    <span class="text-primary">Today Completed!</span>
-                                {% endif %}
-                            </h6>
+                <div class="card-body p-3 d-flex flex-column justify-content-center">
+                    {% if not attendance or not attendance.check_in %}
+                        <!-- Step 1: Check In -->
+                        <button type="button" id="btnCheckIn" class="btn btn-success btn-lg rounded-3 py-2.5 px-4 w-100 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" onclick="openVerificationModal('check_in')">
+                            <i class="bi bi-box-arrow-in-right fs-5"></i> Check In Now
+                        </button>
+                    {% elif not attendance.mid_day_time %}
+                        <!-- Step 2: Mid-Day Verification -->
+                        <button type="button" id="btnMidDay" class="btn btn-warning text-white btn-lg rounded-3 py-2.5 px-4 w-100 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" onclick="openVerificationModal('mid_day')">
+                            <i class="bi bi-shield-check fs-5"></i> Mid-Day Verification
+                        </button>
+                    {% elif not attendance.check_out %}
+                        <!-- Step 3: Check Out -->
+                        <button type="button" id="btnCheckOut" class="btn btn-danger btn-lg rounded-3 py-2.5 px-4 w-100 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" onclick="openVerificationModal('check_out')">
+                            <i class="bi bi-box-arrow-left fs-5"></i> Check Out Now
+                        </button>
+                    {% else %}
+                        <!-- Step Completed Card -->
+                        <div class="alert alert-success border-0 bg-success bg-opacity-10 text-success mb-0 py-2.5 px-3 rounded-3 text-center fw-bold" style="font-size: 0.85rem;">
+                            <i class="bi bi-patch-check-fill me-1.5 fs-5"></i> Today's Attendance Completed!
                         </div>
-                        <p class="small text-muted mb-0">Click an action button below to launch live camera verification.</p>
-                    </div>
-
-                    <!-- Action Buttons Container (Smart Single Button Workflow) -->
-                    <div class="d-flex flex-column gap-3 mb-4">
-                        {% if not attendance or not attendance.check_in %}
-                            <!-- Step 1: Check In -->
-                            <button type="button" id="btnCheckIn" class="btn btn-primary btn-lg rounded-4 py-3.5 px-4 shadow-sm d-flex align-items-center justify-content-between action-btn-hover" onclick="openVerificationModal('check_in')">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="btn-icon-circle bg-white text-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm">
-                                        <i class="bi bi-box-arrow-in-right fs-4"></i>
-                                    </div>
-                                    <div class="text-start">
-                                        <div class="fw-bold fs-5">Check In</div>
-                                        <div class="small text-white-50" style="font-size: 0.8rem;">Start shift with face & GPS verification</div>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1.5 small">Open Camera</span>
-                                    <i class="bi bi-camera-fill fs-5"></i>
-                                </div>
-                            </button>
-                        {% elif not attendance.mid_day_time %}
-                            <!-- Step 2: Mid-Day Verification -->
-                            <button type="button" id="btnMidDay" class="btn btn-warning text-white btn-lg rounded-4 py-3.5 px-4 shadow-sm d-flex align-items-center justify-content-between action-btn-hover" onclick="openVerificationModal('mid_day')">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="btn-icon-circle bg-white text-warning rounded-circle d-flex align-items-center justify-content-center shadow-sm">
-                                        <i class="bi bi-shield-check fs-4"></i>
-                                    </div>
-                                    <div class="text-start">
-                                        <div class="fw-bold fs-5">Mid-Day Verification</div>
-                                        <div class="small text-white-50" style="font-size: 0.8rem;">Verify presence mid-shift with camera</div>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1.5 small">Open Camera</span>
-                                    <i class="bi bi-camera-fill fs-5"></i>
-                                </div>
-                            </button>
-                        {% elif not attendance.check_out %}
-                            <!-- Step 3: Check Out -->
-                            <button type="button" id="btnCheckOut" class="btn btn-danger btn-lg rounded-4 py-3.5 px-4 shadow-sm d-flex align-items-center justify-content-between action-btn-hover" onclick="openVerificationModal('check_out')">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="btn-icon-circle bg-white text-danger rounded-circle d-flex align-items-center justify-content-center shadow-sm">
-                                        <i class="bi bi-box-arrow-left fs-4"></i>
-                                    </div>
-                                    <div class="text-start">
-                                        <div class="fw-bold fs-5">Check Out</div>
-                                        <div class="small text-white-50" style="font-size: 0.8rem;">Complete shift with face & GPS verification</div>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1.5 small">Open Camera</span>
-                                    <i class="bi bi-camera-fill fs-5"></i>
-                                </div>
-                            </button>
-                        {% else %}
-                            <!-- Step Completed Card -->
-                            <div class="card border-0 bg-success bg-opacity-10 text-success p-4 rounded-4 text-center shadow-sm">
-                                <i class="bi bi-patch-check-fill display-4 mb-2 text-success"></i>
-                                <h5 class="fw-bold text-dark mb-1">Today's Attendance Completed!</h5>
-                                <p class="small text-muted mb-0">All 3 verification steps (Check-In, Mid-Day, Check-Out) are logged.</p>
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Security note -->
-                    <div class="text-center text-muted small mt-auto pt-2">
-                        <i class="bi bi-shield-lock-fill text-success me-1"></i> Live camera snapshot & GPS location required for verification.
-                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Today's Status Timeline Panel -->
-        <div class="col-lg-6 mb-4">
-            <div class="card border-0 shadow-sm h-100 bg-white" style="border-radius: 1rem;">
-                <div class="card-body p-4">
-                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-calendar3 me-2"></i>Today's Log Timeline</h5>
-                    
-                    <div class="timeline-wrapper mb-4">
+        <!-- Today's Log Timeline Panel -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100 bg-white rounded-3">
+                <div class="card-header bg-white border-bottom py-2.5 px-3">
+                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
+                        <i class="bi bi-calendar3"></i> Today's Log Timeline
+                    </h6>
+                </div>
+                <div class="card-body p-3">
+                    <div class="timeline-wrapper" style="font-size: 0.75rem;">
                         <!-- Step 1: Check In -->
-                        <div class="d-flex align-items-start mb-3 pb-3 border-bottom">
-                            <div class="rounded-circle bg-light p-2 me-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
-                                <i class="bi bi-box-arrow-in-right text-success fs-4"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h6 class="fw-bold mb-0">1. Check-In</h6>
-                                <span class="small text-muted">Time: 
-                                    {% if attendance and attendance.check_in %}
-                                        <strong class="text-dark">{{ attendance.check_in|date:"h:i A" }}</strong>
-                                    {% else %}
-                                        <span class="text-warning">Pending</span>
-                                    {% endif %}
-                                </span>
-                                {% if attendance and attendance.check_in_lat %}
-                                    <div class="mt-1">
-                                        <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.check_in_lat }},{{ attendance.check_in_lng }}" target="_blank" class="badge bg-light text-primary border text-decoration-none py-1.5 rounded-pill small">
-                                            <i class="bi bi-map-fill me-1"></i> View Location <span class="gps-coord ms-1 text-muted" data-lat="{{ attendance.check_in_lat }}" data-lng="{{ attendance.check_in_lng }}"></span>
-                                        </a>
+                        <div class="d-flex align-items-center justify-content-between mb-2.5 pb-2.5 border-bottom">
+                            <div class="d-flex align-items-center gap-2.5">
+                                <div class="rounded-circle bg-light p-1.5 text-success d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="bi bi-box-arrow-in-right fs-6"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark" style="font-size: 0.78rem;">1. Check-In</div>
+                                    <div class="text-muted" style="font-size: 0.7rem;">Time: 
+                                        {% if attendance and attendance.check_in %}
+                                            <strong class="text-dark">{{ attendance.check_in|date:"h:i A" }}</strong>
+                                        {% else %}
+                                            <span class="text-warning fw-semibold">Pending</span>
+                                        {% endif %}
                                     </div>
-                                {% endif %}
+                                    {% if attendance and attendance.check_in_lat %}
+                                        <div class="mt-0.5">
+                                            <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.check_in_lat }},{{ attendance.check_in_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.65rem;">
+                                                <i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS <span class="gps-coord text-muted" data-lat="{{ attendance.check_in_lat }}" data-lng="{{ attendance.check_in_lng }}"></span>
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                </div>
                             </div>
                             {% if attendance and attendance.check_in_photo %}
-                                <img src="{{ attendance.check_in_photo|cloudinary_optimize:"w_120,h_90" }}" class="rounded-3 border object-fit-cover shadow-sm cursor-zoom" style="width: 60px; height: 45px;" alt="Check-in Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.check_in_photo|cloudinary_optimize }}', 'Check-In Photo')"/>
+                                <img src="{{ attendance.check_in_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 36px; height: 26px; object-fit: cover;" alt="Check-in Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.check_in_photo|cloudinary_optimize }}', 'Check-In Photo')"/>
                             {% endif %}
                         </div>
 
                         <!-- Step 2: Mid-Day -->
-                        <div class="d-flex align-items-start mb-3 pb-3 border-bottom">
-                            <div class="rounded-circle bg-light p-2 me-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
-                                <i class="bi bi-shield-check text-warning fs-4"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h6 class="fw-bold mb-0">2. Mid-Day Verification</h6>
-                                <span class="small text-muted">Time: 
-                                    {% if attendance and attendance.mid_day_time %}
-                                        <strong class="text-dark">{{ attendance.mid_day_time|date:"h:i A" }}</strong>
-                                    {% else %}
-                                        <span class="text-warning">Pending</span>
-                                    {% endif %}
-                                </span>
-                                {% if attendance and attendance.mid_day_lat %}
-                                    <div class="mt-1">
-                                        <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.mid_day_lat }},{{ attendance.mid_day_lng }}" target="_blank" class="badge bg-light text-primary border text-decoration-none py-1.5 rounded-pill small">
-                                            <i class="bi bi-map-fill me-1"></i> View Location <span class="gps-coord ms-1 text-muted" data-lat="{{ attendance.mid_day_lat }}" data-lng="{{ attendance.mid_day_lng }}"></span>
-                                        </a>
+                        <div class="d-flex align-items-center justify-content-between mb-2.5 pb-2.5 border-bottom">
+                            <div class="d-flex align-items-center gap-2.5">
+                                <div class="rounded-circle bg-light p-1.5 text-warning d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="bi bi-shield-check fs-6"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark" style="font-size: 0.78rem;">2. Mid-Day Verification</div>
+                                    <div class="text-muted" style="font-size: 0.7rem;">Time: 
+                                        {% if attendance and attendance.mid_day_time %}
+                                            <strong class="text-dark">{{ attendance.mid_day_time|date:"h:i A" }}</strong>
+                                        {% else %}
+                                            <span class="text-warning fw-semibold">Pending</span>
+                                        {% endif %}
                                     </div>
-                                {% endif %}
+                                    {% if attendance and attendance.mid_day_lat %}
+                                        <div class="mt-0.5">
+                                            <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.mid_day_lat }},{{ attendance.mid_day_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.65rem;">
+                                                <i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS <span class="gps-coord text-muted" data-lat="{{ attendance.mid_day_lat }}" data-lng="{{ attendance.mid_day_lng }}"></span>
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                </div>
                             </div>
                             {% if attendance and attendance.mid_day_photo %}
-                                <img src="{{ attendance.mid_day_photo|cloudinary_optimize:"w_120,h_90" }}" class="rounded-3 border object-fit-cover shadow-sm cursor-zoom" style="width: 60px; height: 45px;" alt="Mid-day Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.mid_day_photo|cloudinary_optimize }}', 'Mid-Day Photo')"/>
+                                <img src="{{ attendance.mid_day_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 36px; height: 26px; object-fit: cover;" alt="Mid-day Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.mid_day_photo|cloudinary_optimize }}', 'Mid-Day Photo')"/>
                             {% endif %}
                         </div>
 
                         <!-- Step 3: Check Out -->
-                        <div class="d-flex align-items-start">
-                            <div class="rounded-circle bg-light p-2 me-3 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
-                                <i class="bi bi-box-arrow-left text-danger fs-4"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h6 class="fw-bold mb-0">3. Check-Out</h6>
-                                <span class="small text-muted">Time: 
-                                    {% if attendance and attendance.check_out %}
-                                        <strong class="text-dark">{{ attendance.check_out|date:"h:i A" }}</strong>
-                                    {% else %}
-                                        <span class="text-warning">Pending</span>
-                                    {% endif %}
-                                </span>
-                                {% if attendance and attendance.check_out_lat %}
-                                    <div class="mt-1">
-                                        <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.check_out_lat }},{{ attendance.check_out_lng }}" target="_blank" class="badge bg-light text-primary border text-decoration-none py-1.5 rounded-pill small">
-                                            <i class="bi bi-map-fill me-1"></i> View Location <span class="gps-coord ms-1 text-muted" data-lat="{{ attendance.check_out_lat }}" data-lng="{{ attendance.check_out_lng }}"></span>
-                                        </a>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-2.5">
+                                <div class="rounded-circle bg-light p-1.5 text-danger d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="bi bi-box-arrow-left fs-6"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark" style="font-size: 0.78rem;">3. Check-Out</div>
+                                    <div class="text-muted" style="font-size: 0.7rem;">Time: 
+                                        {% if attendance and attendance.check_out %}
+                                            <strong class="text-dark">{{ attendance.check_out|date:"h:i A" }}</strong>
+                                        {% else %}
+                                            <span class="text-warning fw-semibold">Pending</span>
+                                        {% endif %}
                                     </div>
-                                {% endif %}
+                                    {% if attendance and attendance.check_out_lat %}
+                                        <div class="mt-0.5">
+                                            <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.check_out_lat }},{{ attendance.check_out_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.65rem;">
+                                                <i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS <span class="gps-coord text-muted" data-lat="{{ attendance.check_out_lat }}" data-lng="{{ attendance.check_out_lng }}"></span>
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                </div>
                             </div>
                             {% if attendance and attendance.check_out_photo %}
-                                <img src="{{ attendance.check_out_photo|cloudinary_optimize:"w_120,h_90" }}" class="rounded-3 border object-fit-cover shadow-sm cursor-zoom" style="width: 60px; height: 45px;" alt="Check-out Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.check_out_photo|cloudinary_optimize }}', 'Check-Out Photo')"/>
+                                <img src="{{ attendance.check_out_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 36px; height: 26px; object-fit: cover;" alt="Check-out Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.check_out_photo|cloudinary_optimize }}', 'Check-Out Photo')"/>
                             {% endif %}
                         </div>
                     </div>
@@ -243,72 +186,74 @@
     </div>
 
     <!-- History Panel -->
-    <div class="row mt-2">
+    <div class="row">
         <div class="col-12">
-            <div class="card border-0 shadow-sm bg-white" style="border-radius: 1rem;">
-                <div class="card-body p-4">
-                    <h5 class="card-title fw-bold text-primary mb-4"><i class="bi bi-clock-history me-2"></i>Recent Log History</h5>
+            <div class="card border-0 shadow-sm bg-white rounded-3">
+                <div class="card-header bg-white border-bottom py-2.5 px-3">
+                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
+                        <i class="bi bi-clock-history"></i> Recent Log History
+                    </h6>
+                </div>
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
+                        <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.75rem;">
+                            <thead class="table-light text-muted" style="font-size: 0.7rem;">
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Status</th>
-                                    <th>Check In</th>
-                                    <th>Check Out</th>
-                                    <th>Mid-Day Check</th>
-                                    <th>Details</th>
+                                    <th class="ps-3 py-2">Date</th>
+                                    <th class="py-2">Status</th>
+                                    <th class="py-2">Check In</th>
+                                    <th class="py-2">Mid-Day Check</th>
+                                    <th class="py-2">Check Out</th>
+                                    <th class="pe-3 py-2">Details</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for item in recent_attendance %}
                                 <tr>
-                                    <td class="fw-bold text-dark">{{ item.date|date:"d M Y" }}</td>
-                                    <td>
+                                    <td class="ps-3 py-2 fw-bold text-dark">{{ item.date|date:"d M Y" }}</td>
+                                    <td class="py-2">
                                         {% if item.status == 'present' %}
-                                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-1.5">Present</span>
+                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #d1fae5; color: #047857; font-size: 0.65rem; font-weight: 600;">Present</span>
                                         {% elif item.status == 'late' %}
-                                            <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3 py-1.5">Late Check-in</span>
-                                        {% elif item.status == 'on_leave' %}
-                                            <span class="badge bg-info bg-opacity-10 text-info rounded-pill px-3 py-1.5">On Leave</span>
+                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fef3c7; color: #b45309; font-size: 0.65rem; font-weight: 600;">Late Check-in</span>
                                         {% elif item.status == 'half_day' %}
-                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-3 py-1.5">Half Day</span>
+                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #e5e7eb; color: #374151; font-size: 0.65rem; font-weight: 600;">Half Day</span>
                                         {% else %}
-                                            <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3 py-1.5">Absent</span>
+                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fee2e2; color: #b91c1c; font-size: 0.65rem; font-weight: 600;">Absent</span>
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="py-2">
                                         {% if item.check_in %}
-                                            <span class="text-dark">{{ item.check_in|date:"h:i A" }}</span>
+                                            <span class="fw-semibold text-dark">{{ item.check_in|date:"h:i A" }}</span>
                                         {% else %}
-                                            <span class="text-muted">-</span>
+                                            <span class="text-muted opacity-50">-</span>
                                         {% endif %}
                                     </td>
-                                    <td>
-                                        {% if item.check_out %}
-                                            <span class="text-dark">{{ item.check_out|date:"h:i A" }}</span>
-                                        {% else %}
-                                            <span class="text-muted">-</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
+                                    <td class="py-2">
                                         {% if item.mid_day_time %}
-                                            <span class="text-dark">{{ item.mid_day_time|date:"h:i A" }}</span>
+                                            <span class="fw-semibold text-dark">{{ item.mid_day_time|date:"h:i A" }}</span>
                                         {% else %}
-                                            <span class="text-muted">-</span>
+                                            <span class="text-muted opacity-50">-</span>
                                         {% endif %}
                                     </td>
-                                    <td>
-                                        {% if item.notes %}
-                                            <span class="small text-muted">{{ item.notes }}</span>
+                                    <td class="py-2">
+                                        {% if item.check_out %}
+                                            <span class="fw-semibold text-dark">{{ item.check_out|date:"h:i A" }}</span>
                                         {% else %}
-                                            <span class="text-muted small">No adjustments</span>
+                                            <span class="text-muted opacity-50">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="pe-3 py-2">
+                                        {% if item.notes %}
+                                            <span class="text-muted" style="font-size: 0.7rem;">{{ item.notes }}</span>
+                                        {% else %}
+                                            <span class="text-muted opacity-50" style="font-size: 0.7rem;">Standard</span>
                                         {% endif %}
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">No attendance logs found.</td>
+                                    <td colspan="6" class="text-center py-3 text-muted">No attendance logs found.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -325,44 +270,44 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <!-- Modal Header -->
-            <div id="modalHeader" class="modal-header text-white py-3 px-4" style="background: linear-gradient(135deg, #059669, #10b981);">
+            <div id="modalHeader" class="modal-header text-white py-2.5 px-3" style="background: linear-gradient(135deg, #059669, #10b981);">
                 <div class="d-flex align-items-center gap-2">
-                    <i id="modalHeaderIcon" class="bi bi-camera-fill fs-4"></i>
+                    <i id="modalHeaderIcon" class="bi bi-camera-fill fs-5"></i>
                     <div>
-                        <h5 class="modal-title fw-bold text-white mb-0" id="cameraModalLabel">Facial Verification</h5>
-                        <span id="modalSubTitle" class="small text-white-50">Position face inside camera frame</span>
+                        <h6 class="modal-title fw-bold text-white mb-0" id="cameraModalLabel" style="font-size: 0.85rem;">Facial Verification</h6>
+                        <span id="modalSubTitle" class="text-white-50" style="font-size: 0.7rem;">Position face inside camera frame</span>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <!-- Modal Body -->
-            <div class="modal-body p-4 bg-light">
+            <div class="modal-body p-3 bg-light">
                 <div class="row align-items-center">
                     <!-- Left: Camera Viewport -->
                     <div class="col-md-7 mb-3 mb-md-0">
-                        <div class="position-relative overflow-hidden bg-black rounded-4 shadow border border-2 border-dark" style="aspect-ratio: 4/3;">
+                        <div class="position-relative overflow-hidden bg-black rounded-3 shadow-xs border border-dark" style="aspect-ratio: 4/3;">
                             <video id="modalVideo" class="w-100 h-100 object-fit-cover" autoplay playsinline></video>
                             <canvas id="modalCanvas" class="d-none"></canvas>
 
                             <!-- Live Camera Indicator -->
-                            <div class="position-absolute top-0 start-0 m-3 px-3 py-1 bg-dark bg-opacity-75 backdrop-blur text-white rounded-pill small d-flex align-items-center gap-2" style="font-size: 0.75rem; z-index: 10;">
-                                <span class="spinner-grow spinner-grow-sm text-danger" style="width: 8px; height: 8px;"></span>
-                                <span class="fw-semibold tracking-wide">LIVE CAMERA FEED</span>
+                            <div class="position-absolute top-0 start-0 m-2 px-2.5 py-0.5 bg-dark bg-opacity-75 backdrop-blur text-white rounded-pill d-flex align-items-center gap-1.5" style="font-size: 0.65rem; z-index: 10;">
+                                <span class="spinner-grow spinner-grow-sm text-danger" style="width: 6px; height: 6px;"></span>
+                                <span class="fw-semibold">LIVE CAMERA FEED</span>
                             </div>
 
                             <!-- Face Oval Guide Overlay -->
-                            <div class="position-absolute top-50 start-50 translate-middle pointer-events-none d-flex flex-column align-items-center justify-content-center" style="width: 200px; height: 240px; z-index: 5;">
+                            <div class="position-absolute top-50 start-50 translate-middle pointer-events-none d-flex flex-column align-items-center justify-content-center" style="width: 160px; height: 190px; z-index: 5;">
                                 <div class="w-100 h-100 rounded-circle border border-2 border-dashed border-white opacity-75 shadow-lg"></div>
-                                <span class="badge bg-dark bg-opacity-65 text-white rounded-pill px-3 py-1 mt-2 small">Align Face Here</span>
+                                <span class="badge bg-dark bg-opacity-65 text-white rounded-pill px-2.5 py-0.5 mt-1" style="font-size: 0.65rem;">Align Face Here</span>
                             </div>
 
                             <!-- Camera Placeholder / Permission Error State -->
-                            <div id="cameraModalPlaceholder" class="position-absolute top-0 start-0 w-100 h-100 d-none bg-dark text-white p-4 text-center d-flex flex-column align-items-center justify-content-center" style="z-index: 15;">
-                                <i class="bi bi-camera-video-off fs-1 text-danger mb-3"></i>
-                                <h6 class="fw-bold mb-1">Camera Access Required</h6>
-                                <p class="small text-white-50 mb-3">Please grant camera permissions in your browser settings to continue.</p>
-                                <button type="button" class="btn btn-sm btn-outline-light rounded-pill px-4" onclick="startModalCamera()">
+                            <div id="cameraModalPlaceholder" class="position-absolute top-0 start-0 w-100 h-100 d-none bg-dark text-white p-3 text-center d-flex flex-column align-items-center justify-content-center" style="z-index: 15;">
+                                <i class="bi bi-camera-video-off fs-3 text-danger mb-2"></i>
+                                <h6 class="fw-bold mb-1" style="font-size: 0.85rem;">Camera Access Required</h6>
+                                <p class="text-white-50 mb-2" style="font-size: 0.7rem;">Please grant camera permissions in your browser settings to continue.</p>
+                                <button type="button" class="btn btn-xs btn-outline-light rounded-pill px-3" onclick="startModalCamera()">
                                     <i class="bi bi-arrow-clockwise me-1"></i> Retry Camera Access
                                 </button>
                             </div>
@@ -370,8 +315,8 @@
                             <!-- Snapshot Flash Overlay -->
                             <div id="modalSnapOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none bg-success bg-opacity-50 align-items-center justify-content-center" style="z-index: 20;">
                                 <div class="text-center text-white">
-                                    <i class="bi bi-check-circle-fill display-3 mb-2 animate-bounce"></i>
-                                    <h5 class="fw-bold mb-0">Photo Captured!</h5>
+                                    <i class="bi bi-check-circle-fill fs-1 mb-1"></i>
+                                    <h6 class="fw-bold mb-0">Photo Captured!</h6>
                                 </div>
                             </div>
                         </div>
@@ -379,19 +324,23 @@
 
                     <!-- Right: Info & Geolocation status -->
                     <div class="col-md-5">
-                        <div class="card border-0 shadow-sm bg-white p-3.5 rounded-4 mb-3">
-                            <h6 class="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5"><i class="bi bi-geo-alt-fill text-warning fs-5"></i> GPS Location Status</h6>
-                            <div id="modalGeoStatus" class="alert alert-secondary py-2 px-3 rounded-3 mb-2 small text-center border-0 bg-light">
-                                <span id="modalGeoText" class="d-block small">Acquiring GPS location...</span>
+                        <div class="card border-0 shadow-sm bg-white p-2.5 rounded-3 mb-2">
+                            <h6 class="fw-bold text-dark mb-1.5 d-flex align-items-center gap-1" style="font-size: 0.78rem;">
+                                <i class="bi bi-geo-alt-fill text-warning"></i> GPS Location Status
+                            </h6>
+                            <div id="modalGeoStatus" class="alert alert-secondary py-1.5 px-2 rounded-2 mb-1 text-center border-0 bg-light" style="font-size: 0.7rem;">
+                                <span id="modalGeoText" class="d-block">Acquiring GPS location...</span>
                             </div>
-                            <button id="modalBtnMockLocation" class="btn btn-xxs btn-outline-secondary rounded-pill d-none py-1 px-3 w-100" type="button" onclick="useMockLocation()">
+                            <button id="modalBtnMockLocation" class="btn btn-xxs btn-outline-secondary rounded-pill d-none py-1 px-2 w-100" type="button" onclick="useMockLocation()">
                                 <i class="bi bi-magic me-1"></i> Use Mock Location (Testing)
                             </button>
                         </div>
 
-                        <div class="card border-0 shadow-sm bg-white p-3.5 rounded-4">
-                            <h6 class="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5"><i class="bi bi-shield-check text-success fs-5"></i> Verification Steps</h6>
-                            <ol class="small text-muted ps-3 mb-0" style="font-size: 0.8rem; line-height: 1.5;">
+                        <div class="card border-0 shadow-sm bg-white p-2.5 rounded-3">
+                            <h6 class="fw-bold text-dark mb-1.5 d-flex align-items-center gap-1" style="font-size: 0.78rem;">
+                                <i class="bi bi-shield-check text-success"></i> Verification Steps
+                            </h6>
+                            <ol class="text-muted ps-3 mb-0" style="font-size: 0.7rem; line-height: 1.4;">
                                 <li class="mb-1">Ensure clear lighting on your face.</li>
                                 <li class="mb-1">Wait for GPS status to show green location.</li>
                                 <li>Click <strong>Capture & Submit</strong> button below.</li>
@@ -402,11 +351,11 @@
             </div>
 
             <!-- Modal Footer -->
-            <div class="modal-footer border-0 bg-white py-3 px-4 d-flex align-items-center justify-content-between">
-                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">
+            <div class="modal-footer border-0 bg-white py-2 px-3 d-flex align-items-center justify-content-between">
+                <button type="button" class="btn btn-sm btn-light rounded-pill px-3" data-bs-dismiss="modal" style="font-size: 0.75rem;">
                     Cancel
                 </button>
-                <button type="button" id="btnModalSubmit" class="btn btn-primary btn-lg rounded-pill px-4 fw-bold shadow-sm" onclick="submitAttendanceVerification()">
+                <button type="button" id="btnModalSubmit" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-xs" onclick="submitAttendanceVerification()" style="font-size: 0.75rem;">
                     <i class="bi bi-camera-fill me-1"></i> Capture & Submit
                 </button>
             </div>
@@ -418,8 +367,8 @@
 <div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header border-0 bg-dark text-white py-3">
-                <h6 class="modal-title fw-bold" id="photoModalLabel">Verification Photo</h6>
+            <div class="modal-header border-0 bg-dark text-white py-2.5 px-3">
+                <h6 class="modal-title fw-bold" id="photoModalLabel" style="font-size: 0.85rem;">Verification Photo</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-0 bg-black">
@@ -520,13 +469,13 @@
         const toast = document.createElement('div');
         toast.className = 'custom-success-toast animate-slide-up';
         toast.innerHTML = `
-            <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2.5">
                 <div class="toast-icon-wrapper bg-success bg-opacity-25 text-success rounded-circle d-flex align-items-center justify-content-center">
-                    <i class="bi bi-check-circle-fill fs-4"></i>
+                    <i class="bi bi-check-circle-fill fs-5"></i>
                 </div>
                 <div>
-                    <h6 class="fw-bold mb-0 text-dark">Success</h6>
-                    <p class="mb-0 text-muted small">${message}</p>
+                    <h6 class="fw-bold mb-0 text-dark" style="font-size: 0.85rem;">Success</h6>
+                    <p class="mb-0 text-muted" style="font-size: 0.72rem;">${message}</p>
                 </div>
             </div>
         `;
@@ -544,13 +493,13 @@
         const toast = document.createElement('div');
         toast.className = 'custom-error-toast animate-slide-up';
         toast.innerHTML = `
-            <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2.5">
                 <div class="toast-icon-wrapper bg-danger bg-opacity-25 text-danger rounded-circle d-flex align-items-center justify-content-center">
-                    <i class="bi bi-x-circle-fill fs-4"></i>
+                    <i class="bi bi-x-circle-fill fs-5"></i>
                 </div>
                 <div>
-                    <h6 class="fw-bold mb-0 text-dark">Error</h6>
-                    <p class="mb-0 text-muted small">${message}</p>
+                    <h6 class="fw-bold mb-0 text-dark" style="font-size: 0.85rem;">Error</h6>
+                    <p class="mb-0 text-muted" style="font-size: 0.72rem;">${message}</p>
                 </div>
             </div>
         `;
@@ -576,22 +525,22 @@
             header.style.background = 'linear-gradient(135deg, #059669, #10b981)';
             label.textContent = 'Check-In Verification';
             sub.textContent = 'Capture face snapshot & GPS to start shift';
-            icon.className = 'bi bi-box-arrow-in-right fs-4 me-2';
-            submitBtn.className = 'btn btn-primary btn-lg rounded-pill px-4 fw-bold shadow-sm';
+            icon.className = 'bi bi-box-arrow-in-right fs-5 me-1.5';
+            submitBtn.className = 'btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-xs';
             submitBtn.innerHTML = '<i class="bi bi-camera-fill me-1"></i> Capture & Submit Check-In';
         } else if (type === 'mid_day') {
             header.style.background = 'linear-gradient(135deg, #d97706, #f59e0b)';
             label.textContent = 'Mid-Day Verification';
             sub.textContent = 'Verify presence & GPS location during shift';
-            icon.className = 'bi bi-shield-check fs-4 me-2';
-            submitBtn.className = 'btn btn-warning text-white btn-lg rounded-pill px-4 fw-bold shadow-sm';
+            icon.className = 'bi bi-shield-check fs-5 me-1.5';
+            submitBtn.className = 'btn btn-sm btn-warning text-white rounded-pill px-3 fw-bold shadow-xs';
             submitBtn.innerHTML = '<i class="bi bi-shield-camera me-1"></i> Capture & Submit Mid-Day';
         } else if (type === 'check_out') {
             header.style.background = 'linear-gradient(135deg, #dc2626, #ef4444)';
             label.textContent = 'Check-Out Verification';
             sub.textContent = 'Capture face snapshot & GPS to complete shift';
-            icon.className = 'bi bi-box-arrow-left fs-4 me-2';
-            submitBtn.className = 'btn btn-danger btn-lg rounded-pill px-4 fw-bold shadow-sm';
+            icon.className = 'bi bi-box-arrow-left fs-5 me-1.5';
+            submitBtn.className = 'btn btn-sm btn-danger rounded-pill px-3 fw-bold shadow-xs';
             submitBtn.innerHTML = '<i class="bi bi-door-closed-fill me-1"></i> Capture & Submit Check-Out';
         }
 
@@ -645,14 +594,14 @@
         }
 
         if (geoText) geoText.textContent = "Retrieving GPS coordinates...";
-        if (geoStatus) geoStatus.className = "alert alert-secondary py-2 px-3 rounded-3 mb-2 small text-center border-0 bg-light";
+        if (geoStatus) geoStatus.className = "alert alert-secondary py-1.5 px-2 rounded-2 mb-1 text-center border-0 bg-light";
 
         navigator.geolocation.getCurrentPosition(
             position => {
                 userLatitude = position.coords.latitude;
                 userLongitude = position.coords.longitude;
-                if (geoText) geoText.textContent = `Location Captured: ${userLatitude.toFixed(4)}, ${userLongitude.toFixed(4)}`;
-                if (geoStatus) geoStatus.className = "alert alert-success py-2 px-3 rounded-3 mb-2 small text-center border-0 fw-semibold text-success bg-success bg-opacity-10";
+                if (geoText) geoText.textContent = `Location: ${userLatitude.toFixed(4)}, ${userLongitude.toFixed(4)}`;
+                if (geoStatus) geoStatus.className = "alert alert-success py-1.5 px-2 rounded-2 mb-1 text-center border-0 fw-semibold text-success bg-success bg-opacity-10";
                 if (mockBtn) mockBtn.classList.add('d-none');
                 if (onSuccess) onSuccess();
             },
@@ -663,19 +612,19 @@
                         userLatitude = position.coords.latitude;
                         userLongitude = position.coords.longitude;
                         if (geoText) geoText.textContent = `Location (Approx): ${userLatitude.toFixed(4)}, ${userLongitude.toFixed(4)}`;
-                        if (geoStatus) geoStatus.className = "alert alert-success py-2 px-3 rounded-3 mb-2 small text-center border-0 fw-semibold text-success bg-success bg-opacity-10";
+                        if (geoStatus) geoStatus.className = "alert alert-success py-1.5 px-2 rounded-2 mb-1 text-center border-0 fw-semibold text-success bg-success bg-opacity-10";
                         if (mockBtn) mockBtn.classList.add('d-none');
                         if (onSuccess) onSuccess();
                     },
                     fallbackError => {
                         console.error("GPS Error:", fallbackError);
-                        let msg = "GPS Error. Please grant location access.";
+                        let msg = "GPS Error. Grant location access.";
                         if (fallbackError.code === 1) msg = "Permission Denied. Enable browser location.";
-                        else if (fallbackError.code === 2) msg = "Position Unavailable. Check device GPS.";
+                        else if (fallbackError.code === 2) msg = "Position Unavailable. Check GPS.";
                         else if (fallbackError.code === 3) msg = "GPS Timed Out. Try again.";
                         
                         if (geoText) geoText.textContent = msg;
-                        if (geoStatus) geoStatus.className = "alert alert-danger py-2 px-3 rounded-3 mb-2 small text-center border-0 text-danger bg-danger bg-opacity-10";
+                        if (geoStatus) geoStatus.className = "alert alert-danger py-1.5 px-2 rounded-2 mb-1 text-center border-0 text-danger bg-danger bg-opacity-10";
                         if (mockBtn) mockBtn.classList.remove('d-none');
                         if (onFailure) onFailure(msg);
                     },
@@ -694,7 +643,7 @@
         const mockBtn = document.getElementById('modalBtnMockLocation');
 
         if (geoText) geoText.textContent = "Location (Mocked): 17.3850, 78.4866";
-        if (geoStatus) geoStatus.className = "alert alert-success py-2 px-3 rounded-3 mb-2 small text-center border-0 fw-semibold text-success bg-success bg-opacity-10";
+        if (geoStatus) geoStatus.className = "alert alert-success py-1.5 px-2 rounded-2 mb-1 text-center border-0 fw-semibold text-success bg-success bg-opacity-10";
         if (mockBtn) mockBtn.classList.add('d-none');
     }
 
@@ -738,7 +687,7 @@
             overlay.classList.remove('d-none');
             overlay.classList.add('d-flex');
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Submitting...';
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1.5"></span> Submitting...';
 
             let endpoint = '';
             if (currentVerificationType === 'check_in') endpoint = "{% url 'attendance:check_in' %}";
@@ -843,58 +792,52 @@
         transition: transform 0.2s ease;
     }
     .cursor-zoom:hover {
-        transform: scale(1.05);
+        transform: scale(1.08);
     }
     .action-btn-hover {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.2s ease;
     }
     .action-btn-hover:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
-    }
-    .btn-icon-circle {
-        width: 42px;
-        height: 42px;
-        flex-shrink: 0;
+        transform: translateY(-2px);
     }
     .custom-success-toast, .custom-error-toast {
         position: fixed;
-        bottom: 30px;
-        right: 30px;
+        bottom: 25px;
+        right: 25px;
         z-index: 99999;
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-        border-radius: 1rem;
-        padding: 1rem 1.5rem;
-        max-width: 380px;
-        min-width: 280px;
-        transition: opacity 0.5s ease, transform 0.5s ease;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1.25rem;
+        max-width: 360px;
+        min-width: 260px;
+        transition: opacity 0.4s ease, transform 0.4s ease;
     }
     .custom-success-toast {
-        border-left: 5px solid #10b981;
+        border-left: 4px solid #10b981;
     }
     .custom-error-toast {
-        border-left: 5px solid #ef4444;
+        border-left: 4px solid #ef4444;
     }
     .toast-icon-wrapper {
-        width: 42px;
-        height: 42px;
+        width: 36px;
+        height: 36px;
         flex-shrink: 0;
     }
     .animate-slide-up {
-        animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation: slideUp 0.3s ease forwards;
     }
     .fade-out {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(15px);
     }
     @keyframes slideUp {
         from {
             opacity: 0;
-            transform: translateY(40px);
+            transform: translateY(30px);
         }
         to {
             opacity: 1;
