@@ -120,6 +120,26 @@ def _get_bill_items_data(bill, max_items=None):
     return bill_items, too_many_items
 
 
+def _get_branch_products_data(branch_id, limit=500):
+    if not branch_id:
+        return []
+    registries = ProductRegistry.objects.filter(
+        branch_id=branch_id
+    ).select_related('product')[:limit]
+    
+    products = []
+    for reg in registries:
+        p = reg.product
+        products.append({
+            "id": p.id,
+            "name": p.name,
+            "barcode": p.barcode or "",
+            "price": int(p.price),
+            "stock": reg.stock_quantity
+        })
+    return products
+
+
 @login_required
 @never_cache
 def return_create_view(request):
@@ -196,25 +216,6 @@ def return_create_view(request):
     elif request.user.is_authenticated and request.user.active_branch:
         target_branch_id = request.user.active_branch.id
 
-    def _get_branch_products_data(branch_id, limit=500):
-        if not branch_id:
-            return []
-        registries = ProductRegistry.objects.filter(
-            branch_id=branch_id
-        ).select_related('product')[:limit]
-        
-        products = []
-        for reg in registries:
-            p = reg.product
-            products.append({
-                "id": p.id,
-                "name": p.name,
-                "barcode": p.barcode or "",
-                "price": int(p.price),
-                "stock": reg.stock_quantity
-            })
-        return products
-
     branch_products = _get_branch_products_data(target_branch_id)
     all_products_json = json.dumps(branch_products)
 
@@ -286,9 +287,8 @@ def get_replacement_product_api(request):
         return JsonResponse({'error': 'No branch ID provided'}, status=400)
 
     try:
-        from django.shortcuts import get_object_or_404
-        branch = get_object_or_404(Branch, id=branch_id)
-        if branch not in request.user.get_accessible_branches():
+        branch = Branch.objects.get(id=int(branch_id))
+        if not request.user.is_superuser and not request.user.get_accessible_branches().filter(id=branch.id).exists():
             return JsonResponse({'error': 'Permission denied'}, status=403)
 
         registry = ProductRegistry.objects.select_related('product').get(
@@ -302,6 +302,8 @@ def get_replacement_product_api(request):
             'price': float(registry.product.price),
             'stock': registry.stock_quantity
         })
+    except (Branch.DoesNotExist, ValueError):
+        return JsonResponse({'error': 'Branch not found'}, status=404)
     except ProductRegistry.DoesNotExist:
         return JsonResponse({'error': 'Product not found at this branch'}, status=404)
 
