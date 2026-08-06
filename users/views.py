@@ -29,6 +29,18 @@ class RoleForm(forms.ModelForm):
             'has_bill_edit_rights': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if name:
+            from django.utils.text import slugify
+            code = slugify(name).replace('-', '_')
+            qs = CustomRole.objects.filter(models.Q(name__iexact=name) | models.Q(code=code))
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError(f"A custom role with the name '{name}' already exists.")
+        return name
+
 
 
 def add_branch_goal_context(user, context):

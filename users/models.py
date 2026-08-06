@@ -47,7 +47,13 @@ class CustomRole(models.Model):
     def save(self, *args, **kwargs):
         if not self.code:
             from django.utils.text import slugify
-            self.code = slugify(self.name).replace('-', '_')
+            base_code = slugify(self.name).replace('-', '_')
+            code = base_code
+            seq = 1
+            while CustomRole.objects.filter(code=code).exclude(pk=self.pk).exists():
+                code = f"{base_code}_{seq}"
+                seq += 1
+            self.code = code
             
         super().save(*args, **kwargs)
         
