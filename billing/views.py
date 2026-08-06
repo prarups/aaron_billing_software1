@@ -668,7 +668,7 @@ def owner_bill_list(request):
         )
     
     # Handle branch restriction
-    if request.user.role in ['manager', 'assistant_manager']:
+    if not request.user.is_owner():
         branches = request.user.get_accessible_branches()
         # Ensure they can only filter branches they manage
         if branch_id and branch_id != 'None':
@@ -763,7 +763,7 @@ def owner_bill_list(request):
 @login_required
 def export_sales_csv(request):
     # Only Owners and Managers can export
-    if request.user.role == 'sales_staff':
+    if not (request.user.is_owner() or request.user.is_manager()):
         return HttpResponse("Unauthorized", status=403)
         
     now = timezone.now()
@@ -800,7 +800,7 @@ def export_sales_csv(request):
             Q(customer_phone__icontains=q)
         )
         
-    if request.user.role in ['manager', 'assistant_manager']:
+    if not request.user.is_owner():
         branches = request.user.get_accessible_branches()
         if branch_id and branch_id != 'None':
             if not branches.filter(id=branch_id).exists():
@@ -921,7 +921,7 @@ def clear_exchange_session(request):
 @login_required
 def export_gst_mis_csv(request):
     # Only Owners and Managers can export
-    if request.user.role == 'sales_staff':
+    if not (request.user.is_owner() or request.user.is_manager()):
         return HttpResponse("Unauthorized", status=403)
         
     filename = "monthlygstmis_to_date.csv"
@@ -951,7 +951,7 @@ def export_gst_mis_csv(request):
             Q(customer_phone__icontains=q)
         )
         
-    if request.user.role in ['manager', 'assistant_manager']:
+    if not request.user.is_owner():
         branches = request.user.get_accessible_branches()
         if branch_id and branch_id != 'None':
             if not branches.filter(id=branch_id).exists():

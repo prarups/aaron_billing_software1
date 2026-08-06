@@ -1,15 +1,15 @@
 {% extends 'base_management.html' %}
 {% load static %}
 
-{% block title %}Role Shift & Monthly Off Policies - Aaron Billing{% endblock %}
+{% block title %}Role Policies & Rights Management - Aaron Billing{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4 px-3 px-md-4">
     <!-- Header Section -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
         <div>
-            <h3 class="fw-bold text-dark mb-1"><i class="bi bi-clock-history text-primary me-2"></i>Role Shift & Monthly Off Policies</h3>
-            <p class="text-muted small mb-0">Configure shift timings and allowed monthly week-off count based on employee roles for salary & attendance processing.</p>
+            <h3 class="fw-bold text-dark mb-1"><i class="bi bi-shield-lock text-primary me-2"></i>Role Policies & Rights Management</h3>
+            <p class="text-muted small mb-0">Configure shift timings, allowed monthly week-offs, and role-based feature permissions for system roles.</p>
         </div>
         <div>
             <a href="{% url 'branch_staff_management' %}?tab=staff" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">
@@ -21,17 +21,18 @@
     <!-- Main Card -->
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="background:#ffffff;">
         <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
-            <span class="fw-bold text-dark" style="font-size:0.95rem;">Active Role Policies</span>
+            <span class="fw-bold text-dark" style="font-size:0.95rem;">Active Role Policies & Rights</span>
             <span class="badge bg-primary rounded-pill px-3 py-1.5">{{ role_policies|length }} Roles Configured</span>
         </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead style="background:#f8fafc;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;color:#64748b;">
                     <tr>
-                        <th class="ps-4" style="width:30%;">Role</th>
-                        <th style="width:30%;">Shift Timings</th>
-                        <th style="width:25%;">Monthly Off Count</th>
-                        <th class="text-center" style="width:15%;">Action</th>
+                        <th class="ps-4" style="width:25%;">Role</th>
+                        <th style="width:25%;">Shift Timings</th>
+                        <th style="width:20%;">Monthly Off Count</th>
+                        <th style="width:20%;">Role Rights / Permissions</th>
+                        <th class="text-center" style="width:10%;">Action</th>
                     </tr>
                 </thead>
                 <tbody style="font-size:0.875rem;">
@@ -51,16 +52,39 @@
                                 <i class="bi bi-calendar-check me-1"></i>{{ policy.monthly_off_count }} Days / Month
                             </span>
                         </td>
+                        <td>
+                            {% if policy.custom_role %}
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% if policy.custom_role.has_pos_access %}
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill">POS</span>
+                                    {% endif %}
+                                    {% if policy.custom_role.has_attendance_access %}
+                                        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill">Attendance</span>
+                                    {% endif %}
+                                    {% if policy.custom_role.has_all_branches_access %}
+                                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill">All Branches</span>
+                                    {% endif %}
+                                    {% if policy.custom_role.has_product_rights %}
+                                        <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill">Product Rights</span>
+                                    {% endif %}
+                                    {% if policy.custom_role.has_bill_edit_rights %}
+                                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill">Bill Edit</span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted text-xs font-monospace">Built-in Role</span>
+                            {% endif %}
+                        </td>
                         <td class="text-center">
                             <button class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1"
-                                    onclick="openEditRolePolicyModal('{{ policy.id }}', '{{ policy.role_name|default:policy.role|escapejs }}', '{{ policy.shift_start_time|time:"H:i" }}', '{{ policy.shift_end_time|time:"H:i" }}', '{{ policy.monthly_off_count }}')">
+                                    onclick="openEditRolePolicyModal('{{ policy.id }}', '{{ policy.role_name|default:policy.role|escapejs }}', '{{ policy.shift_start_time|time:"H:i" }}', '{{ policy.shift_end_time|time:"H:i" }}', '{{ policy.monthly_off_count }}', {% if policy.custom_role %}true{% else %}false{% endif %}, '{{ policy.custom_role.has_pos_access|yesno:"true,false" }}', '{{ policy.custom_role.has_attendance_access|yesno:"true,false" }}', '{{ policy.custom_role.has_all_branches_access|yesno:"true,false" }}', '{{ policy.custom_role.has_product_rights|yesno:"true,false" }}', '{{ policy.custom_role.has_bill_edit_rights|yesno:"true,false" }}')">
                                 <i class="bi bi-pencil-square me-1"></i>Edit
                             </button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="text-center text-muted py-5">
+                        <td colspan="5" class="text-center text-muted py-5">
                             <i class="bi bi-clock-history fs-1 text-muted d-block mb-2"></i>
                             No role policies configured yet.
                         </td>
@@ -74,10 +98,10 @@
 
 <!-- Edit Role Policy Modal -->
 <div class="modal fade" id="editRolePolicyModal" tabindex="-1" aria-labelledby="editRolePolicyModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div class="modal-header bg-light border-0">
-                <h5 class="modal-title fw-bold" id="editRolePolicyModalLabel"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Role Shift & Monthly Off Policy</h5>
+                <h5 class="modal-title fw-bold" id="editRolePolicyModalLabel"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Role Shift & Permissions</h5>
                 <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="editRolePolicyForm" method="post" action="{% url 'update_role_shift_policy' %}">
@@ -88,7 +112,9 @@
                         <label class="form-label small text-muted fw-bold text-uppercase">Role Name</label>
                         <input type="text" id="policyRoleName" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" readonly disabled>
                     </div>
-                    <div class="row g-3">
+                    
+                    <h6 class="fw-bold text-dark mb-3 mt-4"><i class="bi bi-clock me-2 text-primary"></i>Shift & Leave Policy</h6>
+                    <div class="row g-3 mb-3">
                         <div class="col-6 mb-2">
                             <label class="form-label small text-muted fw-bold text-uppercase">Shift Start Time</label>
                             <input type="time" name="shift_start_time" id="policyShiftStart" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required>
@@ -101,6 +127,71 @@
                             <label class="form-label small text-muted fw-bold text-uppercase">Allowed Monthly Off Count</label>
                             <input type="number" name="monthly_off_count" id="policyMonthlyCount" min="0" max="15" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" required placeholder="e.g. 4">
                             <div class="form-text x-small text-muted ms-2 mt-1">Number of rotational week-offs allowed per month for salary calculation.</div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Role Rights Section -->
+                    <div id="customRoleRightsSection" class="border-top pt-3 mt-3">
+                        <h6 class="fw-bold text-dark mb-3"><i class="bi bi-shield-check me-2 text-success"></i>Role Feature Access & Permissions</h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-check form-switch card p-3 border-0 bg-light rounded-3 shadow-none m-0">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="has_pos_access" id="policyHasPos" onchange="updatePolicyLiveAccessLevel()">
+                                    <label class="form-check-label fw-semibold text-dark" for="policyHasPos">
+                                        <i class="bi bi-cart me-1 text-primary"></i> POS Access
+                                    </label>
+                                    <div class="text-muted x-small ms-4 mt-0.5">Allows staff with this role to access Billing & POS interface.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch card p-3 border-0 bg-light rounded-3 shadow-none m-0">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="has_attendance_access" id="policyHasAttendance" onchange="updatePolicyLiveAccessLevel()">
+                                    <label class="form-check-label fw-semibold text-dark" for="policyHasAttendance">
+                                        <i class="bi bi-calendar-check me-1 text-info"></i> Attendance Access
+                                    </label>
+                                    <div class="text-muted x-small ms-4 mt-0.5">Allows staff with this role to check-in/check-out and view attendance.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch card p-3 border-0 bg-light rounded-3 shadow-none m-0">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="has_all_branches_access" id="policyHasAllBranches" onchange="updatePolicyLiveAccessLevel()">
+                                    <label class="form-check-label fw-semibold text-dark" for="policyHasAllBranches">
+                                        <i class="bi bi-shop me-1 text-primary"></i> Access All Branches
+                                    </label>
+                                    <div class="text-muted x-small ms-4 mt-0.5">Grants global branch access across all store branches.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch card p-3 border-0 bg-light rounded-3 shadow-none m-0">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="has_product_rights" id="policyHasProducts" onchange="updatePolicyLiveAccessLevel()">
+                                    <label class="form-check-label fw-semibold text-dark" for="policyHasProducts">
+                                        <i class="bi bi-box-seam me-1 text-warning"></i> Product Rights
+                                    </label>
+                                    <div class="text-muted x-small ms-4 mt-0.5">Allows adding, editing, and managing product inventory.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch card p-3 border-0 bg-light rounded-3 shadow-none m-0">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="has_bill_edit_rights" id="policyHasBillEdit" onchange="updatePolicyLiveAccessLevel()">
+                                    <label class="form-check-label fw-semibold text-dark" for="policyHasBillEdit">
+                                        <i class="bi bi-file-earmark-diff me-1 text-danger"></i> Bill Edit Rights
+                                    </label>
+                                    <div class="text-muted x-small ms-4 mt-0.5">Allows editing or modifying generated billing records.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Privilege Banner in Policy Edit -->
+                        <div id="policyAccessLevelCard" class="card border-0 p-3 mt-3 shadow-none" style="background:#eff6ff; border-left:4px solid #2563eb !important;">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <span class="x-small text-muted fw-bold text-uppercase">Role Privilege Classification:</span>
+                                <span id="policyAccessBadge" class="badge bg-primary rounded-pill px-3 py-1.5 fs-7">
+                                    <i class="bi bi-person-badge me-1"></i> Staff-Level Access
+                                </span>
+                            </div>
+                            <div id="policyAccessDescription" class="small text-muted mt-2">
+                                This role has Staff-level operational permissions restricted to assigned branch operations.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -116,12 +207,49 @@
 
 {% block extra_js %}
 <script>
-    function openEditRolePolicyModal(id, roleName, shiftStart, shiftEnd, monthlyCount) {
+    function updatePolicyLiveAccessLevel() {
+        const allBr = document.getElementById('policyHasAllBranches')?.checked;
+        const prod = document.getElementById('policyHasProducts')?.checked;
+        const bill = document.getElementById('policyHasBillEdit')?.checked;
+        const badge = document.getElementById('policyAccessBadge');
+        const card = document.getElementById('policyAccessLevelCard');
+        const desc = document.getElementById('policyAccessDescription');
+        if (!badge || !card || !desc) return;
+
+        if (allBr || (prod && bill)) {
+            card.style.background = '#f0fdf4';
+            card.style.borderLeft = '4px solid #16a34a';
+            badge.className = 'badge bg-success rounded-pill px-3 py-1.5 fs-7';
+            badge.innerHTML = '<i class="bi bi-shield-check me-1"></i> Manager-Level Access';
+            desc.textContent = 'This role has Manager-level authority with global multi-branch management access and administrative control.';
+        } else {
+            card.style.background = '#eff6ff';
+            card.style.borderLeft = '4px solid #2563eb';
+            badge.className = 'badge bg-primary rounded-pill px-3 py-1.5 fs-7';
+            badge.innerHTML = '<i class="bi bi-person-badge me-1"></i> Staff-Level Access';
+            desc.textContent = 'This role has Staff-level operational permissions restricted to assigned branch operations.';
+        }
+    }
+
+    function openEditRolePolicyModal(id, roleName, shiftStart, shiftEnd, monthlyCount, isCustom, pos, attendance, allBranches, productRights, billEdit) {
         document.getElementById('policyId').value = id;
         document.getElementById('policyRoleName').value = roleName;
         document.getElementById('policyShiftStart').value = shiftStart || '09:00';
         document.getElementById('policyShiftEnd').value = shiftEnd || '17:00';
         document.getElementById('policyMonthlyCount').value = monthlyCount || 4;
+
+        const rightsSec = document.getElementById('customRoleRightsSection');
+        if (isCustom) {
+            rightsSec.style.display = 'block';
+            document.getElementById('policyHasPos').checked = (pos === true || pos === 'true');
+            document.getElementById('policyHasAttendance').checked = (attendance === true || attendance === 'true');
+            document.getElementById('policyHasAllBranches').checked = (allBranches === true || allBranches === 'true');
+            document.getElementById('policyHasProducts').checked = (productRights === true || productRights === 'true');
+            document.getElementById('policyHasBillEdit').checked = (billEdit === true || billEdit === 'true');
+            updatePolicyLiveAccessLevel();
+        } else {
+            rightsSec.style.display = 'none';
+        }
 
         const modal = new bootstrap.Modal(document.getElementById('editRolePolicyModal'));
         modal.show();

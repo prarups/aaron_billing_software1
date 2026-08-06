@@ -106,13 +106,18 @@ class RoleShiftPolicy(models.Model):
                     name = crole.name
                 except Exception:
                     name = role_code.replace('_', ' ').title()
-            policy = cls.objects.create(
-                role=role_code,
-                role_name=name,
-                shift_start_time="09:00:00",
-                shift_end_time="17:00:00",
-                monthly_off_count=4
-            )
+            try:
+                policy, _ = cls.objects.get_or_create(
+                    role=role_code,
+                    defaults={
+                        'role_name': name,
+                        'shift_start_time': "09:00:00",
+                        'shift_end_time': "17:00:00",
+                        'monthly_off_count': 4
+                    }
+                )
+            except Exception:
+                policy = cls.objects.filter(role=role_code).first()
         return policy
 
 
@@ -124,7 +129,7 @@ class User(AbstractUser):
         ('assistant_manager', 'Assistant Manager'),
         ('sales_staff', 'Sales Staff'),
     )
-    role = models.CharField(max_length=50, choices=ROLE_CHOICES, default='sales_staff', db_index=True)
+    role = models.CharField(max_length=50, default='sales_staff', db_index=True)
     # Managers and Staff can be assigned to multiple branches
     branches = models.ManyToManyField('core.Branch', blank=True, related_name='assigned_users')
     # The branch currently selected for the session
@@ -155,7 +160,18 @@ class User(AbstractUser):
         return self.role == 'owner'
 
     def is_manager(self):
-        return self.role in ['manager', 'assistant_manager']
+        if self.role in ['manager', 'assistant_manager', 'regional_manager']:
+            return True
+        if self.role:
+            try:
+                crole = CustomRole.objects.get(code=self.role)
+                if crole.has_all_branches_access or crole.has_product_rights or crole.has_bill_edit_rights:
+                    return True
+            except Exception:
+                pass
+            if any(term in self.role.lower() for term in ['manager', 'admin', 'head', 'lead', 'supervisor']):
+                return True
+        return False
 
     def is_staff_role(self):
         return self.role == 'sales_staff'
@@ -169,6 +185,9 @@ class User(AbstractUser):
             return CustomRole.objects.get(code=self.role).name
         except Exception:
             return self.role.replace('_', ' ').title()
+
+    def get_role_display(self):
+        return self.role_display
 
     def get_accessible_branches(self):
         """Returns the branches this user is authorized to work in."""

@@ -516,10 +516,22 @@
             observer.observe(document.body, { childList: true, subtree: true });
 
             const currentPath = window.location.pathname;
+            const currentSearch = window.location.search;
             document.querySelectorAll('.sidebar-link').forEach(link => {
-                const linkPath = new URL(link.href, window.location.origin).pathname;
-                if (currentPath === linkPath || (linkPath !== '/' && currentPath.startsWith(linkPath))) {
-                    link.classList.add('active');
+                const linkUrl = new URL(link.href, window.location.origin);
+                const linkPath = linkUrl.pathname;
+                const linkSearch = linkUrl.search;
+
+                if (linkSearch) {
+                    if (currentPath === linkPath && currentSearch === linkSearch) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
+                } else if (!currentSearch) {
+                    if (currentPath === linkPath || (linkPath !== '/' && currentPath.startsWith(linkPath))) {
+                        link.classList.add('active');
+                    }
                 }
             });
         });

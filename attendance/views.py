@@ -57,7 +57,11 @@ def is_owner(user):
     return user.is_superuser or user.role == 'owner'
 
 def is_manager_or_owner(user):
-    return user.role in ['owner', 'regional_manager', 'manager', 'assistant_manager']
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser or user.is_owner() or user.role == 'regional_manager':
+        return True
+    return user.is_manager()
 
 @login_required
 def attendance_dashboard(request):

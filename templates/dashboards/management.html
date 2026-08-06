@@ -333,6 +333,23 @@
 {% block content %}
 <div class="container-fluid py-4">
 
+    <!-- Top Tab Navigation Pills -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <ul class="nav nav-pills p-1.5 bg-white shadow-sm rounded-pill border" id="ownerDashboardTabs">
+            {% if user.role == 'owner' %}
+            <li class="nav-item">
+                <a class="nav-link rounded-pill px-4 py-2 fw-bold text-xs {% if active_tab == 'branches' %}active{% endif %}" href="{% url 'branch_staff_management' %}?tab=branches">
+                    <i class="bi bi-shop me-1.5"></i>Manage Branches
+                </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+                <a class="nav-link rounded-pill px-4 py-2 fw-bold text-xs {% if active_tab == 'staff' %}active{% endif %}" href="{% url 'branch_staff_management' %}?tab=staff">
+                    <i class="bi bi-people-fill me-1.5"></i>Staff & Assigning
+                </a>
+            </li>
+        </ul>
+    </div>
 
     {% if active_tab == 'branches' %}
         <!-- 2. BRANCHES CONTENT -->
@@ -950,7 +967,20 @@
                                         </div>
                                         <div class="col-6 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Role</label>
-                                            {{ staff_form.role }}
+                                            <select name="role" id="addStaffRole" class="form-select no-search rounded-pill shadow-sm border-0 bg-light px-3" data-no-search="true" required>
+                                                <option value="owner">Admin</option>
+                                                <option value="regional_manager">Regional Manager</option>
+                                                <option value="manager">Manager</option>
+                                                <option value="assistant_manager">Assistant Manager</option>
+                                                <option value="sales_staff" selected>Sales Staff</option>
+                                                {% if custom_roles %}
+                                                    <optgroup label="Custom Roles">
+                                                    {% for crole in custom_roles %}
+                                                        <option value="{{ crole.code }}">{{ crole.name }}</option>
+                                                    {% endfor %}
+                                                    </optgroup>
+                                                {% endif %}
+                                            </select>
                                         </div>
                                         <div class="col-6 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Active</label>
@@ -1054,12 +1084,19 @@
                                         </div>
                                         <div class="col-6 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Role</label>
-                                             <select name="role" id="editStaffRole" class="form-select rounded-pill shadow-sm border-0 bg-light px-3" data-no-search="true" required>
+                                             <select name="role" id="editStaffRole" class="form-select no-search rounded-pill shadow-sm border-0 bg-light px-3" data-no-search="true" required>
                                                   <option value="owner">Admin</option>
                                                   <option value="regional_manager">Regional Manager</option>
                                                   <option value="manager">Manager</option>
                                                   <option value="assistant_manager">Assistant Manager</option>
                                                   <option value="sales_staff">Sales Staff</option>
+                                                  {% if custom_roles %}
+                                                      <optgroup label="Custom Roles">
+                                                      {% for crole in custom_roles %}
+                                                          <option value="{{ crole.code }}">{{ crole.name }}</option>
+                                                      {% endfor %}
+                                                      </optgroup>
+                                                  {% endif %}
                                               </select>
                                         </div>
                                         <div class="col-6 mb-2">
@@ -2084,7 +2121,7 @@
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="form-check p-3 rounded-3 border">
-                                <input class="form-check-input" type="checkbox" name="has_pos_access" id="rolePosCb" checked>
+                                <input class="form-check-input" type="checkbox" name="has_pos_access" id="rolePosCb" checked onchange="updateLiveRoleAccessLevel()">
                                 <label class="form-check-label small fw-semibold" for="rolePosCb">
                                     <i class="bi bi-receipt me-1 text-primary"></i>POS / Billing Access
                                 </label>
@@ -2092,7 +2129,7 @@
                         </div>
                         <div class="col-6">
                             <div class="form-check p-3 rounded-3 border">
-                                <input class="form-check-input" type="checkbox" name="has_attendance_access" id="roleAttCb" checked>
+                                <input class="form-check-input" type="checkbox" name="has_attendance_access" id="roleAttCb" checked onchange="updateLiveRoleAccessLevel()">
                                 <label class="form-check-label small fw-semibold" for="roleAttCb">
                                     <i class="bi bi-clock me-1 text-success"></i>Attendance Access
                                 </label>
@@ -2100,7 +2137,7 @@
                         </div>
                         <div class="col-6">
                             <div class="form-check p-3 rounded-3 border">
-                                <input class="form-check-input" type="checkbox" name="has_all_branches_access" id="roleAllBrCb">
+                                <input class="form-check-input" type="checkbox" name="has_all_branches_access" id="roleAllBrCb" onchange="updateLiveRoleAccessLevel()">
                                 <label class="form-check-label small fw-semibold" for="roleAllBrCb">
                                     <i class="bi bi-diagram-3 me-1 text-warning"></i>All Branches Access
                                 </label>
@@ -2108,7 +2145,7 @@
                         </div>
                         <div class="col-6">
                             <div class="form-check p-3 rounded-3 border">
-                                <input class="form-check-input" type="checkbox" name="has_product_rights" id="roleProdCb">
+                                <input class="form-check-input" type="checkbox" name="has_product_rights" id="roleProdCb" onchange="updateLiveRoleAccessLevel()">
                                 <label class="form-check-label small fw-semibold" for="roleProdCb">
                                     <i class="bi bi-box me-1 text-info"></i>Product Rights
                                 </label>
@@ -2116,11 +2153,24 @@
                         </div>
                         <div class="col-6">
                             <div class="form-check p-3 rounded-3 border">
-                                <input class="form-check-input" type="checkbox" name="has_bill_edit_rights" id="roleBillCb">
+                                <input class="form-check-input" type="checkbox" name="has_bill_edit_rights" id="roleBillCb" onchange="updateLiveRoleAccessLevel()">
                                 <label class="form-check-label small fw-semibold" for="roleBillCb">
                                     <i class="bi bi-pencil me-1 text-danger"></i>Bill Edit Rights
                                 </label>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Access Level Indicator Card -->
+                    <div id="roleAccessLevelCard" class="card border-0 p-3 mt-3 shadow-none" style="background:#eff6ff; border-left:4px solid #2563eb !important;">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <span class="x-small text-muted fw-bold text-uppercase">Role Privilege Classification:</span>
+                            <span id="roleAccessBadge" class="badge bg-primary rounded-pill px-3 py-1.5 fs-7">
+                                <i class="bi bi-person-badge me-1"></i> Staff-Level Access
+                            </span>
+                        </div>
+                        <div id="roleAccessDescription" class="small text-muted mt-2">
+                            This role has Staff-level operational permissions restricted to assigned branch operations.
                         </div>
                     </div>
                 </div>
@@ -2132,5 +2182,34 @@
         </div>
     </div>
 </div>
+
+<script>
+    function updateLiveRoleAccessLevel() {
+        const allBr = document.getElementById('roleAllBrCb')?.checked;
+        const prod = document.getElementById('roleProdCb')?.checked;
+        const bill = document.getElementById('roleBillCb')?.checked;
+        const badge = document.getElementById('roleAccessBadge');
+        const card = document.getElementById('roleAccessLevelCard');
+        const desc = document.getElementById('roleAccessDescription');
+        if (!badge || !card || !desc) return;
+
+        if (allBr || (prod && bill)) {
+            card.style.background = '#f0fdf4';
+            card.style.borderLeft = '4px solid #16a34a';
+            badge.className = 'badge bg-success rounded-pill px-3 py-1.5 fs-7';
+            badge.innerHTML = '<i class="bi bi-shield-check me-1"></i> Manager-Level Access';
+            desc.textContent = 'This role will have Manager-level authority with global multi-branch management access and administrative controls.';
+        } else {
+            card.style.background = '#eff6ff';
+            card.style.borderLeft = '4px solid #2563eb';
+            badge.className = 'badge bg-primary rounded-pill px-3 py-1.5 fs-7';
+            badge.innerHTML = '<i class="bi bi-person-badge me-1"></i> Staff-Level Access';
+            desc.textContent = 'This role will have Staff-level operational permissions restricted to assigned branch operations.';
+        }
+    }
+    document.addEventListener("DOMContentLoaded", function() {
+        updateLiveRoleAccessLevel();
+    });
+</script>
 
 {% endblock %}

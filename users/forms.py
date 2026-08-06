@@ -154,10 +154,22 @@ class StaffForm(forms.ModelForm):
         role = cleaned_data.get('role')
         branches = cleaned_data.get('branches')
         
-        if role in ['manager', 'assistant_manager', 'sales_staff']:
+        has_all_branches = False
+        if role in ['owner', 'regional_manager']:
+            has_all_branches = True
+        elif role:
+            try:
+                from users.models import CustomRole
+                crole = CustomRole.objects.get(code=role)
+                if crole.has_all_branches_access:
+                    has_all_branches = True
+            except Exception:
+                pass
+
+        if not has_all_branches:
             if not branches:
                 self.add_error('branches', "Please select at least one branch for this account.")
-            elif role == 'sales_staff' and branches.count() > 1:
+            elif role == 'sales_staff' and branches and branches.count() > 1:
                 self.add_error('branches', "Sales Staff cannot be assigned to more than one branch. Please select only one branch.")
         
         return cleaned_data

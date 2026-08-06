@@ -63,12 +63,10 @@ def add_branch_goal_context(user, context):
 
 @login_required
 def dashboard_redirect(request):
-    """Redirect user to the appropriate dashboard based on role."""
-    if request.user.role in ['owner', 'regional_manager']:
+    """Redirect user to the appropriate dashboard based on role and permissions."""
+    if request.user.is_owner() or request.user.role == 'regional_manager':
         return redirect('owner_dashboard')
-    elif request.user.role == 'manager':
-        return redirect('manager_dashboard')
-    elif request.user.role == 'assistant_manager':
+    elif request.user.is_manager():
         return redirect('manager_dashboard')
     else:
         return redirect('staff_dashboard')
@@ -341,7 +339,7 @@ class OwnerDashboardView(TemplateView):
         context['recent_bills'] = Bill.objects.order_by('-created_at')[:5]
         
         # Staff list (admins, managers, and staff) without pagination for client-side search scalability
-        staff_qs = User.objects.filter(role__in=['owner', 'manager', 'assistant_manager', 'sales_staff']).prefetch_related('branches').order_by('employee_id', 'username')
+        staff_qs = User.objects.all().prefetch_related('branches').order_by('employee_id', 'username')
         context['staff_list'] = staff_qs
         
         # Manager employee performance data
@@ -402,7 +400,7 @@ class AssistantManagerDashboardView(TemplateView):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
-        if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
+        if not (request.user.is_owner() or request.user.is_manager()):
             return redirect('dashboard')
         return super().dispatch(request, *args, **kwargs)
 
@@ -436,7 +434,7 @@ class ManagerDashboardView(TemplateView):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
-        if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
+        if not (request.user.is_owner() or request.user.is_manager()):
             return redirect('dashboard')
         return super().dispatch(request, *args, **kwargs)
 
@@ -463,9 +461,9 @@ class ManagerDashboardView(TemplateView):
             context['staff_count'] = branch.assigned_users.filter(role__in=['sales_staff', 'assistant_manager']).exclude(id=user.id).count()
             context['recent_branch_bills'] = Bill.objects.filter(branch=branch).order_by('-created_at')[:5]
         add_branch_goal_context(user, context)
-        # Staff performance for manager/assistant manager
-        if user.role in ['manager', 'assistant_manager']:
-            staff_qs = User.objects.filter(role__in=['sales_staff', 'assistant_manager'], branches__in=user.branches.all()).exclude(id=user.id).distinct()
+        # Staff performance for manager/assistant manager/custom manager roles
+        if user.is_owner() or user.is_manager():
+            staff_qs = User.objects.filter(branches__in=user.get_accessible_branches()).exclude(id=user.id).distinct()
             
             # Pre-calculate sales for all staff for today to avoid N+1 queries
             sales_data = Bill.objects.filter(staff__in=staff_qs, created_at__range=(today_start, today_end)).values('staff').annotate(total=Sum('total_amount'))
@@ -490,7 +488,7 @@ class ManagerStaffPerformanceView(TemplateView):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
-        if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
+        if not (request.user.is_owner() or request.user.is_manager()):
             return redirect('dashboard')
         return super().dispatch(request, *args, **kwargs)
 
@@ -513,7 +511,7 @@ class ManagerStaffPerformanceView(TemplateView):
         import datetime
         from_datetime = timezone.make_aware(datetime.datetime.combine(from_date, datetime.time.min))
         to_datetime = timezone.make_aware(datetime.datetime.combine(to_date, datetime.time.max))
-        staff_qs = User.objects.filter(role__in=['sales_staff', 'manager', 'assistant_manager'], branches__in=user.branches.all()).distinct()
+        staff_qs = User.objects.filter(branches__in=user.get_accessible_branches()).exclude(id=user.id).distinct()
         
         # Pre-calculate sales for all staff for date range to avoid N+1 queries
         sales_data = Bill.objects.filter(staff__in=staff_qs, created_at__range=(from_datetime, to_datetime)).values('staff').annotate(total=Sum('total_amount'))
@@ -563,7 +561,7 @@ class ManagerStaffPerformanceView(TemplateView):
             import datetime
             start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
             end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
-            staff_qs = User.objects.filter(role__in=['sales_staff', 'manager', 'assistant_manager'], branches__in=self.request.user.branches.all()).distinct()
+            staff_qs = User.objects.filter(branches__in=self.request.user.get_accessible_branches()).exclude(id=self.request.user.id).distinct()
             sales_qs = Bill.objects.filter(
                 staff__in=staff_qs,
                 created_at__range=(start_datetime, end_datetime)
@@ -629,6 +627,8 @@ class StaffDashboardView(TemplateView):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
+        if request.user.is_owner() or request.user.is_manager():
+            return redirect('manager_dashboard')
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -785,7 +785,7 @@ def get_suggested_goal_ajax(request):
 
 @login_required
 def staff_create(request):
-    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager', 'regional_manager']):
+    if not (request.user.is_owner() or request.user.is_manager() or request.user.role == 'regional_manager'):
         return redirect('dashboard')
     if request.method == 'POST':
         form = StaffForm(request.POST)
@@ -804,7 +804,7 @@ def staff_create(request):
 
 @login_required
 def staff_edit(request, pk):
-    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager', 'regional_manager']):
+    if not (request.user.is_owner() or request.user.is_manager() or request.user.role == 'regional_manager'):
         return redirect('dashboard')
     user = get_object_or_404(User, pk=pk)
     if request.method == 'POST':
@@ -837,7 +837,7 @@ def toggle_staff_active(request, staff_id):
     Expects a POST request with a JSON payload containing `is_active` boolean.
     Only owners can perform this action.
     """
-    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager', 'regional_manager']):
+    if not (request.user.is_owner() or request.user.is_manager() or request.user.role == 'regional_manager'):
         return JsonResponse({'error': 'Permission denied.'}, status=403)
     staff = get_object_or_404(User, pk=staff_id)
     if staff == request.user:
@@ -1081,7 +1081,7 @@ def export_staff_csv(request):
 @login_required
 def get_staff_online_status(request):
     """API endpoint to get the online/offline status of all staff members."""
-    if not (request.user.is_owner() or request.user.role in ['manager', 'assistant_manager']):
+    if not (request.user.is_owner() or request.user.is_manager()):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
         
     staff_qs = User.objects.filter(
@@ -1104,9 +1104,9 @@ def portal_choice(request):
 @login_required
 def billing_redirect(request):
     """Redirect to the appropriate POS/Billing dashboard depending on role."""
-    if request.user.role in ['owner', 'regional_manager']:
+    if request.user.is_owner() or request.user.role == 'regional_manager':
         return redirect('owner_dashboard')
-    elif request.user.role in ['manager', 'assistant_manager']:
+    elif request.user.is_manager():
         return redirect('manager_dashboard')
     else:
         return redirect('staff_dashboard')
@@ -1123,7 +1123,7 @@ def select_portal(request, portal_name):
         request.session['active_portal'] = portal_name
         return redirect('attendance:dashboard')
     elif portal_name == 'billing':
-        if not request.user.is_owner() and not request.user.has_pos_access:
+        if not request.user.is_owner() and not request.user.is_manager() and not request.user.has_pos_access:
             from django.contrib import messages
             messages.error(request, "You do not have permission to access the Billing & POS portal.")
             return redirect('portal_choice')
@@ -1267,7 +1267,7 @@ def branch_staff_management(request):
 
 @login_required
 def role_shift_policy_list(request):
-    """Dedicated page to manage Role Shift & Week Off Policies."""
+    """Dedicated page to manage Role Shift, Week Off Policies & Custom Role Rights."""
     if not (request.user.is_owner() or request.user.role == 'regional_manager'):
         messages.error(request, "Permission denied.")
         return redirect('dashboard')
@@ -1279,7 +1279,10 @@ def role_shift_policy_list(request):
     for crole in CustomRole.objects.all():
         RoleShiftPolicy.get_policy_for_role(crole.code)
         
-    role_policies = RoleShiftPolicy.objects.all()
+    role_policies = list(RoleShiftPolicy.objects.all())
+    custom_roles_map = {cr.code: cr for cr in CustomRole.objects.all()}
+    for policy in role_policies:
+        policy.custom_role = custom_roles_map.get(policy.role)
     
     context = {
         'role_policies': role_policies,
@@ -1290,7 +1293,7 @@ def role_shift_policy_list(request):
 
 @login_required
 def update_role_shift_policy(request):
-    """AJAX / POST endpoint to update RoleShiftPolicy settings."""
+    """AJAX / POST endpoint to update RoleShiftPolicy settings and CustomRole rights."""
     if not (request.user.is_owner() or request.user.role == 'regional_manager'):
         if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
             return JsonResponse({'success': False, 'message': 'Permission denied.'})
@@ -1304,16 +1307,26 @@ def update_role_shift_policy(request):
         monthly_count = request.POST.get('monthly_off_count', 4)
 
         try:
-            from users.models import RoleShiftPolicy
+            from users.models import RoleShiftPolicy, CustomRole
             policy = get_object_or_404(RoleShiftPolicy, pk=policy_id)
             policy.shift_start_time = shift_start
             policy.shift_end_time = shift_end
             policy.monthly_off_count = int(monthly_count)
             policy.save()
 
-            messages.success(request, f"Shift & Week-Off Policy for '{policy.role_name or policy.role}' updated successfully.")
+            # If this policy corresponds to a CustomRole, update its rights/permissions
+            crole = CustomRole.objects.filter(code=policy.role).first()
+            if crole:
+                crole.has_pos_access = request.POST.get('has_pos_access') in ['on', 'true', 'True', True]
+                crole.has_attendance_access = request.POST.get('has_attendance_access') in ['on', 'true', 'True', True]
+                crole.has_all_branches_access = request.POST.get('has_all_branches_access') in ['on', 'true', 'True', True]
+                crole.has_product_rights = request.POST.get('has_product_rights') in ['on', 'true', 'True', True]
+                crole.has_bill_edit_rights = request.POST.get('has_bill_edit_rights') in ['on', 'true', 'True', True]
+                crole.save()
+
+            messages.success(request, f"Policy and Rights for '{policy.role_name or policy.role}' updated successfully.")
             if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
-                return JsonResponse({'success': True, 'message': 'Policy updated successfully.'})
+                return JsonResponse({'success': True, 'message': 'Policy and Rights updated successfully.'})
         except Exception as e:
             messages.error(request, f"Error updating policy: {str(e)}")
             if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':

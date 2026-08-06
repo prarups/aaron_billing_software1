@@ -594,4 +594,44 @@ class RegionalManagerPermissionsTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
 
+class CustomDynamicRoleTestCase(TestCase):
+    def setUp(self):
+        Branch.objects.all().delete()
+        User.objects.all().delete()
+        self.branch = Branch.objects.create(name="Head Office", code=99901, invoice_prefix="HO99")
+
+    def test_dynamic_custom_role_user_creation(self):
+        from users.models import CustomRole
+        from users.forms import StaffForm
+        
+        # 1. Create a dynamic custom role (e.g., General Manager / generan_manager)
+        custom_role = CustomRole.objects.create(
+            name="General Manager",
+            code="generan_manager",
+            has_pos_access=True,
+            has_attendance_access=True,
+            has_all_branches_access=True
+        )
+        
+        # 2. Submit StaffForm with the custom role code
+        data = {
+            'username': 'gen_mgr_user',
+            'role': custom_role.code, # 'generan_manager'
+            'branches': [self.branch.id],
+            'mobile_number': '9876543210',
+            'password': 'password123'
+        }
+        form = StaffForm(data=data)
+        
+        # 3. Form must be valid and must NOT fail with "is not one of the available choices"
+        self.assertTrue(form.is_valid(), f"StaffForm validation failed: {form.errors}")
+        
+        user = form.save()
+        self.assertEqual(user.role, 'generan_manager')
+        self.assertEqual(user.get_role_display(), 'General Manager')
+        self.assertEqual(user.role_display, 'General Manager')
+        self.assertTrue(user.is_manager())
+
+
+
 
