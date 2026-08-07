@@ -32,16 +32,16 @@ class BranchAdmin(admin.ModelAdmin):
         return qs.filter(id__in=accessible_branches)
 
     def has_view_permission(self, request, obj=None):
-        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager', 'assistant_manager']
+        return request.user.is_superuser or request.user.is_manager()
 
     def has_add_permission(self, request):
-        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager', 'assistant_manager']
+        return request.user.is_superuser or request.user.is_manager()
 
     def has_change_permission(self, request, obj=None):
-        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager', 'assistant_manager']
+        return request.user.is_superuser or request.user.is_manager()
 
     def has_delete_permission(self, request, obj=None):
-        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager', 'assistant_manager']
+        return request.user.is_superuser or request.user.is_manager()
 
 
 class ProductRegistryInline(admin.TabularInline):
@@ -81,21 +81,21 @@ class ProductAdmin(admin.ModelAdmin):
         ).distinct()
 
     def has_view_permission(self, request, obj=None):
-        return request.user.is_superuser or getattr(request.user, 'role', '') in ['owner', 'manager', 'assistant_manager']
+        return request.user.is_superuser or request.user.is_manager()
 
     def has_add_permission(self, request):
-        return request.user.is_superuser or getattr(request.user, 'role', '') == 'owner' or (
-            getattr(request.user, 'role', '') in ['manager', 'assistant_manager'] and getattr(request.user, 'has_product_rights', False)
+        return request.user.is_superuser or request.user.role == 'owner' or (
+            request.user.is_manager() and getattr(request.user, 'has_product_rights', False)
         )
 
     def has_change_permission(self, request, obj=None):
-        return request.user.is_superuser or getattr(request.user, 'role', '') == 'owner' or (
-            getattr(request.user, 'role', '') in ['manager', 'assistant_manager'] and getattr(request.user, 'has_product_rights', False)
+        return request.user.is_superuser or request.user.role == 'owner' or (
+            request.user.is_manager() and getattr(request.user, 'has_product_rights', False)
         )
 
     def has_delete_permission(self, request, obj=None):
-        return request.user.is_superuser or getattr(request.user, 'role', '') == 'owner' or (
-            getattr(request.user, 'role', '') in ['manager', 'assistant_manager'] and getattr(request.user, 'has_product_rights', False)
+        return request.user.is_superuser or request.user.role == 'owner' or (
+            request.user.is_manager() and getattr(request.user, 'has_product_rights', False)
         )
 
 

@@ -34,6 +34,7 @@ class CustomRole(models.Model):
     name = models.CharField(max_length=50, unique=True)
     code = models.SlugField(max_length=50, unique=True, blank=True)
     
+    dashboard_access = models.CharField(max_length=20, default='manager', help_text="Dashboard level: owner, manager, or staff")
     has_pos_access = models.BooleanField(default=True)
     has_attendance_access = models.BooleanField(default=True)
     has_all_branches_access = models.BooleanField(default=False)
@@ -65,7 +66,8 @@ class CustomRole(models.Model):
                 has_pos_access=self.has_pos_access,
                 has_attendance_access=self.has_attendance_access,
                 has_product_rights=self.has_product_rights,
-                has_bill_edit_rights=self.has_bill_edit_rights
+                has_bill_edit_rights=self.has_bill_edit_rights,
+                dashboard_access=self.dashboard_access
             )
         except Exception:
             pass
@@ -101,6 +103,7 @@ class RoleShiftPolicy(models.Model):
             role_names = {
                 'owner': 'Admin',
                 'regional_manager': 'Regional Manager',
+                'general_manager': 'General Manager',
                 'manager': 'Manager',
                 'assistant_manager': 'Assistant Manager',
                 'sales_staff': 'Sales Staff',
@@ -131,11 +134,13 @@ class User(AbstractUser):
     ROLE_CHOICES = (
         ('owner', 'Admin'),
         ('regional_manager', 'Regional Manager'),
+        ('general_manager', 'General Manager'),
         ('manager', 'Manager'),
         ('assistant_manager', 'Assistant Manager'),
         ('sales_staff', 'Sales Staff'),
     )
     role = models.CharField(max_length=50, default='sales_staff', db_index=True)
+    dashboard_access = models.CharField(max_length=20, default='staff', help_text="Dashboard level: owner, manager, or staff")
     # Managers and Staff can be assigned to multiple branches
     branches = models.ManyToManyField('core.Branch', blank=True, related_name='assigned_users')
     # The branch currently selected for the session
@@ -163,15 +168,30 @@ class User(AbstractUser):
         return False
 
     def is_owner(self):
-        return self.role == 'owner'
-
-    def is_manager(self):
-        if self.role in ['manager', 'assistant_manager', 'regional_manager']:
+        if self.is_superuser or self.role == 'owner':
+            return True
+        if self.dashboard_access == 'owner':
             return True
         if self.role:
             try:
                 crole = CustomRole.objects.get(code=self.role)
-                if crole.has_all_branches_access or crole.has_product_rights or crole.has_bill_edit_rights:
+                if crole.dashboard_access == 'owner':
+                    return True
+            except Exception:
+                pass
+        return False
+
+    def is_manager(self):
+        if self.is_owner():
+            return True
+        if self.role in ['general_manager', 'manager', 'assistant_manager', 'regional_manager']:
+            return True
+        if self.dashboard_access in ['owner', 'manager']:
+            return True
+        if self.role:
+            try:
+                crole = CustomRole.objects.get(code=self.role)
+                if crole.dashboard_access in ['owner', 'manager'] or crole.has_all_branches_access or crole.has_product_rights or crole.has_bill_edit_rights:
                     return True
             except Exception:
                 pass
@@ -198,15 +218,28 @@ class User(AbstractUser):
     def get_accessible_branches(self):
         """Returns the branches this user is authorized to work in."""
         from core.models import Branch
-        if self.is_owner() or self.role == 'regional_manager':
+        if self.is_superuser:
             return Branch.objects.all()
+
         if self.role:
             try:
                 crole = CustomRole.objects.get(code=self.role)
                 if crole.has_all_branches_access:
                     return Branch.objects.all()
+                else:
+                    return self.branches.all()
             except CustomRole.DoesNotExist:
                 pass
+
+        if self.role == 'owner':
+            return Branch.objects.all()
+
+        if self.branches.exists():
+            return self.branches.all()
+
+        if self.role == 'regional_manager':
+            return Branch.objects.all()
+
         return self.branches.all()
 
     def save(self, *args, **kwargs):
@@ -229,17 +262,23 @@ class User(AbstractUser):
             self.shift_end_time = "17:00:00"
         if self.grace_period_minutes is None:
             self.grace_period_minutes = 15
-        
-        # Sync permissions if role is custom
-        if self.role and self.role not in ['owner', 'regional_manager', 'manager', 'assistant_manager', 'sales_staff']:
+
+        # Sync permissions & dashboard access from CustomRole if exists
+        if self.role:
             try:
                 crole = CustomRole.objects.get(code=self.role)
                 self.has_pos_access = crole.has_pos_access
                 self.has_attendance_access = crole.has_attendance_access
                 self.has_product_rights = crole.has_product_rights
                 self.has_bill_edit_rights = crole.has_bill_edit_rights
+                self.dashboard_access = crole.dashboard_access
             except CustomRole.DoesNotExist:
-                pass
+                if self.role in ['owner', 'regional_manager']:
+                    self.dashboard_access = 'owner'
+                elif self.role in ['general_manager', 'manager', 'assistant_manager']:
+                    self.dashboard_access = 'manager'
+                elif self.role == 'sales_staff':
+                    self.dashboard_access = 'staff'
                 
         super().save(*args, **kwargs)
 

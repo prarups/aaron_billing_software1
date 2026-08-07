@@ -19,9 +19,10 @@ from django import forms
 class RoleForm(forms.ModelForm):
     class Meta:
         model = CustomRole
-        fields = ['name', 'has_pos_access', 'has_attendance_access', 'has_all_branches_access', 'has_product_rights', 'has_bill_edit_rights']
+        fields = ['name', 'dashboard_access', 'has_pos_access', 'has_attendance_access', 'has_all_branches_access', 'has_product_rights', 'has_bill_edit_rights']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Regional Manager, General Manager'}),
+            'dashboard_access': forms.Select(choices=[('owner', 'Owner / Multi-Branch Dashboard'), ('manager', 'Manager Dashboard'), ('staff', 'Staff POS Dashboard')], attrs={'class': 'form-select'}),
             'has_pos_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'has_attendance_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'has_all_branches_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -107,7 +108,10 @@ def role_create(request):
         return redirect('branch_staff_management')
 
     if request.method == "POST":
-        form = RoleForm(request.POST)
+        post_data = request.POST.copy()
+        if not post_data.get('dashboard_access'):
+            post_data['dashboard_access'] = 'manager'
+        form = RoleForm(post_data)
         if form.is_valid():
             role = form.save()
             messages.success(request, f"✅ Custom role '{role.name}' created successfully!")
@@ -198,22 +202,25 @@ class OwnerDashboardView(TemplateView):
             context['stats_label'] = "Total Sales (Today)"
             context['trans_label'] = "Transactions"
             
-        context['branch_count'] = Branch.objects.count()
+        accessible_branches = self.request.user.get_accessible_branches()
+        context['branch_count'] = accessible_branches.count()
         context['total_product_count'] = Product.objects.count()
         
         # Low Stock Alerts
-        context['low_stock_count'] = ProductRegistry.objects.filter(stock_quantity__lte=F('low_stock_threshold')).count()
+        context['low_stock_count'] = ProductRegistry.objects.filter(branch__in=accessible_branches, stock_quantity__lte=F('low_stock_threshold')).count()
         
         # Stock Summary stats
-        total_current_stock = ProductRegistry.objects.aggregate(Sum('stock_quantity'))['stock_quantity__sum'] or 0
+        total_current_stock = ProductRegistry.objects.filter(branch__in=accessible_branches).aggregate(Sum('stock_quantity'))['stock_quantity__sum'] or 0
         if is_filtered:
             total_items_sold = BillItem.objects.filter(
+                bill__branch__in=accessible_branches,
                 bill__created_at__range=(start_datetime, end_datetime)
             ).aggregate(Sum('quantity'))['quantity__sum'] or 0
         else:
             today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
             today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
             total_items_sold = BillItem.objects.filter(
+                bill__branch__in=accessible_branches,
                 bill__created_at__range=(today_start, today_end)
             ).aggregate(Sum('quantity'))['quantity__sum'] or 0
             
@@ -267,7 +274,7 @@ class OwnerDashboardView(TemplateView):
                 created_at__range=(today_start, today_end)
             ).order_by().values('branch').annotate(total=Sum('online_amount')).values('total')
 
-        branches = Branch.objects.annotate(
+        branches = accessible_branches.annotate(
             today_sales=Coalesce(
                 Subquery(sales_subquery),
                 0,
@@ -299,10 +306,10 @@ class OwnerDashboardView(TemplateView):
         _, last_day = calendar.monthrange(today.year, today.month)
         current_month_end_dt = timezone.make_aware(datetime.datetime(today.year, today.month, last_day, 23, 59, 59))
 
-        goals_dict = {g.branch_id: g.target_sales for g in BranchGoal.objects.filter(month=current_month_start)}
+        goals_dict = {g.branch_id: g.target_sales for g in BranchGoal.objects.filter(branch__in=accessible_branches, month=current_month_start)}
         monthly_sales_dict = {
             row['branch']: row['total']
-            for row in Bill.objects.filter(created_at__range=(current_month_start_dt, current_month_end_dt))
+            for row in Bill.objects.filter(branch__in=accessible_branches, created_at__range=(current_month_start_dt, current_month_end_dt))
             .values('branch')
             .annotate(total=Sum('total_amount'))
         }
@@ -348,10 +355,14 @@ class OwnerDashboardView(TemplateView):
         context['branches_by_code'] = branches_by_code_list
         context['branch_search'] = branch_search
         
-        context['recent_bills'] = Bill.objects.order_by('-created_at')[:5]
+        context['recent_bills'] = Bill.objects.filter(branch__in=accessible_branches).order_by('-created_at')[:5]
         
         # Staff list (admins, managers, and staff) without pagination for client-side search scalability
-        staff_qs = User.objects.all().prefetch_related('branches').order_by('employee_id', 'username')
+        if self.request.user.is_superuser or self.request.user.role == 'owner':
+            staff_qs = User.objects.all().prefetch_related('branches').order_by('employee_id', 'username')
+        else:
+            staff_qs = User.objects.filter(branches__in=accessible_branches).prefetch_related('branches').distinct().order_by('employee_id', 'username')
+        context['staff_list'] = staff_qs
         context['staff_list'] = staff_qs
         
         # Manager employee performance data
@@ -1251,7 +1262,7 @@ def branch_staff_management(request):
     custom_roles = CustomRole.objects.all()
     
     from users.models import RoleShiftPolicy
-    standard_roles = ['owner', 'regional_manager', 'manager', 'assistant_manager', 'sales_staff']
+    standard_roles = ['owner', 'regional_manager', 'general_manager', 'manager', 'assistant_manager', 'sales_staff']
     for rcode in standard_roles:
         RoleShiftPolicy.get_policy_for_role(rcode)
     for crole in custom_roles:
@@ -1285,7 +1296,7 @@ def role_shift_policy_list(request):
         return redirect('dashboard')
     
     from users.models import RoleShiftPolicy, CustomRole
-    standard_roles = ['owner', 'regional_manager', 'manager', 'assistant_manager', 'sales_staff']
+    standard_roles = ['owner', 'regional_manager', 'general_manager', 'manager', 'assistant_manager', 'sales_staff']
     for rcode in standard_roles:
         RoleShiftPolicy.get_policy_for_role(rcode)
     for crole in CustomRole.objects.all():
@@ -1329,6 +1340,8 @@ def update_role_shift_policy(request):
             # If this policy corresponds to a CustomRole, update its rights/permissions
             crole = CustomRole.objects.filter(code=policy.role).first()
             if crole:
+                if request.POST.get('dashboard_access'):
+                    crole.dashboard_access = request.POST.get('dashboard_access')
                 crole.has_pos_access = request.POST.get('has_pos_access') in ['on', 'true', 'True', True]
                 crole.has_attendance_access = request.POST.get('has_attendance_access') in ['on', 'true', 'True', True]
                 crole.has_all_branches_access = request.POST.get('has_all_branches_access') in ['on', 'true', 'True', True]

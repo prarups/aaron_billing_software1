@@ -546,37 +546,35 @@
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             function initTomSelect(el) {
-                // Ensure it is a select, not already initialized, and not flagged to ignore
+                // Ensure it is a select, not already initialized
                 if (el.tagName === 'SELECT' && !el.classList.contains('tomselected')) {
-                    if (el.classList.contains('no-search') || el.hasAttribute('data-no-search') || el.dataset.noSearch !== undefined) return;
+                    const noSearch = el.classList.contains('no-search') || el.hasAttribute('data-no-search') || el.dataset.noSearch !== undefined || el.classList.contains('no-tomselect') || el.hasAttribute('data-no-tomselect');
+                    if (noSearch) return;
                     
                     try {
                         const settings = {
-    placeholder: el.getAttribute('placeholder') || 'Select...',
-    create: false,
-    allowEmptyOption: false,
-    plugins: ['dropdown_input'], // search field inside the dropdown panel
-    onInitialize: function() {
-        const wrapper = this.wrapper;
-        // Copy essential aesthetic classes from select to the Tom Select wrapper
-        // Note: skip 'pill' classes as they cause layout issues with TomSelect
-        el.classList.forEach(cls => {
-            if (
-                cls.includes('bg-') || 
-                cls.includes('border-') || 
-                cls.includes('form-select') ||
-                cls.includes('shadow-')
-            ) {
-                wrapper.classList.add(cls);
-            }
-        });
-    }
-};
+                            placeholder: el.getAttribute('placeholder') || 'Select...',
+                            create: false,
+                            allowEmptyOption: false,
+                            plugins: ['dropdown_input'],
+                            onInitialize: function() {
+                                const wrapper = this.wrapper;
+                                el.classList.forEach(cls => {
+                                    if (
+                                        cls.includes('bg-') || 
+                                        cls.includes('border-') || 
+                                        cls.includes('form-select') ||
+                                        cls.includes('shadow-')
+                                    ) {
+                                        wrapper.classList.add(cls);
+                                    }
+                                });
+                            }
+                        };
                         
                         new TomSelect(el, settings);
-            // Only clear if no option is pre-selected (preserve edit form values)
-            const hasPreSelected = Array.from(el.options).some(opt => opt.selected);
-            if (el.tomselect && !hasPreSelected) { el.tomselect.clear(); }
+                        const hasPreSelected = Array.from(el.options).some(opt => opt.selected);
+                        if (el.tomselect && !hasPreSelected) { el.tomselect.clear(); }
                     } catch (e) {
                         console.error('Error initializing Tom Select:', e);
                     }

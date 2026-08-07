@@ -632,6 +632,68 @@ class CustomDynamicRoleTestCase(TestCase):
         self.assertEqual(user.role_display, 'General Manager')
         self.assertTrue(user.is_manager())
 
+    def test_general_manager_without_edit_rights_stays_on_manager_dashboard(self):
+        # Create 3 branches
+        b1 = Branch.objects.create(name="Branch 1", code=99911, invoice_prefix="B1")
+        b2 = Branch.objects.create(name="Branch 2", code=99912, invoice_prefix="B2")
+        b3 = Branch.objects.create(name="Branch 3", code=99913, invoice_prefix="B3")
+
+        gm_user = User.objects.create_user(
+            username="general_mgr",
+            password="password123",
+            role="general_manager",
+            has_product_rights=False,
+            has_bill_edit_rights=False,
+            active_branch=b1
+        )
+        gm_user.branches.set([b1, b2, b3])
+        gm_user.save()
+
+        # 1. Assert user is recognized as manager
+        self.assertTrue(gm_user.is_manager())
+        self.assertFalse(gm_user.has_product_rights)
+        self.assertFalse(gm_user.has_bill_edit_rights)
+
+        # 2. Assert accessible branches count is 3
+        accessible = gm_user.get_accessible_branches()
+        self.assertEqual(accessible.count(), 3)
+
+        # 3. Assert login redirect goes to manager_dashboard (NOT staff_dashboard)
+        self.client.login(username="general_mgr", password="password123")
+        response = self.client.get(reverse('billing_redirect'))
+        self.assertRedirects(response, reverse('manager_dashboard'))
+
+    def test_dynamic_role_with_assigned_branches_restriction(self):
+        from users.models import CustomRole
+        b1 = Branch.objects.create(name="Branch A", code=88801, invoice_prefix="BA")
+        b2 = Branch.objects.create(name="Branch B", code=88802, invoice_prefix="BB")
+        b3 = Branch.objects.create(name="Branch C", code=88803, invoice_prefix="BC")
+        b4 = Branch.objects.create(name="Branch D", code=88804, invoice_prefix="BD")
+
+        role = CustomRole.objects.create(
+            name="Zonal Manager",
+            code="zonal_manager",
+            dashboard_access="owner",
+            has_all_branches_access=False
+        )
+
+        user = User.objects.create_user(
+            username="zonal_user",
+            password="password123",
+            role="zonal_manager"
+        )
+        user.branches.set([b1, b2, b3])
+        user.save()
+
+        # Accessible branches should strictly be 3 branches (b1, b2, b3), excluding b4
+        accessible = user.get_accessible_branches()
+        self.assertEqual(accessible.count(), 3)
+        self.assertIn(b1, accessible)
+        self.assertIn(b2, accessible)
+        self.assertIn(b3, accessible)
+        self.assertNotIn(b4, accessible)
+
+
 
 
 

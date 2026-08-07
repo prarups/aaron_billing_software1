@@ -693,14 +693,14 @@
 
                     <!-- Branches -->
                     <td data-label="Branches">
-                        {% if staff.role == 'owner' or staff.role == 'regional_manager' %}
-                        <span style="color:#94a3b8;font-size:0.72rem;">—</span>
+                        {% if staff.role == 'owner' %}
+                        <span class="badge bg-warning-subtle text-dark border border-warning-subtle rounded-pill px-2 py-0.5" style="font-size:0.67rem;"><i class="bi bi-globe me-1"></i>All Branches</span>
                         {% else %}
                         <div class="d-flex flex-wrap gap-1">
                         {% for b in staff.branches.all %}
                         <span style="background:#ede9fe;color:#7c3aed;border-radius:999px;padding:1px 9px;font-size:0.67rem;font-weight:600;white-space:nowrap;">{{ b.name }}</span>
                         {% empty %}
-                        <span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">None</span>
+                        <span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">None (Unassigned)</span>
                         {% endfor %}
                         </div>
                         {% endif %}
@@ -2114,8 +2114,18 @@
                 <div class="modal-body p-4">
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-uppercase text-muted">Role Name</label>
-                        <input type="text" name="name" id="roleNameInput" class="form-control rounded-3" placeholder="e.g. CCTV Operator, Accounts, Security" required>
+                        <input type="text" name="name" id="roleNameInput" class="form-control rounded-3" placeholder="e.g. Regional Manager, General Manager, Store Head" required onkeyup="updateLiveRoleAccessLevel()">
                         <div class="form-text">This name will appear in the role dropdown when adding staff.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-uppercase text-muted">Dashboard Access Level</label>
+                        <select name="dashboard_access" id="roleDashboardSelect" class="form-select no-search rounded-3" data-no-search="true" onchange="updateLiveRoleAccessLevel()">
+                            <option value="" selected>-- Optional Dashboard Access Level (Defaults to Manager Dashboard) --</option>
+                            <option value="manager">Manager Dashboard (Multi-Branch Management)</option>
+                            <option value="owner">Owner / Admin Dashboard (Full Multi-Branch Analytics)</option>
+                            <option value="staff">Staff Dashboard (POS Counter Operational)</option>
+                        </select>
+                        <div class="form-text">Optional. If unselected, defaults automatically to Manager Dashboard.</div>
                     </div>
                     <p class="fw-semibold small text-muted text-uppercase mb-2">Permissions</p>
                     <div class="row g-2">
@@ -2161,16 +2171,18 @@
                         </div>
                     </div>
 
+
+
                     <!-- Live Access Level Indicator Card -->
-                    <div id="roleAccessLevelCard" class="card border-0 p-3 mt-3 shadow-none" style="background:#eff6ff; border-left:4px solid #2563eb !important;">
+                    <div id="roleAccessLevelCard" class="card border-0 p-3 mt-3 shadow-none" style="background:#f8fafc; border-left:4px solid #94a3b8 !important;">
                         <div class="d-flex align-items-center justify-content-between">
                             <span class="x-small text-muted fw-bold text-uppercase">Role Privilege Classification:</span>
-                            <span id="roleAccessBadge" class="badge bg-primary rounded-pill px-3 py-1.5 fs-7">
-                                <i class="bi bi-person-badge me-1"></i> Staff-Level Access
+                            <span id="roleAccessBadge" class="badge bg-secondary rounded-pill px-3 py-1.5 fs-7">
+                                <i class="bi bi-question-circle me-1"></i> Select Access Level
                             </span>
                         </div>
                         <div id="roleAccessDescription" class="small text-muted mt-2">
-                            This role has Staff-level operational permissions restricted to assigned branch operations.
+                            Please select a dashboard access level above to classify permissions.
                         </div>
                     </div>
                 </div>
@@ -2185,20 +2197,32 @@
 
 <script>
     function updateLiveRoleAccessLevel() {
-        const allBr = document.getElementById('roleAllBrCb')?.checked;
-        const prod = document.getElementById('roleProdCb')?.checked;
-        const bill = document.getElementById('roleBillCb')?.checked;
+        const roleName = document.getElementById('roleNameInput')?.value || '';
+        const dashLevel = document.getElementById('roleDashboardSelect')?.value || '';
+        const roleLower = roleName.toLowerCase();
         const badge = document.getElementById('roleAccessBadge');
         const card = document.getElementById('roleAccessLevelCard');
         const desc = document.getElementById('roleAccessDescription');
         if (!badge || !card || !desc) return;
 
-        if (allBr || (prod && bill)) {
+        if (!dashLevel) {
+            card.style.background = '#f8fafc';
+            card.style.borderLeft = '4px solid #94a3b8';
+            badge.className = 'badge bg-secondary rounded-pill px-3 py-1.5 fs-7';
+            badge.innerHTML = '<i class="bi bi-question-circle me-1"></i> Select Access Level';
+            desc.textContent = 'Please select a dashboard access level above to classify permissions.';
+        } else if (dashLevel === 'owner' || roleLower.includes('admin') || roleLower.includes('owner')) {
+            card.style.background = '#fef3c7';
+            card.style.borderLeft = '4px solid #d97706';
+            badge.className = 'badge bg-warning text-dark rounded-pill px-3 py-1.5 fs-7';
+            badge.innerHTML = '<i class="bi bi-shield-lock me-1"></i> Owner / Admin-Level Access';
+            desc.textContent = 'This role will access the Owner/Admin Dashboard with high-level multi-branch management authority.';
+        } else if (dashLevel === 'manager') {
             card.style.background = '#f0fdf4';
             card.style.borderLeft = '4px solid #16a34a';
             badge.className = 'badge bg-success rounded-pill px-3 py-1.5 fs-7';
             badge.innerHTML = '<i class="bi bi-shield-check me-1"></i> Manager-Level Access';
-            desc.textContent = 'This role will have Manager-level authority with global multi-branch management access and administrative controls.';
+            desc.textContent = 'This role will access the Manager Dashboard. Assigned managers can manage their assigned branches (1 or more branches).';
         } else {
             card.style.background = '#eff6ff';
             card.style.borderLeft = '4px solid #2563eb';

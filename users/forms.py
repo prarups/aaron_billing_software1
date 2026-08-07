@@ -102,7 +102,7 @@ class StaffForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        built_in = [('owner', 'Admin'), ('regional_manager', 'Regional Manager'), ('manager', 'Manager'), ('assistant_manager', 'Assistant Manager'), ('sales_staff', 'Sales Staff')]
+        built_in = [('owner', 'Admin'), ('regional_manager', 'Regional Manager'), ('general_manager', 'General Manager'), ('manager', 'Manager'), ('assistant_manager', 'Assistant Manager'), ('sales_staff', 'Sales Staff')]
         try:
             from users.models import CustomRole
             custom = [(crole.code, crole.name) for crole in CustomRole.objects.all()]
@@ -155,7 +155,7 @@ class StaffForm(forms.ModelForm):
         branches = cleaned_data.get('branches')
         
         has_all_branches = False
-        if role in ['owner', 'regional_manager']:
+        if role == 'owner':
             has_all_branches = True
         elif role:
             try:
