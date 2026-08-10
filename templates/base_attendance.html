@@ -321,7 +321,7 @@
                             <span>Permissions</span>
                         </a>
                     </li>
-                    {% if user.role == 'owner' or user.role == 'regional_manager' or user.role == 'manager' or user.role == 'assistant_manager' %}
+                    {% if user.is_owner or user.is_manager or user.dashboard_access == 'owner' or user.dashboard_access == 'manager' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}" href="{% url 'attendance:reports' %}">
                             <i class="bi bi-file-earmark-bar-graph-fill"></i>
@@ -335,7 +335,7 @@
                             <span>My Summary</span>
                         </a>
                     </li>
-                    {% if user.role == 'owner' or user.role == 'regional_manager' or user.role == 'manager' or user.role == 'assistant_manager' %}
+                    {% if user.is_owner or user.is_manager or user.dashboard_access == 'owner' or user.dashboard_access == 'manager' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if request.resolver_match.url_name == 'management_overview' %}active{% endif %}" href="{% url 'attendance:management_overview' %}">
                             <i class="bi bi-people-fill"></i>
@@ -410,7 +410,7 @@
                             <span>Permissions</span>
                         </a>
                     </li>
-                    {% if user.role == 'owner' or user.role == 'regional_manager' or user.role == 'manager' or user.role == 'assistant_manager' %}
+                    {% if user.is_owner or user.is_manager or user.dashboard_access == 'owner' or user.dashboard_access == 'manager' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}" href="{% url 'attendance:reports' %}">
                             <i class="bi bi-file-earmark-bar-graph-fill"></i>
@@ -424,7 +424,7 @@
                             <span>My Summary</span>
                         </a>
                     </li>
-                    {% if user.role == 'owner' or user.role == 'regional_manager' or user.role == 'manager' or user.role == 'assistant_manager' %}
+                    {% if user.is_owner or user.is_manager or user.dashboard_access == 'owner' or user.dashboard_access == 'manager' %}
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if request.resolver_match.url_name == 'management_overview' %}active{% endif %}" href="{% url 'attendance:management_overview' %}">
                             <i class="bi bi-people-fill"></i>
@@ -482,14 +482,17 @@
         <div class="main-wrapper">
             <main class="container-fluid py-4">
                 {% block messages %}
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show mb-4 rounded-3" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
+                    {% if messages %}
+                    <div class="messages-container mb-3">
+                        {% for message in messages %}
+                            <div class="alert {% if message.tags == 'error' or message.tags == 'danger' %}alert-danger{% elif message.tags == 'warning' %}alert-warning{% else %}alert-success{% endif %} alert-dismissible fade show border-0 shadow-sm rounded-3 py-2.5 px-3 small d-flex align-items-center gap-2 mb-2" role="alert" style="font-size: 0.85rem; {% if message.tags == 'error' or message.tags == 'danger' %}background-color: #fef2f2; color: #991b1b; border-left: 4px solid #ef4444 !important;{% elif message.tags == 'warning' %}background-color: #fffbeb; color: #92400e; border-left: 4px solid #f59e0b !important;{% else %}background-color: #ecfdf5; color: #047857; border-left: 4px solid #10b981 !important;{% endif %}">
+                                <i class="bi {% if message.tags == 'error' or message.tags == 'danger' %}bi-exclamation-triangle-fill text-danger{% elif message.tags == 'warning' %}bi-exclamation-circle-fill text-warning{% else %}bi-check-circle-fill text-success{% endif %} fs-6"></i>
+                                <div class="fw-semibold">{{ message }}</div>
+                                <button type="button" class="btn-close ms-auto py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 {% endblock %}
 
                 {% block content %}{% endblock %}

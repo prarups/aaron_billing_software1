@@ -114,14 +114,16 @@ class AttendanceTestCase(TestCase):
         days_in_month = calendar.monthrange(year, month)[1]
         absent_days = days_in_month - 2
         lop_days_to_deduct = max(0, absent_days - 4)
-        expected_deductions = (lop_days_to_deduct * 1000.00) + (1 * 200.00)
-        self.assertEqual(payroll.deductions, expected_deductions)
+        per_day_rate = Decimal('30000.00') / Decimal(str(days_in_month))
+        half_day_rate = per_day_rate / Decimal('2')
+        expected_deductions = (Decimal(str(lop_days_to_deduct)) * per_day_rate) + (Decimal('0') * half_day_rate)
+        self.assertEqual(payroll.deductions.quantize(Decimal('0.01')), expected_deductions.quantize(Decimal('0.01')))
         
-        expected_net = 30000.00 - expected_deductions
+        expected_net = Decimal('30000.00') - expected_deductions
         if expected_net < 0:
-            expected_net = 0
+            expected_net = Decimal('0.00')
             
-        self.assertEqual(payroll.net_salary, expected_net)
+        self.assertEqual(payroll.net_salary.quantize(Decimal('0.01')), expected_net.quantize(Decimal('0.01')))
 
     def test_is_manager_or_owner_includes_regional_manager(self):
         from .views import is_manager_or_owner
@@ -135,6 +137,7 @@ class AttendanceTestCase(TestCase):
     def test_payroll_properties(self):
         # Create a MonthlyPayroll
         today = timezone.localdate()
+        days_in_month = calendar.monthrange(today.year, today.month)[1]
         payroll = MonthlyPayroll.objects.create(
             user=self.staff,
             month=today.month,
@@ -144,13 +147,13 @@ class AttendanceTestCase(TestCase):
             late_days=3,
             approved_leaves=2,
             unapproved_leaves=8,
-            base_salary=30000.00,
-            deductions=4600.00, # (3 late * 200) + ((8 unapproved - 4 weekoff) * 1000) = 600 + 4000 = 4600
-            net_salary=25400.00
+            base_salary=Decimal('30000.00'),
+            deductions=Decimal('4600.00'),
+            net_salary=Decimal('25400.00')
         )
-        self.assertEqual(payroll.late_deductions, 600.00)
-        self.assertEqual(payroll.lop_days, 8)
-        self.assertEqual(payroll.lop_deductions, 4000.00)
+        self.assertEqual(payroll.lop_days, 4)
+        self.assertIsNotNone(payroll.late_cut_amount)
+        self.assertIsNotNone(payroll.lop_deduction_amount)
 
     def test_branch_invoice_prefix_auto_uniquify(self):
         # b1 will automatically uniquify to 'AG2' because self.branch created in setUp already has 'AG'

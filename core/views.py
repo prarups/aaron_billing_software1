@@ -13,7 +13,7 @@ from django.db.models import Sum, F
 
 @login_required
 def product_list(request):
-    if request.user.role == 'sales_staff':
+    if not (request.user.is_owner() or request.user.is_manager()):
         return redirect('dashboard')
     
     # Auto-initialize active branch if None
@@ -93,7 +93,7 @@ def product_list(request):
 
 @login_required
 def export_products_csv(request):
-    if request.user.role == 'sales_staff':
+    if not (request.user.is_owner() or request.user.is_manager()):
         return redirect('dashboard')
         
     import csv
@@ -997,7 +997,7 @@ def download_bulk_template(request):
 @login_required
 def stock_pivot_report(request):
     """Report showing products, their stock movement (Op, In, Out, Cl) and branch-wise closing stock."""
-    if request.user.role == 'sales_staff':
+    if not (request.user.is_owner() or request.user.is_manager()):
         return redirect('dashboard')
     
     from django.db.models import Sum, Q, F, Count
@@ -1222,7 +1222,7 @@ def stock_pivot_report(request):
 @login_required
 def export_stock_pivot_excel(request):
     """Export the multi-branch stock pivot report to an Excel file with multiple sheets."""
-    if request.user.role == 'sales_staff':
+    if not (request.user.is_owner() or request.user.is_manager()):
         return redirect('dashboard')
         
     # Mirroring logic from view
@@ -1607,7 +1607,7 @@ def view_stock_adjustments(request, reg_id):
     Read-only view showing the history of all stock adjustments/corrections
     for a given product registry (product + branch).
     """
-    if request.user.role == 'sales_staff':
+    if not (request.user.is_owner() or request.user.is_manager()):
         return redirect('dashboard')
         
     registry = get_object_or_404(ProductRegistry, pk=reg_id)

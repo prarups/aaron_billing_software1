@@ -22,7 +22,13 @@ class RoleForm(forms.ModelForm):
         fields = ['name', 'dashboard_access', 'has_pos_access', 'has_attendance_access', 'has_all_branches_access', 'has_product_rights', 'has_bill_edit_rights']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Regional Manager, General Manager'}),
-            'dashboard_access': forms.Select(choices=[('owner', 'Owner / Multi-Branch Dashboard'), ('manager', 'Manager Dashboard'), ('staff', 'Staff POS Dashboard')], attrs={'class': 'form-select'}),
+            'dashboard_access': forms.Select(choices=[
+                ('', '-- Select Dashboard Access Level --'),
+                ('owner', 'Owner / Executive Dashboard (Full Analytics)'),
+                ('regional_manager', 'Regional Manager Dashboard (Multi-Branch Management)'),
+                ('manager', 'Branch Manager Dashboard'),
+                ('staff', 'Staff POS Dashboard (Counter Operational)')
+            ], attrs={'class': 'form-select'}),
             'has_pos_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'has_attendance_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'has_all_branches_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -86,15 +92,17 @@ def dashboard_redirect(request):
 
 @login_required
 def switch_branch(request):
-    """Allows Managers/Owners to switch their active session branch."""
+    """Allows Managers/Owners to switch their active session branch or view all branches."""
     if request.method == 'POST':
         branch_id = request.POST.get('branch_id')
-        if branch_id:
+        if branch_id == 'all':
+            request.user.active_branch = None
+            request.user.save(update_fields=['active_branch'])
+        elif branch_id:
             branch = get_object_or_404(Branch, id=branch_id)
-            # Permission check - must be an authorized branch
             if branch in request.user.get_accessible_branches():
                 request.user.active_branch = branch
-                request.user.save()
+                request.user.save(update_fields=['active_branch'])
     
     return redirect(request.META.get('HTTP_REFERER', 'dashboard'))
 
@@ -127,7 +135,7 @@ class OwnerDashboardView(TemplateView):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
-        if not (request.user.is_owner() or request.user.role == 'regional_manager'):
+        if not (request.user.is_owner() or request.user.role == 'regional_manager' or request.user.is_manager()):
             return redirect('dashboard')
         return super().dispatch(request, *args, **kwargs)
 
@@ -156,13 +164,15 @@ class OwnerDashboardView(TemplateView):
         context['end_date'] = end_date.strftime('%Y-%m-%d') if end_date else ''
         context['is_filtered'] = is_filtered
 
+        accessible_branches = self.request.user.get_accessible_branches()
+        
         # Overall Stats (optimized to fetch all sums in a single query)
         import datetime
         from billing.return_models import ReturnRequest
         if is_filtered:
             start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
             end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
-            range_bills = Bill.objects.filter(created_at__range=(start_datetime, end_datetime))
+            range_bills = Bill.objects.filter(branch__in=accessible_branches, created_at__range=(start_datetime, end_datetime))
             
             aggs = range_bills.aggregate(
                 sales=Sum('total_amount'),
@@ -183,7 +193,7 @@ class OwnerDashboardView(TemplateView):
         else:
             today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
             today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
-            today_bills = Bill.objects.filter(created_at__range=(today_start, today_end))
+            today_bills = Bill.objects.filter(branch__in=accessible_branches, created_at__range=(today_start, today_end))
             
             aggs = today_bills.aggregate(
                 sales=Sum('total_amount'),
@@ -201,8 +211,6 @@ class OwnerDashboardView(TemplateView):
             context['transaction_count_today'] = today_bills.count()
             context['stats_label'] = "Total Sales (Today)"
             context['trans_label'] = "Transactions"
-            
-        accessible_branches = self.request.user.get_accessible_branches()
         context['branch_count'] = accessible_branches.count()
         context['total_product_count'] = Product.objects.count()
         
@@ -233,8 +241,7 @@ class OwnerDashboardView(TemplateView):
         
         # Subquery for active staff count
         staff_subquery = User.objects.filter(
-            branches=OuterRef('pk'),
-            role__in=['sales_staff', 'assistant_manager']
+            branches=OuterRef('pk')
         ).order_by().values('branches').annotate(cnt=Count('id')).values('cnt')
 
         # Subquery for sales (today or period range)
@@ -366,7 +373,7 @@ class OwnerDashboardView(TemplateView):
         context['staff_list'] = staff_qs
         
         # Manager employee performance data
-        managers = User.objects.filter(role__in=['manager', 'assistant_manager']).prefetch_related('branches')
+        managers = [u for u in User.objects.all().prefetch_related('branches') if u.is_manager() and not u.is_owner()]
         manager_data = []
         import datetime
         today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
@@ -382,7 +389,6 @@ class OwnerDashboardView(TemplateView):
                 managed_branch_ids.add(b.id)
                 
         all_sales_staff = User.objects.filter(
-            role='sales_staff',
             branches__in=managed_branch_ids
         ).prefetch_related('branches').distinct()
         
@@ -446,7 +452,7 @@ class AssistantManagerDashboardView(TemplateView):
             context['branch_cash_today'] = aggs['cash'] or 0
             context['branch_online_today'] = aggs['online'] or 0
             context['product_count'] = Product.objects.count()
-            context['staff_count'] = branch.assigned_users.filter(role__in=['sales_staff', 'assistant_manager']).exclude(id=user.id).count()
+            context['staff_count'] = branch.assigned_users.count()
             context['recent_branch_bills'] = Bill.objects.filter(branch=branch).order_by('-created_at')[:5]
         add_branch_goal_context(user, context)
         return context
@@ -464,31 +470,51 @@ class ManagerDashboardView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
+        accessible_branches = user.get_accessible_branches()
         branch = user.active_branch
         today = timezone.now().date()
         import datetime
         today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
         today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
-        # Branch-specific stats (same as AssistantManagerDashboardView)
+
         if branch:
-            branch_bills = Bill.objects.filter(branch=branch, created_at__range=(today_start, today_end))
-            aggs = branch_bills.aggregate(
-                sales=Sum('total_amount'),
-                cash=Sum('cash_amount'),
-                online=Sum('online_amount')
-            )
-            context['branch_sales_today'] = aggs['sales'] or 0
-            context['branch_cash_today'] = aggs['cash'] or 0
-            context['branch_online_today'] = aggs['online'] or 0
-            context['product_count'] = Product.objects.count()
-            context['staff_count'] = branch.assigned_users.filter(role__in=['sales_staff', 'assistant_manager']).exclude(id=user.id).count()
-            context['recent_branch_bills'] = Bill.objects.filter(branch=branch).order_by('-created_at')[:5]
+            target_branches = accessible_branches.filter(id=branch.id)
+            context['current_branch_name'] = branch.name
+        else:
+            target_branches = accessible_branches
+            context['current_branch_name'] = "All Accessible Branches"
+
+        branch_bills = Bill.objects.filter(branch__in=target_branches, created_at__range=(today_start, today_end))
+        aggs = branch_bills.aggregate(
+            sales=Sum('total_amount'),
+            cash=Sum('cash_amount'),
+            online=Sum('online_amount')
+        )
+        context['branch_sales_today'] = aggs['sales'] or 0
+        context['branch_cash_today'] = aggs['cash'] or 0
+        context['branch_online_today'] = aggs['online'] or 0
+        context['product_count'] = Product.objects.count()
+        context['staff_count'] = User.objects.filter(branches__in=target_branches).distinct().count()
+        context['recent_branch_bills'] = Bill.objects.filter(branch__in=target_branches).order_by('-created_at')[:5]
+
+        # Multi-branch summary performance breakdown
+        branch_performances = []
+        for b in accessible_branches:
+            b_bills = Bill.objects.filter(branch=b, created_at__range=(today_start, today_end))
+            b_sales = b_bills.aggregate(s=Sum('total_amount'))['s'] or 0
+            branch_performances.append({
+                'branch': b,
+                'sales_today': b_sales,
+                'staff_count': b.assigned_users.count()
+            })
+        context['branch_performances'] = branch_performances
+
         add_branch_goal_context(user, context)
+
         # Staff performance for manager/assistant manager/custom manager roles
         if user.is_owner() or user.is_manager():
-            staff_qs = User.objects.filter(branches__in=user.get_accessible_branches()).exclude(id=user.id).distinct()
+            staff_qs = User.objects.filter(branches__in=target_branches).exclude(id=user.id).distinct()
             
-            # Pre-calculate sales for all staff for today to avoid N+1 queries
             sales_data = Bill.objects.filter(staff__in=staff_qs, created_at__range=(today_start, today_end)).values('staff').annotate(total=Sum('total_amount'))
             staff_sales_dict = {item['staff']: item['total'] or 0 for item in sales_data}
 
@@ -1072,9 +1098,7 @@ def export_staff_csv(request):
         'Date of Joining', 'Mobile Number', 'Address', 'Assigned Branches'
     ])
     
-    staff_qs = User.objects.filter(
-        role__in=['owner', 'manager', 'assistant_manager', 'sales_staff']
-    ).prefetch_related('branches').order_by('employee_id', 'username')
+    staff_qs = User.objects.all().prefetch_related('branches').order_by('employee_id', 'username')
     
     for s in staff_qs:
         branches_str = ", ".join([b.name for b in s.branches.all()])
@@ -1107,9 +1131,7 @@ def get_staff_online_status(request):
     if not (request.user.is_owner() or request.user.is_manager()):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
         
-    staff_qs = User.objects.filter(
-        role__in=['owner', 'manager', 'assistant_manager', 'sales_staff']
-    ).only('id', 'last_activity')
+    staff_qs = User.objects.all().only('id', 'last_activity')
     
     status_data = {}
     for staff in staff_qs:
@@ -1159,6 +1181,7 @@ def select_portal(request, portal_name):
 def branch_staff_management(request):
     """Manage branches and sales staff."""
     if not (request.user.is_owner() or request.user.role == 'regional_manager'):
+        messages.error(request, "Permission denied.")
         return redirect('dashboard')
     
     active_tab = request.GET.get('tab', 'branches')
@@ -1180,8 +1203,7 @@ def branch_staff_management(request):
     
     # Subquery for active staff count
     staff_subquery = User.objects.filter(
-        branches=OuterRef('pk'),
-        role__in=['sales_staff', 'assistant_manager']
+        branches=OuterRef('pk')
     ).order_by().values('branches').annotate(cnt=Count('id')).values('cnt')
     
     # Subquery for sales (today)
@@ -1267,7 +1289,7 @@ def branch_staff_management(request):
         RoleShiftPolicy.get_policy_for_role(rcode)
     for crole in custom_roles:
         RoleShiftPolicy.get_policy_for_role(crole.code)
-    role_policies = RoleShiftPolicy.objects.all()
+    role_policies = RoleShiftPolicy.objects.all().order_by('id')
 
     from users.forms import BranchForm, StaffForm
     branch_form = BranchForm()
@@ -1297,12 +1319,16 @@ def role_shift_policy_list(request):
     
     from users.models import RoleShiftPolicy, CustomRole
     standard_roles = ['owner', 'regional_manager', 'general_manager', 'manager', 'assistant_manager', 'sales_staff']
+    custom_role_codes = set(CustomRole.objects.values_list('code', flat=True))
+    valid_codes = set(standard_roles) | custom_role_codes
+    RoleShiftPolicy.objects.exclude(role__in=valid_codes).delete()
+    
     for rcode in standard_roles:
         RoleShiftPolicy.get_policy_for_role(rcode)
     for crole in CustomRole.objects.all():
         RoleShiftPolicy.get_policy_for_role(crole.code)
         
-    role_policies = list(RoleShiftPolicy.objects.all())
+    role_policies = list(RoleShiftPolicy.objects.all().order_by('id'))
     custom_roles_map = {cr.code: cr for cr in CustomRole.objects.all()}
     for policy in role_policies:
         policy.custom_role = custom_roles_map.get(policy.role)

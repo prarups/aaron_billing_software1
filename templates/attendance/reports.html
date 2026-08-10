@@ -17,8 +17,19 @@
             <span class="badge bg-light text-dark border px-3 py-1.5 rounded-pill fw-semibold" style="font-size: 0.75rem;">
                 <i class="bi bi-calendar-event me-1 text-success"></i> {% now "d M Y" %}
             </span>
-        </div>
     </div>
+
+    {% if messages %}
+    <div class="mb-3">
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show border-0 shadow-sm rounded-3 py-2 px-3 small d-flex align-items-center gap-2 mb-2" role="alert" style="font-size: 0.8rem; background-color: #ecfdf5; color: #047857; border-left: 4px solid #10b981 !important;">
+                <i class="bi {% if message.tags == 'error' %}bi-exclamation-triangle-fill text-danger{% else %}bi-check-circle-fill text-success{% endif %} fs-6"></i>
+                <div class="fw-semibold">{{ message }}</div>
+                <button type="button" class="btn-close ms-auto py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <!-- Main Navigation Tabs -->
     <ul class="nav nav-pills mb-3 gap-2" id="reportsTab" role="tablist">
@@ -567,6 +578,11 @@
                     </div>
                 </div>
 
+                <div id="editModalAlert" class="alert alert-success border-0 shadow-sm rounded-3 mb-3 py-2 px-3 small d-none align-items-center gap-2" style="font-size: 0.78rem; background-color: #d1fae5; color: #065f46;">
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                    <span id="editModalAlertMsg">Attendance updated and audit log saved successfully!</span>
+                </div>
+
                 <form id="editAttendanceForm">
                     <input type="hidden" id="editRecordId">
                     <input type="hidden" id="editUserId">
@@ -588,7 +604,7 @@
 
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill w-50 py-1.5" data-bs-dismiss="modal" style="font-size: 0.75rem;">Cancel</button>
-                        <button type="submit" class="btn btn-sm btn-primary rounded-pill w-50 py-1.5" style="font-size: 0.75rem;">Save Changes</button>
+                        <button type="submit" id="saveEditBtn" class="btn btn-sm btn-primary rounded-pill w-50 py-1.5" style="font-size: 0.75rem;">Save Changes</button>
                     </div>
                 </form>
             </div>
@@ -612,6 +628,18 @@
         document.getElementById('editEmpDate').textContent = date;
         document.getElementById('editStatus').value = (status && status !== 'future') ? status : 'present';
         document.getElementById('editNotes').value = notes || '';
+        
+        const alertBox = document.getElementById('editModalAlert');
+        if (alertBox) {
+            alertBox.classList.add('d-none');
+            alertBox.classList.remove('d-flex');
+        }
+        const btn = document.getElementById('saveEditBtn');
+        if (btn) {
+            btn.disabled = false;
+            btn.className = "btn btn-sm btn-primary rounded-pill w-50 py-1.5";
+            btn.innerHTML = 'Save Changes';
+        }
     }
 
     document.getElementById('editAttendanceForm').addEventListener('submit', function(e) {
@@ -622,6 +650,15 @@
         const isoDate = document.getElementById('editIsoDate').value;
         const status = document.getElementById('editStatus').value;
         const notes = document.getElementById('editNotes').value;
+        
+        const alertBox = document.getElementById('editModalAlert');
+        const alertMsg = document.getElementById('editModalAlertMsg');
+        const btn = document.getElementById('saveEditBtn');
+        
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Saving...';
+        }
         
         let url = "{% url 'attendance:edit_attendance_ajax' 0 %}".replace('0', id);
         
@@ -641,23 +678,74 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert(data.message);
-                const modalEl = document.getElementById('editAttendanceModal');
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                if (modal) modal.hide();
-                location.reload();
+                if (alertBox && alertMsg) {
+                    alertMsg.textContent = data.message;
+                    alertBox.classList.remove('d-none');
+                    alertBox.classList.add('d-flex');
+                }
+                if (btn) {
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-success');
+                    btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Saved!';
+                }
+                sessionStorage.setItem('inline_attendance_notice', data.message);
+                setTimeout(() => {
+                    const modalEl = document.getElementById('editAttendanceModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    location.reload();
+                }, 850);
             } else {
-                alert("Error: " + data.message);
+                if (alertBox && alertMsg) {
+                    alertMsg.textContent = "Error: " + data.message;
+                    alertBox.classList.remove('alert-success', 'd-none');
+                    alertBox.classList.add('alert-danger', 'd-flex');
+                }
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Save Changes';
+                }
             }
         })
         .catch(err => {
             console.error("AJAX Error:", err);
-            alert("Failed to update record. Connection error.");
+            if (alertBox && alertMsg) {
+                alertMsg.textContent = "Failed to update record. Connection error.";
+                alertBox.classList.remove('alert-success', 'd-none');
+                alertBox.classList.add('alert-danger', 'd-flex');
+            }
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = 'Save Changes';
+            }
         });
     });
 
-    // Dynamic Geocoder script to show area names
+    // In-page inline notification renderer
     document.addEventListener("DOMContentLoaded", function() {
+        const savedNotice = sessionStorage.getItem('inline_attendance_notice');
+        if (savedNotice) {
+            sessionStorage.removeItem('inline_attendance_notice');
+            const cardBody = document.querySelector('.card-body') || document.querySelector('.container-fluid');
+            if (cardBody) {
+                const noticeDiv = document.createElement('div');
+                noticeDiv.className = 'alert alert-success alert-dismissible fade show border-0 shadow-sm rounded-3 mb-3 py-2 px-3 small d-flex align-items-center gap-2';
+                noticeDiv.style.cssText = 'font-size: 0.8rem; background-color: #ecfdf5; color: #047857; border-left: 4px solid #10b981 !important;';
+                noticeDiv.innerHTML = `
+                    <i class="bi bi-check-circle-fill text-success fs-6"></i>
+                    <div class="fw-semibold">${savedNotice}</div>
+                    <button type="button" class="btn-close ms-auto py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                cardBody.insertBefore(noticeDiv, cardBody.firstChild);
+                setTimeout(() => {
+                    if (noticeDiv && noticeDiv.parentNode) {
+                        const bsAlert = new bootstrap.Alert(noticeDiv);
+                        bsAlert.close();
+                    }
+                }, 4000);
+            }
+        }
+
         const coords = Array.from(document.querySelectorAll('.gps-coord'));
         let delay = 0;
         const cache = {};

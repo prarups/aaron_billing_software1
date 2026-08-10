@@ -629,7 +629,7 @@ def staff_activity(request):
 def owner_bill_list(request):
     """A comprehensive list of all bills for Owners and Managers."""
     request.session.pop('newly_created_bill_id', None)
-    if request.user.role == 'sales_staff':
+    if not (request.user.is_owner() or request.user.is_manager()):
         return HttpResponse("Unauthorized", status=403)
     
     # Ensure active_branch is set for manager/owner

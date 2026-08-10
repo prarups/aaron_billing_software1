@@ -333,24 +333,6 @@
 {% block content %}
 <div class="container-fluid py-4">
 
-    <!-- Top Tab Navigation Pills -->
-    <div class="d-flex align-items-center justify-content-between mb-4">
-        <ul class="nav nav-pills p-1.5 bg-white shadow-sm rounded-pill border" id="ownerDashboardTabs">
-            {% if user.role == 'owner' %}
-            <li class="nav-item">
-                <a class="nav-link rounded-pill px-4 py-2 fw-bold text-xs {% if active_tab == 'branches' %}active{% endif %}" href="{% url 'branch_staff_management' %}?tab=branches">
-                    <i class="bi bi-shop me-1.5"></i>Manage Branches
-                </a>
-            </li>
-            {% endif %}
-            <li class="nav-item">
-                <a class="nav-link rounded-pill px-4 py-2 fw-bold text-xs {% if active_tab == 'staff' %}active{% endif %}" href="{% url 'branch_staff_management' %}?tab=staff">
-                    <i class="bi bi-people-fill me-1.5"></i>Staff & Assigning
-                </a>
-            </li>
-        </ul>
-    </div>
-
     {% if active_tab == 'branches' %}
         <!-- 2. BRANCHES CONTENT -->
         <div class="animate-fade-in" id="branches">
@@ -2120,12 +2102,13 @@
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-uppercase text-muted">Dashboard Access Level</label>
                         <select name="dashboard_access" id="roleDashboardSelect" class="form-select no-search rounded-3" data-no-search="true" onchange="updateLiveRoleAccessLevel()">
-                            <option value="" selected>-- Optional Dashboard Access Level (Defaults to Manager Dashboard) --</option>
-                            <option value="manager">Manager Dashboard (Multi-Branch Management)</option>
-                            <option value="owner">Owner / Admin Dashboard (Full Multi-Branch Analytics)</option>
-                            <option value="staff">Staff Dashboard (POS Counter Operational)</option>
+                            <option value="" selected>-- Select Dashboard Access Level --</option>
+                            <option value="owner">Owner / Executive Dashboard (Full Analytics)</option>
+                            <option value="regional_manager">Regional Manager Dashboard (Multi-Branch Management)</option>
+                            <option value="manager">Branch Manager Dashboard</option>
+                            <option value="staff">Staff POS Dashboard (Counter Operational)</option>
                         </select>
-                        <div class="form-text">Optional. If unselected, defaults automatically to Manager Dashboard.</div>
+                        <div class="form-text">Select a dashboard access level for this role.</div>
                     </div>
                     <p class="fw-semibold small text-muted text-uppercase mb-2">Permissions</p>
                     <div class="row g-2">
@@ -2217,6 +2200,12 @@
             badge.className = 'badge bg-warning text-dark rounded-pill px-3 py-1.5 fs-7';
             badge.innerHTML = '<i class="bi bi-shield-lock me-1"></i> Owner / Admin-Level Access';
             desc.textContent = 'This role will access the Owner/Admin Dashboard with high-level multi-branch management authority.';
+        } else if (dashLevel === 'regional_manager' || roleLower.includes('regional')) {
+            card.style.background = '#ecfdf5';
+            card.style.borderLeft = '4px solid #059669';
+            badge.className = 'badge bg-success rounded-pill px-3 py-1.5 fs-7';
+            badge.innerHTML = '<i class="bi bi-diagram-3 me-1"></i> Regional Manager Access';
+            desc.textContent = 'This role will access Regional Manager multi-branch analytics and staff management.';
         } else if (dashLevel === 'manager') {
             card.style.background = '#f0fdf4';
             card.style.borderLeft = '4px solid #16a34a';

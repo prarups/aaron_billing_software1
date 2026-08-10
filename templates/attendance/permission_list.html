@@ -2,7 +2,7 @@
 
 {% block title %}Short Permissions - Aaron Billing{% endblock %}
 
-{% block messages %}{% endblock %}
+
 
 {% block content %}
 <style>
@@ -352,11 +352,11 @@
                                     </td>
                                     <td class="pe-3 py-1.5 text-end">
                                         {% if perm.status == 'approved' %}
-                                            <span class="badge bg-success bg-opacity-15 text-success rounded-pill px-2 py-0.5 fw-semibold"><i class="bi bi-check-circle me-0.5"></i>Approved</span>
+                                            <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0; font-size: 0.68rem;"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
                                         {% elif perm.status == 'rejected' %}
-                                            <span class="badge bg-danger bg-opacity-15 text-danger rounded-pill px-2 py-0.5 fw-semibold"><i class="bi bi-x-circle me-0.5"></i>Rejected</span>
+                                            <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 0.68rem;"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>
                                         {% else %}
-                                            <span class="badge bg-warning bg-opacity-20 text-dark rounded-pill px-2 py-0.5 fw-semibold"><i class="bi bi-hourglass-split me-0.5"></i>Pending</span>
+                                            <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 0.68rem;"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -432,11 +432,11 @@
                             <td class="py-1.5 text-dark fw-semibold" style="font-size: 0.75rem;">{{ perm.action_by.username|default:"-" }}</td>
                             <td class="pe-3 py-1.5 text-end">
                                 {% if perm.status == 'approved' %}
-                                    <span class="badge bg-success bg-opacity-15 text-success rounded-pill px-2 py-0.5 fw-semibold">Approved</span>
+                                    <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0; font-size: 0.68rem;"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
                                 {% elif perm.status == 'rejected' %}
-                                    <span class="badge bg-danger bg-opacity-15 text-danger rounded-pill px-2 py-0.5 fw-semibold">Rejected</span>
+                                    <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 0.68rem;"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>
                                 {% else %}
-                                    <span class="badge bg-warning bg-opacity-20 text-dark rounded-pill px-2 py-0.5 fw-semibold">Pending</span>
+                                    <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 0.68rem;"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
                                 {% endif %}
                             </td>
                         </tr>

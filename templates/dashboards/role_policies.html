@@ -135,10 +135,11 @@
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-muted text-uppercase">Dashboard Access Level</label>
                             <select name="dashboard_access" id="policyDashboardSelect" class="form-select no-search rounded-3" data-no-search="true" onchange="updatePolicyLiveAccessLevel()">
-                                <option value="" selected>-- Optional Dashboard Access Level (Defaults to Manager Dashboard) --</option>
-                                <option value="manager">Manager Dashboard (Multi-Branch Management)</option>
-                                <option value="owner">Owner / Admin Dashboard (Full Multi-Branch Analytics)</option>
-                                <option value="staff">Staff Dashboard (POS Counter Operational)</option>
+                                <option value="" selected>-- Select Dashboard Access Level --</option>
+                                <option value="owner">Owner / Executive Dashboard (Full Analytics)</option>
+                                <option value="regional_manager">Regional Manager Dashboard (Multi-Branch Management)</option>
+                                <option value="manager">Branch Manager Dashboard</option>
+                                <option value="staff">Staff POS Dashboard (Counter Operational)</option>
                             </select>
                         </div>
                         <div class="row g-3">
@@ -236,6 +237,12 @@
             badge.className = 'badge bg-warning text-dark rounded-pill px-3 py-1.5 fs-7';
             badge.innerHTML = '<i class="bi bi-shield-lock me-1"></i> Owner / Admin-Level Access';
             desc.textContent = 'This role has full system-wide administrative control and multi-branch management authority.';
+        } else if (dashLevel === 'regional_manager' || roleLower.includes('regional')) {
+            card.style.background = '#ecfdf5';
+            card.style.borderLeft = '4px solid #059669';
+            badge.className = 'badge bg-success rounded-pill px-3 py-1.5 fs-7';
+            badge.innerHTML = '<i class="bi bi-diagram-3 me-1"></i> Regional Manager Access';
+            desc.textContent = 'This role will access Regional Manager multi-branch analytics and staff management.';
         } else if (dashLevel === 'manager') {
             card.style.background = '#f0fdf4';
             card.style.borderLeft = '4px solid #16a34a';
@@ -266,6 +273,8 @@
             document.getElementById('policyHasAllBranches').checked = (allBranches === true || allBranches === 'true');
             document.getElementById('policyHasProducts').checked = (productRights === true || productRights === 'true');
             document.getElementById('policyHasBillEdit').checked = (billEdit === true || billEdit === 'true');
+            const dashSelect = document.getElementById('policyDashboardSelect');
+            if (dashSelect) dashSelect.value = dashAccess || '';
             updatePolicyLiveAccessLevel();
         } else {
             rightsSec.style.display = 'none';

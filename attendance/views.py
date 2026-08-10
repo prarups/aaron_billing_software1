@@ -54,7 +54,9 @@ def get_file_from_base64(base64_str, filename):
     return None
 
 def is_owner(user):
-    return user.is_superuser or user.role == 'owner'
+    if not user or not user.is_authenticated:
+        return False
+    return user.is_owner()
 
 def is_manager_or_owner(user):
     if not user or not user.is_authenticated:
@@ -84,16 +86,20 @@ def attendance_dashboard(request):
     if is_owner_or_manager:
         # Fetch Admin/Manager Overview Statistics
         branches = request.user.get_accessible_branches()
-        branch_users = User.objects.filter(branches__in=branches).distinct().exclude(role='owner')
+        branch_users = User.objects.filter(
+            Q(branches__in=branches) | Q(active_branch__in=branches)
+        ).distinct()
         if is_owner(request.user):
-            branch_users = User.objects.all().exclude(role='owner')
+            branch_users = User.objects.all()
             
         total_staff_count = branch_users.count()
         
         # Today's checkins
         today_records = Attendance.objects.filter(date=today)
         if not is_owner(request.user):
-            today_records = today_records.filter(branch__in=branches)
+            today_records = today_records.filter(
+                Q(branch__in=branches) | Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
+            ).distinct()
             
         checked_in_count = today_records.filter(check_in__isnull=False).count()
         late_count = today_records.filter(status='late').count()
@@ -107,8 +113,12 @@ def attendance_dashboard(request):
         pending_leaves = LeaveRequest.objects.filter(status='pending')
         pending_permissions = PermissionRequest.objects.filter(status='pending')
         if not is_owner(request.user):
-            pending_leaves = pending_leaves.filter(user__branches__in=branches).distinct()
-            pending_permissions = pending_permissions.filter(user__branches__in=branches).distinct()
+            pending_leaves = pending_leaves.filter(
+                Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
+            ).distinct()
+            pending_permissions = pending_permissions.filter(
+                Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
+            ).distinct()
             
         context.update({
             'total_staff_count': total_staff_count,
@@ -397,16 +407,16 @@ def permission_list(request):
     branch_perm = request.GET.get('branch_perm', '').strip()
     
     if is_owner(user):
-        pending_perms = PermissionRequest.objects.filter(status='pending').exclude(user=user)
-        past_perms_qs = PermissionRequest.objects.exclude(status='pending').exclude(user=user)
+        pending_perms = PermissionRequest.objects.filter(status='pending').exclude(user=user).select_related('user', 'reviewed_by')
+        past_perms_qs = PermissionRequest.objects.exclude(status='pending').exclude(user=user).select_related('user', 'reviewed_by')
     elif is_manager_or_owner(user):
         pending_perms = PermissionRequest.objects.filter(
-            user__branches__in=branches,
+            Q(user__branches__in=branches) | Q(user__active_branch__in=branches),
             status='pending'
-        ).exclude(user=user).distinct()
+        ).exclude(user=user).select_related('user', 'reviewed_by').distinct()
         past_perms_qs = PermissionRequest.objects.filter(
-            user__branches__in=branches
-        ).exclude(status='pending').exclude(user=user).distinct()
+            Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
+        ).exclude(status='pending').exclude(user=user).select_related('user', 'reviewed_by').distinct()
     else:
         past_perms_qs = PermissionRequest.objects.none()
 
@@ -613,8 +623,11 @@ def permission_approve(request, pk, action):
     # Manager check
     if not is_owner(request.user):
         user_branches = request.user.get_accessible_branches()
-        overlap = perm.user.branches.filter(id__in=user_branches.values_list('id', flat=True))
-        if not overlap.exists():
+        user_branch_ids = set(user_branches.values_list('id', flat=True))
+        perm_user_branches = set(perm.user.branches.values_list('id', flat=True))
+        if perm.user.active_branch_id:
+            perm_user_branches.add(perm.user.active_branch_id)
+        if not (user_branch_ids & perm_user_branches):
             msg = 'You do not have permission to approve permissions for this staff.'
             if is_ajax:
                 return JsonResponse({'success': False, 'message': msg}, status=403)
@@ -661,10 +674,13 @@ def attendance_reports(request):
         return redirect('attendance:dashboard')
         
     branches = request.user.get_accessible_branches()
-    users = User.objects.filter(branches__in=branches).distinct()
+    users = User.objects.filter(
+        Q(branches__in=branches) | Q(active_branch__in=branches)
+    ).distinct()
     
     if is_owner(request.user):
         users = User.objects.all()
+    users = users.order_by('employee_id', 'username')
         
     # Filters for detailed list logs
     selected_branch = request.GET.get('branch', '')
@@ -691,14 +707,16 @@ def attendance_reports(request):
     records = Attendance.objects.filter(date__range=(start_date, end_date)).select_related('user', 'branch')
     
     if not is_owner(request.user):
-        records = records.filter(branch__in=branches)
+        records = records.filter(
+            Q(branch__in=branches) | Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
+        ).distinct()
         
     if selected_branch:
         records = records.filter(branch_id=selected_branch)
     if selected_user:
         records = records.filter(user_id=selected_user)
         
-    records = records.order_by('-date', 'user__username')
+    records = records.order_by('-date', 'user__employee_id', 'user__username')
     
     # CSV Export
     if request.GET.get('export') == 'csv':
@@ -740,13 +758,14 @@ def attendance_reports(request):
     day_numbers = list(range(1, days_in_month + 1))
     
     # Filter users based on selected branch/user if any
-    grid_users_qs = users.exclude(role='owner').order_by('username')
+    grid_users_qs = users.order_by('employee_id', 'username')
     if selected_branch:
         grid_users_qs = grid_users_qs.filter(branches__id=selected_branch).distinct()
     if selected_user:
         grid_users_qs = grid_users_qs.filter(id=selected_user)
 
     grid_users = list(grid_users_qs)
+    grid_users.sort(key=lambda u: (u.employee_id or '', u.username or ''))
     grid_user_ids = [u.id for u in grid_users]
 
     # Bulk fetch ALL Attendance records for this grid month
@@ -1112,12 +1131,20 @@ def pay_slips_view(request):
     
     raw_month_payrolls = MonthlyPayroll.objects.filter(month=selected_month, year=selected_year).select_related('user')
     
-    total_base = raw_month_payrolls.aggregate(Sum('base_salary'))['base_salary__sum'] or Decimal('0.00')
-    total_deductions = raw_month_payrolls.aggregate(Sum('deductions'))['deductions__sum'] or Decimal('0.00')
-    total_net = raw_month_payrolls.aggregate(Sum('net_salary'))['net_salary__sum'] or Decimal('0.00')
-    paid_count = raw_month_payrolls.filter(status='paid').count()
-    draft_count = raw_month_payrolls.filter(status='draft').count()
-    total_staff_payrolls = raw_month_payrolls.count()
+    aggs = raw_month_payrolls.aggregate(
+        base=Sum('base_salary'),
+        deductions=Sum('deductions'),
+        net=Sum('net_salary'),
+        paid=Count('id', filter=Q(status='paid')),
+        draft=Count('id', filter=Q(status='draft')),
+        total=Count('id')
+    )
+    total_base = aggs['base'] or Decimal('0.00')
+    total_deductions = aggs['deductions'] or Decimal('0.00')
+    total_net = aggs['net'] or Decimal('0.00')
+    paid_count = aggs['paid'] or 0
+    draft_count = aggs['draft'] or 0
+    total_staff_payrolls = aggs['total'] or 0
 
     payrolls = raw_month_payrolls
     q_payroll = request.GET.get('q_payroll', '').strip()
@@ -1136,7 +1163,38 @@ def pay_slips_view(request):
     if status_payroll and status_payroll in ['draft', 'paid']:
         payrolls = payrolls.filter(status=status_payroll)
 
-    payrolls = payrolls.distinct().order_by('user__username')
+    payrolls = payrolls.distinct().order_by('user__employee_id', 'user__username')
+
+    # CSV Export
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="pay_slips_{selected_month}_{selected_year}.csv"'
+        writer = csv.writer(response)
+        writer.writerow([
+            'Employee ID', 'Username', 'Full Name', 'Month', 'Year',
+            'Present Days', 'Late Days', 'LOP Days',
+            'Base Salary (Rs)', 'Late Cut (Rs)', 'Total Deductions (Rs)', 'Net Salary (Rs)', 'Status'
+        ])
+        for p in payrolls:
+            emp_id = getattr(p.user, 'employee_id', None) or p.user.id
+            full_name = p.user.get_full_name() or p.user.username
+            writer.writerow([
+                emp_id,
+                p.user.username,
+                full_name,
+                p.month,
+                p.year,
+                p.present_days,
+                p.late_days,
+                p.lop_days,
+                f"{p.base_salary:.2f}",
+                f"{p.late_deduction_amount:.2f}",
+                f"{p.deductions:.2f}",
+                f"{p.net_salary:.2f}",
+                p.status.upper()
+            ])
+        return response
+
     branches = Branch.objects.all().order_by('name')
     
     context = {
@@ -1513,21 +1571,29 @@ def management_overview_view(request):
     selected_branch_id = request.GET.get('branch', '').strip()
     branches = request.user.get_accessible_branches()
     
-    branch_users = User.objects.filter(branches__in=branches).distinct().exclude(role='owner')
+    branch_users = User.objects.filter(
+        Q(branches__in=branches) | Q(active_branch__in=branches)
+    ).distinct()
     if is_owner(request.user):
-        branch_users = User.objects.all().exclude(role='owner')
+        branch_users = User.objects.all()
         
     if selected_branch_id:
-        branch_users = branch_users.filter(branches__id=selected_branch_id)
-        
+        branch_users = branch_users.filter(
+            Q(branches__id=selected_branch_id) | Q(active_branch__id=selected_branch_id)
+        ).distinct()
+    branch_users = branch_users.select_related('active_branch').prefetch_related('branches').order_by('employee_id', 'username')
     total_staff_count = branch_users.count()
     
     # 3. Selected Date's checkins
     date_records = Attendance.objects.filter(date=selected_date)
     if not is_owner(request.user):
-        date_records = date_records.filter(branch__in=branches)
+        date_records = date_records.filter(
+            Q(branch__in=branches) | Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
+        ).distinct()
     if selected_branch_id:
-        date_records = date_records.filter(branch__id=selected_branch_id)
+        date_records = date_records.filter(
+            Q(branch__id=selected_branch_id) | Q(user__branches__id=selected_branch_id) | Q(user__active_branch__id=selected_branch_id)
+        ).distinct()
         
     stats = date_records.aggregate(
         checked_in_cnt=Count('id', filter=Q(check_in__isnull=False)),
@@ -1547,11 +1613,19 @@ def management_overview_view(request):
     pending_leaves = LeaveRequest.objects.filter(status='pending').select_related('user')
     pending_permissions = PermissionRequest.objects.filter(status='pending').select_related('user')
     if not is_owner(request.user):
-        pending_leaves = pending_leaves.filter(user__branches__in=branches).distinct()
-        pending_permissions = pending_permissions.filter(user__branches__in=branches).distinct()
+        pending_leaves = pending_leaves.filter(
+            Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
+        ).distinct()
+        pending_permissions = pending_permissions.filter(
+            Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
+        ).distinct()
     if selected_branch_id:
-        pending_leaves = pending_leaves.filter(user__branches__id=selected_branch_id)
-        pending_permissions = pending_permissions.filter(user__branches__id=selected_branch_id)
+        pending_leaves = pending_leaves.filter(
+            Q(user__branches__id=selected_branch_id) | Q(user__active_branch__id=selected_branch_id)
+        ).distinct()
+        pending_permissions = pending_permissions.filter(
+            Q(user__branches__id=selected_branch_id) | Q(user__active_branch__id=selected_branch_id)
+        ).distinct()
 
     # 4. Status Filter & Search Query
     status_filter = request.GET.get('status', '').strip()
@@ -1594,6 +1668,9 @@ def management_overview_view(request):
             'record': rec,
             'status': st
         })
+    
+    # Sort staff_today_status in ascending order based on employee_id
+    staff_today_status.sort(key=lambda x: (x['user'].employee_id or '', x['user'].username or ''))
         
     context = {
         'today': today,

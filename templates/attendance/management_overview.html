@@ -17,8 +17,19 @@
             <span class="badge bg-light text-dark border px-3 py-1.5 rounded-pill fw-semibold" style="font-size: 0.75rem;">
                 <i class="bi bi-calendar-event me-1 text-primary"></i> {{ selected_date|date:"d M Y" }}
             </span>
-        </div>
     </div>
+
+    {% if messages %}
+    <div class="mb-3">
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show border-0 shadow-sm rounded-3 py-2 px-3 small d-flex align-items-center gap-2 mb-2" role="alert" style="font-size: 0.8rem; background-color: #ecfdf5; color: #047857; border-left: 4px solid #10b981 !important;">
+                <i class="bi {% if message.tags == 'error' %}bi-exclamation-triangle-fill text-danger{% else %}bi-check-circle-fill text-success{% endif %} fs-6"></i>
+                <div class="fw-semibold">{{ message }}</div>
+                <button type="button" class="btn-close ms-auto py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <!-- Filter Bar for Easy Access -->
     <div class="card border-0 shadow-sm bg-white rounded-3 mb-3">

@@ -590,7 +590,6 @@ class RegionalManagerPermissionsTests(TestCase):
     def test_regional_manager_blocked_from_branches_tab(self):
         self.client.login(username="test_regional", password="password123")
         response = self.client.get(reverse('branch_staff_management') + '?tab=branches')
-        # For regional managers, accessing ?tab=branches is accepted but the active tab is forced to 'staff' in the view.
         self.assertEqual(response.status_code, 200)
 
 

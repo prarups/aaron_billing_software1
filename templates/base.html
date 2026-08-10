@@ -261,14 +261,17 @@
                 </a>
                 
                 {% if user.is_authenticated %}
-                    {% if user.is_owner or user.role == 'regional_manager' or user.get_accessible_branches.count > 1 %}
+                    {% if user.is_owner or user.is_manager or user.get_accessible_branches.count > 1 %}
                         <form method="post" action="{% url 'switch_branch' %}" class="m-0">
                             {% csrf_token %}
                             <div class="input-group input-group-sm" style="max-width: 250px;">
                                 <span class="input-group-text bg-light border-0 rounded-start-pill"><i class="bi bi-shop"></i></span>
                                 <select name="branch_id" class="form-select border-0 bg-light rounded-end-pill" data-no-search onchange="this.form.submit()">
+                                    {% if user.get_accessible_branches.count > 1 %}
+                                        <option value="all" {% if not user.active_branch %}selected{% endif %}>🏢 All Accessible Branches</option>
+                                    {% endif %}
                                     {% for b in user.get_accessible_branches %}
-                                    <option value="{{ b.id }}" {% if b == user.active_branch %}selected{% endif %}>
+                                    <option value="{{ b.id }}" {% if user.active_branch and b.id == user.active_branch.id %}selected{% endif %}>
                                         {{ b.name }}
                                     </option>
                                     {% endfor %}
@@ -302,14 +305,17 @@
                 </a>
 
                 {% if user.is_authenticated %}
-                    {% if user.is_owner or user.role == 'regional_manager' or user.get_accessible_branches.count > 1 %}
+                    {% if user.is_owner or user.is_manager or user.get_accessible_branches.count > 1 %}
                         <form method="post" action="{% url 'switch_branch' %}" class="m-0">
                             {% csrf_token %}
                             <div class="input-group input-group-sm" style="max-width: 250px;">
                                 <span class="input-group-text bg-light border-0 rounded-start-pill"><i class="bi bi-shop"></i></span>
                                 <select name="branch_id" class="form-select border-0 bg-light rounded-end-pill" data-no-search onchange="this.form.submit()">
+                                    {% if user.get_accessible_branches.count > 1 %}
+                                        <option value="all" {% if not user.active_branch %}selected{% endif %}>🏢 All Accessible Branches</option>
+                                    {% endif %}
                                     {% for b in user.get_accessible_branches %}
-                                    <option value="{{ b.id }}" {% if b == user.active_branch %}selected{% endif %}>
+                                    <option value="{{ b.id }}" {% if user.active_branch and b.id == user.active_branch.id %}selected{% endif %}>
                                         {{ b.name }}
                                     </option>
                                     {% endfor %}
@@ -519,14 +525,17 @@
         <div class="main-wrapper">
             <main class="container-fluid py-4">
                 {% block messages %}
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-4 rounded-3" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
+                    {% if messages %}
+                    <div class="messages-container mb-3">
+                        {% for message in messages %}
+                            <div class="alert {% if message.tags == 'error' or message.tags == 'danger' %}alert-danger{% elif message.tags == 'warning' %}alert-warning{% else %}alert-success{% endif %} alert-dismissible fade show border-0 shadow-sm rounded-3 py-2.5 px-3 small d-flex align-items-center gap-2 mb-2" role="alert" style="font-size: 0.85rem; {% if message.tags == 'error' or message.tags == 'danger' %}background-color: #fef2f2; color: #991b1b; border-left: 4px solid #ef4444 !important;{% elif message.tags == 'warning' %}background-color: #fffbeb; color: #92400e; border-left: 4px solid #f59e0b !important;{% else %}background-color: #ecfdf5; color: #047857; border-left: 4px solid #10b981 !important;{% endif %}">
+                                <i class="bi {% if message.tags == 'error' or message.tags == 'danger' %}bi-exclamation-triangle-fill text-danger{% elif message.tags == 'warning' %}bi-exclamation-circle-fill text-warning{% else %}bi-check-circle-fill text-success{% endif %} fs-6"></i>
+                                <div class="fw-semibold">{{ message }}</div>
+                                <button type="button" class="btn-close ms-auto py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 {% endblock %}
 
                 {% block content %}{% endblock %}

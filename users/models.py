@@ -80,6 +80,9 @@ class RoleShiftPolicy(models.Model):
     shift_end_time = models.TimeField(default="17:00:00")
     monthly_off_count = models.IntegerField(default=4, help_text="Number of monthly week-offs allowed for this role")
 
+    class Meta:
+        ordering = ['id']
+
     def __str__(self):
         return f"{self.role_name or self.role} Policy ({self.shift_start_time} - {self.shift_end_time}, {self.monthly_off_count} Offs/Month)"
 
@@ -170,15 +173,8 @@ class User(AbstractUser):
     def is_owner(self):
         if self.is_superuser or self.role == 'owner':
             return True
-        if self.dashboard_access == 'owner':
+        if self.dashboard_access == 'owner' and self.role == 'owner':
             return True
-        if self.role:
-            try:
-                crole = CustomRole.objects.get(code=self.role)
-                if crole.dashboard_access == 'owner':
-                    return True
-            except Exception:
-                pass
         return False
 
     def is_manager(self):
@@ -195,7 +191,7 @@ class User(AbstractUser):
                     return True
             except Exception:
                 pass
-            if any(term in self.role.lower() for term in ['manager', 'admin', 'head', 'lead', 'supervisor']):
+            if any(term in self.role.lower() for term in ['manager', 'admin', 'head', 'lead', 'supervisor', 'general']):
                 return True
         return False
 
@@ -218,7 +214,7 @@ class User(AbstractUser):
     def get_accessible_branches(self):
         """Returns the branches this user is authorized to work in."""
         from core.models import Branch
-        if self.is_superuser:
+        if self.is_superuser or self.role in ['owner', 'regional_manager']:
             return Branch.objects.all()
 
         if self.role:
@@ -227,20 +223,22 @@ class User(AbstractUser):
                 if crole.has_all_branches_access:
                     return Branch.objects.all()
                 else:
-                    return self.branches.all()
+                    ub = self.branches.all()
+                    if ub.exists():
+                        return ub
+                    elif self.active_branch:
+                        return Branch.objects.filter(id=self.active_branch.id)
             except CustomRole.DoesNotExist:
                 pass
 
-        if self.role == 'owner':
-            return Branch.objects.all()
+        ub = self.branches.all()
+        if ub.exists():
+            return ub
 
-        if self.branches.exists():
-            return self.branches.all()
+        if self.active_branch:
+            return Branch.objects.filter(id=self.active_branch.id)
 
-        if self.role == 'regional_manager':
-            return Branch.objects.all()
-
-        return self.branches.all()
+        return Branch.objects.none()
 
     def save(self, *args, **kwargs):
         if not self.employee_id:
@@ -273,14 +271,16 @@ class User(AbstractUser):
                 self.has_bill_edit_rights = crole.has_bill_edit_rights
                 self.dashboard_access = crole.dashboard_access
             except CustomRole.DoesNotExist:
-                if self.role in ['owner', 'regional_manager']:
+                if self.role == 'owner':
                     self.dashboard_access = 'owner'
-                elif self.role in ['general_manager', 'manager', 'assistant_manager']:
+                elif self.role in ['regional_manager', 'general_manager', 'manager', 'assistant_manager']:
                     self.dashboard_access = 'manager'
                 elif self.role == 'sales_staff':
                     self.dashboard_access = 'staff'
                 
         super().save(*args, **kwargs)
+        if self.active_branch and not self.branches.filter(id=self.active_branch.id).exists():
+            self.branches.add(self.active_branch)
 
 
 @receiver(m2m_changed, sender=User.branches.through)
@@ -307,6 +307,10 @@ def audit_user_save(sender, instance, created, **kwargs):
             "branches": list(instance.branches.values_list('id', flat=True)),
         },
     )
+
+@receiver(post_delete, sender=CustomRole)
+def custom_role_deleted(sender, instance, **kwargs):
+    RoleShiftPolicy.objects.filter(role=instance.code).delete()
 
 @receiver(post_delete, sender=User)
 def audit_user_delete(sender, instance, **kwargs):
