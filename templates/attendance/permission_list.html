@@ -169,18 +169,7 @@
                         </div>
                     </div>
 
-                    <!-- Inline Error / Success Messages Near Form -->
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div class="alert {% if message.tags == 'error' %}alert-danger bg-danger bg-opacity-10 text-danger border-danger border-opacity-25{% else %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show p-2 mb-2.5 rounded-2" role="alert" style="font-size: 0.74rem;">
-                                <div class="d-flex align-items-start gap-1.5">
-                                    <i class="bi {% if message.tags == 'error' %}bi-exclamation-triangle-fill text-danger{% else %}bi-check-circle-fill text-success{% endif %} fs-6 flex-shrink-0 mt-0.5"></i>
-                                    <div class="flex-grow-1 fw-semibold text-wrap" style="line-height: 1.35;">{{ message }}</div>
-                                    <button type="button" class="btn-close p-1.5" data-bs-dismiss="alert" aria-label="Close" style="font-size: 0.6rem;"></button>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    {% endif %}
+
 
                     <form method="post" action="{% url 'attendance:permission_request' %}" id="permission_form_el">
                         {% csrf_token %}

@@ -20,11 +20,13 @@ class CustomAuthenticationForm(AuthenticationForm):
             if not user.is_active:
                 raise forms.ValidationError("Your account is inactive. Please contact admin team.")
             
-            # Auto-assign active branch for manager and staff roles
-            if not user.is_owner():
+            # Default active branch based on user role
+            if user.is_owner() or user.is_manager() or user.is_superuser or user.role in ['owner', 'admin', 'manager', 'regional_manager']:
+                user.active_branch = None
+                user.save(update_fields=['active_branch'])
+            else:
                 accessible_branches = user.get_accessible_branches()
                 if accessible_branches.exists():
-                    # Default active_branch to the first branch they are assigned to if not set or valid
                     if not user.active_branch or user.active_branch not in accessible_branches:
                         user.active_branch = accessible_branches.first()
                         user.save(update_fields=['active_branch'])

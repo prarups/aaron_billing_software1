@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="mb-4 animate-fade-in">
-    <h4 class="fw-bold">Assistant Manager Dashboard: <span class="bg-vibrant px-3 py-1 rounded-pill-sm small">{{ user.active_branch.name|default:"Unassigned" }}{% if user.active_branch %} ({{ user.active_branch.code }}){% endif %}</span></h4>
+    <h4 class="fw-bold">Assistant Manager Dashboard: <span class="bg-vibrant px-3 py-1 rounded-pill-sm small">{% if user.active_branch %}{{ user.active_branch.name }} ({{ user.active_branch.code }}){% else %}Unassigned{% endif %}</span></h4>
 </div>
 
 <div class="row g-4 mb-4 animate-fade-in">

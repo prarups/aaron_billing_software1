@@ -171,10 +171,17 @@ class User(AbstractUser):
         return False
 
     def is_owner(self):
-        if self.is_superuser or self.role == 'owner':
+        if self.is_superuser or self.role in ['owner', 'admin', 'regional_manager']:
             return True
-        if self.dashboard_access == 'owner' and self.role == 'owner':
+        if self.dashboard_access in ['owner', 'regional_manager']:
             return True
+        if self.role:
+            try:
+                crole = CustomRole.objects.get(code=self.role)
+                if crole.dashboard_access in ['owner', 'regional_manager']:
+                    return True
+            except Exception:
+                pass
         return False
 
     def is_manager(self):
@@ -182,16 +189,16 @@ class User(AbstractUser):
             return True
         if self.role in ['general_manager', 'manager', 'assistant_manager', 'regional_manager']:
             return True
-        if self.dashboard_access in ['owner', 'manager']:
+        if self.dashboard_access in ['owner', 'manager', 'regional_manager']:
             return True
         if self.role:
             try:
                 crole = CustomRole.objects.get(code=self.role)
-                if crole.dashboard_access in ['owner', 'manager'] or crole.has_all_branches_access or crole.has_product_rights or crole.has_bill_edit_rights:
+                if crole.dashboard_access in ['owner', 'manager', 'regional_manager'] or crole.has_all_branches_access or crole.has_product_rights or crole.has_bill_edit_rights:
                     return True
             except Exception:
                 pass
-            if any(term in self.role.lower() for term in ['manager', 'admin', 'head', 'lead', 'supervisor', 'general']):
+            if any(term in self.role.lower() for term in ['manager', 'admin', 'head', 'lead', 'supervisor', 'general', 'audit']):
                 return True
         return False
 
@@ -211,29 +218,36 @@ class User(AbstractUser):
     def get_role_display(self):
         return self.role_display
 
-    def get_accessible_branches(self):
-        """Returns the branches this user is authorized to work in."""
-        from core.models import Branch
-        if self.is_superuser or self.role in ['owner', 'regional_manager']:
-            return Branch.objects.all()
-
+    @property
+    def has_all_branches(self):
+        if self.is_superuser or self.role == 'owner':
+            return True
         if self.role:
             try:
                 crole = CustomRole.objects.get(code=self.role)
-                if crole.has_all_branches_access:
-                    return Branch.objects.all()
-                else:
-                    ub = self.branches.all()
-                    if ub.exists():
-                        return ub
-                    elif self.active_branch:
-                        return Branch.objects.filter(id=self.active_branch.id)
+                return crole.has_all_branches_access
             except CustomRole.DoesNotExist:
                 pass
+        return False
 
+    def get_accessible_branches(self):
+        """Returns the branches this user is authorized to work in."""
+        from core.models import Branch
+        if self.is_superuser:
+            return Branch.objects.all()
+
+        # If user has specific assigned branches, check if global access is enabled
         ub = self.branches.all()
         if ub.exists():
+            if self.has_all_branches:
+                return Branch.objects.all()
             return ub
+
+        if self.has_all_branches:
+            return Branch.objects.all()
+
+        if self.role in ['owner', 'regional_manager']:
+            return Branch.objects.all()
 
         if self.active_branch:
             return Branch.objects.filter(id=self.active_branch.id)

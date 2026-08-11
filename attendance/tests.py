@@ -5,6 +5,8 @@ from users.models import User
 from core.models import Branch
 from .models import Attendance, LeaveRequest, PermissionRequest, SalaryConfig, MonthlyPayroll
 import datetime
+import calendar
+from decimal import Decimal
 
 class AttendanceTestCase(TestCase):
     def setUp(self):
@@ -152,7 +154,7 @@ class AttendanceTestCase(TestCase):
             net_salary=Decimal('25400.00')
         )
         self.assertEqual(payroll.lop_days, 4)
-        self.assertIsNotNone(payroll.late_cut_amount)
+        self.assertIsNotNone(payroll.late_deduction_amount)
         self.assertIsNotNone(payroll.lop_deduction_amount)
 
     def test_branch_invoice_prefix_auto_uniquify(self):

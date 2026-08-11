@@ -1,5 +1,9 @@
+import asyncio
+import json
 from fastapi import FastAPI, APIRouter, Query, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from typing import List, Optional
 from decimal import Decimal
 from datetime import datetime, date
@@ -21,6 +25,65 @@ app.add_middleware(
 )
 
 router = APIRouter()
+
+# ----------------- REAL-TIME SSE BROADCASTER -----------------
+class EventBroadcaster:
+    def __init__(self):
+        self.listeners = []
+
+    def subscribe(self) -> asyncio.Queue:
+        queue = asyncio.Queue()
+        self.listeners.append(queue)
+        return queue
+
+    def unsubscribe(self, queue: asyncio.Queue):
+        if queue in self.listeners:
+            self.listeners.remove(queue)
+
+    async def broadcast(self, event_data: dict):
+        for queue in list(self.listeners):
+            await queue.put(event_data)
+
+broadcaster = EventBroadcaster()
+
+class BroadcastPayload(BaseModel):
+    event: str
+    branch_id: Optional[int] = None
+    data: dict = {}
+
+@router.post("/broadcast-event")
+async def post_broadcast_event(payload: BroadcastPayload):
+    event_dict = payload.model_dump()
+    await broadcaster.broadcast(event_dict)
+    return {"status": "ok", "delivered_to": len(broadcaster.listeners)}
+
+@router.get("/stream")
+async def stream_events(request: Request, branch_id: Optional[int] = None):
+    async def event_generator():
+        queue = broadcaster.subscribe()
+        try:
+            yield f"data: {json.dumps({'event': 'connected'})}\n\n"
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=15.0)
+                    yield f"data: {json.dumps(event)}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": ping\n\n"
+        finally:
+            broadcaster.unsubscribe(queue)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
 
 # Helper to import Django models dynamically or after Django setup is guaranteed
 # (We already do django.setup() in config/asgi.py, so we can import directly)

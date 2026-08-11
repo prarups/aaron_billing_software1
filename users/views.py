@@ -14,6 +14,9 @@ import json
 import csv
 from django.urls import reverse
 from django import forms
+from django.views.decorators.cache import never_cache
+from django.utils.decorators import method_decorator
+
 
 
 class RoleForm(forms.ModelForm):
@@ -83,7 +86,12 @@ def add_branch_goal_context(user, context):
 @login_required
 def dashboard_redirect(request):
     """Redirect user to the appropriate dashboard based on role and permissions."""
-    if request.user.is_owner() or request.user.role == 'regional_manager':
+    accessible = request.user.get_accessible_branches()
+    if accessible.exists() and (not request.user.active_branch or not accessible.filter(id=request.user.active_branch.id).exists()):
+        request.user.active_branch = accessible.first()
+        request.user.save(update_fields=['active_branch'])
+
+    if request.user.is_owner() or request.user.role in ['owner', 'admin', 'regional_manager']:
         return redirect('owner_dashboard')
     elif request.user.is_manager():
         return redirect('manager_dashboard')
@@ -95,6 +103,7 @@ def switch_branch(request):
     """Allows Managers/Owners to switch their active session branch or view all branches."""
     if request.method == 'POST':
         branch_id = request.POST.get('branch_id')
+        request.session['branch_selected_manually'] = True
         if branch_id == 'all':
             request.user.active_branch = None
             request.user.save(update_fields=['active_branch'])
@@ -129,6 +138,7 @@ def role_create(request):
                     messages.error(request, f"{field}: {err}")
     return redirect('branch_staff_management')
 
+@method_decorator(never_cache, name='dispatch')
 class OwnerDashboardView(TemplateView):
     template_name = 'dashboards/owner.html'
 
@@ -423,6 +433,7 @@ class OwnerDashboardView(TemplateView):
 
         return context
 
+@method_decorator(never_cache, name='dispatch')
 class AssistantManagerDashboardView(TemplateView):
     template_name = 'dashboards/assistant_manager.html'
 
@@ -436,27 +447,41 @@ class AssistantManagerDashboardView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
+        accessible_branches = user.get_accessible_branches()
         branch = user.active_branch
         today = timezone.now().date()
         import datetime
         today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
         today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+
+        if not branch and accessible_branches.exists():
+            branch = accessible_branches.first()
+
         if branch:
-            branch_bills = Bill.objects.filter(branch=branch, created_at__range=(today_start, today_end))
-            aggs = branch_bills.aggregate(
-                sales=Sum('total_amount'),
-                cash=Sum('cash_amount'),
-                online=Sum('online_amount')
-            )
-            context['branch_sales_today'] = aggs['sales'] or 0
-            context['branch_cash_today'] = aggs['cash'] or 0
-            context['branch_online_today'] = aggs['online'] or 0
-            context['product_count'] = Product.objects.count()
-            context['staff_count'] = branch.assigned_users.count()
-            context['recent_branch_bills'] = Bill.objects.filter(branch=branch).order_by('-created_at')[:5]
+            target_branches = accessible_branches.filter(id=branch.id)
+            context['current_branch_name'] = branch.name
+            context['current_branch_display'] = branch.name
+        else:
+            target_branches = accessible_branches.none()
+            context['current_branch_name'] = "No Branch"
+            context['current_branch_display'] = "No Branch"
+
+        branch_bills = Bill.objects.filter(branch__in=target_branches, created_at__range=(today_start, today_end))
+        aggs = branch_bills.aggregate(
+            sales=Sum('total_amount'),
+            cash=Sum('cash_amount'),
+            online=Sum('online_amount')
+        )
+        context['branch_sales_today'] = aggs['sales'] or 0
+        context['branch_cash_today'] = aggs['cash'] or 0
+        context['branch_online_today'] = aggs['online'] or 0
+        context['product_count'] = Product.objects.count()
+        context['staff_count'] = User.objects.filter(branches__in=target_branches).distinct().count()
+        context['recent_branch_bills'] = Bill.objects.filter(branch__in=target_branches).order_by('-created_at')[:5]
         add_branch_goal_context(user, context)
         return context
 
+@method_decorator(never_cache, name='dispatch')
 class ManagerDashboardView(TemplateView):
     template_name = 'dashboards/manager.html'
 
@@ -477,12 +502,17 @@ class ManagerDashboardView(TemplateView):
         today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
         today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
 
+        if not branch and accessible_branches.exists():
+            branch = accessible_branches.first()
+
         if branch:
             target_branches = accessible_branches.filter(id=branch.id)
             context['current_branch_name'] = branch.name
+            context['current_branch_display'] = branch.name
         else:
-            target_branches = accessible_branches
-            context['current_branch_name'] = "All Accessible Branches"
+            target_branches = accessible_branches.none()
+            context['current_branch_name'] = "No Branch"
+            context['current_branch_display'] = "No Branch"
 
         branch_bills = Bill.objects.filter(branch__in=target_branches, created_at__range=(today_start, today_end))
         aggs = branch_bills.aggregate(
@@ -670,6 +700,7 @@ def export_manager_performance_csv(request):
 
     # Duplicate get_context_data removed
 
+@method_decorator(never_cache, name='dispatch')
 class StaffDashboardView(TemplateView):
     template_name = 'dashboards/staff.html'
 

@@ -243,7 +243,7 @@
     </script>
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body data-branch-id="{% if user.is_owner or user.role == 'regional_manager' or user.role == 'owner' %}{% else %}{{ user.active_branch.id|default:'' }}{% endif %}">
     <!-- Header -->
     <header class="navbar-header d-flex align-items-center justify-content-between">
         {% if request.resolver_match.url_name == 'pos_index' or request.resolver_match.url_name == 'pos_view' %}
@@ -267,11 +267,8 @@
                             <div class="input-group input-group-sm" style="max-width: 250px;">
                                 <span class="input-group-text bg-light border-0 rounded-start-pill"><i class="bi bi-shop"></i></span>
                                 <select name="branch_id" class="form-select border-0 bg-light rounded-end-pill" data-no-search onchange="this.form.submit()">
-                                    {% if user.get_accessible_branches.count > 1 %}
-                                        <option value="all" {% if not user.active_branch %}selected{% endif %}>🏢 All Accessible Branches</option>
-                                    {% endif %}
                                     {% for b in user.get_accessible_branches %}
-                                    <option value="{{ b.id }}" {% if user.active_branch and b.id == user.active_branch.id %}selected{% endif %}>
+                                    <option value="{{ b.id }}" {% if user.active_branch and b.id == user.active_branch.id %}selected{% elif not user.active_branch and forloop.first %}selected{% endif %}>
                                         {{ b.name }}
                                     </option>
                                     {% endfor %}
@@ -305,17 +302,14 @@
                 </a>
 
                 {% if user.is_authenticated %}
-                    {% if user.is_owner or user.is_manager or user.get_accessible_branches.count > 1 %}
+                    {% if user.get_accessible_branches.count > 1 %}
                         <form method="post" action="{% url 'switch_branch' %}" class="m-0">
                             {% csrf_token %}
                             <div class="input-group input-group-sm" style="max-width: 250px;">
                                 <span class="input-group-text bg-light border-0 rounded-start-pill"><i class="bi bi-shop"></i></span>
                                 <select name="branch_id" class="form-select border-0 bg-light rounded-end-pill" data-no-search onchange="this.form.submit()">
-                                    {% if user.get_accessible_branches.count > 1 %}
-                                        <option value="all" {% if not user.active_branch %}selected{% endif %}>🏢 All Accessible Branches</option>
-                                    {% endif %}
                                     {% for b in user.get_accessible_branches %}
-                                    <option value="{{ b.id }}" {% if user.active_branch and b.id == user.active_branch.id %}selected{% endif %}>
+                                    <option value="{{ b.id }}" {% if user.active_branch and b.id == user.active_branch.id %}selected{% elif not user.active_branch and forloop.first %}selected{% endif %}>
                                         {{ b.name }}
                                     </option>
                                     {% endfor %}
@@ -324,6 +318,8 @@
                         </form>
                     {% elif user.active_branch %}
                         <span class="navbar-text fw-bold text-primary"><i class="bi bi-shop me-1"></i>{{ user.active_branch.name }}</span>
+                    {% elif user.get_accessible_branches.count == 1 %}
+                        <span class="navbar-text fw-bold text-primary"><i class="bi bi-shop me-1"></i>{{ user.get_accessible_branches.first.name }}</span>
                     {% endif %}
                 {% endif %}
             </div>
@@ -356,7 +352,7 @@
                             <span>Dashboard</span>
                         </a>
                     </li>
-                    {% if user.role != 'sales_staff' %}
+                    {% if user.is_manager or user.is_owner or user.has_product_rights %}
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if 'product' in request.resolver_match.url_name and 'combo' not in request.resolver_match.url_name %}active{% endif %}" href="{% url 'product_list' %}">
                             <i class="bi bi-box-seam-fill"></i>
@@ -446,7 +442,7 @@
                             <span>Dashboard</span>
                         </a>
                     </li>
-                    {% if user.role != 'sales_staff' %}
+                    {% if user.is_manager or user.is_owner or user.has_product_rights %}
                     <li class="sidebar-item">
                         <a class="sidebar-link {% if 'product' in request.resolver_match.url_name and 'combo' not in request.resolver_match.url_name %}active{% endif %}" href="{% url 'product_list' %}">
                             <i class="bi bi-box-seam-fill"></i>

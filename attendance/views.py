@@ -407,16 +407,16 @@ def permission_list(request):
     branch_perm = request.GET.get('branch_perm', '').strip()
     
     if is_owner(user):
-        pending_perms = PermissionRequest.objects.filter(status='pending').exclude(user=user).select_related('user', 'reviewed_by')
-        past_perms_qs = PermissionRequest.objects.exclude(status='pending').exclude(user=user).select_related('user', 'reviewed_by')
+        pending_perms = PermissionRequest.objects.filter(status='pending').exclude(user=user).select_related('user', 'approved_by')
+        past_perms_qs = PermissionRequest.objects.exclude(status='pending').exclude(user=user).select_related('user', 'approved_by')
     elif is_manager_or_owner(user):
         pending_perms = PermissionRequest.objects.filter(
             Q(user__branches__in=branches) | Q(user__active_branch__in=branches),
             status='pending'
-        ).exclude(user=user).select_related('user', 'reviewed_by').distinct()
+        ).exclude(user=user).select_related('user', 'approved_by').distinct()
         past_perms_qs = PermissionRequest.objects.filter(
             Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
-        ).exclude(status='pending').exclude(user=user).select_related('user', 'reviewed_by').distinct()
+        ).exclude(status='pending').exclude(user=user).select_related('user', 'approved_by').distinct()
     else:
         past_perms_qs = PermissionRequest.objects.none()
 
@@ -640,13 +640,15 @@ def permission_approve(request, pk, action):
             perm.approved_by = request.user
             perm.save()
             msg = f'Permission for {perm.user.username} approved.'
-            messages.success(request, msg)
+            if not is_ajax:
+                messages.success(request, msg)
         elif action == 'reject':
             perm.status = 'rejected'
             perm.approved_by = request.user
             perm.save()
             msg = f'Permission for {perm.user.username} rejected.'
-            messages.success(request, msg)
+            if not is_ajax:
+                messages.success(request, msg)
         else:
             msg = 'Invalid action.'
             if is_ajax:
