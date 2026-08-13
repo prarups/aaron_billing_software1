@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-
+from decimal import Decimal
 class Attendance(models.Model):
     STATUS_CHOICES = (
         ('present', 'Present'),
@@ -8,6 +8,7 @@ class Attendance(models.Model):
         ('late', 'Late'),
         ('half_day', 'Half Day'),
         ('on_leave', 'On Leave'),
+        ('week_off', 'Week Off'),
     )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='attendances')
     branch = models.ForeignKey('core.Branch', on_delete=models.CASCADE)
@@ -175,8 +176,8 @@ class MonthlyPayroll(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payrolls')
     month = models.IntegerField() # 1-12
     year = models.IntegerField()
-    present_days = models.IntegerField(default=0)
-    absent_days = models.IntegerField(default=0)
+    present_days = models.DecimalField(max_digits=5, decimal_places=1, default=Decimal('0.0'))
+    absent_days = models.DecimalField(max_digits=5, decimal_places=1, default=Decimal('0.0'))
     late_days = models.IntegerField(default=0)
     approved_leaves = models.IntegerField(default=0)
     unapproved_leaves = models.IntegerField(default=0)
@@ -195,23 +196,15 @@ class MonthlyPayroll(models.Model):
 
     @property
     def late_deduction_amount(self):
-        import calendar
-        from decimal import Decimal
-        from .models import GlobalPermissionPolicy
-        days_in_month = calendar.monthrange(self.year, self.month)[1] if (self.year and self.month) else 31
-        per_day_rate = self.base_salary / Decimal(str(days_in_month)) if days_in_month > 0 else Decimal('0')
-        half_day_rate = per_day_rate / Decimal('2')
-        global_policy = GlobalPermissionPolicy.get_policy()
-        late_thresh = max(1, global_policy.late_threshold_for_half_day_deduction or 4)
-        late_half_days = Decimal(str(self.late_days // late_thresh))
-        return (late_half_days * half_day_rate).quantize(Decimal('0.01'))
+        return Decimal('0.00')
 
     @property
     def lop_days(self):
-        if self.present_days == 0:
-            return self.unapproved_leaves
-        allowed = getattr(self.user, 'monthly_off_count', 4)
-        return max(0, self.unapproved_leaves - allowed)
+        import calendar
+        days_in_month = calendar.monthrange(self.year, self.month)[1] if (self.year and self.month) else 31
+        unworked = float(days_in_month) - float(self.present_days or 0)
+        allowed = float(getattr(self.user, 'monthly_off_count', 4))
+        return max(0.0, unworked - allowed)
 
     @property
     def lop_deduction_amount(self):
@@ -220,6 +213,19 @@ class MonthlyPayroll(models.Model):
         days_in_month = calendar.monthrange(self.year, self.month)[1] if (self.year and self.month) else 31
         per_day_rate = self.base_salary / Decimal(str(days_in_month)) if days_in_month > 0 else Decimal('0')
         return (Decimal(str(self.lop_days)) * per_day_rate).quantize(Decimal('0.01'))
+
+    @property
+    def payable_days(self):
+        import calendar
+        days_in_month = calendar.monthrange(self.year, self.month)[1] if (self.year and self.month) else 31
+        return max(0.0, float(days_in_month) - float(self.lop_days or 0))
+
+    @property
+    def total_days_in_month(self):
+        import calendar
+        if self.year and self.month:
+            return calendar.monthrange(self.year, self.month)[1]
+        return 31
 
     def __str__(self):
         return f"{self.user.username} - {self.month}/{self.year} - Net: {self.net_salary} ({self.status})"

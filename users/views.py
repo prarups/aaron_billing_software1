@@ -86,12 +86,13 @@ def add_branch_goal_context(user, context):
 @login_required
 def dashboard_redirect(request):
     """Redirect user to the appropriate dashboard based on role and permissions."""
-    accessible = request.user.get_accessible_branches()
-    if accessible.exists() and (not request.user.active_branch or not accessible.filter(id=request.user.active_branch.id).exists()):
-        request.user.active_branch = accessible.first()
-        request.user.save(update_fields=['active_branch'])
+    if not request.user.has_all_branches and not request.user.is_owner() and request.user.role != 'regional_manager' and request.user.dashboard_access != 'regional_manager':
+        accessible = request.user.get_accessible_branches()
+        if accessible.exists() and (not request.user.active_branch or not accessible.filter(id=request.user.active_branch.id).exists()):
+            request.user.active_branch = accessible.first()
+            request.user.save(update_fields=['active_branch'])
 
-    if request.user.is_owner() or request.user.role in ['owner', 'admin', 'regional_manager']:
+    if request.user.has_all_branches or request.user.is_owner() or request.user.role in ['owner', 'admin', 'regional_manager'] or request.user.dashboard_access in ['owner', 'regional_manager']:
         return redirect('owner_dashboard')
     elif request.user.is_manager():
         return redirect('manager_dashboard')

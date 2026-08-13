@@ -36,11 +36,19 @@
                     </div>
                 </td>
                 <td>
+                    {% if staff.active_branch and staff.branches.all %}
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 mb-1 me-1"><i class="bi bi-house-door-fill me-1"></i>Primary: {{ staff.active_branch.name }}</span>
+                    {% endif %}
                     {% for b in staff.branches.all %}
-                    <span class="badge bg-light text-dark border rounded-pill px-2 py-1 mb-1 me-1">{{ b.name }}</span>
-                    {% empty %}
-                    <span class="text-muted small">No branch assigned</span>
+                    {% if b != staff.active_branch %}
+                    <span class="badge bg-light text-dark border rounded-pill px-2 py-1 mb-1 me-1"><i class="bi bi-shop me-1"></i>Access: {{ b.name }}</span>
+                    {% endif %}
                     {% endfor %}
+                    {% if staff.has_all_branches or staff.role == 'owner' or staff.role == 'regional_manager' %}
+                    <span class="badge bg-warning-subtle text-dark border rounded-pill px-2 py-1 mb-1 me-1"><i class="bi bi-globe me-1"></i>All Branches Access</span>
+                    {% elif not staff.active_branch and not staff.branches.all %}
+                    <span class="text-muted small">No branch assigned</span>
+                    {% endif %}
                 </td>
                 <td class="text-center hover-actions">
                     <button class="btn btn-outline-primary btn-sm rounded-circle px-2 py-1" onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}')" title="Edit Staff / Assign Branch">

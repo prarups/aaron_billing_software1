@@ -284,8 +284,30 @@
                 <span class="fw-bold tracking-tight">Aaron<span class="text-success">Admin</span></span>
             </a>
 
-
-        </div>
+            {% if user.is_authenticated %}
+                {% if user.has_all_branches or user.is_owner or user.is_manager or user.get_accessible_branches.count > 1 %}
+                    <form method="post" action="{% url 'switch_branch' %}" class="m-0">
+                        {% csrf_token %}
+                        <div class="input-group input-group-sm" style="max-width: 250px;">
+                            <span class="input-group-text bg-light border-0 rounded-start-pill"><i class="bi bi-shop text-success"></i></span>
+                            <select name="branch_id" class="form-select border-0 bg-light rounded-end-pill" data-no-search onchange="this.form.submit()">
+                                {% if user.has_all_branches or user.is_owner or user.role == 'regional_manager' or user.dashboard_access == 'regional_manager' %}
+                                <option value="all" {% if not user.active_branch %}selected{% endif %}>🏢 All Branches</option>
+                                {% endif %}
+                                {% for b in user.get_accessible_branches %}
+                                <option value="{{ b.id }}" {% if user.active_branch and b.id == user.active_branch.id %}selected{% endif %}>
+                                    {{ b.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                {% elif user.active_branch %}
+                    <span class="navbar-text fw-bold text-success"><i class="bi bi-shop me-1"></i>{{ user.active_branch.name }}</span>
+                {% else %}
+                    <span class="navbar-text fw-bold text-success"><i class="bi bi-shop me-1"></i>🏢 All Branches</span>
+                {% endif %}
+            {% endif %}
 
         <!-- Right side user menu and login/guest option -->
         <div class="d-flex align-items-center">

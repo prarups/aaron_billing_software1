@@ -29,4 +29,5 @@ urlpatterns = [
     path('salaries/payroll/pay/<int:payroll_id>/', views.mark_payroll_paid, name='mark_payroll_paid'),
     path('salaries/payroll/pay-all/', views.mark_all_payrolls_paid, name='mark_all_payrolls_paid'),
     path('edit-ajax/<int:pk>/', views.edit_attendance_ajax, name='edit_attendance_ajax'),
+    path('update-bank-ajax/<int:user_id>/', views.update_bank_details_ajax, name='update_bank_details_ajax'),
 ]

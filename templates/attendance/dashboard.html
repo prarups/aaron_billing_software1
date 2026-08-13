@@ -4,88 +4,390 @@
 {% block title %}Attendance Dashboard - Aaron Billing{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-3 px-3">
-    <!-- Header Row -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 bg-white p-3 rounded-3 shadow-sm border">
-        <div>
-            <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                <i class="bi bi-clock-fill text-success"></i> Attendance Portal
-            </h5>
-            <small class="text-muted" style="font-size: 0.75rem;">Welcome, <strong>{{ user.username }}</strong> ({% if is_owner_or_manager %}Admin/Manager{% else %}Staff{% endif %}). Facial Verification and GPS Location Logging.</small>
-        </div>
-        <div class="d-flex align-items-center gap-2 mt-2 mt-sm-0">
-            {% if not is_owner_or_manager %}
-                <a href="{% url 'attendance:my_summary' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.75rem;">
-                    <i class="bi bi-person-badge-fill me-1"></i> My Summary
-                </a>
-            {% else %}
-                <a href="{% url 'attendance:management_overview' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.75rem;">
-                    <i class="bi bi-speedometer2 me-1"></i> Management Overview
-                </a>
-            {% endif %}
-            {% if attendance and attendance.check_in %}
-                <div class="bg-success bg-opacity-10 border border-success border-opacity-25 rounded-pill px-3 py-1 text-center">
-                    <span class="text-success fw-bold d-block" style="font-size: 0.8rem;" id="liveWorkingTimer">0m</span>
-                    <span class="text-muted text-xxs d-block" style="font-size: 0.65rem;">
-                        {% if attendance.check_out %}Shift Completed{% else %}Working{% endif %}
-                    </span>
+<style>
+    /* ── Attendance Portal Premium Aesthetics ── */
+    :root {
+        --ap-primary-gradient: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+        --ap-card-bg: rgba(255, 255, 255, 0.95);
+        --ap-glass-border: 1px solid rgba(226, 232, 240, 0.8);
+        --ap-shadow-sm: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .ap-wrapper {
+        padding: 1.5rem;
+        background: #f8fafc;
+        min-height: 100vh;
+    }
+
+    /* Executive Hero Header */
+    .ap-hero-card {
+        background: var(--ap-primary-gradient);
+        border-radius: 20px;
+        padding: 1.5rem 2rem;
+        color: #ffffff;
+        box-shadow: 0 12px 35px -10px rgba(49, 46, 129, 0.4);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+
+    .ap-hero-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 350px;
+        height: 350px;
+        background: radial-gradient(circle, rgba(124, 58, 237, 0.35) 0%, rgba(255, 255, 255, 0) 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .ap-hero-title {
+        font-family: 'Outfit', 'Inter', sans-serif;
+        font-weight: 800;
+        font-size: 1.5rem;
+        letter-spacing: -0.02em;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .ap-hero-subtitle {
+        color: rgba(226, 232, 240, 0.85);
+        font-size: 0.82rem;
+        margin-top: 0.25rem;
+    }
+
+    .ap-pill-box {
+        background: rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 50px;
+        padding: 0.45rem 1.1rem;
+        color: #ffffff;
+        font-size: 0.8rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .ap-working-timer-badge {
+        background: rgba(16, 185, 129, 0.2) !important;
+        border: 1.5px solid rgba(52, 211, 153, 0.4) !important;
+        color: #6ee7b7 !important;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+    }
+
+    /* Section Cards */
+    .ap-card {
+        background: #ffffff;
+        border-radius: 18px;
+        border: 1px solid #f1f5f9;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+        overflow: hidden;
+        height: 100%;
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .ap-card-header {
+        background: #ffffff;
+        padding: 1.1rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .ap-card-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Action Center Large Buttons */
+    .ap-action-btn {
+        border-radius: 14px !important;
+        padding: 1rem 1.5rem !important;
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 800 !important;
+        font-size: 1.05rem !important;
+        letter-spacing: 0.02em !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+    }
+
+    .ap-ab-checkin {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 8px 25px -4px rgba(16, 185, 129, 0.4) !important;
+    }
+
+    .ap-ab-checkin:hover {
+        transform: translateY(-3px) scale(1.01);
+        box-shadow: 0 12px 30px -4px rgba(16, 185, 129, 0.55) !important;
+    }
+
+    .ap-ab-midday {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 8px 25px -4px rgba(245, 158, 11, 0.4) !important;
+    }
+
+    .ap-ab-midday:hover {
+        transform: translateY(-3px) scale(1.01);
+        box-shadow: 0 12px 30px -4px rgba(245, 158, 11, 0.55) !important;
+    }
+
+    .ap-ab-checkout {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 8px 25px -4px rgba(239, 68, 68, 0.4) !important;
+    }
+
+    .ap-ab-checkout:hover {
+        transform: translateY(-3px) scale(1.01);
+        box-shadow: 0 12px 30px -4px rgba(239, 68, 68, 0.55) !important;
+    }
+
+    /* Timeline Items */
+    .ap-tl-item {
+        padding: 0.9rem 0;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .ap-tl-item:last-child {
+        border-bottom: none;
+    }
+
+    .ap-tl-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    /* History Table */
+    .ap-table thead tr {
+        background: #f8fafc;
+    }
+
+    .ap-table th {
+        font-size: 0.67rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #64748b;
+        padding: 0.85rem 1.25rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .ap-table td {
+        padding: 0.9rem 1.25rem;
+        vertical-align: middle;
+        font-size: 0.83rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .ap-table tbody tr {
+        transition: background 0.15s ease;
+    }
+
+    .ap-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    .mo-badge-status {
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.68rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .mo-bs-present { background: #d1fae5; color: #047857; }
+    .mo-bs-late    { background: #fef3c7; color: #b45309; }
+    .mo-bs-half    { background: #e0f2fe; color: #0369a1; }
+    .mo-bs-absent  { background: #fee2e2; color: #b91c1c; }
+
+    .cursor-zoom { cursor: zoom-in; }
+
+    /* Mobile Responsive Optimizations (< 768px) */
+    @media (max-width: 768px) {
+        .ap-wrapper {
+            padding: 0.75rem !important;
+        }
+
+        .ap-hero-card {
+            border-radius: 16px !important;
+            padding: 1.1rem 1rem !important;
+            margin-bottom: 1rem !important;
+        }
+
+        .ap-hero-title {
+            font-size: 1.2rem !important;
+        }
+
+        .ap-hero-subtitle {
+            font-size: 0.75rem !important;
+        }
+
+        .ap-pill-box {
+            padding: 0.35rem 0.8rem !important;
+            font-size: 0.73rem !important;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .ap-card {
+            border-radius: 14px !important;
+        }
+
+        .ap-card-header {
+            padding: 0.9rem 1rem !important;
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.5rem !important;
+        }
+
+        .ap-action-btn {
+            font-size: 0.92rem !important;
+            padding: 0.8rem 1rem !important;
+        }
+
+        .ap-table th, .ap-table td {
+            padding: 0.65rem 0.75rem !important;
+            font-size: 0.75rem !important;
+        }
+
+        .table-responsive {
+            border-radius: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .modal-dialog {
+            margin: 0.5rem !important;
+        }
+
+        .modal-content {
+            border-radius: 16px !important;
+        }
+    }
+</style>
+
+<div class="ap-wrapper">
+    <!-- Executive Hero Header -->
+    <div class="ap-hero-card">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <h1 class="ap-hero-title">
+                    <i class="bi bi-clock-fill text-warning"></i> Attendance Portal
+                </h1>
+                <div class="ap-hero-subtitle">
+                    Welcome back, <strong>{{ user.username }}</strong> &middot; Facial recognition & GPS location verified check-in.
                 </div>
-            {% endif %}
-            <div class="bg-light border rounded-pill px-3 py-1 text-center">
-                <span id="liveClock" class="fw-bold text-dark d-block" style="font-size: 0.85rem;">--:--:--</span>
-                <span class="text-muted text-xxs d-block" style="font-size: 0.65rem;">{{ today|date:"l, d M Y" }}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                {% if not is_owner_or_manager %}
+                    <a href="{% url 'attendance:my_summary' %}" class="btn btn-sm btn-light rounded-pill px-3.5 py-1.5 fw-bold text-dark text-decoration-none shadow-sm" style="font-size: 0.78rem;">
+                        <i class="bi bi-person-badge-fill me-1 text-primary"></i> My Summary
+                    </a>
+                {% else %}
+                    <a href="{% url 'attendance:management_overview' %}" class="btn btn-sm btn-light rounded-pill px-3.5 py-1.5 fw-bold text-dark text-decoration-none shadow-sm" style="font-size: 0.78rem;">
+                        <i class="bi bi-speedometer2 me-1 text-primary"></i> Management Overview
+                    </a>
+                {% endif %}
+
+                {% if attendance and attendance.check_in %}
+                    <div class="ap-pill-box ap-working-timer-badge">
+                        <i class="bi bi-stopwatch-fill me-1"></i>
+                        <span id="liveWorkingTimer" style="font-family: 'Outfit', sans-serif; font-size: 0.85rem;">00h 00m 00s</span>
+                        <span class="badge bg-white text-dark rounded-pill px-2 py-0.5" style="font-size: 0.6rem;">
+                            {% if attendance.check_out %}Shift Completed{% else %}Working{% endif %}
+                        </span>
+                    </div>
+                {% endif %}
+
+                <div class="ap-pill-box">
+                    <i class="bi bi-clock me-1 text-warning"></i>
+                    <span id="liveClock" style="font-family: 'Outfit', sans-serif; font-size: 0.85rem;">--:--:--</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- MAIN WORKSPACE (Action Center & Timeline) -->
-    <div class="row g-3 mb-3">
+    <!-- MAIN WORKSPACE: Action Center & Timeline -->
+    <div class="row g-4 mb-4">
         <!-- Action Center Panel -->
         <div class="col-lg-6">
-            <div class="card border-0 shadow-sm h-100 bg-white rounded-3">
-                <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex align-items-center justify-content-between">
-                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
-                        <i class="bi bi-person-bounding-box"></i> Attendance Actions
-                    </h6>
+            <div class="ap-card">
+                <div class="ap-card-header">
+                    <h2 class="ap-card-title">
+                        <i class="bi bi-person-bounding-box text-primary"></i> Attendance Action Center
+                    </h2>
                     {% if not attendance or not attendance.check_in %}
-                        <span class="badge bg-warning bg-opacity-10 text-warning border border-warning rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 0.7rem;">
+                        <span class="badge bg-warning-subtle text-warning-dark border border-warning-subtle rounded-pill px-3 py-1 fw-bold" style="font-size: 0.72rem;">
                             Not Checked In
                         </span>
                     {% elif not attendance.mid_day_time %}
-                        <span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 0.7rem;">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-bold" style="font-size: 0.72rem;">
                             Checked In (Mid-Day Pending)
                         </span>
                     {% elif not attendance.check_out %}
-                        <span class="badge bg-info bg-opacity-10 text-info border border-info rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 0.7rem;">
+                        <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-3 py-1 fw-bold" style="font-size: 0.72rem;">
                             Mid-Day Verified (Check-Out Pending)
                         </span>
                     {% else %}
-                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 0.7rem;">
-                            Today Completed
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 fw-bold" style="font-size: 0.72rem;">
+                            Shift Completed
                         </span>
                     {% endif %}
                 </div>
-                <div class="card-body p-3 d-flex flex-column justify-content-center">
-
+                <div class="card-body p-4 d-flex flex-column justify-content-center">
                     {% if not attendance or not attendance.check_in %}
                         <!-- Step 1: Check In -->
-                        <button type="button" id="btnCheckIn" class="btn btn-success btn-lg rounded-3 py-2.5 px-4 w-100 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" onclick="openVerificationModal('check_in')">
-                            <i class="bi bi-box-arrow-in-right fs-5"></i> Check In Now
+                        <button type="button" id="btnCheckIn" class="btn ap-action-btn ap-ab-checkin w-100" onclick="openVerificationModal('check_in')">
+                            <i class="bi bi-box-arrow-in-right fs-4"></i> Check In Now
                         </button>
                     {% elif not attendance.mid_day_time %}
                         <!-- Step 2: Mid-Day Verification -->
-                        <button type="button" id="btnMidDay" class="btn btn-warning text-white btn-lg rounded-3 py-2.5 px-4 w-100 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" onclick="openVerificationModal('mid_day')">
-                            <i class="bi bi-shield-check fs-5"></i> Mid-Day Verification
+                        <button type="button" id="btnMidDay" class="btn ap-action-btn ap-ab-midday w-100" onclick="openVerificationModal('mid_day')">
+                            <i class="bi bi-shield-check fs-4"></i> Mid-Day Verification
                         </button>
                     {% elif not attendance.check_out %}
                         <!-- Step 3: Check Out -->
-                        <button type="button" id="btnCheckOut" class="btn btn-danger btn-lg rounded-3 py-2.5 px-4 w-100 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" onclick="openVerificationModal('check_out')">
-                            <i class="bi bi-box-arrow-left fs-5"></i> Check Out Now
+                        <button type="button" id="btnCheckOut" class="btn ap-action-btn ap-ab-checkout w-100" onclick="openVerificationModal('check_out')">
+                            <i class="bi bi-box-arrow-left fs-4"></i> Check Out Now
                         </button>
                     {% else %}
-                        <!-- Step Completed Card -->
-                        <div class="alert alert-success border-0 bg-success bg-opacity-10 text-success mb-0 py-2.5 px-3 rounded-3 text-center fw-bold" style="font-size: 0.85rem;">
-                            <i class="bi bi-patch-check-fill me-1.5 fs-5"></i> Today's Attendance Completed!
+                        <!-- Shift Completed Alert Card -->
+                        <div class="alert border-0 bg-success bg-opacity-10 text-success p-3.5 rounded-4 text-center fw-bold mb-0">
+                            <i class="bi bi-patch-check-fill me-2 fs-4"></i> Today's Attendance Shift Fully Completed!
                         </div>
                     {% endif %}
                 </div>
@@ -94,183 +396,179 @@
 
         <!-- Today's Log Timeline Panel -->
         <div class="col-lg-6">
-            <div class="card border-0 shadow-sm h-100 bg-white rounded-3">
-                <div class="card-header bg-white border-bottom py-2.5 px-3">
-                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
-                        <i class="bi bi-calendar3"></i> Today's Log Timeline
-                    </h6>
+            <div class="ap-card">
+                <div class="ap-card-header">
+                    <h2 class="ap-card-title">
+                        <i class="bi bi-calendar3 text-primary"></i> Today's Attendance Timeline
+                    </h2>
                 </div>
-                <div class="card-body p-3">
-                    <div class="timeline-wrapper" style="font-size: 0.75rem;">
-                        <!-- Step 1: Check In -->
-                        <div class="d-flex align-items-center justify-content-between mb-2.5 pb-2.5 border-bottom">
-                            <div class="d-flex align-items-center gap-2.5">
-                                <div class="rounded-circle bg-light p-1.5 text-success d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                    <i class="bi bi-box-arrow-in-right fs-6"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-bold text-dark" style="font-size: 0.78rem;">1. Check-In</div>
-                                    <div class="text-muted" style="font-size: 0.7rem;">Time: 
-                                        {% if attendance and attendance.check_in %}
-                                            <strong class="text-dark">{{ attendance.check_in|date:"g:i A" }}</strong>
-                                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill ms-1 px-2 py-0.5" style="font-size: 0.65rem;">
-                                                <i class="bi bi-clock-history me-0.5"></i><span id="timelineWorkingTimer">--</span>
-                                            </span>
-                                        {% else %}
-                                            <span class="text-warning fw-semibold">Pending</span>
-                                        {% endif %}
-                                    </div>
-                                    {% if attendance and attendance.check_in_lat %}
-                                        <div class="mt-0.5">
-                                            <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.check_in_lat }},{{ attendance.check_in_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.65rem;">
-                                                <i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS <span class="gps-coord text-muted" data-lat="{{ attendance.check_in_lat }}" data-lng="{{ attendance.check_in_lng }}"></span>
-                                            </a>
-                                        </div>
+                <div class="card-body p-3.5">
+                    <!-- Step 1: Check-In -->
+                    <div class="ap-tl-item">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="ap-tl-icon bg-success-subtle text-success">
+                                <i class="bi bi-box-arrow-in-right"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size: 0.85rem;">1. Check-In</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">
+                                    Time: 
+                                    {% if attendance and attendance.check_in %}
+                                        <strong class="text-dark">{{ attendance.check_in|date:"g:i A" }}</strong>
+                                    {% else %}
+                                        <span class="text-warning fw-bold">Pending</span>
                                     {% endif %}
                                 </div>
+                                {% if attendance and attendance.check_in_lat %}
+                                    <div class="mt-1">
+                                        <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.check_in_lat }},{{ attendance.check_in_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.7rem;">
+                                            <i class="bi bi-geo-alt-fill text-danger me-1"></i>GPS <span class="gps-coord text-muted fw-semibold" data-lat="{{ attendance.check_in_lat }}" data-lng="{{ attendance.check_in_lng }}"></span>
+                                        </a>
+                                    </div>
+                                {% endif %}
                             </div>
-                            {% if attendance and attendance.check_in_photo %}
-                                <img src="{{ attendance.check_in_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 36px; height: 26px; object-fit: cover;" alt="Check-in Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.check_in_photo|cloudinary_optimize }}', 'Check-In Photo')"/>
-                            {% endif %}
                         </div>
+                        {% if attendance and attendance.check_in_photo %}
+                            <img src="{{ attendance.check_in_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded-3 border cursor-zoom shadow-xs" style="width: 44px; height: 32px; object-fit: cover;" alt="Check-in Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.check_in_photo|cloudinary_optimize }}', 'Check-In Photo')"/>
+                        {% endif %}
+                    </div>
 
-                        <!-- Step 2: Mid-Day -->
-                        <div class="d-flex align-items-center justify-content-between mb-2.5 pb-2.5 border-bottom">
-                            <div class="d-flex align-items-center gap-2.5">
-                                <div class="rounded-circle bg-light p-1.5 text-warning d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                    <i class="bi bi-shield-check fs-6"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-bold text-dark" style="font-size: 0.78rem;">2. Mid-Day Verification</div>
-                                    <div class="text-muted" style="font-size: 0.7rem;">Time: 
-                                        {% if attendance and attendance.mid_day_time %}
-                                            <strong class="text-dark">{{ attendance.mid_day_time|date:"h:i A" }}</strong>
-                                        {% else %}
-                                            <span class="text-warning fw-semibold">Pending</span>
-                                        {% endif %}
-                                    </div>
-                                    {% if attendance and attendance.mid_day_lat %}
-                                        <div class="mt-0.5">
-                                            <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.mid_day_lat }},{{ attendance.mid_day_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.65rem;">
-                                                <i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS <span class="gps-coord text-muted" data-lat="{{ attendance.mid_day_lat }}" data-lng="{{ attendance.mid_day_lng }}"></span>
-                                            </a>
-                                        </div>
+                    <!-- Step 2: Mid-Day -->
+                    <div class="ap-tl-item">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="ap-tl-icon bg-warning-subtle text-warning-dark">
+                                <i class="bi bi-shield-check"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size: 0.85rem;">2. Mid-Day Verification</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">
+                                    Time: 
+                                    {% if attendance and attendance.mid_day_time %}
+                                        <strong class="text-dark">{{ attendance.mid_day_time|date:"h:i A" }}</strong>
+                                    {% else %}
+                                        <span class="text-warning fw-bold">Pending</span>
                                     {% endif %}
                                 </div>
+                                {% if attendance and attendance.mid_day_lat %}
+                                    <div class="mt-1">
+                                        <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.mid_day_lat }},{{ attendance.mid_day_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.7rem;">
+                                            <i class="bi bi-geo-alt-fill text-danger me-1"></i>GPS <span class="gps-coord text-muted fw-semibold" data-lat="{{ attendance.mid_day_lat }}" data-lng="{{ attendance.mid_day_lng }}"></span>
+                                        </a>
+                                    </div>
+                                {% endif %}
                             </div>
-                            {% if attendance and attendance.mid_day_photo %}
-                                <img src="{{ attendance.mid_day_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 36px; height: 26px; object-fit: cover;" alt="Mid-day Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.mid_day_photo|cloudinary_optimize }}', 'Mid-Day Photo')"/>
-                            {% endif %}
                         </div>
+                        {% if attendance and attendance.mid_day_photo %}
+                            <img src="{{ attendance.mid_day_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded-3 border cursor-zoom shadow-xs" style="width: 44px; height: 32px; object-fit: cover;" alt="Mid-day Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.mid_day_photo|cloudinary_optimize }}', 'Mid-Day Photo')"/>
+                        {% endif %}
+                    </div>
 
-                        <!-- Step 3: Check Out -->
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div class="d-flex align-items-center gap-2.5">
-                                <div class="rounded-circle bg-light p-1.5 text-danger d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                    <i class="bi bi-box-arrow-left fs-6"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-bold text-dark" style="font-size: 0.78rem;">3. Check-Out</div>
-                                    <div class="text-muted" style="font-size: 0.7rem;">Time: 
-                                        {% if attendance and attendance.check_out %}
-                                            <strong class="text-dark">{{ attendance.check_out|date:"h:i A" }}</strong>
-                                        {% else %}
-                                            <span class="text-warning fw-semibold">Pending</span>
-                                        {% endif %}
-                                    </div>
-                                    {% if attendance and attendance.check_out_lat %}
-                                        <div class="mt-0.5">
-                                            <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.check_out_lat }},{{ attendance.check_out_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.65rem;">
-                                                <i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS <span class="gps-coord text-muted" data-lat="{{ attendance.check_out_lat }}" data-lng="{{ attendance.check_out_lng }}"></span>
-                                            </a>
-                                        </div>
+                    <!-- Step 3: Check Out -->
+                    <div class="ap-tl-item">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="ap-tl-icon bg-danger-subtle text-danger">
+                                <i class="bi bi-box-arrow-left"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size: 0.85rem;">3. Check-Out</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">
+                                    Time: 
+                                    {% if attendance and attendance.check_out %}
+                                        <strong class="text-dark">{{ attendance.check_out|date:"h:i A" }}</strong>
+                                    {% else %}
+                                        <span class="text-warning fw-bold">Pending</span>
                                     {% endif %}
                                 </div>
+                                {% if attendance and attendance.check_out_lat %}
+                                    <div class="mt-1">
+                                        <a href="https://www.google.com/maps/search/?api=1&query={{ attendance.check_out_lat }},{{ attendance.check_out_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.7rem;">
+                                            <i class="bi bi-geo-alt-fill text-danger me-1"></i>GPS <span class="gps-coord text-muted fw-semibold" data-lat="{{ attendance.check_out_lat }}" data-lng="{{ attendance.check_out_lng }}"></span>
+                                        </a>
+                                    </div>
+                                {% endif %}
                             </div>
-                            {% if attendance and attendance.check_out_photo %}
-                                <img src="{{ attendance.check_out_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 36px; height: 26px; object-fit: cover;" alt="Check-out Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.check_out_photo|cloudinary_optimize }}', 'Check-Out Photo')"/>
-                            {% endif %}
                         </div>
+                        {% if attendance and attendance.check_out_photo %}
+                            <img src="{{ attendance.check_out_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded-3 border cursor-zoom shadow-xs" style="width: 44px; height: 32px; object-fit: cover;" alt="Check-out Photo" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ attendance.check_out_photo|cloudinary_optimize }}', 'Check-Out Photo')"/>
+                        {% endif %}
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- History Panel -->
+    <!-- Log History Table -->
     <div class="row">
         <div class="col-12">
-            <div class="card border-0 shadow-sm bg-white rounded-3">
-                <div class="card-header bg-white border-bottom py-2.5 px-3">
-                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
-                        <i class="bi bi-clock-history"></i> Recent Log History
-                    </h6>
+            <div class="ap-card">
+                <div class="ap-card-header">
+                    <h2 class="ap-card-title">
+                        <i class="bi bi-clock-history text-primary"></i> Recent Log History
+                    </h2>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.75rem;">
-                            <thead class="table-light text-muted" style="font-size: 0.7rem;">
-                                <tr>
-                                    <th class="ps-3 py-2">Date</th>
-                                    <th class="py-2">Status</th>
-                                    <th class="py-2">Check In</th>
-                                    <th class="py-2">Mid-Day Check</th>
-                                    <th class="py-2">Check Out</th>
-                                    <th class="pe-3 py-2">Details</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in recent_attendance %}
-                                <tr>
-                                    <td class="ps-3 py-2 fw-bold text-dark">{{ item.date|date:"d M Y" }}</td>
-                                    <td class="py-2">
-                                        {% if item.status == 'present' %}
-                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #d1fae5; color: #047857; font-size: 0.65rem; font-weight: 600;">Present</span>
-                                        {% elif item.status == 'late' %}
-                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fef3c7; color: #b45309; font-size: 0.65rem; font-weight: 600;">Late Check-in</span>
-                                        {% elif item.status == 'half_day' %}
-                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #e5e7eb; color: #374151; font-size: 0.65rem; font-weight: 600;">Half Day</span>
-                                        {% else %}
-                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fee2e2; color: #b91c1c; font-size: 0.65rem; font-weight: 600;">Absent</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="py-2">
-                                        {% if item.check_in %}
-                                            <span class="fw-semibold text-dark">{{ item.check_in|date:"h:i A" }}</span>
-                                        {% else %}
-                                            <span class="text-muted opacity-50">-</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="py-2">
-                                        {% if item.mid_day_time %}
-                                            <span class="fw-semibold text-dark">{{ item.mid_day_time|date:"h:i A" }}</span>
-                                        {% else %}
-                                            <span class="text-muted opacity-50">-</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="py-2">
-                                        {% if item.check_out %}
-                                            <span class="fw-semibold text-dark">{{ item.check_out|date:"h:i A" }}</span>
-                                        {% else %}
-                                            <span class="text-muted opacity-50">-</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="pe-3 py-2">
-                                        {% if item.notes %}
-                                            <span class="text-muted" style="font-size: 0.7rem;">{{ item.notes }}</span>
-                                        {% else %}
-                                            <span class="text-muted opacity-50" style="font-size: 0.7rem;">Standard</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="6" class="text-center py-3 text-muted">No attendance logs found.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table ap-table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Check In</th>
+                                <th>Mid-Day Check</th>
+                                <th>Check Out</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in recent_attendance %}
+                            <tr>
+                                <td class="fw-bold text-dark">{{ item.date|date:"d M Y" }}</td>
+                                <td>
+                                    {% if item.status == 'present' %}
+                                        <span class="mo-badge-status mo-bs-present"><i class="bi bi-check-circle-fill"></i> Present</span>
+                                    {% elif item.status == 'late' %}
+                                        <span class="mo-badge-status mo-bs-late"><i class="bi bi-exclamation-circle-fill"></i> Late Check-in</span>
+                                    {% elif item.status == 'half_day' %}
+                                        <span class="mo-badge-status mo-bs-half"><i class="bi bi-pie-chart-fill"></i> Half Day</span>
+                                    {% else %}
+                                        <span class="mo-badge-status mo-bs-absent"><i class="bi bi-x-circle-fill"></i> Absent</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.check_in %}
+                                        <span class="fw-bold text-dark">{{ item.check_in|date:"h:i A" }}</span>
+                                    {% else %}
+                                        <span class="text-muted opacity-50">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.mid_day_time %}
+                                        <span class="fw-bold text-dark">{{ item.mid_day_time|date:"h:i A" }}</span>
+                                    {% else %}
+                                        <span class="text-muted opacity-50">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.check_out %}
+                                        <span class="fw-bold text-dark">{{ item.check_out|date:"h:i A" }}</span>
+                                    {% else %}
+                                        <span class="text-muted opacity-50">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.notes %}
+                                        <span class="text-muted" style="font-size: 0.78rem;">{{ item.notes }}</span>
+                                    {% else %}
+                                        <span class="text-muted opacity-50" style="font-size: 0.78rem;">Standard</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">No recent attendance logs.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -282,19 +580,19 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <!-- Modal Header -->
-            <div id="modalHeader" class="modal-header text-white py-2.5 px-3" style="background: linear-gradient(135deg, #059669, #10b981);">
+            <div id="modalHeader" class="modal-header text-white py-3 px-4" style="background: linear-gradient(135deg, #059669, #10b981);">
                 <div class="d-flex align-items-center gap-2">
-                    <i id="modalHeaderIcon" class="bi bi-camera-fill fs-5"></i>
+                    <i id="modalHeaderIcon" class="bi bi-camera-fill fs-5 me-1"></i>
                     <div>
-                        <h6 class="modal-title fw-bold text-white mb-0" id="cameraModalLabel" style="font-size: 0.85rem;">Facial Verification</h6>
-                        <span id="modalSubTitle" class="text-white-50" style="font-size: 0.7rem;">Position face inside camera frame</span>
+                        <h6 class="modal-title fw-bold text-white mb-0" id="cameraModalLabel" style="font-size: 0.9rem;">Facial Verification</h6>
+                        <span id="modalSubTitle" class="text-white-50" style="font-size: 0.73rem;">Position face inside camera frame</span>
                     </div>
                 </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <!-- Modal Body -->
-            <div class="modal-body p-3 bg-light">
+            <div class="modal-body p-3.5 bg-light">
                 <div class="row align-items-center">
                     <!-- Left: Camera Viewport -->
                     <div class="col-md-7 mb-3 mb-md-0">
@@ -336,7 +634,7 @@
 
                     <!-- Right: Info & Geolocation status -->
                     <div class="col-md-5">
-                        <div class="card border-0 shadow-sm bg-white p-2.5 rounded-3 mb-2">
+                        <div class="card border-0 shadow-sm bg-white p-3 rounded-3 mb-2.5">
                             <h6 class="fw-bold text-dark mb-1.5 d-flex align-items-center gap-1" style="font-size: 0.78rem;">
                                 <i class="bi bi-geo-alt-fill text-warning"></i> GPS Location Status
                             </h6>
@@ -348,11 +646,11 @@
                             </button>
                         </div>
 
-                        <div class="card border-0 shadow-sm bg-white p-2.5 rounded-3">
+                        <div class="card border-0 shadow-sm bg-white p-3 rounded-3">
                             <h6 class="fw-bold text-dark mb-1.5 d-flex align-items-center gap-1" style="font-size: 0.78rem;">
                                 <i class="bi bi-shield-check text-success"></i> Verification Steps
                             </h6>
-                            <ol class="text-muted ps-3 mb-0" style="font-size: 0.7rem; line-height: 1.4;">
+                            <ol class="text-muted ps-3 mb-0" style="font-size: 0.72rem; line-height: 1.45;">
                                 <li class="mb-1">Ensure clear lighting on your face.</li>
                                 <li class="mb-1">Wait for GPS status to show green location.</li>
                                 <li>Click <strong>Capture & Submit</strong> button below.</li>
@@ -363,11 +661,11 @@
             </div>
 
             <!-- Modal Footer -->
-            <div class="modal-footer border-0 bg-white py-2 px-3 d-flex align-items-center justify-content-between">
-                <button type="button" class="btn btn-sm btn-light rounded-pill px-3" data-bs-dismiss="modal" style="font-size: 0.75rem;">
+            <div class="modal-footer border-0 bg-white py-2.5 px-4 d-flex align-items-center justify-content-between">
+                <button type="button" class="btn btn-sm btn-light rounded-pill px-3.5" data-bs-dismiss="modal" style="font-size: 0.78rem;">
                     Cancel
                 </button>
-                <button type="button" id="btnModalSubmit" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-xs" onclick="submitAttendanceVerification()" style="font-size: 0.75rem;">
+                <button type="button" id="btnModalSubmit" class="btn btn-sm btn-primary rounded-pill px-4 fw-bold shadow-xs" onclick="submitAttendanceVerification()" style="font-size: 0.78rem;">
                     <i class="bi bi-camera-fill me-1"></i> Capture & Submit
                 </button>
             </div>
@@ -379,11 +677,11 @@
 <div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header border-0 bg-dark text-white py-2.5 px-3">
-                <h6 class="modal-title fw-bold" id="photoModalLabel" style="font-size: 0.85rem;">Verification Photo</h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header border-0 bg-dark text-white py-3 px-4">
+                <h6 class="modal-title fw-bold" id="photoModalLabel" style="font-size: 0.88rem;">Verification Photo</h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0 bg-black">
+            <div class="modal-body p-0 bg-black text-center">
                 <img id="fullPhotoEl" src="" class="w-100 h-auto object-fit-contain" style="max-height: 80vh;" alt="Verification Photo"/>
             </div>
         </div>
@@ -431,8 +729,10 @@
         const totalSecs = Math.floor(diffMs / 1000);
         const hours = Math.floor(totalSecs / 3600);
         const mins = Math.floor((totalSecs % 3600) / 60);
+        const secs = totalSecs % 60;
 
-        const timeText = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+        const pad = (num) => String(num).padStart(2, '0');
+        const timeText = `${pad(hours)}h ${pad(mins)}m ${pad(secs)}s`;
 
         const liveTimerEl = document.getElementById('liveWorkingTimer');
         if (liveTimerEl) {
@@ -577,21 +877,21 @@
             label.textContent = 'Check-In Verification';
             sub.textContent = 'Capture face snapshot & GPS to start shift';
             icon.className = 'bi bi-box-arrow-in-right fs-5 me-1.5';
-            submitBtn.className = 'btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-xs';
+            submitBtn.className = 'btn btn-sm btn-primary rounded-pill px-4 fw-bold shadow-xs';
             submitBtn.innerHTML = '<i class="bi bi-camera-fill me-1"></i> Capture & Submit Check-In';
         } else if (type === 'mid_day') {
             header.style.background = 'linear-gradient(135deg, #d97706, #f59e0b)';
             label.textContent = 'Mid-Day Verification';
             sub.textContent = 'Verify presence & GPS location during shift';
             icon.className = 'bi bi-shield-check fs-5 me-1.5';
-            submitBtn.className = 'btn btn-sm btn-warning text-white rounded-pill px-3 fw-bold shadow-xs';
+            submitBtn.className = 'btn btn-sm btn-warning text-white rounded-pill px-4 fw-bold shadow-xs';
             submitBtn.innerHTML = '<i class="bi bi-shield-camera me-1"></i> Capture & Submit Mid-Day';
         } else if (type === 'check_out') {
             header.style.background = 'linear-gradient(135deg, #dc2626, #ef4444)';
             label.textContent = 'Check-Out Verification';
             sub.textContent = 'Capture face snapshot & GPS to complete shift';
             icon.className = 'bi bi-box-arrow-left fs-5 me-1.5';
-            submitBtn.className = 'btn btn-sm btn-danger rounded-pill px-3 fw-bold shadow-xs';
+            submitBtn.className = 'btn btn-sm btn-danger rounded-pill px-4 fw-bold shadow-xs';
             submitBtn.innerHTML = '<i class="bi bi-door-closed-fill me-1"></i> Capture & Submit Check-Out';
         }
 
@@ -844,12 +1144,6 @@
     }
     .cursor-zoom:hover {
         transform: scale(1.08);
-    }
-    .action-btn-hover {
-        transition: all 0.2s ease;
-    }
-    .action-btn-hover:hover {
-        transform: translateY(-2px);
     }
     .custom-success-toast, .custom-error-toast {
         position: fixed;

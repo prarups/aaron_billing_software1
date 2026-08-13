@@ -1,6 +1,7 @@
 {% extends "base_attendance.html" %}
+{% load static %}
 
-{% block title %}Pay Slips & Statements - Aaron Billing{% endblock %}
+{% block title %}Pay Slips & Salary Statements - Aaron Billing{% endblock %}
 
 {% block messages %}
     {% if messages %}
@@ -19,371 +20,608 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-3">
-    <!-- Header -->
+<style>
+    /* ── High-Density Compact Payslip Styling ── */
+    .ps-wrapper {
+        padding: 1rem;
+        background-color: #f8fafc;
+        min-height: 100vh;
+    }
+
+    .ps-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
+    }
+
+    .ps-table th {
+        font-size: 0.68rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: #475569;
+        background: #f1f5f9;
+        padding: 0.75rem 1rem;
+        border-bottom: 2px solid #cbd5e1;
+    }
+
+    .ps-table td {
+        padding: 0.75rem 1rem;
+        vertical-align: middle;
+        font-size: 0.8rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    /* Modal Pay Slip Document Styles (Single A4 Page Optimized) */
+    .ps-doc-container {
+        background: #ffffff;
+        border: 2px solid #0f172a;
+        border-radius: 10px;
+        padding: 1rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .ps-doc-header {
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        color: #ffffff;
+        margin-bottom: 0.75rem;
+    }
+
+    .ps-doc-company-title {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 800;
+        font-size: 1.15rem;
+        letter-spacing: -0.01em;
+        color: #ffffff;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .ps-section-box {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #f8fafc;
+        padding: 0.65rem 0.85rem;
+        margin-bottom: 0.65rem;
+    }
+
+    .ps-field-label {
+        font-size: 0.6rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        margin-bottom: 0.1rem;
+        display: block;
+    }
+
+    .ps-field-value {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .ps-net-card {
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        border: 1.5px solid #a7f3d0;
+        border-radius: 8px;
+        padding: 0.65rem 1rem;
+    }
+</style>
+
+<div class="ps-wrapper">
+    <!-- Header Bar -->
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 pb-2 border-bottom">
         <div>
-            <h4 class="fw-bold mb-0 text-dark"><i class="bi bi-file-earmark-spreadsheet-fill text-indigo me-2" style="color: #4f46e5;"></i>Pay Slips & Salary Statements</h4>
-            <p class="text-muted text-xxs mb-0">View monthly calculated pay slips, filter records, print employee statements, and settle payments.</p>
+            <h4 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                <i class="bi bi-file-earmark-spreadsheet-fill text-indigo"></i> Corporate Pay Slips & Statements
+            </h4>
+            <p class="text-muted text-xxs mb-0">Manage monthly salary statements, print executive single-page pay slips, and verify bank credit settlements.</p>
         </div>
         <div class="d-flex align-items-center gap-2 mt-2 mt-sm-0">
-            <a href="?month={{ selected_month }}&year={{ selected_year }}&q_payroll={{ q_payroll }}&branch_payroll={{ branch_payroll }}&status_payroll={{ status_payroll }}&export=csv" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold shadow-xs">
+            <a href="?month={{ selected_month }}&year={{ selected_year }}&q_payroll={{ q_payroll }}&branch_payroll={{ branch_payroll }}&status_payroll={{ status_payroll }}&export=csv" class="btn btn-sm btn-success rounded-pill px-3 fw-bold shadow-xs">
                 <i class="bi bi-file-earmark-excel me-1"></i> Export CSV
             </a>
-            <a href="{% url 'attendance:payroll_list' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
-                <i class="bi bi-person-gear me-1"></i> Edit Base Salary Rules
+            <a href="{% url 'attendance:payroll_list' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold">
+                <i class="bi bi-sliders me-1"></i> Base Salary Rules
             </a>
         </div>
     </div>
 
-    <!-- Monthly Summary Metric Badges (Sleek & Compact) -->
+    <!-- Monthly Summary Metric Badges -->
     <div class="row g-2 mb-3">
         <div class="col-sm-6 col-md-3">
-            <div class="p-2.5 bg-success bg-opacity-10 text-success rounded-3 border border-success border-opacity-20 d-flex align-items-center justify-content-between">
+            <div class="p-3 bg-success bg-opacity-10 text-success rounded-3 border border-success border-opacity-20 d-flex align-items-center justify-content-between">
                 <div>
-                    <span class="text-xxs text-uppercase fw-bold d-block opacity-75">Net Payable</span>
-                    <strong class="fs-6 fw-bold">₹ {{ total_net|floatformat:2 }}</strong>
+                    <span class="text-xxs text-uppercase fw-bold d-block opacity-75">Net Payable Total</span>
+                    <strong class="fs-5 fw-bold">₹ {{ total_net|floatformat:2 }}</strong>
                 </div>
-                <i class="bi bi-cash-stack fs-3 opacity-50"></i>
+                <i class="bi bi-cash-stack fs-2 opacity-40"></i>
             </div>
         </div>
         <div class="col-sm-6 col-md-3">
-            <div class="p-2.5 bg-danger bg-opacity-10 text-danger rounded-3 border border-danger border-opacity-20 d-flex align-items-center justify-content-between">
+            <div class="p-3 bg-danger bg-opacity-10 text-danger rounded-3 border border-danger border-opacity-20 d-flex align-items-center justify-content-between">
                 <div>
                     <span class="text-xxs text-uppercase fw-bold d-block opacity-75">Total Deductions</span>
-                    <strong class="fs-6 fw-bold">- ₹ {{ total_deductions|floatformat:2 }}</strong>
+                    <strong class="fs-5 fw-bold">- ₹ {{ total_deductions|floatformat:2 }}</strong>
                 </div>
-                <i class="bi bi-scissors fs-3 opacity-50"></i>
+                <i class="bi bi-scissors fs-2 opacity-40"></i>
             </div>
         </div>
         <div class="col-sm-6 col-md-3">
-            <div class="p-2.5 bg-light text-dark rounded-3 border d-flex align-items-center justify-content-between">
+            <div class="p-3 bg-light text-dark rounded-3 border d-flex align-items-center justify-content-between">
                 <div>
-                    <span class="text-xxs text-uppercase fw-bold text-muted d-block">Gross Base</span>
-                    <strong class="fs-6 fw-bold">₹ {{ total_base|floatformat:2 }}</strong>
+                    <span class="text-xxs text-uppercase fw-bold text-muted d-block">Gross Base Salary</span>
+                    <strong class="fs-5 fw-bold">₹ {{ total_base|floatformat:2 }}</strong>
                 </div>
-                <i class="bi bi-building fs-3 text-muted opacity-50"></i>
+                <i class="bi bi-building fs-2 text-muted opacity-40"></i>
             </div>
         </div>
         <div class="col-sm-6 col-md-3">
-            <div class="p-2.5 bg-warning bg-opacity-10 text-dark rounded-3 border border-warning border-opacity-20 d-flex align-items-center justify-content-between">
+            <div class="p-3 bg-warning bg-opacity-10 text-dark rounded-3 border border-warning border-opacity-20 d-flex align-items-center justify-content-between">
                 <div>
-                    <span class="text-xxs text-uppercase fw-bold text-muted d-block">Status</span>
-                    <strong class="fs-6 fw-bold text-dark">{{ paid_count }} / {{ total_staff_payrolls }} Paid</strong>
+                    <span class="text-xxs text-uppercase fw-bold text-muted d-block">Settlement Status</span>
+                    <strong class="fs-5 fw-bold text-dark">{{ paid_count }} / {{ total_staff_payrolls }} Paid</strong>
                 </div>
-                <i class="bi bi-pie-chart-fill fs-3 text-warning opacity-75"></i>
+                <i class="bi bi-pie-chart-fill fs-2 text-warning opacity-60"></i>
             </div>
         </div>
     </div>
 
-    <!-- Unified Month & Year Selection Bar + Bulk Actions -->
-    <div class="card border-0 shadow-sm bg-white mb-3" style="border-radius: 0.75rem;">
-        <div class="card-body py-2.5 px-3">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                <form method="get" id="paySlipsMonthForm" class="d-flex align-items-center gap-2 m-0">
-                    <label class="form-label text-xxs fw-bold text-muted mb-0">Period:</label>
-                    <select name="month" class="form-select form-select-sm rounded-pill py-1 text-xs" onchange="document.getElementById('paySlipsMonthForm').submit()">
-                        <option value="1" {% if selected_month == 1 %}selected{% endif %}>January</option>
-                        <option value="2" {% if selected_month == 2 %}selected{% endif %}>February</option>
-                        <option value="3" {% if selected_month == 3 %}selected{% endif %}>March</option>
-                        <option value="4" {% if selected_month == 4 %}selected{% endif %}>April</option>
-                        <option value="5" {% if selected_month == 5 %}selected{% endif %}>May</option>
-                        <option value="6" {% if selected_month == 6 %}selected{% endif %}>June</option>
-                        <option value="7" {% if selected_month == 7 %}selected{% endif %}>July</option>
-                        <option value="8" {% if selected_month == 8 %}selected{% endif %}>August</option>
-                        <option value="9" {% if selected_month == 9 %}selected{% endif %}>September</option>
-                        <option value="10" {% if selected_month == 10 %}selected{% endif %}>October</option>
-                        <option value="11" {% if selected_month == 11 %}selected{% endif %}>November</option>
-                        <option value="12" {% if selected_month == 12 %}selected{% endif %}>December</option>
-                    </select>
-                    <select name="year" class="form-select form-select-sm rounded-pill py-1 text-xs" onchange="document.getElementById('paySlipsMonthForm').submit()">
-                        {% for y in years %}
-                            <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
-                        {% endfor %}
-                    </select>
-                </form>
+    <!-- Month & Year Selector -->
+    <div class="ps-card p-3 mb-3">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <form method="get" id="paySlipsMonthForm" class="d-flex align-items-center gap-2 m-0">
+                <label class="form-label text-xxs fw-bold text-muted mb-0">Pay Period:</label>
+                <select name="month" class="form-select form-select-sm rounded-pill py-1 text-xs fw-bold" onchange="document.getElementById('paySlipsMonthForm').submit()">
+                    <option value="1" {% if selected_month == 1 %}selected{% endif %}>January</option>
+                    <option value="2" {% if selected_month == 2 %}selected{% endif %}>February</option>
+                    <option value="3" {% if selected_month == 3 %}selected{% endif %}>March</option>
+                    <option value="4" {% if selected_month == 4 %}selected{% endif %}>April</option>
+                    <option value="5" {% if selected_month == 5 %}selected{% endif %}>May</option>
+                    <option value="6" {% if selected_month == 6 %}selected{% endif %}>June</option>
+                    <option value="7" {% if selected_month == 7 %}selected{% endif %}>July</option>
+                    <option value="8" {% if selected_month == 8 %}selected{% endif %}>August</option>
+                    <option value="9" {% if selected_month == 9 %}selected{% endif %}>September</option>
+                    <option value="10" {% if selected_month == 10 %}selected{% endif %}>October</option>
+                    <option value="11" {% if selected_month == 11 %}selected{% endif %}>November</option>
+                    <option value="12" {% if selected_month == 12 %}selected{% endif %}>December</option>
+                </select>
+                <select name="year" class="form-select form-select-sm rounded-pill py-1 text-xs fw-bold" onchange="document.getElementById('paySlipsMonthForm').submit()">
+                    {% for y in years %}
+                        <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </form>
 
-                <div class="d-flex align-items-center gap-2">
-                    {% if draft_count > 0 %}
-                        <form method="post" action="{% url 'attendance:mark_all_payrolls_paid' %}" class="m-0" onsubmit="return confirm('Mark all {{ draft_count }} pending draft pay slips as PAID for {{ selected_month }}/{{ selected_year }}?');">
-                            {% csrf_token %}
-                            <input type="hidden" name="month" value="{{ selected_month }}">
-                            <input type="hidden" name="year" value="{{ selected_year }}">
-                            <button type="submit" class="btn btn-xs btn-success rounded-pill px-3 py-1 fw-semibold">
-                                <i class="bi bi-check-all me-1"></i> Mark All Drafts Paid ({{ draft_count }})
-                            </button>
-                        </form>
-                    {% endif %}
-                </div>
+            <div class="d-flex align-items-center gap-2">
+                {% if draft_count > 0 %}
+                    <form method="post" action="{% url 'attendance:mark_all_payrolls_paid' %}" class="m-0" onsubmit="return confirm('Mark all {{ draft_count }} pending draft pay slips as PAID for {{ selected_month }}/{{ selected_year }}?');">
+                        {% csrf_token %}
+                        <input type="hidden" name="month" value="{{ selected_month }}">
+                        <input type="hidden" name="year" value="{{ selected_year }}">
+                        <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 py-1 fw-bold">
+                            <i class="bi bi-check-all me-1"></i> Mark All Drafts Paid ({{ draft_count }})
+                        </button>
+                    </form>
+                {% endif %}
             </div>
         </div>
     </div>
 
     <!-- Pay Slips Table Card -->
-    <div class="card border-0 shadow-sm bg-white" style="border-radius: 0.75rem;">
-        <div class="card-body p-3.5">
-            <!-- Compact Filters for Pay Slips -->
-            <form method="get" action="{% url 'attendance:pay_slips' %}" class="mb-3">
-                <input type="hidden" name="month" value="{{ selected_month }}">
-                <input type="hidden" name="year" value="{{ selected_year }}">
-                <div class="row g-2 align-items-center">
-                    <div class="col-md-4">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-light border-end-0 rounded-start-pill"><i class="bi bi-search text-muted"></i></span>
-                            <input type="text" name="q_payroll" value="{{ q_payroll }}" class="form-control border-start-0 rounded-end-pill" placeholder="Search staff name or ID...">
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <select name="branch_payroll" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
-                            <option value="">All Branches</option>
-                            {% for b in branches %}
-                                <option value="{{ b.id }}" {% if branch_payroll == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <select name="status_payroll" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
-                            <option value="">All Statuses</option>
-                            <option value="draft" {% if status_payroll == 'draft' %}selected{% endif %}>Draft (Pending)</option>
-                            <option value="paid" {% if status_payroll == 'paid' %}selected{% endif %}>Paid (Settled)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2 d-flex gap-1.5">
-                        <button type="submit" class="btn btn-sm btn-primary rounded-pill w-100">
-                            <i class="bi bi-funnel me-1"></i> Filter
-                        </button>
-                        <a href="{% url 'attendance:pay_slips' %}?month={{ selected_month }}&year={{ selected_year }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
-                            <i class="bi bi-arrow-counterclockwise"></i>
-                        </a>
+    <div class="ps-card p-3.5">
+        <!-- Filters -->
+        <form method="get" action="{% url 'attendance:pay_slips' %}" class="mb-3">
+            <input type="hidden" name="month" value="{{ selected_month }}">
+            <input type="hidden" name="year" value="{{ selected_year }}">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-4">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-end-0 rounded-start-pill"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" name="q_payroll" value="{{ q_payroll }}" class="form-control border-start-0 rounded-end-pill" placeholder="Search staff name or ID...">
                     </div>
                 </div>
-            </form>
-
-            <!-- Pay Slips Table -->
-            <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle mb-0 text-xxs small">
-                    <thead class="table-light text-muted text-uppercase">
-                        <tr>
-                            <th>Employee</th>
-                            <th>Attendance Days</th>
-                            <th>Base Salary</th>
-                            <th>Deductions</th>
-                            <th>Net Payable</th>
-                            <th>Status</th>
-                            <th class="text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for payroll in payrolls %}
-                        <tr>
-                            <td>
-                                <div class="fw-bold text-dark">
-                                    {{ payroll.user.first_name }} {{ payroll.user.last_name }}
-                                    {% if not payroll.user.first_name and not payroll.user.last_name %}{{ payroll.user.username }}{% endif %}
-                                </div>
-                                <span class="text-muted text-xxs">@{{ payroll.user.username }} &middot; ID: {{ payroll.user.employee_id|default:"-" }}</span>
-                            </td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-1">
-                                    <span class="badge rounded-pill px-2 py-0.5" style="background-color: #d1fae5; color: #047857; font-size: 0.65rem; font-weight: 600;">
-                                        P: {{ payroll.present_days }}d
-                                    </span>
-                                    {% if payroll.late_days > 0 %}
-                                    <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fef3c7; color: #b45309; font-size: 0.65rem; font-weight: 600;">
-                                        Late: {{ payroll.late_days }}d
-                                    </span>
-                                    {% endif %}
-                                    <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fee2e2; color: #b91c1c; font-size: 0.65rem; font-weight: 600;">
-                                        LOP: {{ payroll.lop_days }}d
-                                    </span>
-                                </div>
-                            </td>
-                            <td class="fw-bold text-dark">₹ {{ payroll.base_salary }}</td>
-                            <td class="text-danger fw-bold">
-                                <div>- ₹ {{ payroll.deductions }}</div>
-                                {% if payroll.late_deduction_amount > 0 %}
-                                    <small class="text-muted d-block" style="font-size: 0.65rem; font-weight: normal;">Late Cut: -₹ {{ payroll.late_deduction_amount }}</small>
-                                {% endif %}
-                            </td>
-                            <td class="text-success fw-bold">₹ {{ payroll.net_salary }}</td>
-                            <td>
-                                {% if payroll.status == 'paid' %}
-                                    <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0;"><i class="bi bi-check-circle-fill me-1"></i>Paid</span>
-                                {% else %}
-                                    <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a;"><i class="bi bi-hourglass-split me-1"></i>Draft</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end">
-                                <div class="d-flex align-items-center justify-content-end gap-1">
-                                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2.5 py-0.5" onclick="openPayslipModal('{{ payroll.user.username }}', '{{ payroll.user.employee_id|default:"-" }}', '{{ payroll.base_salary }}', '{{ payroll.deductions }}', '{{ payroll.net_salary }}', '{{ payroll.present_days }}', '{{ payroll.late_days }}', '{{ payroll.lop_days }}', '{{ selected_month }}/{{ selected_year }}', '{{ payroll.status }}', '{{ payroll.late_deduction_amount }}', '{{ payroll.lop_deduction_amount }}')">
-                                        <i class="bi bi-file-earmark-text me-1"></i> View Slip
-                                    </button>
-
-                                    {% if payroll.status == 'draft' %}
-                                        <a href="{% url 'attendance:mark_payroll_paid' payroll.id %}" class="btn btn-xs btn-success rounded-pill px-2.5 py-0.5 fw-semibold">
-                                            <i class="bi bi-check-lg me-1"></i> Mark Paid
-                                        </a>
-                                    {% else %}
-                                        <button class="btn btn-xs btn-light text-muted border rounded-pill px-2 py-0.5" disabled>
-                                            <i class="bi bi-check-all"></i>
-                                        </button>
-                                    {% endif %}
-                                </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="7" class="text-center py-4 text-muted">
-                                No pay slips found for {{ selected_month }}/{{ selected_year }}.<br>
-                                Go to <a href="{% url 'attendance:payroll_list' %}">Salary Configs</a> to calculate payroll.
-                            </td>
-                        </tr>
+                <div class="col-md-3">
+                    <select name="branch_payroll" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                        <option value="">All Branches</option>
+                        {% for b in branches %}
+                            <option value="{{ b.id }}" {% if branch_payroll == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
                         {% endfor %}
-                    </tbody>
-                </table>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="status_payroll" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        <option value="draft" {% if status_payroll == 'draft' %}selected{% endif %}>Draft (Pending)</option>
+                        <option value="paid" {% if status_payroll == 'paid' %}selected{% endif %}>Paid (Settled)</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-1.5">
+                    <button type="submit" class="btn btn-sm btn-primary rounded-pill w-100 fw-bold">
+                        <i class="bi bi-funnel me-1"></i> Filter
+                    </button>
+                    <a href="{% url 'attendance:pay_slips' %}?month={{ selected_month }}&year={{ selected_year }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </a>
+                </div>
             </div>
+        </form>
+
+        <!-- Table -->
+        <div class="table-responsive">
+            <table class="table ps-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Employee Info</th>
+                        <th>Pay Days / Leave</th>
+                        <th>Basic Salary</th>
+                        <th>Deductions</th>
+                        <th>Net Salary</th>
+                        <th>Status</th>
+                        <th class="pe-3 text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payroll in payrolls %}
+                    <tr>
+                        <td class="ps-3">
+                            <strong class="text-dark d-block">
+                                {{ payroll.user.first_name }} {{ payroll.user.last_name }}
+                                {% if not payroll.user.first_name and not payroll.user.last_name %}{{ payroll.user.username }}{% endif %}
+                            </strong>
+                            <div class="text-muted" style="font-size: 0.7rem;">
+                                @{{ payroll.user.username }} &middot; ID: <strong class="text-dark">{{ payroll.user.employee_id|default:"-" }}</strong> &middot; {{ payroll.user.designation|default:payroll.user.role_display }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-1">
+                                <span class="badge rounded-pill px-2 py-0.5" style="background-color: #d1fae5; color: #047857; font-size: 0.65rem; font-weight: 700;">
+                                    Pay Days: {{ payroll.payable_days|floatformat:1 }}d
+                                </span>
+                                <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fee2e2; color: #b91c1c; font-size: 0.65rem; font-weight: 700;">
+                                    Leave: {{ payroll.lop_days|floatformat:1 }}d
+                                </span>
+                            </div>
+                        </td>
+                        <td class="fw-bold text-dark">₹ {{ payroll.base_salary }}</td>
+                        <td class="text-danger fw-bold">
+                            <div>- ₹ {{ payroll.deductions }}</div>
+                            {% if payroll.late_deduction_amount > 0 %}
+                                <small class="text-muted d-block" style="font-size: 0.65rem; font-weight: normal;">Late Cut: -₹ {{ payroll.late_deduction_amount }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-success fw-bold fs-6">₹ {{ payroll.net_salary }}</td>
+                        <td>
+                            {% if payroll.status == 'paid' %}
+                                <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0;"><i class="bi bi-check-circle-fill me-1"></i>Paid</span>
+                            {% else %}
+                                <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a;"><i class="bi bi-hourglass-split me-1"></i>Draft</span>
+                            {% endif %}
+                        </td>
+                        <td class="pe-3 text-end">
+                            <div class="d-flex align-items-center justify-content-end gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-bold" 
+                                        onclick="openPayslipModal(
+                                            '{{ payroll.user.username }}',
+                                            '{{ payroll.user.first_name }} {{ payroll.user.last_name }}',
+                                            '{{ payroll.user.employee_id|default:"-" }}',
+                                            '{{ payroll.user.designation|default:payroll.user.role_display }}',
+                                            '{{ payroll.user.date_of_joining|date:"d M Y"|default:"-" }}',
+                                            '{{ payroll.user.bank_name|default:"Not Provided" }}',
+                                            '{{ payroll.user.account_number|default:"Not Provided" }}',
+                                            '{{ payroll.user.ifsc_code|default:"Not Provided" }}',
+                                            '{{ payroll.base_salary }}',
+                                            '{{ payroll.deductions }}',
+                                            '{{ payroll.net_salary }}',
+                                            '{{ payroll.present_days }}',
+                                            '{{ payroll.late_days }}',
+                                            '{{ payroll.lop_days }}',
+                                            '{{ payroll.payable_days|floatformat:1 }}',
+                                            '{{ payroll.total_days_in_month }}',
+                                            '{{ selected_month }}/{{ selected_year }}',
+                                            '{{ payroll.status }}',
+                                            '{{ payroll.late_deduction_amount }}',
+                                            '{{ payroll.lop_deduction_amount }}'
+                                        )">
+                                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> View Pay Slip
+                                </button>
+
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 py-1 fw-bold" title="Edit Bank Details"
+                                        onclick="openEditBankModal('{{ payroll.user.id }}', '{{ payroll.user.username }}', '{{ payroll.user.designation|default:"" }}', '{{ payroll.user.bank_name|default:"" }}', '{{ payroll.user.account_number|default:"" }}', '{{ payroll.user.ifsc_code|default:"" }}', '{{ payroll.user.date_of_joining|date:"Y-m-d"|default:"" }}')">
+                                    <i class="bi bi-bank"></i>
+                                </button>
+
+                                {% if payroll.status == 'draft' %}
+                                    <a href="{% url 'attendance:mark_payroll_paid' payroll.id %}" class="btn btn-sm btn-success rounded-pill px-2.5 py-1 fw-bold">
+                                        <i class="bi bi-check-lg me-1"></i> Mark Paid
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            No pay slips found for {{ selected_month }}/{{ selected_year }}.<br>
+                            Go to <a href="{% url 'attendance:payroll_list' %}">Salary Configs</a> to calculate payroll.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<!-- PAYSLIP PREVIEW & PRINT MODAL -->
+<!-- LUXURY EXECUTIVE CORPORATE PAYSLIP MODAL (Single A4 Page Optimized) -->
 <div class="modal fade" id="payslipModal" tabindex="-1" aria-labelledby="payslipModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <!-- Modal Header (Screen Only) -->
-            <div class="modal-header border-0 text-white py-2.5 px-3 no-print" style="background: linear-gradient(135deg, #1e293b, #0f172a);">
+            <div class="modal-header border-0 text-white py-2 px-3" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);">
                 <div class="d-flex align-items-center gap-2">
                     <i class="bi bi-file-earmark-pdf-fill text-warning fs-5"></i>
                     <div>
-                        <h6 class="modal-title fw-bold text-white mb-0" id="payslipModalLabel">Corporate Salary Slip</h6>
+                        <h6 class="modal-title fw-bold text-white mb-0" id="payslipModalLabel" style="font-size: 0.9rem;">Executive Payslip Statement</h6>
                         <span id="payslipPeriod" class="text-xxs text-white-50">Period</span>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <!-- Printable Payslip Document Container -->
-            <div class="modal-body p-4 bg-white" id="printablePayslip">
-                <!-- Company Logo & Title Header -->
-                <div class="d-flex justify-content-between align-items-center pb-3 mb-3 border-bottom border-2 border-dark">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="rounded-3 p-2 bg-dark text-white d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px;">
-                            <i class="bi bi-shop-window fs-3 text-warning"></i>
+            <!-- Printable Payslip Sheet Container -->
+            <div class="modal-body p-3 bg-white" id="printablePayslip">
+                <div class="ps-doc-container">
+                    <!-- Top Corporate Header with Company Logo -->
+                    <div class="ps-doc-header d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2.5">
+                            <div class="rounded-2 p-1 bg-white text-dark d-flex align-items-center justify-content-center shadow-sm" style="height: 40px; min-width: 40px;">
+                                <img src="{% static 'images/aronlogonow.png' %}" alt="Aaron Garments Logo" style="max-height: 32px; width: auto; object-fit: contain;">
+                            </div>
+                            <div>
+                                <h3 class="ps-doc-company-title">AARON GARMENTS PRIVATE LIMITED</h3>
+                                <span class="text-white-50 fw-semibold text-uppercase" style="letter-spacing: 0.06em; font-size: 0.62rem;">CONFIDENTIAL SALARY PAYSLIP STATEMENT</span>
+                            </div>
                         </div>
+                        <div class="text-end">
+                            <span id="slipStatusBadge" class="badge rounded-pill px-2.5 py-1 fw-bold text-xxs shadow-xs" style="background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0;">
+                                PAID (SETTLED)
+                            </span>
+                            <div class="text-white-50 text-xxs mt-0.5" id="slipPrintDate" style="font-size: 0.6rem;">Issued: {% now "d M Y" %}</div>
+                        </div>
+                    </div>
+
+                    <!-- Executive Info Grid (2 Columns: Employee & Bank) -->
+                    <div class="row g-2 mb-2">
+                        <!-- Left Box: Employee Profile -->
+                        <div class="col-md-6">
+                            <div class="ps-section-box h-100">
+                                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2 d-flex align-items-center gap-1.5" style="font-size: 0.72rem;">
+                                    <i class="bi bi-person-badge-fill text-indigo"></i> Employee Information
+                                </h6>
+                                <div class="row g-1.5">
+                                    <div class="col-6">
+                                        <span class="ps-field-label">Employee ID</span>
+                                        <span class="ps-field-value text-primary" id="slipEmpId">--</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <span class="ps-field-label">Employee Name</span>
+                                        <span class="ps-field-value" id="slipEmpName">--</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <span class="ps-field-label">Designation / Role</span>
+                                        <span class="ps-field-value" id="slipDesignation">--</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <span class="ps-field-label">Date of Joining (DOJ)</span>
+                                        <span class="ps-field-value" id="slipDoj">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Box: Bank & Settlement -->
+                        <div class="col-md-6">
+                            <div class="ps-section-box h-100">
+                                <h6 class="fw-bold text-dark border-bottom pb-1 mb-2 d-flex align-items-center gap-1.5" style="font-size: 0.72rem;">
+                                    <i class="bi bi-bank2 text-indigo"></i> Bank & Settlement Details
+                                </h6>
+                                <div class="row g-1.5">
+                                    <div class="col-6">
+                                        <span class="ps-field-label">Bank Name</span>
+                                        <span class="ps-field-value" id="slipBankName">--</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <span class="ps-field-label">Account Number</span>
+                                        <span class="ps-field-value" id="slipAccNo">--</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <span class="ps-field-label">IFSC Code</span>
+                                        <span class="ps-field-value" id="slipIfsc">--</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <span class="ps-field-label">Pay Period / Mode</span>
+                                        <span class="ps-field-value text-success" id="slipPeriodText">--/--</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Attendance Summary Bar -->
+                    <div class="ps-section-box mb-2 py-1.5">
+                        <div class="row text-center align-items-center g-0">
+                            <div class="col-3 border-end">
+                                <span class="ps-field-label">Total Month Days</span>
+                                <strong class="fs-7 text-dark" id="slipTotalDays">--</strong>
+                            </div>
+                            <div class="col-3 border-end">
+                                <span class="ps-field-label text-success">Payable / Pay Days</span>
+                                <strong class="fs-7 text-success" id="slipPayDays">--</strong>
+                            </div>
+                            <div class="col-3 border-end">
+                                <span class="ps-field-label text-danger">Leave / LOP Days</span>
+                                <strong class="fs-7 text-danger" id="slipLeaveDays">--</strong>
+                            </div>
+                            <div class="col-3">
+                                <span class="ps-field-label text-warning">Late Marks</span>
+                                <strong class="fs-7 text-dark" id="slipLateDays">--</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Salary Financial Breakdown (Clean Modern Executive Card) -->
+                    <div class="card border rounded-3 mb-2 overflow-hidden shadow-xs">
+                        <div class="text-white px-3 py-1.5 d-flex justify-content-between align-items-center" style="background-color: #0f172a !important;">
+                            <span class="fw-bold text-uppercase text-xxs tracking-wider" style="letter-spacing: 0.05em; font-size: 0.65rem;"><i class="bi bi-calculator me-1.5 text-warning"></i> Financial Salary Breakdown</span>
+                            <span class="text-white-50 text-xxs" style="font-size: 0.62rem;">Monthly Calculation</span>
+                        </div>
+                        <div class="p-2.5 bg-white">
+                            <!-- Line Item 1: Gross Monthly Base Salary -->
+                            <div class="d-flex justify-content-between align-items-center pb-1.5 mb-1.5 border-bottom">
+                                <div>
+                                    <span class="fw-bold text-dark d-block" style="font-size: 0.8rem;"><i class="bi bi-plus-circle-fill text-success me-1"></i> Monthly Base Salary (Contracted Base)</span>
+                                    <small class="text-muted" style="font-size: 0.65rem;">Full fixed monthly base pay</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="fw-bold text-dark text-sm" id="slipBaseSalary">₹ 0.00</span>
+                                </div>
+                            </div>
+
+                            <!-- Line Item 2: LOP Deduction (Dynamic) -->
+                            <div class="d-flex justify-content-between align-items-center pb-1.5 mb-1.5 border-bottom" id="slipLopRow">
+                                <div>
+                                    <span class="fw-bold text-danger d-block" style="font-size: 0.8rem;"><i class="bi bi-dash-circle-fill text-danger me-1"></i> Loss of Pay (LOP) Absences Deduction</span>
+                                    <small class="text-muted" style="font-size: 0.65rem;" id="slipLopSubtext">Deduction for unworked/absent days</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="fw-bold text-danger text-sm" id="slipLopDeduction">- ₹ 0.00</span>
+                                </div>
+                            </div>
+
+                            <!-- Line Item 3: Late Deduction (Dynamic, hidden if 0) -->
+                            <div class="d-flex justify-content-between align-items-center pb-1.5 mb-1.5 border-bottom" id="slipLateRow">
+                                <div>
+                                    <span class="fw-bold text-dark d-block" style="font-size: 0.8rem;"><i class="bi bi-clock-history me-1 text-warning"></i> Late Check-in Cut</span>
+                                    <small class="text-muted" style="font-size: 0.65rem;">Deduction for grace period exceeded</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="fw-bold text-danger text-sm" id="slipLateDeduction">- ₹ 0.00</span>
+                                </div>
+                            </div>
+
+                            <!-- Line Item 4: Summary Totals Bar -->
+                            <div class="row g-2 pt-0.5 text-xs">
+                                <div class="col-6">
+                                    <div class="p-2 rounded-2 bg-light border d-flex justify-content-between align-items-center">
+                                        <span class="text-muted fw-bold" style="font-size: 0.7rem;">Total Gross Base:</span>
+                                        <strong class="text-dark" style="font-size: 0.78rem;" id="slipGrossEarnings">₹ 0.00</strong>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 rounded-2 bg-danger bg-opacity-10 border border-danger border-opacity-20 d-flex justify-content-between align-items-center">
+                                        <span class="text-danger fw-bold" style="font-size: 0.7rem;">Total Deductions:</span>
+                                        <strong class="text-danger" style="font-size: 0.78rem;" id="slipDeductions">- ₹ 0.00</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Net Salary Card -->
+                    <div class="ps-net-card d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
                         <div>
-                            <h4 class="fw-bold text-dark mb-0 tracking-tight" style="letter-spacing: -0.5px;">AARON GARMENTS</h4>
-                            <span class="text-muted small fw-semibold">Official Employee Salary Statement & Payslip</span>
+                            <span class="ps-field-label text-success mb-0" style="font-size: 0.68rem;">FINAL NET PAYABLE SALARY</span>
+                            <div id="slipAmountInWords" class="text-muted fw-bold italic mt-0.5" style="font-size: 0.68rem;">(Net Amount Credited to Bank Account)</div>
+                        </div>
+                        <div class="text-end">
+                            <h3 class="fw-bold text-success mb-0" id="slipNetSalary" style="font-family: 'Outfit', sans-serif; letter-spacing: -0.02em;">₹ 0.00</h3>
                         </div>
                     </div>
-                    <div class="text-end">
-                        <span id="slipStatusBadge" class="badge rounded-pill px-3 py-1.5 fw-bold text-xs shadow-xs" style="background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0;">
-                            PAID (SETTLED)
-                        </span>
-                        <div class="text-muted text-xxs mt-1" id="slipPrintDate">Issued: {% now "d M Y" %}</div>
-                    </div>
-                </div>
 
-                <!-- Employee & Period Information Grid -->
-                <div class="p-3 bg-light rounded-3 border mb-3">
-                    <div class="row g-2 text-xs">
-                        <div class="col-6 col-sm-3">
-                            <span class="text-muted d-block text-xxs text-uppercase fw-semibold">Employee Name</span>
-                            <strong id="slipEmpName" class="text-dark fs-6">--</strong>
+                    <!-- Footer Note & Verification Seal -->
+                    <div class="pt-2 border-top d-flex flex-wrap align-items-center justify-content-between text-muted text-xxs" style="font-size: 0.62rem;">
+                        <div>
+                            <i class="bi bi-shield-check me-1 text-success fs-6"></i> Computer-generated salary statement for Aaron Garments. Valid without physical signature.
                         </div>
-                        <div class="col-6 col-sm-3">
-                            <span class="text-muted d-block text-xxs text-uppercase fw-semibold">Employee ID</span>
-                            <strong id="slipEmpId" class="text-dark fs-6">--</strong>
-                        </div>
-                        <div class="col-6 col-sm-3">
-                            <span class="text-muted d-block text-xxs text-uppercase fw-semibold">Pay Period</span>
-                            <strong id="slipPeriodText" class="text-dark fs-6">--/--</strong>
-                        </div>
-                        <div class="col-6 col-sm-3 text-sm-end">
-                            <span class="text-muted d-block text-xxs text-uppercase fw-semibold">Organization</span>
-                            <strong class="text-dark fs-6">Aaron Garments</strong>
+                        <div class="fw-bold text-uppercase" style="letter-spacing: 0.05em;">
+                            Authorized HR & Payroll Division
                         </div>
                     </div>
-                </div>
-
-                <!-- Attendance Breakdown Summary Pills -->
-                <div class="p-2.5 bg-white border rounded-3 mb-3">
-                    <span class="text-xxs fw-bold text-muted text-uppercase d-block mb-1.5">Monthly Attendance Record</span>
-                    <div class="row text-center g-2 text-xs">
-                        <div class="col-4">
-                            <div class="py-1.5 px-2 rounded-2 bg-success bg-opacity-10 text-success fw-bold border border-success border-opacity-20">
-                                Days Present: <span id="slipPresentDays">0</span>d
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="py-1.5 px-2 rounded-2 bg-warning bg-opacity-10 text-dark fw-bold border border-warning border-opacity-20">
-                                Late Marks: <span id="slipLateDays">0</span>d
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="py-1.5 px-2 rounded-2 bg-danger bg-opacity-10 text-danger fw-bold border border-danger border-opacity-20">
-                                LOP Absences: <span id="slipLopDays">0</span>d
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Itemized Earnings & Deductions Breakdown Table -->
-                <div class="table-responsive mb-3">
-                    <table class="table table-bordered align-middle text-xs mb-0">
-                        <thead class="table-dark text-uppercase text-xxs" style="background-color: #0f172a;">
-                            <tr>
-                                <th>Earnings Description</th>
-                                <th class="text-end">Amount (₹)</th>
-                                <th>Deductions Description</th>
-                                <th class="text-end">Amount (₹)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="fw-semibold text-dark">Monthly Base Salary</td>
-                                <td class="text-end fw-bold text-dark" id="slipBaseSalary">₹ 0.00</td>
-                                <td class="fw-semibold text-muted">Late Check-in Deduction</td>
-                                <td class="text-end fw-bold text-danger" id="slipLateDeduction">- ₹ 0.00</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted">Allowances / Bonuses</td>
-                                <td class="text-end text-muted">₹ 0.00</td>
-                                <td class="fw-semibold text-muted">Loss of Pay (LOP) Deduction</td>
-                                <td class="text-end fw-bold text-danger" id="slipLopDeduction">- ₹ 0.00</td>
-                            </tr>
-                            <tr class="table-light fw-bold">
-                                <td>Gross Earnings</td>
-                                <td class="text-end text-dark" id="slipGrossEarnings">₹ 0.00</td>
-                                <td>Total Deductions</td>
-                                <td class="text-end text-danger" id="slipDeductions">- ₹ 0.00</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Net Payable Highlight Banner -->
-                <div class="p-3 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-30 d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <span class="text-uppercase fw-bold text-success text-xxs d-block" style="letter-spacing: 0.5px;">Net Payable Amount</span>
-                        <small class="text-muted" style="font-size: 0.7rem;">Direct Bank Credit / Cash Settlement</small>
-                    </div>
-                    <div class="text-end">
-                        <h3 class="fw-bold text-success mb-0" id="slipNetSalary">₹ 0.00</h3>
-                    </div>
-                </div>
-
-                <!-- Footer Computer Verification Note (No Signatures Required) -->
-                <div class="pt-2 border-top text-center text-muted text-xxs">
-                    <i class="bi bi-shield-check me-1 text-success"></i> This is a computer-generated salary statement for Aaron Garments. No physical signature required.
                 </div>
             </div>
 
             <!-- Modal Footer (Screen Only) -->
-            <div class="modal-footer border-0 bg-light py-2 px-3 d-flex justify-content-between no-print">
+            <div class="modal-footer border-0 bg-light py-2 px-3 d-flex justify-content-between">
                 <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-sm btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
-                    <i class="bi bi-printer-fill me-1"></i> Print Pay Slip
+                <button type="button" class="btn btn-sm btn-primary rounded-pill px-4 fw-bold shadow-sm" onclick="printPayslipDoc()">
+                    <i class="bi bi-printer-fill me-1"></i> Print Pay Slip / Save PDF
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Bank Details Modal -->
+<div class="modal fade" id="editBankModal" tabindex="-1" aria-labelledby="editBankModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0 bg-primary text-white py-2.5 px-3">
+                <h6 class="modal-title fw-bold" id="editBankModalLabel" style="font-size: 0.9rem;">
+                    <i class="bi bi-bank2 me-1.5"></i> Edit Employee Bank & Account Details
+                </h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="alert alert-secondary border-0 bg-white rounded-3 mb-3 p-2.5 shadow-sm" style="font-size: 0.8rem;">
+                    <span class="fw-semibold text-muted">Employee:</span>
+                    <strong id="bankEmpName" class="text-dark ms-1">--</strong>
+                </div>
+
+                <div id="bankModalAlert" class="alert alert-success border-0 shadow-sm rounded-3 mb-3 p-2.5 small d-none align-items-center gap-2" style="font-size: 0.8rem; background-color: #d1fae5; color: #065f46;">
+                    <i class="bi bi-check-circle-fill text-success fs-6"></i>
+                    <span id="bankModalAlertMsg">Bank details saved successfully!</span>
+                </div>
+
+                <form id="editBankForm">
+                    <input type="hidden" id="bankUserId">
+
+                    <div class="mb-2.5">
+                        <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem; text-transform: uppercase;">Designation / Job Title</label>
+                        <input type="text" id="bankDesignation" class="form-control form-control-sm rounded-2" placeholder="e.g. Sales Manager">
+                    </div>
+
+                    <div class="mb-2.5">
+                        <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem; text-transform: uppercase;">Bank Name</label>
+                        <input type="text" id="bankNameInput" class="form-control form-control-sm rounded-2" placeholder="e.g. HDFC Bank">
+                    </div>
+
+                    <div class="row g-2 mb-2.5">
+                        <div class="col-6">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem; text-transform: uppercase;">Account Number</label>
+                            <input type="text" id="bankAccNoInput" class="form-control form-control-sm rounded-2" placeholder="e.g. 501002938471">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem; text-transform: uppercase;">IFSC Code</label>
+                            <input type="text" id="bankIfscInput" class="form-control form-control-sm rounded-2" placeholder="e.g. HDFC0001234">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem; text-transform: uppercase;">Date of Joining (DOJ)</label>
+                        <input type="date" id="bankDojInput" class="form-control form-control-sm rounded-2">
+                    </div>
+
+                    <div class="d-flex gap-2 pt-2">
+                        <button type="button" class="btn btn-secondary rounded-pill w-50 py-2 fw-bold" data-bs-dismiss="modal" style="font-size: 0.8rem;">Cancel</button>
+                        <button type="submit" id="saveBankBtn" class="btn btn-primary rounded-pill w-50 py-2 fw-bold" style="font-size: 0.8rem;">Save Details</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -392,18 +630,277 @@
 
 {% block extra_js %}
 <script>
-    function openPayslipModal(username, empId, base, deductions, net, present, late, lop, period, status, lateDed, lopDed) {
-        if (document.getElementById('slipEmpName')) document.getElementById('slipEmpName').textContent = username;
-        if (document.getElementById('slipEmpId')) document.getElementById('slipEmpId').textContent = empId;
-        if (document.getElementById('slipBaseSalary')) document.getElementById('slipBaseSalary').textContent = '₹ ' + parseFloat(base || 0).toFixed(2);
-        if (document.getElementById('slipGrossEarnings')) document.getElementById('slipGrossEarnings').textContent = '₹ ' + parseFloat(base || 0).toFixed(2);
-        if (document.getElementById('slipLateDeduction')) document.getElementById('slipLateDeduction').textContent = '- ₹ ' + parseFloat(lateDed || 0).toFixed(2);
-        if (document.getElementById('slipLopDeduction')) document.getElementById('slipLopDeduction').textContent = '- ₹ ' + parseFloat(lopDed || 0).toFixed(2);
-        if (document.getElementById('slipDeductions')) document.getElementById('slipDeductions').textContent = '- ₹ ' + parseFloat(deductions || 0).toFixed(2);
-        if (document.getElementById('slipNetSalary')) document.getElementById('slipNetSalary').textContent = '₹ ' + parseFloat(net || 0).toFixed(2);
-        if (document.getElementById('slipPresentDays')) document.getElementById('slipPresentDays').textContent = present || 0;
-        if (document.getElementById('slipLateDays')) document.getElementById('slipLateDays').textContent = late || 0;
-        if (document.getElementById('slipLopDays')) document.getElementById('slipLopDays').textContent = lop || 0;
+    function openEditBankModal(userId, username, designation, bankName, accNo, ifsc, doj) {
+        document.getElementById('bankUserId').value = userId;
+        document.getElementById('bankEmpName').textContent = username;
+        document.getElementById('bankDesignation').value = designation || '';
+        document.getElementById('bankNameInput').value = bankName || '';
+        document.getElementById('bankAccNoInput').value = accNo || '';
+        document.getElementById('bankIfscInput').value = ifsc || '';
+        document.getElementById('bankDojInput').value = doj || '';
+        
+        const alertBox = document.getElementById('bankModalAlert');
+        if (alertBox) {
+            alertBox.classList.add('d-none');
+            alertBox.classList.remove('d-flex');
+        }
+        const btn = document.getElementById('saveBankBtn');
+        if (btn) {
+            btn.disabled = false;
+            btn.className = "btn btn-primary rounded-pill w-50 py-2 fw-bold";
+            btn.innerHTML = 'Save Details';
+        }
+
+        const modalElem = document.getElementById('editBankModal');
+        if (modalElem) {
+            const modal = bootstrap.Modal.getOrCreateInstance(modalElem);
+            modal.show();
+        }
+    }
+
+    function openPayslipModal(username, fullName, empId, designation, doj, bankName, accNo, ifsc, baseSalary, deductions, netSalary, presentDays, lateDays, lopDays, payableDays, totalDays, period, status, lateDeduction, lopDeduction) {
+        // Populate employee info
+        document.getElementById('slipEmpId').textContent = empId || '--';
+        document.getElementById('slipEmpName').textContent = fullName || '--';
+        document.getElementById('slipDesignation').textContent = designation || '--';
+        document.getElementById('slipDoj').textContent = doj || '--';
+        // Populate bank details
+        document.getElementById('slipBankName').textContent = bankName || 'Not Provided';
+        document.getElementById('slipAccNo').textContent = accNo || 'Not Provided';
+        document.getElementById('slipIfsc').textContent = ifsc || 'Not Provided';
+        // Period and status
+        document.getElementById('slipPeriodText').textContent = period || '--';
+        const badge = document.getElementById('slipStatusBadge');
+        if (badge) {
+            badge.textContent = status === 'paid' ? 'PAID (SETTLED)' : 'DRAFT (PENDING)';
+            badge.style.backgroundColor = status === 'paid' ? '#d1fae5' : '#fef3c7';
+            badge.style.color = status === 'paid' ? '#047857' : '#b45309';
+            badge.style.border = status === 'paid' ? '1px solid #a7f3d0' : '1px solid #fde68a';
+        }
+        // Attendance summary bar
+        const slipTotalDaysElem = document.getElementById('slipTotalDays');
+        if (slipTotalDaysElem) slipTotalDaysElem.textContent = totalDays + ' Days';
+        const slipPayDaysElem = document.getElementById('slipPayDays');
+        if (slipPayDaysElem) slipPayDaysElem.textContent = Number(payableDays).toFixed(1) + ' Days';
+        const slipLeaveDaysElem = document.getElementById('slipLeaveDays');
+        if (slipLeaveDaysElem) slipLeaveDaysElem.textContent = Number(lopDays).toFixed(1) + ' Days';
+        const slipLateDaysElem = document.getElementById('slipLateDays');
+        if (slipLateDaysElem) slipLateDaysElem.textContent = lateDays + ' Days';
+        // Financial values (format with INR symbol)
+        const fmt = (val) => '₹ ' + Number(val).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('slipBaseSalary').textContent = fmt(baseSalary);
+        document.getElementById('slipLopDeduction').textContent = '- ' + fmt(lopDeduction);
+        document.getElementById('slipLateDeduction').textContent = '- ' + fmt(lateDeduction);
+        document.getElementById('slipGrossEarnings').textContent = fmt(baseSalary);
+        document.getElementById('slipDeductions').textContent = '- ' + fmt(deductions);
+        document.getElementById('slipNetSalary').textContent = fmt(netSalary);
+        // Update LOP subtext
+        const lopSubtext = document.getElementById('slipLopSubtext');
+        if (lopSubtext) lopSubtext.textContent = Number(lopDays).toFixed(1) + ' absent days deducted';
+        // Show / hide dynamic rows
+        const lopRow = document.getElementById('slipLopRow');
+        if (lopRow) lopRow.style.display = (Number(lopDeduction) > 0) ? 'flex' : 'none';
+        const lateRow = document.getElementById('slipLateRow');
+        if (lateRow) lateRow.style.display = (Number(lateDeduction) > 0) ? 'flex' : 'none';
+        // Amount in words
+        const amountInWordsElem = document.getElementById('slipAmountInWords');
+        if (amountInWordsElem && typeof numberToWords === 'function') {
+            const words = numberToWords(Number(netSalary));
+            amountInWordsElem.textContent = words ? '(' + words.trim() + ' Rupees Only)' : '(Net Amount Credited to Bank Account)';
+        }
+        // Show the modal
+        const modalElem = document.getElementById('payslipModal');
+        if (modalElem) {
+            const modal = bootstrap.Modal.getOrCreateInstance(modalElem);
+            modal.show();
+        }
+    }
+
+    if (document.getElementById('editBankForm')) {
+        document.getElementById('editBankForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const userId = document.getElementById('bankUserId').value;
+            const designation = document.getElementById('bankDesignation').value;
+            const bankName = document.getElementById('bankNameInput').value;
+            const accNo = document.getElementById('bankAccNoInput').value;
+            const ifsc = document.getElementById('bankIfscInput').value;
+            const doj = document.getElementById('bankDojInput').value;
+            
+            const btn = document.getElementById('saveBankBtn');
+            const alertBox = document.getElementById('bankModalAlert');
+            const alertMsg = document.getElementById('bankModalAlertMsg');
+            
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+            }
+
+            let url = "{% url 'attendance:update_bank_details_ajax' 0 %}".replace('0', userId);
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    designation: designation,
+                    bank_name: bankName,
+                    account_number: accNo,
+                    ifsc_code: ifsc,
+                    date_of_joining: doj
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    if (alertBox && alertMsg) {
+                        alertMsg.textContent = data.message;
+                        alertBox.classList.remove('d-none');
+                        alertBox.classList.add('d-flex');
+                    }
+                    if (btn) {
+                        btn.classList.remove('btn-primary');
+                        btn.classList.add('btn-success');
+                        btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Saved!';
+                    }
+                    setTimeout(() => {
+                        const modalElem = document.getElementById('editBankModal');
+                        const modal = bootstrap.Modal.getInstance(modalElem);
+                        if (modal) modal.hide();
+                        location.reload();
+                    }, 800);
+                } else {
+                    alert(data.message || 'Failed to update bank details.');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = 'Save Details';
+                    }
+                }
+            })
+            .catch(err => {
+                console.error("AJAX error:", err);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Save Details';
+                }
+            });
+        });
+    }
+
+    function printPayslipDoc() {
+        const payslipElem = document.getElementById('printablePayslip');
+        if (!payslipElem) return;
+        
+        const payslipHtml = payslipElem.innerHTML;
+        
+        const printWindow = window.open('', '_blank', 'height=850,width=950');
+        if (!printWindow) {
+            alert('Please allow pop-ups for this site to print pay slips.');
+            return;
+        }
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Salary Pay Slip - Aaron Garments</title>
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+                <style>
+                    @page { size: A4 portrait; margin: 6mm; }
+                    body { background: #ffffff !important; font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #0f172a; padding: 5px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    .ps-doc-container { border: 1.5px solid #0f172a !important; border-radius: 8px !important; padding: 14px !important; background: #ffffff !important; }
+                    .ps-doc-header { background: #0f172a !important; border-radius: 6px !important; padding: 0.65rem 0.85rem !important; color: #ffffff !important; margin-bottom: 0.65rem !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    .ps-doc-company-title { font-family: 'Outfit', sans-serif !important; font-weight: 800 !important; font-size: 1.1rem !important; color: #ffffff !important; margin: 0 !important; }
+                    .ps-section-box { border: 1px solid #e2e8f0 !important; border-radius: 6px !important; background: #f8fafc !important; padding: 0.5rem 0.75rem !important; margin-bottom: 0.5rem !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    .ps-field-label { font-size: 0.58rem !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; color: #64748b !important; margin-bottom: 0.1rem !important; display: block !important; }
+                    .ps-field-value { font-size: 0.75rem !important; font-weight: 700 !important; color: #0f172a !important; }
+                    .ps-net-card { background: #d1fae5 !important; border: 1.5px solid #a7f3d0 !important; border-radius: 6px !important; padding: 0.5rem 0.85rem !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    .bg-dark { background-color: #0f172a !important; }
+                </style>
+            </head>
+            <body>
+                ${payslipHtml}
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.focus();
+                            window.print();
+                            setTimeout(function() { window.close(); }, 300);
+                        }, 250);
+                    };
+                <\/script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }
+
+    function numberToWords(num) {
+        var a = ['','One ','Two ','Three ','Four ','Five ','Six ','Seven ','Eight ','Nine ','Ten ','Eleven ','Twelve ','Thirteen ','Fourteen ','Fifteen ','Sixteen ','Seventeen ','Eighteen ','Nineteen '];
+        var b = ['', '', 'Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+
+        function inWords(n) {
+            if ((n = n.toString()).length > 9) return 'overflow';
+            var n_arr = ('000000000' + n).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+            if (!n_arr) return '';
+            var str = '';
+            str += (n_arr[1] != 0) ? (a[Number(n_arr[1])] || b[n_arr[1][0]] + ' ' + a[n_arr[1][1]]) + 'Crore ' : '';
+            str += (n_arr[2] != 0) ? (a[Number(n_arr[2])] || b[n_arr[2][0]] + ' ' + a[n_arr[2][1]]) + 'Lakh ' : '';
+            str += (n_arr[3] != 0) ? (a[Number(n_arr[3])] || b[n_arr[3][0]] + ' ' + a[n_arr[3][1]]) + 'Thousand ' : '';
+            str += (n_arr[4] != 0) ? (a[Number(n_arr[4])] || b[n_arr[4][0]] + ' ' + a[n_arr[4][1]]) + 'Hundred ' : '';
+            str += (n_arr[5] != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n_arr[5])] || b[n_arr[5][0]] + ' ' + a[n_arr[5][1]]) : '';
+            return str;
+        }
+        var integerPart = Math.floor(num);
+        var words = inWords(integerPart);
+        return words ? '(' + words.trim() + ' Rupees Only)' : '(Zero Rupees Only)';
+    }
+
+    function openPayslipModal(username, fullName, empId, designation, doj, bankName, accNo, ifsc, base, deductions, net, present, late, lop, payDays, totalDays, period, status, lateDed, lopDed) {
+        if (document.getElementById('slipEmpName')) document.getElementById('slipEmpName').textContent = (fullName && fullName.trim() !== '') ? fullName : username;
+        if (document.getElementById('slipEmpId')) document.getElementById('slipEmpId').textContent = empId || '-';
+        if (document.getElementById('slipDesignation')) document.getElementById('slipDesignation').textContent = designation || '-';
+        if (document.getElementById('slipDoj')) document.getElementById('slipDoj').textContent = doj || '-';
+        if (document.getElementById('slipBankName')) document.getElementById('slipBankName').textContent = bankName || 'Not Provided';
+        if (document.getElementById('slipAccNo')) document.getElementById('slipAccNo').textContent = accNo || 'Not Provided';
+        if (document.getElementById('slipIfsc')) document.getElementById('slipIfsc').textContent = ifsc || 'Not Provided';
+        
+        if (document.getElementById('slipTotalDays')) document.getElementById('slipTotalDays').textContent = (totalDays || 30) + ' Days';
+        if (document.getElementById('slipPayDays')) document.getElementById('slipPayDays').textContent = (payDays || 0) + ' Days';
+        if (document.getElementById('slipLeaveDays')) document.getElementById('slipLeaveDays').textContent = (lop || 0) + ' Days';
+        if (document.getElementById('slipLateDays')) document.getElementById('slipLateDays').textContent = (late || 0) + ' Days';
+
+        const netVal = parseFloat(net || 0);
+        const baseVal = parseFloat(base || 0);
+        const lateVal = parseFloat(lateDed || 0);
+        const lopVal = parseFloat(lopDed || 0);
+        const dedVal = parseFloat(deductions || 0);
+
+        if (document.getElementById('slipBaseSalary')) document.getElementById('slipBaseSalary').textContent = '₹ ' + baseVal.toFixed(2);
+        if (document.getElementById('slipGrossEarnings')) document.getElementById('slipGrossEarnings').textContent = '₹ ' + baseVal.toFixed(2);
+        if (document.getElementById('slipLateDeduction')) document.getElementById('slipLateDeduction').textContent = '- ₹ ' + lateVal.toFixed(2);
+        if (document.getElementById('slipLopDeduction')) document.getElementById('slipLopDeduction').textContent = '- ₹ ' + lopVal.toFixed(2);
+        if (document.getElementById('slipDeductions')) document.getElementById('slipDeductions').textContent = '- ₹ ' + dedVal.toFixed(2);
+        if (document.getElementById('slipNetSalary')) document.getElementById('slipNetSalary').textContent = '₹ ' + netVal.toFixed(2);
+        if (document.getElementById('slipAmountInWords')) document.getElementById('slipAmountInWords').textContent = numberToWords(netVal);
+        
+        const lateRow = document.getElementById('slipLateRow');
+        if (lateRow) {
+            lateRow.style.display = lateVal > 0 ? 'flex' : 'none';
+        }
+
+        const lopRow = document.getElementById('slipLopRow');
+        if (lopRow) {
+            lopRow.style.display = lopVal > 0 ? 'flex' : 'none';
+        }
+
+        if (document.getElementById('slipLopSubtext')) {
+            document.getElementById('slipLopSubtext').textContent = (lop || 0) + ' absent days deducted';
+        }
+
         if (document.getElementById('payslipPeriod')) document.getElementById('payslipPeriod').textContent = period || '';
         if (document.getElementById('slipPeriodText')) document.getElementById('slipPeriodText').textContent = period || '';
 
@@ -431,34 +928,4 @@
         }
     }
 </script>
-<style>
-    @media print {
-        @page {
-            size: A4 portrait;
-            margin: 8mm;
-        }
-        body * {
-            visibility: hidden !important;
-        }
-        #printablePayslip, #printablePayslip * {
-            visibility: visible !important;
-        }
-        #printablePayslip {
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            height: auto !important;
-            background: #ffffff !important;
-            color: #000000 !important;
-            font-family: system-ui, -apple-system, sans-serif !important;
-            border: 1.5px solid #1e293b !important;
-            border-radius: 8px !important;
-            padding: 20px !important;
-        }
-        .no-print {
-            display: none !important;
-        }
-    }
-</style>
 {% endblock %}

@@ -4,314 +4,854 @@
 {% block title %}Management Overview - Aaron Billing{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-3 px-3">
-    <!-- Header Row -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 bg-white p-3 rounded-3 shadow-sm border">
-        <div>
-            <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                <i class="bi bi-speedometer2 text-primary"></i> Management Overview
-            </h5>
-            <small class="text-muted" style="font-size: 0.75rem;">Real-time staff check-ins, attendance status, and pending approvals.</small>
+<style>
+    /* ── Management Overview Premium Aesthetics ── */
+    :root {
+        --mo-primary: #4f46e5;
+        --mo-primary-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        --mo-success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        --mo-warning-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        --mo-danger-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        --mo-card-bg: rgba(255, 255, 255, 0.95);
+        --mo-glass-border: 1px solid rgba(226, 232, 240, 0.8);
+        --mo-shadow-sm: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+        --mo-shadow-md: 0 10px 30px -5px rgba(79, 70, 229, 0.12);
+    }
+
+    .mo-wrapper {
+        padding: 1rem;
+        background: #f8fafc;
+        min-height: 100vh;
+    }
+
+    /* Executive Hero Header */
+    .mo-hero-card {
+        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+        border-radius: 14px;
+        padding: 1rem 1.4rem;
+        color: #ffffff;
+        box-shadow: 0 8px 25px -8px rgba(49, 46, 129, 0.35);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .mo-hero-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(124, 58, 237, 0.35) 0%, rgba(255, 255, 255, 0) 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .mo-hero-title {
+        font-family: 'Outfit', 'Inter', sans-serif;
+        font-weight: 800;
+        font-size: 1.25rem;
+        letter-spacing: -0.02em;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+
+    .mo-hero-subtitle {
+        color: rgba(226, 232, 240, 0.85);
+        font-size: 0.78rem;
+        margin-top: 0.2rem;
+    }
+
+    .mo-date-pill {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+        padding: 0.35rem 0.9rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Filter Toolbar Card */
+    .mo-filter-card {
+        background: var(--mo-card-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: var(--mo-glass-border);
+        border-radius: 14px;
+        padding: 0.85rem 1.1rem;
+        box-shadow: var(--mo-shadow-sm);
+        margin-bottom: 1rem;
+    }
+
+    .mo-field-label {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #64748b;
+        margin-bottom: 0.25rem;
+        display: block;
+    }
+
+    .mo-input, .mo-select {
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 8px !important;
+        font-size: 0.78rem !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
+        padding: 0.4rem 0.75rem !important;
+        transition: all 0.2s ease !important;
+        background-color: #ffffff !important;
+    }
+
+    .mo-input:focus, .mo-select:focus {
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+    }
+
+    .mo-btn-filter {
+        background: var(--mo-primary-gradient) !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 700 !important;
+        font-size: 0.75rem !important;
+        padding: 0.45rem 1rem !important;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25) !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    .mo-btn-filter:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(79, 70, 229, 0.4) !important;
+    }
+
+    .mo-btn-reset {
+        background: #f1f5f9 !important;
+        color: #475569 !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        font-weight: 700 !important;
+        font-size: 0.75rem !important;
+        padding: 0.45rem 0.9rem !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .mo-btn-reset:hover {
+        background: #e2e8f0 !important;
+        color: #0f172a !important;
+    }
+
+    /* Metric Stat Cards */
+    .mo-stat-card {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 0.85rem 1.1rem;
+        border: 1px solid #f1f5f9;
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .mo-stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.08);
+    }
+
+    .mo-stat-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+    }
+
+    .mo-sc-success::after { background: #10b981; }
+    .mo-sc-warning::after { background: #f59e0b; }
+    .mo-sc-danger::after  { background: #ef4444; }
+    .mo-sc-indigo::after  { background: #6366f1; }
+
+    .mo-stat-label {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #64748b;
+        margin-bottom: 0.2rem;
+    }
+
+    .mo-stat-value {
+        font-family: 'Outfit', 'Inter', sans-serif;
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.1;
+        margin: 0;
+    }
+
+    .mo-stat-icon-wrapper {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .mo-si-success { background: rgba(16, 185, 129, 0.12); color: #059669; }
+    .mo-si-warning { background: rgba(245, 158, 11, 0.12); color: #d97706; }
+    .mo-si-danger  { background: rgba(239, 68, 68, 0.12);  color: #dc2626; }
+    .mo-si-indigo  { background: rgba(99, 102, 241, 0.12); color: #4f46e5; }
+
+    /* Tables & Cards Section */
+    .mo-section-card {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid #f1f5f9;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+        overflow: hidden;
+        height: 100%;
+    }
+
+    .mo-card-header {
+        background: #ffffff;
+        padding: 0.85rem 1.1rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .mo-card-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.88rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Staff Table Styling */
+    .mo-table {
+        margin: 0;
+    }
+
+    .mo-table thead tr {
+        background: #f8fafc;
+    }
+
+    .mo-table th {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #64748b;
+        padding: 0.6rem 0.85rem;
+        border-bottom: 2px solid #e2e8f0;
+        white-space: nowrap;
+    }
+
+    .mo-table td {
+        padding: 0.65rem 0.85rem;
+        vertical-align: middle;
+        font-size: 0.78rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .mo-table tbody tr {
+        transition: background 0.15s ease;
+    }
+
+    .mo-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    /* Avatar & Badges */
+    .mo-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.78rem;
+        color: #ffffff;
+        background: var(--mo-primary-gradient);
+        box-shadow: 0 3px 10px rgba(79, 70, 229, 0.2);
+        flex-shrink: 0;
+    }
+
+    .mo-badge-status {
+        padding: 0.2rem 0.6rem;
+        border-radius: 50px;
+        font-size: 0.62rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .mo-bs-present { background: #d1fae5; color: #047857; }
+    .mo-bs-late    { background: #fef3c7; color: #b45309; }
+    .mo-bs-half    { background: #e0f2fe; color: #0369a1; }
+    .mo-bs-absent  { background: #fee2e2; color: #b91c1c; }
+
+    .mo-photo-thumb {
+        width: 32px;
+        height: 24px;
+        border-radius: 6px;
+        object-fit: cover;
+        border: 1px solid #cbd5e1;
+        cursor: zoom-in;
+        transition: transform 0.2s ease;
+    }
+
+    .mo-photo-thumb:hover {
+        transform: scale(1.15);
+    }
+
+    /* Pending Permissions Cards */
+    .mo-perm-item {
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.15s ease;
+    }
+
+    .mo-perm-item:last-child {
+        border-bottom: none;
+    }
+
+    .mo-perm-item:hover {
+        background: #f8fafc;
+    }
+
+    .cursor-zoom { cursor: zoom-in; }
+
+    /* Mobile Responsive Optimizations (< 768px) */
+    @media (max-width: 768px) {
+        .mo-wrapper {
+            padding: 0.75rem !important;
+        }
+
+        .mo-hero-card {
+            border-radius: 16px !important;
+            padding: 1.1rem 1rem !important;
+            margin-bottom: 1rem !important;
+        }
+
+        .mo-hero-title {
+            font-size: 1.2rem !important;
+        }
+
+        .mo-date-pill {
+            font-size: 0.73rem !important;
+            padding: 0.35rem 0.8rem !important;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .mo-filter-card {
+            padding: 1rem !important;
+            border-radius: 14px !important;
+            margin-bottom: 1rem !important;
+        }
+
+        .mo-stat-card {
+            padding: 1rem !important;
+            border-radius: 14px !important;
+        }
+
+        .mo-stat-value {
+            font-size: 1.35rem !important;
+        }
+
+        .mo-stat-icon-wrapper {
+            width: 42px !important;
+            height: 42px !important;
+            font-size: 1.15rem !important;
+            border-radius: 10px !important;
+        }
+
+        .mo-table th, .mo-table td {
+            padding: 0.65rem 0.75rem !important;
+            font-size: 0.75rem !important;
+        }
+
+        .table-responsive {
+            border-radius: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+    }
+</style>
+
+<div class="mo-wrapper">
+    <!-- Executive Hero Header -->
+    <div class="mo-hero-card">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <h1 class="mo-hero-title">
+                    <i class="bi bi-speedometer2 text-warning"></i> Management Overview
+                </h1>
+                <div class="mo-hero-subtitle">
+                    Real-time attendance intelligence, staff check-ins, and pending permissions dashboard.
+                </div>
+            </div>
+            <div>
+                <div class="mo-date-pill">
+                    <i class="bi bi-calendar-check-fill text-warning"></i>
+                    <span>{{ selected_date|date:"l, d F Y" }}</span>
+                </div>
+            </div>
         </div>
-        <div class="d-flex align-items-center gap-2 mt-2 mt-sm-0">
-            <span class="badge bg-light text-dark border px-3 py-1.5 rounded-pill fw-semibold" style="font-size: 0.75rem;">
-                <i class="bi bi-calendar-event me-1 text-primary"></i> {{ selected_date|date:"d M Y" }}
-            </span>
     </div>
 
     {% if messages %}
-    <div class="mb-3">
+    <div class="mb-4">
         {% for message in messages %}
-            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show border-0 shadow-sm rounded-3 py-2 px-3 small d-flex align-items-center gap-2 mb-2" role="alert" style="font-size: 0.8rem; background-color: #ecfdf5; color: #047857; border-left: 4px solid #10b981 !important;">
+            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show border-0 shadow-sm rounded-4 py-2.5 px-3.5 small d-flex align-items-center gap-2 mb-2" role="alert" style="background-color: #ecfdf5; color: #047857; border-left: 5px solid #10b981 !important;">
                 <i class="bi {% if message.tags == 'error' %}bi-exclamation-triangle-fill text-danger{% else %}bi-check-circle-fill text-success{% endif %} fs-6"></i>
-                <div class="fw-semibold">{{ message }}</div>
-                <button type="button" class="btn-close ms-auto py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+                <div class="fw-bold">{{ message }}</div>
+                <button type="button" class="btn-close ms-auto py-2.5" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         {% endfor %}
     </div>
     {% endif %}
 
-    <!-- Filter Bar for Easy Access -->
-    <div class="card border-0 shadow-sm bg-white rounded-3 mb-3">
-        <div class="card-body p-2.5">
-            <form method="get" action="{% url 'attendance:management_overview' %}" class="row g-2 align-items-center m-0">
-                <!-- Date Filter -->
-                <div class="col-6 col-md-3 col-lg-2">
-                    <label class="form-label text-muted fw-semibold mb-0" style="font-size: 0.68rem;">Date</label>
-                    <input type="date" name="date" value="{{ selected_date_str }}" class="form-control form-control-sm rounded-2" onchange="this.form.submit()">
-                </div>
+    <!-- Filter Toolbar -->
+    <div class="mo-filter-card">
+        <form method="get" action="{% url 'attendance:management_overview' %}" class="row g-3 align-items-end">
+            <!-- Date Filter -->
+            <div class="col-6 col-md-3 col-lg-2">
+                <label class="mo-field-label"><i class="bi bi-calendar-event me-1 text-primary"></i> Date</label>
+                <input type="date" name="date" value="{{ selected_date_str }}" class="form-control mo-input" onchange="this.form.submit()">
+            </div>
 
-                <!-- Branch Filter -->
-                <div class="col-6 col-md-3 col-lg-2">
-                    <label class="form-label text-muted fw-semibold mb-0" style="font-size: 0.68rem;">Branch</label>
-                    <select name="branch" class="form-select form-select-sm rounded-2" onchange="this.form.submit()">
-                        <option value="">All Branches</option>
-                        {% for b in branches %}
-                            <option value="{{ b.id }}" {% if selected_branch_id == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+            <!-- Branch Filter -->
+            <div class="col-6 col-md-3 col-lg-3">
+                <label class="mo-field-label"><i class="bi bi-shop me-1 text-primary"></i> Branch</label>
+                <select name="branch" class="form-select mo-select" onchange="this.form.submit()">
+                    <option value="">🏢 All Branches</option>
+                    {% for b in branches %}
+                        <option value="{{ b.id }}" {% if selected_branch_id == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-                <!-- Status Filter -->
-                <div class="col-6 col-md-3 col-lg-2">
-                    <label class="form-label text-muted fw-semibold mb-0" style="font-size: 0.68rem;">Status</label>
-                    <select name="status" class="form-select form-select-sm rounded-2" onchange="this.form.submit()">
-                        <option value="">All Statuses</option>
-                        <option value="checked_in" {% if status_filter == 'checked_in' %}selected{% endif %}>Checked In</option>
-                        <option value="late" {% if status_filter == 'late' %}selected{% endif %}>Late</option>
-                        <option value="half_day" {% if status_filter == 'half_day' %}selected{% endif %}>Half Day</option>
-                        <option value="on_leave" {% if status_filter == 'on_leave' %}selected{% endif %}>On Leave</option>
-                        <option value="absent" {% if status_filter == 'absent' %}selected{% endif %}>Absent</option>
-                    </select>
-                </div>
+            <!-- Status Filter -->
+            <div class="col-6 col-md-3 col-lg-2">
+                <label class="mo-field-label"><i class="bi bi-filter-circle me-1 text-primary"></i> Status</label>
+                <select name="status" class="form-select mo-select" onchange="this.form.submit()">
+                    <option value="">All Statuses</option>
+                    <option value="checked_in" {% if status_filter == 'checked_in' %}selected{% endif %}>Checked In</option>
+                    <option value="late" {% if status_filter == 'late' %}selected{% endif %}>Late</option>
+                    <option value="half_day" {% if status_filter == 'half_day' %}selected{% endif %}>Half Day</option>
+                    <option value="absent" {% if status_filter == 'absent' %}selected{% endif %}>Absent</option>
+                </select>
+            </div>
 
-                <!-- Search Input -->
-                <div class="col-12 col-md-3 col-lg-4">
-                    <label class="form-label text-muted fw-semibold mb-0" style="font-size: 0.68rem;">Search Staff</label>
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search" style="font-size: 0.7rem;"></i></span>
-                        <input type="text" name="q" value="{{ q_search }}" class="form-control border-start-0 rounded-end-2" placeholder="Search name or ID..." style="font-size: 0.75rem;">
+            <!-- Search Input -->
+            <div class="col-12 col-md-3 col-lg-3">
+                <label class="mo-field-label"><i class="bi bi-search me-1 text-primary"></i> Search Staff</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 border-1.5 text-muted style-border-radius-left" style="border-color: #e2e8f0; border-top-left-radius: 10px; border-bottom-left-radius: 10px;">
+                        <i class="bi bi-search" style="font-size: 0.8rem;"></i>
+                    </span>
+                    <input type="text" name="q" value="{{ q_search }}" class="form-control mo-input border-start-0" placeholder="Search by name, username, ID…" style="border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important;">
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="col-12 col-lg-3 d-flex gap-2 align-self-end">
+                <button type="submit" class="btn mo-btn-filter flex-grow-1">
+                    <i class="bi bi-funnel-fill me-1"></i> Apply
+                </button>
+                <button type="submit" name="export" value="csv" class="btn btn-outline-success border-2 fw-bold text-nowrap rounded-3 py-2 px-3 d-flex align-items-center justify-content-center" title="Export CSV" style="font-size: 0.8rem; border-color: #10b981 !important; color: #047857;">
+                    <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> CSV
+                </button>
+                <a href="{% url 'attendance:management_overview' %}" class="btn mo-btn-reset text-decoration-none">
+                    Reset
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Executive Metric Cards -->
+    <div class="row g-3 mb-4">
+        <!-- Checked-in -->
+        <div class="col-xl-3 col-sm-6">
+            <div class="mo-stat-card mo-sc-success">
+                <div>
+                    <div class="mo-stat-label">Checked-In Today</div>
+                    <div class="mo-stat-value">
+                        {{ checked_in_count }}
+                        <span style="font-size: 0.9rem; color: #94a3b8; font-weight: 600;">/ {{ total_staff_count }}</span>
                     </div>
                 </div>
-
-                <!-- Buttons -->
-                <div class="col-12 col-lg-2 d-flex gap-1.5 align-self-end mt-2 mt-lg-0">
-                    <button type="submit" class="btn btn-xs btn-primary rounded-pill px-3 py-1.5 fw-semibold w-100">
-                        <i class="bi bi-funnel-fill me-1"></i> Filter
-                    </button>
-                    <a href="{% url 'attendance:management_overview' %}" class="btn btn-xs btn-outline-secondary rounded-pill px-3 py-1.5 w-100 text-center text-decoration-none">
-                        Reset
-                    </a>
+                <div class="mo-stat-icon-wrapper mo-si-success">
+                    <i class="bi bi-person-check-fill"></i>
                 </div>
-            </form>
+            </div>
+        </div>
+
+        <!-- Late Check-ins -->
+        <div class="col-xl-3 col-sm-6">
+            <div class="mo-stat-card mo-sc-warning">
+                <div>
+                    <div class="mo-stat-label">Late Check-Ins</div>
+                    <div class="mo-stat-value" style="color: #d97706;">{{ late_count }}</div>
+                </div>
+                <div class="mo-stat-icon-wrapper mo-si-warning">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Absent Staff -->
+        <div class="col-xl-3 col-sm-6">
+            <div class="mo-stat-card mo-sc-danger">
+                <div>
+                    <div class="mo-stat-label">Absent Employees</div>
+                    <div class="mo-stat-value" style="color: #dc2626;">{{ absent_count }}</div>
+                </div>
+                <div class="mo-stat-icon-wrapper mo-si-danger">
+                    <i class="bi bi-person-x-fill"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Approvals -->
+        <div class="col-xl-3 col-sm-6">
+            <div class="mo-stat-card mo-sc-indigo">
+                <div>
+                    <div class="mo-stat-label">Pending Approvals</div>
+                    <div class="mo-stat-value" style="color: #4f46e5;">{{ pending_permissions_count }}</div>
+                </div>
+                <div class="mo-stat-icon-wrapper mo-si-indigo">
+                    <i class="bi bi-envelope-open-fill"></i>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Compact Metrics Row -->
-    <div class="row g-2 mb-3">
-        <!-- Card 1: Checked In -->
-        <div class="col-xl-3 col-sm-6">
-            <div class="card border-0 shadow-sm rounded-3 bg-white border-start border-success border-4 h-100">
-                <div class="card-body p-2.5 d-flex align-items-center justify-content-between">
-                    <div>
-                        <span class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.65rem; letter-spacing: 0.5px;">Checked-In Today</span>
-                        <h4 class="fw-bold text-dark mb-0 mt-0.5" style="font-size: 1.25rem;">{{ checked_in_count }} <span class="text-muted fw-normal" style="font-size: 0.8rem;">/ {{ total_staff_count }}</span></h4>
-                    </div>
-                    <div class="rounded-circle p-2 bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                        <i class="bi bi-people-fill fs-6"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Card 2: Late -->
-        <div class="col-xl-3 col-sm-6">
-            <div class="card border-0 shadow-sm rounded-3 bg-white border-start border-warning border-4 h-100">
-                <div class="card-body p-2.5 d-flex align-items-center justify-content-between">
-                    <div>
-                        <span class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.65rem; letter-spacing: 0.5px;">Late Check-Ins</span>
-                        <h4 class="fw-bold text-dark mb-0 mt-0.5" style="font-size: 1.25rem;">{{ late_count }}</h4>
-                    </div>
-                    <div class="rounded-circle p-2 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                        <i class="bi bi-clock-history fs-6"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Card 3: Absent -->
-        <div class="col-xl-3 col-sm-6">
-            <div class="card border-0 shadow-sm rounded-3 bg-white border-start border-danger border-4 h-100">
-                <div class="card-body p-2.5 d-flex align-items-center justify-content-between">
-                    <div>
-                        <span class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.65rem; letter-spacing: 0.5px;">Absent Employees</span>
-                        <h4 class="fw-bold text-dark mb-0 mt-0.5" style="font-size: 1.25rem;">{{ absent_count }}</h4>
-                    </div>
-                    <div class="rounded-circle p-2 bg-danger bg-opacity-10 text-danger d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                        <i class="bi bi-person-x-fill fs-6"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Card 4: Pending Approvals -->
-        <div class="col-xl-3 col-sm-6">
-            <div class="card border-0 shadow-sm rounded-3 bg-white border-start border-primary border-4 h-100">
-                <div class="card-body p-2.5 d-flex align-items-center justify-content-between">
-                    <div>
-                        <span class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.65rem; letter-spacing: 0.5px;">Pending Approvals</span>
-                        <h4 class="fw-bold text-dark mb-0 mt-0.5" style="font-size: 1.25rem;">{{ pending_permissions_count }}</h4>
-                    </div>
-                    <div class="rounded-circle p-2 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                        <i class="bi bi-envelope-open-fill fs-6"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-3">
-        <!-- Today's Checked-in Staff Log -->
+    <!-- Main Content Layout Grid -->
+    <div class="row g-4">
+        <!-- Today's Staff Log Table -->
         <div class="col-lg-8">
-            <div class="card border-0 shadow-sm bg-white rounded-3">
-                <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex align-items-center justify-content-between">
-                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
-                        <i class="bi bi-calendar-check-fill"></i> Staff Today Log
-                    </h6>
-                    <span class="badge bg-light text-muted border text-xxs" style="font-size: 0.65rem;">Total Staff: {{ total_staff_count }}</span>
+            <div class="mo-section-card">
+                <div class="mo-card-header">
+                    <h2 class="mo-card-title">
+                        <i class="bi bi-people-fill text-primary"></i> Daily Staff Attendance Log
+                    </h2>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1.5 fw-bold" style="font-size: 0.72rem;">
+                            Total Staff: {{ total_staff_count }}
+                        </span>
+                        <a href="?date={{ selected_date_str }}&branch={{ selected_branch_id }}&status={{ status_filter }}&q={{ q_search }}&export=csv" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1.5 fw-bold text-decoration-none d-flex align-items-center gap-1.5 shadow-xs" style="font-size: 0.78rem;">
+                            <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> Export CSV
+                        </a>
+                    </div>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.75rem;">
-                            <thead class="table-light text-muted text-uppercase" style="font-size: 0.65rem; letter-spacing: 0.5px;">
-                                <tr>
-                                    <th class="ps-3 py-2">Employee</th>
-                                    <th class="py-2">Status</th>
-                                    <th class="py-2">Check-In</th>
-                                    <th class="py-2">Mid-Day</th>
-                                    <th class="pe-3 py-2">Check-Out</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in staff_today_status %}
-                                <tr>
-                                    <td class="ps-3 py-2">
-                                        <div class="fw-bold text-dark" style="font-size: 0.8rem;">
-                                            {{ item.user.first_name }} {{ item.user.last_name }}
-                                            {% if not item.user.first_name and not item.user.last_name %}{{ item.user.username }}{% endif %}
+                <div class="table-responsive">
+                    <table class="table mo-table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Staff Member</th>
+                                <th>Status</th>
+                                <th>Check-In</th>
+                                <th>Mid-Day</th>
+                                <th>Check-Out</th>
+                                <th class="pe-3 text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in staff_today_status %}
+                            <tr>
+                                <!-- Staff Info -->
+                                <td>
+                                    <div class="d-flex align-items-center gap-2.5">
+                                        <div class="mo-avatar">
+                                            {{ item.user.first_name|first|upper|default:item.user.username|first|upper }}
                                         </div>
-                                        <div class="text-muted text-xxs" style="font-size: 0.68rem;">
-                                            @{{ item.user.username }} &middot; ID: {{ item.user.employee_id|default:"-" }}
-                                        </div>
-                                        <div class="mt-0.5 d-flex flex-wrap gap-1 align-items-center">
-                                            <span class="badge bg-light text-dark border" style="font-size: 0.6rem; padding: 0.15rem 0.35rem;">{{ item.user.role_display }}</span>
-                                            {% if item.user.role != 'owner' and item.user.role != 'regional_manager' %}
+                                        <div>
+                                            <div class="fw-bold text-dark" style="font-size: 0.86rem; line-height: 1.25;">
+                                                {{ item.user.first_name }} {{ item.user.last_name }}
+                                                {% if not item.user.first_name and not item.user.last_name %}{{ item.user.username }}{% endif %}
+                                            </div>
+                                            <div class="text-muted" style="font-size: 0.7rem;">
+                                                @{{ item.user.username }} &middot; ID: <strong class="text-dark">{{ item.user.employee_id|default:"-" }}</strong>
+                                            </div>
+                                            <div class="mt-1 d-flex flex-wrap gap-1 align-items-center">
+                                                <span class="badge bg-light text-secondary border px-2 py-0.5" style="font-size: 0.62rem;">{{ item.user.role_display }}</span>
+                                                {% if item.user.active_branch and item.user.branches.all %}
+                                                    <span class="badge border" style="background-color: #dbeafe; color: #1e40af; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;" title="Primary Main Branch">
+                                                        <i class="bi bi-house-door-fill me-1"></i>Primary: {{ item.user.active_branch.name }}
+                                                    </span>
+                                                {% endif %}
                                                 {% for b in item.user.branches.all %}
-                                                    <span class="badge border" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.6rem; padding: 0.15rem 0.35rem; font-weight: 600;">{{ b.name }}</span>
-                                                {% empty %}
-                                                    <span class="badge bg-light text-muted border" style="font-size: 0.6rem; padding: 0.15rem 0.35rem; font-style: italic;">No branch</span>
+                                                    {% if b != item.user.active_branch %}
+                                                        <span class="badge border" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;" title="Secondary Access Branch">
+                                                            <i class="bi bi-shop me-1"></i>Access: {{ b.name }}
+                                                        </span>
+                                                    {% endif %}
                                                 {% endfor %}
+                                                {% if item.user.has_all_branches or item.user.role == 'owner' or item.user.role == 'regional_manager' %}
+                                                    <span class="badge border" style="background-color: #fef3c7; color: #b45309; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;"><i class="bi bi-globe me-1"></i>All Branches Access</span>
+                                                {% elif not item.user.active_branch and not item.user.branches.all %}
+                                                    <span class="badge bg-light text-muted border" style="font-size: 0.62rem; font-style: italic;">No branch assigned</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- Status -->
+                                <td>
+                                     {% if item.status == 'present' %}
+                                         <span class="mo-badge-status mo-bs-present"><i class="bi bi-check-circle-fill"></i> Present</span>
+                                     {% elif item.status == 'late' %}
+                                         <span class="mo-badge-status mo-bs-late"><i class="bi bi-exclamation-circle-fill"></i> Late Check-in</span>
+                                     {% elif item.status == 'half_day' %}
+                                         <span class="mo-badge-status mo-bs-half"><i class="bi bi-pie-chart-fill"></i> Half Day</span>
+                                     {% elif item.status == 'on_leave' %}
+                                         <span class="mo-badge-status" style="background-color: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;"><i class="bi bi-calendar-check-fill"></i> On Leave</span>
+                                     {% elif item.status == 'week_off' %}
+                                         <span class="mo-badge-status" style="background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;"><i class="bi bi-calendar-minus-fill"></i> Week Off</span>
+                                     {% else %}
+                                         <span class="mo-badge-status mo-bs-absent"><i class="bi bi-x-circle-fill"></i> Absent</span>
+                                     {% endif %}
+                                </td>
+
+                                <!-- Check-In -->
+                                <td>
+                                    {% if item.record and item.record.check_in %}
+                                        <div class="d-flex align-items-center gap-2">
+                                            {% if item.record.check_in_photo %}
+                                                <img src="{{ item.record.check_in_photo|cloudinary_optimize:"w_60,h_45" }}" class="mo-photo-thumb shadow-xs" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.check_in_photo|cloudinary_optimize }}', 'Check-In: {{ item.user.username }}')"/>
+                                            {% endif %}
+                                            <span class="fw-bold text-dark">{{ item.record.check_in|date:"h:i A" }}</span>
+                                            {% if item.record.check_in_lat %}
+                                                <a href="https://www.google.com/maps?q={{ item.record.check_in_lat }},{{ item.record.check_in_lng }}" target="_blank" class="text-primary" title="GPS Location"><i class="bi bi-geo-alt-fill text-danger"></i></a>
                                             {% endif %}
                                         </div>
-                                    </td>
-                                    <td class="py-2">
-                                        {% if item.status == 'present' %}
-                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #d1fae5; color: #047857; font-size: 0.65rem; font-weight: 600;">Present</span>
-                                        {% elif item.status == 'late' %}
-                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fef3c7; color: #b45309; font-size: 0.65rem; font-weight: 600;">Late Check-in</span>
-                                        {% elif item.status == 'half_day' %}
-                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #e5e7eb; color: #374151; font-size: 0.65rem; font-weight: 600;">Half Day</span>
-                                        {% else %}
-                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fee2e2; color: #b91c1c; font-size: 0.65rem; font-weight: 600;">Absent</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="py-2">
-                                        {% if item.record and item.record.check_in %}
-                                            <div class="d-flex align-items-center gap-1.5">
-                                                {% if item.record.check_in_photo %}
-                                                    <img src="{{ item.record.check_in_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 28px; height: 20px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.check_in_photo|cloudinary_optimize }}', 'Check-In: {{ item.user.username }}')"/>
-                                                {% endif %}
-                                                <span class="fw-semibold text-dark">{{ item.record.check_in|date:"h:i A" }}</span>
-                                                {% if item.record.check_in_lat %}
-                                                    <a href="https://www.google.com/maps?q={{ item.record.check_in_lat }},{{ item.record.check_in_lng }}" target="_blank" class="text-primary text-decoration-none" title="Google Maps GPS Location"><i class="bi bi-geo-alt-fill text-danger ms-0.5"></i></a>
-                                                    <span class="gps-coord text-muted text-xxs d-block" style="font-size: 0.65rem;" data-lat="{{ item.record.check_in_lat }}" data-lng="{{ item.record.check_in_lng }}"></span>
-                                                {% endif %}
-                                            </div>
-                                        {% else %}
-                                            <span class="text-muted opacity-50">-</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="py-2">
-                                        {% if item.record and item.record.mid_day_time %}
-                                            <div class="d-flex align-items-center gap-1.5">
-                                                {% if item.record.mid_day_photo %}
-                                                    <img src="{{ item.record.mid_day_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 28px; height: 20px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.mid_day_photo|cloudinary_optimize }}', 'Mid-Day: {{ item.user.username }}')"/>
-                                                {% endif %}
-                                                <span class="fw-semibold text-dark">{{ item.record.mid_day_time|date:"h:i A" }}</span>
-                                                {% if item.record.mid_day_lat %}
-                                                    <a href="https://www.google.com/maps?q={{ item.record.mid_day_lat }},{{ item.record.mid_day_lng }}" target="_blank" class="text-primary text-decoration-none" title="Google Maps GPS Location"><i class="bi bi-geo-alt-fill text-danger ms-0.5"></i></a>
-                                                    <span class="gps-coord text-muted text-xxs d-block" style="font-size: 0.65rem;" data-lat="{{ item.record.mid_day_lat }}" data-lng="{{ item.record.mid_day_lng }}"></span>
-                                                {% endif %}
-                                            </div>
-                                        {% else %}
-                                            <span class="text-muted opacity-50">-</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="pe-3 py-2">
-                                        {% if item.record and item.record.check_out %}
-                                            <div class="d-flex align-items-center gap-1.5">
-                                                {% if item.record.check_out_photo %}
-                                                    <img src="{{ item.record.check_out_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 28px; height: 20px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.check_out_photo|cloudinary_optimize }}', 'Check-Out: {{ item.user.username }}')"/>
-                                                {% endif %}
-                                                <span class="fw-semibold text-dark">{{ item.record.check_out|date:"h:i A" }}</span>
-                                                {% if item.record.check_out_lat %}
-                                                    <a href="https://www.google.com/maps?q={{ item.record.check_out_lat }},{{ item.record.check_out_lng }}" target="_blank" class="text-primary text-decoration-none" title="Google Maps GPS Location"><i class="bi bi-geo-alt-fill text-danger ms-0.5"></i></a>
-                                                    <span class="gps-coord text-muted text-xxs d-block" style="font-size: 0.65rem;" data-lat="{{ item.record.check_out_lat }}" data-lng="{{ item.record.check_out_lng }}"></span>
-                                                {% endif %}
-                                            </div>
-                                        {% else %}
-                                            <span class="text-muted opacity-50">-</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="5" class="text-center py-3 text-muted">No staff records found for today.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                                    {% else %}
+                                        <span class="text-muted opacity-50">-</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Mid-Day -->
+                                <td>
+                                    {% if item.record and item.record.mid_day_time %}
+                                        <div class="d-flex align-items-center gap-2">
+                                            {% if item.record.mid_day_photo %}
+                                                <img src="{{ item.record.mid_day_photo|cloudinary_optimize:"w_60,h_45" }}" class="mo-photo-thumb shadow-xs" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.mid_day_photo|cloudinary_optimize }}', 'Mid-Day: {{ item.user.username }}')"/>
+                                            {% endif %}
+                                            <span class="fw-bold text-dark">{{ item.record.mid_day_time|date:"h:i A" }}</span>
+                                            {% if item.record.mid_day_lat %}
+                                                <a href="https://www.google.com/maps?q={{ item.record.mid_day_lat }},{{ item.record.mid_day_lng }}" target="_blank" class="text-primary" title="GPS Location"><i class="bi bi-geo-alt-fill text-danger"></i></a>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted opacity-50">-</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Check-Out -->
+                                <td>
+                                    {% if item.record and item.record.check_out %}
+                                        <div class="d-flex align-items-center gap-2">
+                                            {% if item.record.check_out_photo %}
+                                                <img src="{{ item.record.check_out_photo|cloudinary_optimize:"w_60,h_45" }}" class="mo-photo-thumb shadow-xs" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ item.record.check_out_photo|cloudinary_optimize }}', 'Check-Out: {{ item.user.username }}')"/>
+                                            {% endif %}
+                                            <span class="fw-bold text-dark">{{ item.record.check_out|date:"h:i A" }}</span>
+                                            {% if item.record.check_out_lat %}
+                                                <a href="https://www.google.com/maps?q={{ item.record.check_out_lat }},{{ item.record.check_out_lng }}" target="_blank" class="text-primary" title="GPS Location"><i class="bi bi-geo-alt-fill text-danger"></i></a>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted opacity-50">-</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Action -->
+                                <td class="pe-3 text-end">
+                                    {% if is_owner %}
+                                    <button class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-1 fw-bold" 
+                                            type="button" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editAttendanceModal"
+                                            onclick="initEditModal('{% if item.record %}{{ item.record.id }}{% else %}0{% endif %}', '{{ item.user.username }}', '{{ selected_date|date:"d M Y" }}', '{{ item.status }}', '{{ item.record.notes|default:"" }}', '{{ item.user.id }}', '{{ selected_date|date:"Y-m-d" }}', '{% if item.record and item.record.check_in %}{{ item.record.check_in|date:"H:i" }}{% endif %}', '{% if item.record and item.record.check_out %}{{ item.record.check_out|date:"H:i" }}{% endif %}')">
+                                        <i class="bi bi-clock-history me-1"></i>Manual Entry
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <i class="bi bi-inbox text-secondary fs-2 d-block mb-2 opacity-50"></i>
+                                    No staff attendance records matching criteria for this date.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <!-- Pending Approvals section -->
+        <!-- Pending Permissions Section -->
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm bg-white rounded-3">
-                <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex align-items-center justify-content-between">
-                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
-                        <i class="bi bi-clock-fill"></i> Pending Permissions
-                    </h6>
-                    <span class="badge bg-warning text-dark rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">{{ pending_permissions_count }}</span>
+            <div class="mo-section-card">
+                <div class="mo-card-header">
+                    <h2 class="mo-card-title">
+                        <i class="bi bi-clock-history text-warning"></i> Pending Permissions
+                    </h2>
+                    <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1 fw-bold" style="font-size: 0.72rem;">
+                        {{ pending_permissions_count }}
+                    </span>
                 </div>
-                <div class="card-body p-2.5">
-                    <div class="list-group list-group-flush" style="font-size: 0.75rem;">
-                        {% for p in pending_permissions %}
-                            <div class="list-group-item px-1 py-2 border-bottom">
-                                <div class="d-flex justify-content-between align-items-start mb-1">
-                                    <div>
-                                        <strong class="text-dark">{{ p.user.username }}</strong>
-                                        <span class="text-muted d-block" style="font-size: 0.68rem;">{{ p.date|date:"d M" }} &middot; {{ p.start_time|time:"g:i A" }} to {{ p.end_time|time:"g:i A" }} ({{ p.duration_minutes }}m)</span>
+                <div class="p-0">
+                    {% for p in pending_permissions %}
+                        <div class="mo-perm-item">
+                            <div class="d-flex justify-content-between align-items-start mb-1.5">
+                                <div>
+                                    <strong class="text-dark" style="font-size: 0.85rem;">@{{ p.user.username }}</strong>
+                                    <div class="text-muted" style="font-size: 0.72rem;">
+                                        <i class="bi bi-calendar-event me-1"></i>{{ p.date|date:"d M Y" }} &middot; {{ p.start_time|time:"g:i A" }} to {{ p.end_time|time:"g:i A" }} ({{ p.duration_minutes }}m)
                                     </div>
-                                    <span class="badge bg-warning bg-opacity-20 text-warning-dark fw-bold rounded-pill px-2 py-0.5" style="font-size: 0.6rem;">Pending</span>
                                 </div>
-                                <p class="text-muted mb-1.5 bg-light p-1.5 rounded border text-wrap" style="font-size: 0.7rem;">{{ p.reason }}</p>
-                                <div class="d-flex gap-1.5">
-                                    <a href="{% url 'attendance:permission_approve' p.pk 'approve' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-xs btn-success rounded-pill px-2.5 py-0.5 fw-semibold js-perm-action" style="font-size: 0.7rem;">Approve</a>
-                                    <a href="{% url 'attendance:permission_approve' p.pk 'reject' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-xs btn-outline-danger rounded-pill px-2.5 py-0.5 js-perm-action" style="font-size: 0.7rem;">Reject</a>
-                                </div>
+                                <span class="badge bg-warning-subtle text-warning-dark border border-warning-subtle rounded-pill px-2 py-0.5 fw-bold" style="font-size: 0.62rem;">Pending</span>
                             </div>
-                        {% empty %}
-                            <div class="text-center py-3 text-muted" style="font-size: 0.75rem;">
-                                <i class="bi bi-check2-circle text-success fs-5 d-block mb-1 opacity-50"></i>
-                                No pending permission requests.
+                            <p class="text-secondary bg-light p-2 rounded-3 border text-wrap mb-2" style="font-size: 0.74rem;">{{ p.reason }}</p>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'attendance:permission_approve' p.pk 'approve' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-success rounded-pill px-3 py-1 fw-bold js-perm-action" style="font-size: 0.73rem;">
+                                    <i class="bi bi-check-lg me-1"></i> Approve
+                                </a>
+                                <a href="{% url 'attendance:permission_approve' p.pk 'reject' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 fw-bold js-perm-action" style="font-size: 0.73rem;">
+                                    <i class="bi bi-x-lg me-1"></i> Reject
+                                </a>
                             </div>
-                        {% endfor %}
-                    </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-5 px-3 text-muted">
+                            <i class="bi bi-check-circle-fill text-success fs-2 d-block mb-2 opacity-50"></i>
+                            <span class="fw-semibold text-dark d-block">No Pending Permission Requests</span>
+                            <small class="text-muted">All staff requests have been reviewed.</small>
+                        </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Photo Zoom Modal -->
+<!-- Verification Photo Zoom Modal -->
 <div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header border-0 bg-dark text-white py-2.5 px-3">
-                <h6 class="modal-title fw-bold" id="photoModalLabel" style="font-size: 0.85rem;">Verification Photo</h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header border-0 bg-dark text-white py-3 px-4">
+                <h6 class="modal-title fw-bold" id="photoModalLabel" style="font-size: 0.9rem;">
+                    <i class="bi bi-camera me-1.5"></i> Verification Photo
+                </h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0 bg-black">
+            <div class="modal-body p-0 bg-black text-center">
                 <img id="fullPhotoEl" src="" class="w-100 h-auto object-fit-contain" style="max-height: 80vh;" alt="Verification Photo"/>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit / Manual Check-In Attendance Modal -->
+<div class="modal fade" id="editAttendanceModal" tabindex="-1" aria-labelledby="editAttendanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0 bg-primary text-white py-3 px-4">
+                <h6 class="modal-title fw-bold" id="editAttendanceModalLabel" style="font-size: 0.9rem;">
+                    <i class="bi bi-clock-history me-1.5"></i> Manual Check-In & Attendance Edit
+                </h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="alert alert-secondary border-0 bg-white rounded-3 mb-3 p-3 shadow-sm" style="font-size: 0.8rem;">
+                    <div class="d-flex justify-content-between mb-1.5">
+                        <span class="fw-semibold text-muted">Employee:</span>
+                        <span id="editEmpName" class="fw-bold text-dark">--</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-semibold text-muted">Date:</span>
+                        <span id="editEmpDate" class="fw-bold text-dark">--</span>
+                    </div>
+                </div>
+
+                <div id="editModalAlert" class="alert alert-success border-0 shadow-sm rounded-3 mb-3 p-3 small d-none align-items-center gap-2" style="font-size: 0.8rem; background-color: #d1fae5; color: #065f46;">
+                    <i class="bi bi-check-circle-fill text-success fs-6"></i>
+                    <span id="editModalAlertMsg">Attendance updated successfully!</span>
+                </div>
+
+                <form id="editAttendanceForm">
+                    <input type="hidden" id="editRecordId">
+                    <input type="hidden" id="editUserId">
+                    <input type="hidden" id="editIsoDate">
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem; text-transform: uppercase;"><i class="bi bi-clock-history me-1 text-primary"></i> Manual Check-In Time</label>
+                            <input type="time" id="editCheckInTime" class="form-control form-control-sm rounded-2 fw-semibold">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem; text-transform: uppercase;"><i class="bi bi-clock me-1 text-secondary"></i> Manual Check-Out Time</label>
+                            <input type="time" id="editCheckOutTime" class="form-control form-control-sm rounded-2 fw-semibold">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem; text-transform: uppercase;">Status Override</label>
+                        <select id="editStatus" class="form-select form-select-sm rounded-2 fw-semibold" required>
+                            <option value="auto">⚡ Auto-Calculate from Check-In Time</option>
+                            <option value="present">Present</option>
+                            <option value="late">Late Check-in</option>
+                            <option value="half_day">Half Day</option>
+                            <option value="week_off">Week Off</option>
+                            <option value="on_leave">On Leave</option>
+                            <option value="absent">Absent</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem; text-transform: uppercase;">Correction Notes / Reason</label>
+                        <textarea id="editNotes" rows="2" class="form-control form-control-sm rounded-2" placeholder="Explain reason for manual check-in entry..." required></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary rounded-pill w-50 py-2 fw-bold" data-bs-dismiss="modal" style="font-size: 0.8rem;">Cancel</button>
+                        <button type="submit" id="saveEditBtn" class="btn btn-primary rounded-pill w-50 py-2 fw-bold" style="font-size: 0.8rem;">Save Changes</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -320,10 +860,119 @@
 
 {% block extra_js %}
 <script>
-    // Photo modal viewer
     function showFullPhoto(url, label) {
         document.getElementById('fullPhotoEl').src = url;
         document.getElementById('photoModalLabel').textContent = label;
+    }
+
+    function initEditModal(id, username, date, status, notes, userId, isoDate, checkInTime, checkOutTime) {
+        document.getElementById('editRecordId').value = id || 0;
+        document.getElementById('editUserId').value = userId || '';
+        document.getElementById('editIsoDate').value = isoDate || '';
+        document.getElementById('editEmpName').textContent = username;
+        document.getElementById('editEmpDate').textContent = date;
+        document.getElementById('editCheckInTime').value = checkInTime || '';
+        document.getElementById('editCheckOutTime').value = checkOutTime || '';
+        document.getElementById('editStatus').value = 'auto';
+        document.getElementById('editNotes').value = notes || '';
+        
+        const checkInEl = document.getElementById('editCheckInTime');
+        if (checkInEl) {
+            checkInEl.oninput = function() {
+                document.getElementById('editStatus').value = 'auto';
+            };
+        }
+        
+        const alertBox = document.getElementById('editModalAlert');
+        if (alertBox) {
+            alertBox.classList.add('d-none');
+            alertBox.classList.remove('d-flex');
+        }
+        const btn = document.getElementById('saveEditBtn');
+        if (btn) {
+            btn.disabled = false;
+            btn.className = "btn btn-primary rounded-pill w-50 py-2 fw-bold";
+            btn.innerHTML = 'Save Changes';
+        }
+    }
+
+    if (document.getElementById('editAttendanceForm')) {
+        document.getElementById('editAttendanceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('editRecordId').value || 0;
+            const userId = document.getElementById('editUserId').value;
+            const isoDate = document.getElementById('editIsoDate').value;
+            const checkInTime = document.getElementById('editCheckInTime').value;
+            const checkOutTime = document.getElementById('editCheckOutTime').value;
+            const status = document.getElementById('editStatus').value;
+            const notes = document.getElementById('editNotes').value;
+            
+            const alertBox = document.getElementById('editModalAlert');
+            const alertMsg = document.getElementById('editModalAlertMsg');
+            const btn = document.getElementById('saveEditBtn');
+            
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Saving...';
+            }
+            
+            let url = "{% url 'attendance:edit_attendance_ajax' 0 %}".replace('0', id);
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    date: isoDate,
+                    check_in_time: checkInTime,
+                    check_out_time: checkOutTime,
+                    status: status,
+                    notes: notes
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (alertBox && alertMsg) {
+                        alertMsg.textContent = data.message;
+                        alertBox.classList.remove('d-none');
+                        alertBox.classList.add('d-flex');
+                    }
+                    if (btn) {
+                        btn.classList.remove('btn-primary');
+                        btn.classList.add('btn-success');
+                        btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Saved!';
+                    }
+                    setTimeout(() => {
+                        const modalEl = document.getElementById('editAttendanceModal');
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+                        location.reload();
+                    }, 850);
+                } else {
+                    if (alertBox && alertMsg) {
+                        alertMsg.textContent = "Error: " + data.message;
+                        alertBox.classList.remove('alert-success', 'd-none');
+                        alertBox.classList.add('alert-danger', 'd-flex');
+                    }
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = 'Save Changes';
+                    }
+                }
+            })
+            .catch(err => {
+                console.error("AJAX Error:", err);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Save Changes';
+                }
+            });
+        });
     }
 
     document.addEventListener('click', function(e) {
@@ -333,7 +982,7 @@
 
         const originalText = btn.innerHTML;
         btn.style.pointerEvents = 'none';
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" style="width:0.65rem;height:0.65rem;"></span>';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" style="width:0.75rem;height:0.75rem;"></span>';
 
         fetch(btn.href + (btn.href.includes('?') ? '&' : '?') + 'ajax=1', {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -341,7 +990,7 @@
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                const container = btn.closest('.list-group-item') || btn.closest('tr');
+                const container = btn.closest('.mo-perm-item') || btn.closest('tr');
                 if (container) {
                     container.style.transition = 'all 0.25s ease';
                     container.style.opacity = '0';
@@ -359,17 +1008,4 @@
         });
     });
 </script>
-<style>
-    .cursor-zoom {
-        cursor: zoom-in;
-        transition: transform 0.2s ease;
-    }
-    .cursor-zoom:hover {
-        transform: scale(1.08);
-    }
-    .btn-xs {
-        font-size: 0.7rem !important;
-        padding: 0.2rem 0.45rem !important;
-    }
-</style>
 {% endblock %}

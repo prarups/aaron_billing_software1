@@ -150,6 +150,10 @@ class User(AbstractUser):
     active_branch = models.ForeignKey('core.Branch', on_delete=models.SET_NULL, null=True, blank=True, related_name='active_users')
     employee_id = models.CharField(max_length=50, unique=True, blank=True, null=True)
     date_of_joining = models.DateField(null=True, blank=True)
+    designation = models.CharField(max_length=100, blank=True, null=True, help_text="Job Designation")
+    bank_name = models.CharField(max_length=100, blank=True, null=True, help_text="Bank Name")
+    account_number = models.CharField(max_length=50, blank=True, null=True, help_text="Bank Account Number")
+    ifsc_code = models.CharField(max_length=20, blank=True, null=True, help_text="Bank IFSC Code")
     has_product_rights = models.BooleanField(default=False)
     has_bill_edit_rights = models.BooleanField(default=False)
     has_pos_access = models.BooleanField(default=True)
@@ -220,7 +224,7 @@ class User(AbstractUser):
 
     @property
     def has_all_branches(self):
-        if self.is_superuser or self.role == 'owner':
+        if self.is_superuser or self.role in ['owner', 'admin', 'regional_manager']:
             return True
         if self.role:
             try:
@@ -233,21 +237,12 @@ class User(AbstractUser):
     def get_accessible_branches(self):
         """Returns the branches this user is authorized to work in."""
         from core.models import Branch
-        if self.is_superuser:
+        if self.is_superuser or self.has_all_branches:
             return Branch.objects.all()
 
-        # If user has specific assigned branches, check if global access is enabled
         ub = self.branches.all()
         if ub.exists():
-            if self.has_all_branches:
-                return Branch.objects.all()
             return ub
-
-        if self.has_all_branches:
-            return Branch.objects.all()
-
-        if self.role in ['owner', 'regional_manager']:
-            return Branch.objects.all()
 
         if self.active_branch:
             return Branch.objects.filter(id=self.active_branch.id)
@@ -293,7 +288,7 @@ class User(AbstractUser):
                     self.dashboard_access = 'staff'
                 
         super().save(*args, **kwargs)
-        if self.active_branch and not self.branches.filter(id=self.active_branch.id).exists():
+        if self.active_branch and not self.has_all_branches and not self.branches.filter(id=self.active_branch.id).exists():
             self.branches.add(self.active_branch)
 
 

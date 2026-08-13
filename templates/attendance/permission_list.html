@@ -1,69 +1,205 @@
 {% extends "base_attendance.html" %}
 
-{% block title %}Short Permissions - Aaron Billing{% endblock %}
-
-
+{% block title %}Short Permission Portal - Aaron Billing{% endblock %}
 
 {% block content %}
 <style>
-    .btn-xs {
-        padding: 0.2rem 0.55rem;
-        font-size: 0.72rem;
-        line-height: 1.2;
+    /* ── Short Permission Portal Premium Aesthetics ── */
+    :root {
+        --sp-primary: #4f46e5;
+        --sp-primary-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        --sp-success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        --sp-card-bg: rgba(255, 255, 255, 0.96);
+        --sp-border: 1px solid rgba(226, 232, 240, 0.8);
     }
-    .text-xxs {
-        font-size: 0.68rem;
+
+    .sp-wrapper {
+        padding: 1rem;
+        background: #f8fafc;
+        min-height: 100vh;
     }
-    .shadow-xs {
-        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+
+    /* Executive Hero Card */
+    .sp-hero-card {
+        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+        border-radius: 14px;
+        padding: 1rem 1.4rem;
+        color: #ffffff;
+        box-shadow: 0 8px 25px -8px rgba(49, 46, 129, 0.35);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 1rem;
     }
-    .text-indigo {
-        color: #4f46e5 !important;
+
+    .sp-hero-card::before {
+        content: '';
+        position: absolute;
+        top: -40%;
+        right: -10%;
+        width: 280px;
+        height: 280px;
+        background: radial-gradient(circle, rgba(124, 58, 237, 0.35) 0%, rgba(255, 255, 255, 0) 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .sp-hero-title {
+        font-family: 'Outfit', 'Inter', sans-serif;
+        font-weight: 800;
+        font-size: 1.25rem;
+        letter-spacing: -0.02em;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+
+    .sp-hero-subtitle {
+        color: rgba(226, 232, 240, 0.85);
+        font-size: 0.78rem;
+        margin-top: 0.2rem;
+    }
+
+    .sp-glass-pill {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+        padding: 0.35rem 0.85rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    /* Cards */
+    .sp-card {
+        background: #ffffff;
+        border-radius: 14px;
+        border: var(--sp-border);
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
+        overflow: hidden;
+    }
+
+    .sp-card-header {
+        background: #ffffff;
+        padding: 0.85rem 1.1rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .sp-card-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.88rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .sp-input, .sp-select {
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 8px !important;
+        font-size: 0.78rem !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
+        padding: 0.4rem 0.75rem !important;
+        background-color: #ffffff !important;
+    }
+
+    .sp-input:focus, .sp-select:focus {
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+    }
+
+    /* Table styling */
+    .sp-table th {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #64748b;
+        padding: 0.6rem 0.85rem;
+        background: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .sp-table td {
+        padding: 0.65rem 0.85rem;
+        vertical-align: middle;
+        font-size: 0.78rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .sp-btn-submit {
+        background: var(--sp-primary-gradient) !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 700 !important;
+        font-size: 0.78rem !important;
+        padding: 0.5rem 1.2rem !important;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28) !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .sp-btn-submit:hover {
+        transform: translateY(-1.5px);
+        box-shadow: 0 6px 18px rgba(79, 70, 229, 0.4) !important;
     }
 </style>
 
-<div class="container-fluid py-3 px-3 px-md-4">
-    <!-- Compact Page Header -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 pb-2 border-bottom">
-        <div>
-            <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                <i class="bi bi-clock-history text-primary fs-5"></i> Short Permission Portal
-            </h5>
-            <small class="text-muted" style="font-size: 0.75rem;">Apply for short work-hour permissions and track live approval status.</small>
-        </div>
-        <div class="d-flex align-items-center gap-2 mt-2 mt-sm-0">
-            <span class="badge bg-primary bg-opacity-10 text-primary fw-semibold px-2.5 py-1 rounded-pill" style="font-size: 0.72rem;">
-                <i class="bi bi-calendar-check me-1"></i> Quota: {{ max_permissions }}/month
-            </span>
-            <span class="badge bg-secondary bg-opacity-10 text-secondary fw-semibold px-2.5 py-1 rounded-pill" style="font-size: 0.72rem;">
-                <i class="bi bi-clock me-1"></i> Max: {{ global_policy.formatted_max_hours }}
-            </span>
+<div class="sp-wrapper">
+    <!-- Executive Hero Header -->
+    <div class="sp-hero-card">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 position-relative" style="z-index: 1;">
+            <div>
+                <h1 class="sp-hero-title">
+                    <i class="bi bi-clock-history text-warning"></i> Short Permission Portal
+                </h1>
+                <div class="sp-hero-subtitle">Apply for short work-hour permissions and track live approval status in real-time.</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="sp-glass-pill">
+                    <i class="bi bi-calendar-check text-success"></i> Quota: {{ max_permissions }}/month
+                </span>
+                <span class="sp-glass-pill">
+                    <i class="bi bi-clock-fill text-warning"></i> Max Duration: {{ global_policy.formatted_max_hours }}
+                </span>
+            </div>
         </div>
     </div>
 
-    <!-- Global Permission Policy Configuration (Admin Only - Compact & Collapsible) -->
+    <!-- Global Permission Policy Configuration (Admin Only - Collapsible) -->
     {% if is_owner %}
-    <div class="card border-0 shadow-xs bg-white rounded-3 mb-3">
-        <div class="card-header bg-white py-2 px-3 d-flex align-items-center justify-content-between border-0">
-            <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.82rem;">
-                <i class="bi bi-sliders text-indigo"></i> Global Permission Limits Policy
-            </h6>
-            <button class="btn btn-link btn-xs text-decoration-none text-muted p-0" type="button" data-bs-toggle="collapse" data-bs-target="#policyCollapse" aria-expanded="false">
-                <i class="bi bi-gear-fill me-1"></i> Quick Settings <i class="bi bi-chevron-down ms-0.5"></i>
+    <div class="sp-card mb-3">
+        <div class="sp-card-header bg-light">
+            <h2 class="sp-card-title text-indigo">
+                <i class="bi bi-sliders text-primary"></i> Global Permission Limits Policy
+            </h2>
+            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 font-weight-bold" type="button" data-bs-toggle="collapse" data-bs-target="#policyCollapse" aria-expanded="false" style="font-size: 0.75rem;">
+                <i class="bi bi-gear-fill me-1"></i> Quick Settings <i class="bi bi-chevron-down ms-1"></i>
             </button>
         </div>
         <div class="collapse" id="policyCollapse">
-            <div class="card-body p-3 border-top pt-2.5">
+            <div class="p-3 border-top">
                 <form method="post" action="{% url 'attendance:update_global_policy' %}">
                     {% csrf_token %}
                     <div class="row g-2 mb-2">
-                        <div class="col-6 col-md-3">
-                            <label class="form-label text-muted fw-semibold mb-1" style="font-size: 0.7rem;">Max Perms / Month</label>
-                            <input type="number" name="max_permissions_per_month" value="{{ global_policy.max_permissions_per_month }}" min="1" max="30" class="form-control form-control-sm rounded-2" required>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Max Perms / Month</label>
+                            <input type="number" name="max_permissions_per_month" value="{{ global_policy.max_permissions_per_month }}" min="1" max="30" class="form-control sp-input" required>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <label class="form-label text-muted fw-semibold mb-1" style="font-size: 0.7rem;">Max Hours / Perm</label>
-                            <select name="max_hours_per_permission" class="form-select form-select-sm rounded-2" required>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Max Hours / Perm</label>
+                            <select name="max_hours_per_permission" class="form-select sp-select" required>
                                 <option value="0.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "0.50" %}selected{% endif %}>30 Mins (0.5 hrs)</option>
                                 <option value="1.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "1.00" %}selected{% endif %}>1 Hour (1.0 hr)</option>
                                 <option value="1.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "1.50" %}selected{% endif %}>1.5 Hours</option>
@@ -76,17 +212,13 @@
                                 <option value="6.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "6.00" %}selected{% endif %}>6 Hours</option>
                             </select>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <label class="form-label text-muted fw-semibold mb-1" style="font-size: 0.7rem;">Grace Mins (Check-in)</label>
-                            <input type="number" name="grace_period_minutes" value="{{ global_policy.grace_period_minutes|default:15 }}" min="0" max="120" class="form-control form-control-sm rounded-2" required>
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <label class="form-label text-muted fw-semibold mb-1" style="font-size: 0.7rem;">Lates Cut Threshold</label>
-                            <input type="number" name="late_threshold_for_half_day_deduction" value="{{ global_policy.late_threshold_for_half_day_deduction|default:4 }}" min="1" max="30" class="form-control form-control-sm rounded-2" required>
+                        <div class="col-6 col-md-4">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Grace Mins (Check-in)</label>
+                            <input type="number" name="grace_period_minutes" value="{{ global_policy.grace_period_minutes|default:15 }}" min="0" max="120" class="form-control sp-input" required>
                         </div>
                     </div>
                     <div class="d-flex justify-content-end pt-1">
-                        <button type="submit" class="btn btn-primary btn-xs rounded-pill px-3 py-1 fw-semibold">
+                        <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 py-1 fw-bold">
                             <i class="bi bi-check-lg me-1"></i> Save Global Policy
                         </button>
                     </div>
@@ -96,100 +228,96 @@
     </div>
     {% endif %}
 
-    <!-- Manager/Admin Approvals Panel (Compact) -->
+    <!-- Manager/Admin Approvals Panel -->
     {% if pending_perms %}
-    <div class="card border-0 shadow-xs bg-white rounded-3 mb-3">
-        <div class="card-header bg-warning bg-opacity-10 border-bottom-0 py-2 px-3 d-flex align-items-center justify-content-between">
-            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.82rem;">
+    <div class="sp-card mb-3 border-warning border-opacity-50">
+        <div class="sp-card-header bg-warning bg-opacity-10">
+            <h2 class="sp-card-title text-dark">
                 <i class="bi bi-exclamation-circle-fill text-warning"></i> Pending Approvals
-            </h6>
-            <span class="badge bg-warning text-dark rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">{{ pending_perms|length }} Pending</span>
+            </h2>
+            <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1 fw-bold" style="font-size: 0.68rem;">{{ pending_perms|length }} Pending</span>
         </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.78rem;">
-                    <thead class="table-light text-muted">
-                        <tr>
-                            <th class="ps-3 py-2">Employee</th>
-                            <th class="py-2">Date</th>
-                            <th class="py-2">Time Duration</th>
-                            <th class="py-2">Reason</th>
-                            <th class="pe-3 py-2 text-end">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for perm in pending_perms %}
-                        <tr>
-                            <td class="ps-3 py-1.5">
-                                <strong class="text-dark d-block">{{ perm.user.username }}</strong>
-                                <span class="text-muted text-xxs">ID: {{ perm.user.employee_id|default:"-" }}</span>
-                            </td>
-                            <td class="py-1.5 fw-semibold text-dark">{{ perm.date|date:"d M Y" }}</td>
-                            <td class="py-1.5">
-                                <span class="badge bg-light text-dark border rounded-pill px-2 py-0.5">{{ perm.start_time|time:"g:i A" }} to {{ perm.end_time|time:"g:i A" }}</span>
-                            </td>
-                            <td class="py-1.5 text-muted" style="max-width: 250px;">
-                                <span class="d-inline-block text-truncate" style="max-width: 240px;" title="{{ perm.reason }}">{{ perm.reason }}</span>
-                            </td>
-                            <td class="pe-3 py-1.5 text-end">
-                                <a href="{% url 'attendance:permission_approve' perm.pk 'approve' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-xs btn-success rounded-pill px-2.5 py-0.5 me-1 fw-semibold js-perm-action">Approve</a>
-                                <a href="{% url 'attendance:permission_approve' perm.pk 'reject' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-xs btn-outline-danger rounded-pill px-2.5 py-0.5 js-perm-action">Reject</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div class="table-responsive">
+            <table class="table sp-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Employee</th>
+                        <th>Date</th>
+                        <th>Time Duration</th>
+                        <th>Reason</th>
+                        <th class="pe-3 text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for perm in pending_perms %}
+                    <tr>
+                        <td class="ps-3">
+                            <strong class="text-dark d-block">{{ perm.user.username }}</strong>
+                            <span class="text-muted" style="font-size: 0.7rem;">ID: {{ perm.user.employee_id|default:"-" }}</span>
+                        </td>
+                        <td class="fw-bold text-dark">{{ perm.date|date:"d M Y" }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1 fw-semibold">{{ perm.start_time|time:"g:i A" }} to {{ perm.end_time|time:"g:i A" }}</span>
+                        </td>
+                        <td class="text-muted" style="max-width: 250px;">
+                            <span class="d-inline-block text-truncate" style="max-width: 240px;" title="{{ perm.reason }}">{{ perm.reason }}</span>
+                        </td>
+                        <td class="pe-3 text-end">
+                            <a href="{% url 'attendance:permission_approve' perm.pk 'approve' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-success rounded-pill px-3 py-1 font-weight-bold me-1 js-perm-action" style="font-size: 0.75rem;">Approve</a>
+                            <a href="{% url 'attendance:permission_approve' perm.pk 'reject' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 font-weight-bold js-perm-action" style="font-size: 0.75rem;">Reject</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
     {% endif %}
 
-    <!-- Main Content Section: Form & My Logs -->
+    <!-- Main Section: Form & My Logs -->
     <div class="row g-3">
-        <!-- Apply Permission Form Card -->
+        <!-- Request Permission Form Card -->
         <div class="col-lg-4">
-            <div class="card border-0 shadow-xs bg-white rounded-3 h-100">
-                <div class="card-header bg-white border-bottom py-2.5 px-3">
-                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.82rem;">
-                        <i class="bi bi-plus-circle-fill"></i> Request Permission
-                    </h6>
+            <div class="sp-card h-100">
+                <div class="sp-card-header">
+                    <h2 class="sp-card-title">
+                        <i class="bi bi-plus-circle-fill text-indigo"></i> Request Permission
+                    </h2>
                 </div>
-                <div class="card-body p-3">
-                    <!-- Quota Summary Badges -->
-                    <div class="d-flex align-items-center justify-content-between p-2 rounded-2 bg-light mb-3" style="font-size: 0.72rem;">
+                <div class="p-3">
+                    <!-- Quota Usage Card -->
+                    <div class="d-flex align-items-center justify-content-between p-2.5 rounded-3 bg-light mb-3 border">
                         <div>
-                            <span class="text-muted d-block">Used This Month:</span>
-                            <strong class="{% if permissions_used_this_month >= max_permissions %}text-danger{% else %}text-success{% endif %}" style="font-size: 0.85rem;">
+                            <span class="text-muted d-block fw-bold" style="font-size: 0.65rem; text-transform: uppercase;">Used This Month</span>
+                            <strong class="{% if permissions_used_this_month >= max_permissions %}text-danger{% else %}text-success{% endif %}" style="font-size: 0.95rem;">
                                 {{ permissions_used_this_month }} / {{ max_permissions }}
                             </strong>
                         </div>
                         <div class="text-end">
-                            <span class="text-muted d-block">Max Duration:</span>
-                            <strong class="text-dark" style="font-size: 0.85rem;">{{ global_policy.formatted_max_hours }}</strong>
+                            <span class="text-muted d-block fw-bold" style="font-size: 0.65rem; text-transform: uppercase;">Max Duration</span>
+                            <strong class="text-dark" style="font-size: 0.95rem;">{{ global_policy.formatted_max_hours }}</strong>
                         </div>
                     </div>
 
-
-
                     <form method="post" action="{% url 'attendance:permission_request' %}" id="permission_form_el">
                         {% csrf_token %}
-                        
-                        <!-- Hidden 24h format inputs expected by Django backend -->
                         <input type="hidden" name="start_time" id="hidden_start_time" required>
                         <input type="hidden" name="end_time" id="hidden_end_time" required>
 
-                        <div class="mb-2.5">
-                            <label class="form-label text-muted fw-semibold mb-1" style="font-size: 0.7rem;">Date <span class="text-primary fw-normal">({{ current_month_name }})</span></label>
-                            <input type="date" name="date" min="{{ current_month_start }}" max="{{ current_month_end }}" class="form-control form-control-sm rounded-2" required>
+                        <div class="mb-3">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">
+                                Permission Date <span class="text-primary font-weight-normal">({{ current_month_name }})</span>
+                            </label>
+                            <input type="date" name="date" min="{{ current_month_start }}" max="{{ current_month_end }}" class="form-control sp-input" required>
                         </div>
 
                         <!-- 12-Hour Start Time Selector -->
-                        <div class="mb-2.5">
-                            <label class="form-label text-muted fw-semibold mb-1 d-block" style="font-size: 0.7rem;">
-                                Start Time <span class="text-primary fw-semibold">(12-Hour AM/PM)</span>
+                        <div class="mb-3">
+                            <label class="form-label text-muted fw-bold mb-1 d-block" style="font-size: 0.68rem; text-transform: uppercase;">
+                                Start Time <span class="text-primary">(12-Hour AM/PM)</span>
                             </label>
                             <div class="d-flex align-items-center gap-1.5">
-                                <select id="start_hour_sel" class="form-select form-select-sm rounded-2 text-center fw-semibold" style="font-size: 0.75rem; max-width: 68px;">
+                                <select id="start_hour_sel" class="form-select sp-select text-center fw-bold" style="max-width: 72px;">
                                     <option value="09" selected>09</option>
                                     <option value="10">10</option>
                                     <option value="11">11</option>
@@ -204,7 +332,7 @@
                                     <option value="08">08</option>
                                 </select>
                                 <span class="fw-bold text-muted">:</span>
-                                <select id="start_min_sel" class="form-select form-select-sm rounded-2 text-center fw-semibold" style="font-size: 0.75rem; max-width: 68px;">
+                                <select id="start_min_sel" class="form-select sp-select text-center fw-bold" style="max-width: 72px;">
                                     <option value="00" selected>00</option>
                                     <option value="05">05</option>
                                     <option value="10">10</option>
@@ -218,25 +346,24 @@
                                     <option value="50">50</option>
                                     <option value="55">55</option>
                                 </select>
-                                <div class="btn-group btn-group-sm ms-1" role="group">
-                                    <button type="button" id="start_am_btn" class="btn btn-xs btn-primary fw-bold px-2">AM</button>
-                                    <button type="button" id="start_pm_btn" class="btn btn-xs btn-outline-primary fw-bold px-2">PM</button>
+                                <div class="btn-group ms-1" role="group">
+                                    <button type="button" id="start_am_btn" class="btn btn-sm btn-primary fw-bold px-2.5" style="font-size: 0.72rem;">AM</button>
+                                    <button type="button" id="start_pm_btn" class="btn btn-sm btn-outline-primary fw-bold px-2.5" style="font-size: 0.72rem;">PM</button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Duration / Custom End Time Mode -->
-                        <div class="mb-2.5">
+                        <!-- Duration Selector -->
+                        <div class="mb-3">
                             <div class="d-flex align-items-center justify-content-between mb-1">
-                                <label class="form-label text-muted fw-semibold mb-0" style="font-size: 0.7rem;">Permission Duration</label>
-                                <button type="button" id="toggle_mode_btn" class="btn btn-link btn-xs p-0 text-decoration-none text-primary fw-semibold" style="font-size: 0.68rem;">
+                                <label class="form-label text-muted fw-bold mb-0" style="font-size: 0.68rem; text-transform: uppercase;">Permission Duration</label>
+                                <button type="button" id="toggle_mode_btn" class="btn btn-link p-0 text-decoration-none text-primary fw-bold" style="font-size: 0.72rem;">
                                     <i class="bi bi-clock-history me-0.5"></i> Custom End Time
                                 </button>
                             </div>
 
-                            <!-- Mode A: Duration Select (Default & Easiest) -->
                             <div id="duration_mode_wrap">
-                                <select id="duration_mins_sel" class="form-select form-select-sm rounded-2 fw-semibold text-dark" style="font-size: 0.75rem;">
+                                <select id="duration_mins_sel" class="form-select sp-select fw-bold text-dark">
                                     <option value="30">30 Minutes (0.5 hr)</option>
                                     <option value="45">45 Minutes</option>
                                     <option value="60" selected>1 Hour (1.0 hr)</option>
@@ -247,10 +374,9 @@
                                 </select>
                             </div>
 
-                            <!-- Mode B: Custom End Time Picker -->
                             <div id="endtime_mode_wrap" class="d-none">
                                 <div class="d-flex align-items-center gap-1.5">
-                                    <select id="end_hour_sel" class="form-select form-select-sm rounded-2 text-center fw-semibold" style="font-size: 0.75rem; max-width: 68px;">
+                                    <select id="end_hour_sel" class="form-select sp-select text-center fw-bold" style="max-width: 72px;">
                                         <option value="10" selected>10</option>
                                         <option value="11">11</option>
                                         <option value="12">12</option>
@@ -265,7 +391,7 @@
                                         <option value="09">09</option>
                                     </select>
                                     <span class="fw-bold text-muted">:</span>
-                                    <select id="end_min_sel" class="form-select form-select-sm rounded-2 text-center fw-semibold" style="font-size: 0.75rem; max-width: 68px;">
+                                    <select id="end_min_sel" class="form-select sp-select text-center fw-bold" style="max-width: 72px;">
                                         <option value="00" selected>00</option>
                                         <option value="05">05</option>
                                         <option value="10">10</option>
@@ -279,87 +405,85 @@
                                         <option value="50">50</option>
                                         <option value="55">55</option>
                                     </select>
-                                    <div class="btn-group btn-group-sm ms-1" role="group">
-                                        <button type="button" id="end_am_btn" class="btn btn-xs btn-primary fw-bold px-2">AM</button>
-                                        <button type="button" id="end_pm_btn" class="btn btn-xs btn-outline-primary fw-bold px-2">PM</button>
+                                    <div class="btn-group ms-1" role="group">
+                                        <button type="button" id="end_am_btn" class="btn btn-sm btn-primary fw-bold px-2.5" style="font-size: 0.72rem;">AM</button>
+                                        <button type="button" id="end_pm_btn" class="btn btn-sm btn-outline-primary fw-bold px-2.5" style="font-size: 0.72rem;">PM</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Live Summary Banner -->
-                        <div id="perm_summary_card" class="p-2.5 rounded-2 mb-3 border bg-success bg-opacity-10 border-success border-opacity-25 text-success" style="font-size: 0.74rem;">
+                        <div id="perm_summary_card" class="p-2.5 rounded-3 mb-3 border bg-success bg-opacity-10 border-success border-opacity-25 text-success" style="font-size: 0.76rem;">
                             <div class="d-flex align-items-center justify-content-between">
-                                <span class="fw-bold text-dark"><i class="bi bi-clock-history me-1 text-primary"></i> Time Range:</span>
+                                <span class="fw-bold text-dark"><i class="bi bi-clock-history me-1 text-primary"></i> Range:</span>
                                 <span id="perm_range_text" class="fw-bold text-primary">09:00 AM ➔ 10:00 AM</span>
                             </div>
                             <div id="perm_dur_text" class="fw-semibold text-muted text-xxs mt-0.5">Duration: 1 Hour (Within limit)</div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label text-muted fw-semibold mb-1" style="font-size: 0.7rem;">Reason</label>
-                            <textarea name="reason" rows="2" class="form-control form-control-sm rounded-2" placeholder="Brief reason for request..." required></textarea>
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Reason</label>
+                            <textarea name="reason" rows="2" class="form-control sp-input" placeholder="Brief reason for request..." required></textarea>
                         </div>
 
-                        <button type="submit" class="btn btn-primary btn-sm w-100 rounded-pill py-1.5 fw-semibold shadow-xs">
-                            <i class="bi bi-send-fill me-1"></i> Submit Request
+                        <button type="submit" class="btn sp-btn-submit w-100">
+                            <i class="bi bi-send-fill me-1"></i> Submit Permission Request
                         </button>
                     </form>
                 </div>
             </div>
         </div>
 
-        <!-- My Permissions History Card -->
+        <!-- My Permissions Logs Card -->
         <div class="col-lg-8">
-            <div class="card border-0 shadow-xs bg-white rounded-3 h-100">
-                <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex align-items-center justify-content-between">
-                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.82rem;">
-                        <i class="bi bi-clock-history"></i> My Permission Logs
-                    </h6>
-                    <span class="badge bg-light text-muted border rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">{{ my_permissions|length }} total</span>
+            <div class="sp-card h-100">
+                <div class="sp-card-header">
+                    <h2 class="sp-card-title">
+                        <i class="bi bi-clock-history text-indigo"></i> My Permission Logs
+                    </h2>
+                    <span class="badge bg-light text-muted border rounded-pill px-2.5 py-1" style="font-size: 0.68rem;">{{ my_permissions|length }} total</span>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
-                        <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.78rem;">
-                            <thead class="table-light text-muted sticky-top">
-                                <tr>
-                                    <th class="ps-3 py-2">Date</th>
-                                    <th class="py-2">Time</th>
-                                    <th class="py-2">Reason</th>
-                                    <th class="pe-3 py-2 text-end">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for perm in my_permissions %}
-                                <tr>
-                                    <td class="ps-3 py-1.5 fw-semibold text-dark">{{ perm.date|date:"d M Y" }}</td>
-                                    <td class="py-1.5 text-muted">
-                                        <span class="badge bg-light text-dark border rounded-pill px-2 py-0.5">{{ perm.start_time|time:"g:i A" }} to {{ perm.end_time|time:"g:i A" }}</span>
-                                    </td>
-                                    <td class="py-1.5 text-muted" style="max-width: 200px;">
-                                        <span class="d-inline-block text-truncate" style="max-width: 190px;" title="{{ perm.reason }}">{{ perm.reason }}</span>
-                                    </td>
-                                    <td class="pe-3 py-1.5 text-end">
-                                        {% if perm.status == 'approved' %}
-                                            <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0; font-size: 0.68rem;"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
-                                        {% elif perm.status == 'rejected' %}
-                                            <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 0.68rem;"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>
-                                        {% else %}
-                                            <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 0.68rem;"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="4" class="text-center py-4 text-muted" style="font-size: 0.75rem;">
-                                        <i class="bi bi-inbox fs-4 d-block mb-1 text-muted opacity-50"></i>
-                                        No permission logs found.
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="table-responsive" style="max-height: 360px; overflow-y: auto;">
+                    <table class="table sp-table align-middle mb-0">
+                        <thead class="sticky-top">
+                            <tr>
+                                <th class="ps-3">Date</th>
+                                <th>Time</th>
+                                <th>Reason</th>
+                                <th class="pe-3 text-end">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for perm in my_permissions %}
+                            <tr>
+                                <td class="ps-3 fw-bold text-dark">{{ perm.date|date:"d M Y" }}</td>
+                                <td class="text-muted">
+                                    <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1 fw-semibold">{{ perm.start_time|time:"g:i A" }} to {{ perm.end_time|time:"g:i A" }}</span>
+                                </td>
+                                <td class="text-muted" style="max-width: 200px;">
+                                    <span class="d-inline-block text-truncate" style="max-width: 190px;" title="{{ perm.reason }}">{{ perm.reason }}</span>
+                                </td>
+                                <td class="pe-3 text-end">
+                                    {% if perm.status == 'approved' %}
+                                        <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0; font-size: 0.68rem;"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
+                                    {% elif perm.status == 'rejected' %}
+                                        <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 0.68rem;"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>
+                                    {% else %}
+                                        <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 0.68rem;"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted" style="font-size: 0.75rem;">
+                                    <i class="bi bi-inbox fs-3 d-block mb-1 text-muted opacity-50"></i>
+                                    No permission logs found.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -367,91 +491,88 @@
 
     <!-- Staff Permission History (Past Requests) (For Manager / Admin) -->
     {% if pending_perms or past_perms %}
-    <div class="card border-0 shadow-xs bg-white rounded-3 mt-3">
-        <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
-            <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.82rem;">
-                <i class="bi bi-people-fill"></i> Staff Permission History (Past Requests)
-            </h6>
-            <!-- Compact Filter Form -->
+    <div class="sp-card mt-3">
+        <div class="sp-card-header flex-wrap gap-2">
+            <h2 class="sp-card-title">
+                <i class="bi bi-people-fill text-indigo"></i> Staff Permission History (Past Requests)
+            </h2>
             <form method="get" action="{% url 'attendance:permission_list' %}" class="d-flex flex-wrap align-items-center gap-2 m-0">
                 <div class="input-group input-group-sm" style="max-width: 200px;">
                     <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search" style="font-size: 0.7rem;"></i></span>
-                    <input type="text" name="q_perm" value="{{ q_perm }}" class="form-control border-start-0 rounded-2" placeholder="Search staff..." style="font-size: 0.75rem;">
+                    <input type="text" name="q_perm" value="{{ q_perm }}" class="form-control sp-input border-start-0 rounded-2" placeholder="Search staff...">
                 </div>
-                <select name="branch_perm" class="form-select form-select-sm rounded-2" style="font-size: 0.75rem; max-width: 140px;" onchange="this.form.submit()">
+                <select name="branch_perm" class="form-select sp-select" style="max-width: 140px;" onchange="this.form.submit()">
                     <option value="">All Branches</option>
                     {% for b in branches %}
                         <option value="{{ b.id }}" {% if selected_branch_id == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
                     {% endfor %}
                 </select>
-                <button type="submit" class="btn btn-xs btn-primary rounded-pill px-2.5 py-1">Filter</button>
-                <a href="{% url 'attendance:permission_list' %}" class="btn btn-xs btn-outline-secondary rounded-pill px-2.5 py-1">Reset</a>
+                <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 py-1 fw-bold">Filter</button>
+                <a href="{% url 'attendance:permission_list' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 fw-bold">Reset</a>
             </form>
         </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.78rem;">
-                    <thead class="table-light text-muted">
-                        <tr>
-                            <th class="ps-3 py-2">Employee</th>
-                            <th class="py-2">Date</th>
-                            <th class="py-2">Duration</th>
-                            <th class="py-2">Reason</th>
-                            <th class="py-2">Action By</th>
-                            <th class="pe-3 py-2 text-end">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for perm in past_perms %}
-                        <tr>
-                            <td class="ps-3 py-1.5">
-                                <strong class="text-dark d-block">
-                                    {{ perm.user.first_name }} {{ perm.user.last_name }}
-                                    {% if not perm.user.first_name and not perm.user.last_name %}{{ perm.user.username }}{% endif %}
-                                </strong>
-                                <span class="text-muted text-xxs">@{{ perm.user.username }} &middot; ID: {{ perm.user.employee_id|default:"-" }}</span>
-                            </td>
-                            <td class="py-1.5 fw-semibold text-dark">{{ perm.date|date:"d M Y" }}</td>
-                            <td class="py-1.5 text-muted">
-                                <span class="badge bg-light text-dark border rounded-pill px-2 py-0.5">{{ perm.start_time|time:"g:i A" }} to {{ perm.end_time|time:"g:i A" }}</span>
-                            </td>
-                            <td class="py-1.5 text-muted" style="max-width: 220px;">
-                                <span class="d-inline-block text-truncate" style="max-width: 210px;" title="{{ perm.reason }}">{{ perm.reason }}</span>
-                            </td>
-                            <td class="py-1.5 text-dark fw-semibold" style="font-size: 0.75rem;">{{ perm.action_by.username|default:"-" }}</td>
-                            <td class="pe-3 py-1.5 text-end">
-                                {% if perm.status == 'approved' %}
-                                    <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0; font-size: 0.68rem;"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
-                                {% elif perm.status == 'rejected' %}
-                                    <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 0.68rem;"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>
-                                {% else %}
-                                    <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 0.68rem;"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center py-4 text-muted" style="font-size: 0.75rem;">No past permission records found.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            
-            {% if past_perms.has_other_pages %}
-            <div class="px-3 py-2 border-top bg-light d-flex justify-content-between align-items-center">
-                <span class="text-muted" style="font-size: 0.72rem;">Page {{ past_perms.number }} of {{ past_perms.paginator.num_pages }}</span>
-                <ul class="pagination pagination-sm mb-0">
-                    {% if past_perms.has_previous %}
-                        <li class="page-item"><a class="page-link py-0.5 px-2 text-decoration-none" href="?page={{ past_perms.previous_page_number }}&q_perm={{ q_perm }}&branch_perm={{ selected_branch_id }}">Prev</a></li>
-                    {% endif %}
-                    {% if past_perms.has_next %}
-                        <li class="page-item"><a class="page-link py-0.5 px-2 text-decoration-none" href="?page={{ past_perms.next_page_number }}&q_perm={{ q_perm }}&branch_perm={{ selected_branch_id }}">Next</a></li>
-                    {% endif %}
-                </ul>
-            </div>
-            {% endif %}
+        <div class="table-responsive">
+            <table class="table sp-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Employee</th>
+                        <th>Date</th>
+                        <th>Duration</th>
+                        <th>Reason</th>
+                        <th>Action By</th>
+                        <th class="pe-3 text-end">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for perm in past_perms %}
+                    <tr>
+                        <td class="ps-3">
+                            <strong class="text-dark d-block">
+                                {{ perm.user.first_name }} {{ perm.user.last_name }}
+                                {% if not perm.user.first_name and not perm.user.last_name %}{{ perm.user.username }}{% endif %}
+                            </strong>
+                            <span class="text-muted" style="font-size: 0.7rem;">@{{ perm.user.username }} &middot; ID: {{ perm.user.employee_id|default:"-" }}</span>
+                        </td>
+                        <td class="fw-bold text-dark">{{ perm.date|date:"d M Y" }}</td>
+                        <td class="text-muted">
+                            <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1 fw-semibold">{{ perm.start_time|time:"g:i A" }} to {{ perm.end_time|time:"g:i A" }}</span>
+                        </td>
+                        <td class="text-muted" style="max-width: 220px;">
+                            <span class="d-inline-block text-truncate" style="max-width: 210px;" title="{{ perm.reason }}">{{ perm.reason }}</span>
+                        </td>
+                        <td class="text-dark fw-bold" style="font-size: 0.75rem;">{{ perm.action_by.username|default:"-" }}</td>
+                        <td class="pe-3 text-end">
+                            {% if perm.status == 'approved' %}
+                                <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0; font-size: 0.68rem;"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
+                            {% elif perm.status == 'rejected' %}
+                                <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 0.68rem;"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>
+                            {% else %}
+                                <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 0.68rem;"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted" style="font-size: 0.75rem;">No past permission records found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+        
+        {% if past_perms.has_other_pages %}
+        <div class="px-3 py-2 border-top bg-light d-flex justify-content-between align-items-center">
+            <span class="text-muted" style="font-size: 0.72rem;">Page {{ past_perms.number }} of {{ past_perms.paginator.num_pages }}</span>
+            <ul class="pagination pagination-sm mb-0">
+                {% if past_perms.has_previous %}
+                    <li class="page-item"><a class="page-link py-1 px-2.5 text-decoration-none" href="?page={{ past_perms.previous_page_number }}&q_perm={{ q_perm }}&branch_perm={{ selected_branch_id }}">Prev</a></li>
+                {% endif %}
+                {% if past_perms.has_next %}
+                    <li class="page-item"><a class="page-link py-1 px-2.5 text-decoration-none" href="?page={{ past_perms.next_page_number }}&q_perm={{ q_perm }}&branch_perm={{ selected_branch_id }}">Next</a></li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 </div>
@@ -497,14 +618,14 @@
         if (startAmBtn && startPmBtn) {
             startAmBtn.addEventListener('click', function() {
                 startPeriod = 'AM';
-                startAmBtn.className = 'btn btn-xs btn-primary fw-bold px-2';
-                startPmBtn.className = 'btn btn-xs btn-outline-primary fw-bold px-2';
+                startAmBtn.className = 'btn btn-sm btn-primary fw-bold px-2.5';
+                startPmBtn.className = 'btn btn-sm btn-outline-primary fw-bold px-2.5';
                 calculateAndUpdate();
             });
             startPmBtn.addEventListener('click', function() {
                 startPeriod = 'PM';
-                startPmBtn.className = 'btn btn-xs btn-primary fw-bold px-2';
-                startAmBtn.className = 'btn btn-xs btn-outline-primary fw-bold px-2';
+                startPmBtn.className = 'btn btn-sm btn-primary fw-bold px-2.5';
+                startAmBtn.className = 'btn btn-sm btn-outline-primary fw-bold px-2.5';
                 calculateAndUpdate();
             });
         }
@@ -512,14 +633,14 @@
         if (endAmBtn && endPmBtn) {
             endAmBtn.addEventListener('click', function() {
                 endPeriod = 'AM';
-                endAmBtn.className = 'btn btn-xs btn-primary fw-bold px-2';
-                endPmBtn.className = 'btn btn-xs btn-outline-primary fw-bold px-2';
+                endAmBtn.className = 'btn btn-sm btn-primary fw-bold px-2.5';
+                endPmBtn.className = 'btn btn-sm btn-outline-primary fw-bold px-2.5';
                 calculateAndUpdate();
             });
             endPmBtn.addEventListener('click', function() {
                 endPeriod = 'PM';
-                endPmBtn.className = 'btn btn-xs btn-primary fw-bold px-2';
-                endAmBtn.className = 'btn btn-xs btn-outline-primary fw-bold px-2';
+                endPmBtn.className = 'btn btn-sm btn-primary fw-bold px-2.5';
+                endAmBtn.className = 'btn btn-sm btn-outline-primary fw-bold px-2.5';
                 calculateAndUpdate();
             });
         }
@@ -607,7 +728,7 @@
             summaryRange.textContent = `${displayStart} ➔ ${displayEnd}`;
 
             if (diffMins <= 0) {
-                summaryCard.className = 'p-2.5 rounded-2 mb-3 border bg-danger bg-opacity-10 border-danger border-opacity-25 text-danger';
+                summaryCard.className = 'p-2.5 rounded-3 mb-3 border bg-danger bg-opacity-10 border-danger border-opacity-25 text-danger';
                 summaryRange.className = 'fw-bold text-danger';
                 summaryDur.innerHTML = '<i class="bi bi-exclamation-octagon-fill me-1"></i>Invalid: End time must be after start time.';
                 return;
@@ -622,13 +743,13 @@
             const diffHours = diffMins / 60.0;
 
             if (diffHours > maxAllowedHours) {
-                summaryCard.className = 'p-2.5 rounded-2 mb-3 border bg-danger bg-opacity-10 border-danger border-opacity-25 text-danger';
+                summaryCard.className = 'p-2.5 rounded-3 mb-3 border bg-danger bg-opacity-10 border-danger border-opacity-25 text-danger';
                 summaryRange.className = 'fw-bold text-danger';
                 summaryDur.innerHTML = `Duration: <strong>${durStr}</strong> <span class="ms-1"><i class="bi bi-exclamation-triangle-fill me-0.5"></i>Exceeds max limit of {{ global_policy.formatted_max_hours }}.</span>`;
             } else {
-                summaryCard.className = 'p-2.5 rounded-2 mb-3 border bg-success bg-opacity-10 border-success border-opacity-25 text-success';
+                summaryCard.className = 'p-2.5 rounded-3 mb-3 border bg-success bg-opacity-10 border-success border-opacity-25 text-success';
                 summaryRange.className = 'fw-bold text-primary';
-                summaryDur.innerHTML = `Duration: <strong>${durStr}</strong> <span class="ms-1 text-success fw-semibold"><i class="bi bi-check-circle-fill me-0.5"></i>(Within limit)</span>`;
+                summaryDur.innerHTML = `Duration: <strong>${durStr}</strong> <span class="ms-1 text-success fw-bold"><i class="bi bi-check-circle-fill me-0.5"></i>(Within limit)</span>`;
             }
         }
 

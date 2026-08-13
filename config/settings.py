@@ -262,8 +262,23 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
-# Add this line to resolve the AttributeError:
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# STATICFILES_STORAGE is deprecated and mutually exclusive with STORAGES in Django 5.0+ / 6.0
+# STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Disable strict manifest behavior so missing CSS references do not fail the build
 WHITENOISE_MANIFEST_STRICT = False
+
+# Python 3.14 compatibility patch for Django BaseContext.__copy__ in test suite
+import sys
+if sys.version_info >= (3, 14):
+    try:
+        from django.template.context import BaseContext
+        def _python314_context_copy(self):
+            duplicate = self.__class__.__new__(self.__class__)
+            duplicate.__dict__.update(self.__dict__)
+            if hasattr(self, 'dicts'):
+                duplicate.dicts = self.dicts[:]
+            return duplicate
+        BaseContext.__copy__ = _python314_context_copy
+    except Exception:
+        pass

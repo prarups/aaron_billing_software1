@@ -81,16 +81,20 @@ class StaffForm(forms.ModelForm):
     
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'role', 'branches', 'employee_id', 'mobile_number', 'address', 'is_active', 'date_of_joining', 'has_pos_access', 'has_attendance_access']
+        fields = ['username', 'first_name', 'last_name', 'role', 'designation', 'branches', 'employee_id', 'mobile_number', 'address', 'bank_name', 'account_number', 'ifsc_code', 'is_active', 'date_of_joining', 'has_pos_access', 'has_attendance_access']
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Username', 'autocomplete': 'new-username'}),
             'first_name': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'First Name', 'autocomplete': 'off'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Last Name', 'autocomplete': 'off'}),
             'role': forms.Select(attrs={'class': 'form-select rounded-pill shadow-sm border-0 bg-light px-3', 'data-no-search': 'true'}),
+            'designation': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Designation / Job Title', 'autocomplete': 'off'}),
             'branches': forms.SelectMultiple(attrs={'class': 'form-select rounded-pill shadow-sm border-0 bg-light', 'size': '6'}),
             'employee_id': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Employee ID (Auto-generated if blank)', 'maxlength': '10', 'autocomplete': 'off'}),
             'mobile_number': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Mobile Number', 'autocomplete': 'off'}),
             'address': forms.Textarea(attrs={'class': 'form-control rounded-3 shadow-sm border-0 bg-light px-3', 'placeholder': 'Address', 'rows': '2', 'autocomplete': 'off'}),
+            'bank_name': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Bank Name (e.g. HDFC Bank)', 'autocomplete': 'off'}),
+            'account_number': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Bank Account Number', 'autocomplete': 'off'}),
+            'ifsc_code': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Bank IFSC Code', 'autocomplete': 'off'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'date_of_joining': forms.DateInput(attrs={'type':'date','class':'form-control rounded-pill shadow-sm border-0 bg-light px-3','placeholder':'Date of Joining', 'autocomplete': 'off'}),
             'has_pos_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -157,13 +161,13 @@ class StaffForm(forms.ModelForm):
         branches = cleaned_data.get('branches')
         
         has_all_branches = False
-        if role == 'owner':
+        if role in ['owner', 'regional_manager']:
             has_all_branches = True
         elif role:
             try:
                 from users.models import CustomRole
                 crole = CustomRole.objects.get(code=role)
-                if crole.has_all_branches_access:
+                if crole.has_all_branches_access or crole.dashboard_access in ['owner', 'regional_manager']:
                     has_all_branches = True
             except Exception:
                 pass
@@ -197,6 +201,10 @@ class StaffForm(forms.ModelForm):
         if commit:
             user.save()
             self.save_m2m()
+            assigned_branches = list(user.branches.all())
+            if assigned_branches and (not user.active_branch or user.active_branch not in assigned_branches):
+                user.active_branch = assigned_branches[0]
+                user.save(update_fields=['active_branch'])
         return user
 
 

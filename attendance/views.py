@@ -225,11 +225,8 @@ def check_in(request):
 
             if delay_minutes <= grace_mins:
                 status = 'present'
-            elif delay_minutes <= 60:
-                # Arrived after grace period up to 1 hour late
-                status = 'late'
             else:
-                # Arrived after 1 hour late -> Half Day (Checked-in employees are never marked Absent)
+                # Arrived after grace period (even 1 minute late) -> Half Day deduction!
                 status = 'half_day'
                 
             # If there's an approved leave for today, set status to 'on_leave'
@@ -483,7 +480,6 @@ def update_global_permission_policy(request):
         try:
             max_perms = int(request.POST.get('max_permissions_per_month', 2))
             max_hours = Decimal(request.POST.get('max_hours_per_permission', '2.00'))
-            late_thresh = int(request.POST.get('late_threshold_for_half_day_deduction', 4))
             grace_mins = int(request.POST.get('grace_period_minutes', 15))
             
             if max_perms < 1:
@@ -492,9 +488,6 @@ def update_global_permission_policy(request):
             if max_hours <= 0:
                 messages.error(request, 'Max hours per permission must be greater than 0.')
                 return redirect('attendance:permission_list')
-            if late_thresh < 1:
-                messages.error(request, 'Late threshold must be at least 1 day.')
-                return redirect('attendance:permission_list')
             if grace_mins < 0:
                 messages.error(request, 'Grace period minutes cannot be negative.')
                 return redirect('attendance:permission_list')
@@ -502,7 +495,6 @@ def update_global_permission_policy(request):
             policy = GlobalPermissionPolicy.get_policy()
             policy.max_permissions_per_month = max_perms
             policy.max_hours_per_permission = max_hours
-            policy.late_threshold_for_half_day_deduction = late_thresh
             policy.grace_period_minutes = grace_mins
             policy.updated_by = request.user
             policy.save()
@@ -803,6 +795,8 @@ def attendance_reports(request):
         
         user_leaves = leave_dict.get(u.id, [])
 
+        wo_cnt = 0
+        allowed_offs = u.monthly_off_count or 4
         for d in day_numbers:
             d_date = datetime.date(grid_year, grid_month, d)
             status = ''
@@ -818,6 +812,7 @@ def attendance_reports(request):
                 elif status == 'late': l_cnt += 1
                 elif status == 'half_day': h_cnt += 1
                 elif status == 'on_leave': lv_cnt += 1
+                elif status == 'week_off': wo_cnt += 1
                 elif status == 'absent': a_cnt += 1
             else:
                 if d_date > today:
@@ -829,8 +824,12 @@ def attendance_reports(request):
                         notes = leave_match or 'Approved Leave'
                         lv_cnt += 1
                     else:
-                        status = 'absent'
-                        a_cnt += 1
+                        if wo_cnt < allowed_offs:
+                            status = 'week_off'
+                            wo_cnt += 1
+                        else:
+                            status = 'absent'
+                            a_cnt += 1
             
             u_days.append({
                 'day': d,
@@ -848,6 +847,7 @@ def attendance_reports(request):
                 'absent': a_cnt,
                 'leave': lv_cnt,
                 'half_day': h_cnt,
+                'week_off': wo_cnt,
             }
         })
         
@@ -1098,14 +1098,13 @@ def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=Tr
 
         total_deductions = late_deduction + lop_deduction
         net_salary = max(Decimal('0.00'), base_salary - total_deductions)
-
         MonthlyPayroll.objects.update_or_create(
             user=user,
             month=month,
             year=year,
             defaults={
-                'present_days': present_days,
-                'absent_days': absent_days,
+                'present_days': Decimal(str(present_days)),
+                'absent_days': Decimal(str(absent_days)),
                 'late_days': late_days,
                 'approved_leaves': 0,
                 'unapproved_leaves': unapproved_leaves,
@@ -1166,6 +1165,10 @@ def pay_slips_view(request):
         payrolls = payrolls.filter(status=status_payroll)
 
     payrolls = payrolls.distinct().order_by('user__employee_id', 'user__username')
+    days_in_month = calendar.monthrange(selected_year, selected_month)[1]
+    for p in payrolls:
+        p.payable_days = max(0, days_in_month - float(p.lop_days or 0))
+        p.total_days_in_month = days_in_month
 
     # CSV Export
     if request.GET.get('export') == 'csv':
@@ -1350,8 +1353,8 @@ def generate_payroll(request):
                             month=month,
                             year=year,
                             defaults={
-                                'present_days': int(present_days),
-                                'absent_days': int(absent_days),
+                                'present_days': Decimal(str(present_days)),
+                                'absent_days': Decimal(str(absent_days)),
                                 'late_days': late_days,
                                 'approved_leaves': approved_leaves,
                                 'unapproved_leaves': unapproved_leaves,
@@ -1423,6 +1426,8 @@ def edit_attendance_ajax(request, pk):
             notes = data.get('notes', '')
             user_id = data.get('user_id')
             date_str = data.get('date')
+            check_in_time_str = data.get('check_in_time')
+            check_out_time_str = data.get('check_out_time')
             
             old_status = None
             if pk and int(pk) > 0:
@@ -1434,14 +1439,72 @@ def edit_attendance_ajax(request, pk):
                 target_user = get_object_or_404(User, pk=user_id)
                 att_date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
                 branch = target_user.active_branch or target_user.branches.first()
+                if not branch:
+                    from core.models import Branch
+                    branch = Branch.objects.first()
                 att, created = Attendance.objects.get_or_create(
                     user=target_user,
                     date=att_date,
                     defaults={'branch': branch}
                 )
                 old_status = 'absent' if created else att.status
-                
-            att.status = status
+
+            # Handle Manual Check-In Time entry by Admin
+            if check_in_time_str:
+                try:
+                    time_clean = check_in_time_str.strip()
+                    if 'AM' in time_clean.upper() or 'PM' in time_clean.upper():
+                        t_obj = datetime.datetime.strptime(time_clean, '%I:%M %p').time()
+                    elif len(time_clean.split(':')) == 3:
+                        t_obj = datetime.datetime.strptime(time_clean, '%H:%M:%S').time()
+                    else:
+                        t_obj = datetime.datetime.strptime(time_clean, '%H:%M').time()
+                    
+                    combined_in = datetime.datetime.combine(att.date, t_obj)
+                    att.check_in = timezone.make_aware(combined_in, timezone.get_current_timezone())
+                    
+                    # Auto-evaluate status from check-in time
+                    shift_start = att.user.shift_start_time or datetime.time(9, 0)
+                    global_policy = GlobalPermissionPolicy.get_policy()
+                    grace_mins = global_policy.grace_period_minutes
+                    
+                    shift_datetime = timezone.make_aware(
+                        datetime.datetime.combine(att.date, shift_start),
+                        timezone.get_current_timezone()
+                    )
+                    delay_mins = (att.check_in - shift_datetime).total_seconds() / 60.0
+                    if delay_mins <= grace_mins:
+                        calc_status = 'present'
+                    else:
+                        calc_status = 'half_day'
+                    
+                    # Apply calc_status unless Admin explicitly chose another status override besides 'auto'
+                    if status == 'auto' or not status or status in ['half_day', 'absent', 'present', 'late']:
+                        status = calc_status
+                except Exception as ex:
+                    pass
+
+            # Handle Manual Check-Out Time entry by Admin
+            if check_out_time_str:
+                try:
+                    time_clean = check_out_time_str.strip()
+                    if 'AM' in time_clean.upper() or 'PM' in time_clean.upper():
+                        t_obj = datetime.datetime.strptime(time_clean, '%I:%M %p').time()
+                    elif len(time_clean.split(':')) == 3:
+                        t_obj = datetime.datetime.strptime(time_clean, '%H:%M:%S').time()
+                    else:
+                        t_obj = datetime.datetime.strptime(time_clean, '%H:%M').time()
+                    
+                    combined_out = datetime.datetime.combine(att.date, t_obj)
+                    att.check_out = timezone.make_aware(combined_out, timezone.get_current_timezone())
+                except Exception as ex:
+                    pass
+
+            if status and status != 'auto':
+                att.status = status
+            elif not att.status:
+                att.status = 'present'
+
             att.updated_by = request.user
             if notes:
                 att.notes = notes
@@ -1452,10 +1515,13 @@ def edit_attendance_ajax(request, pk):
                 attendance=att,
                 edited_by=request.user,
                 old_status=old_status,
-                new_status=status,
-                notes=notes or att.notes
+                new_status=att.status,
+                notes=notes or att.notes or 'Manual Admin Check-In Time Entry'
             )
-            return JsonResponse({'success': True, 'message': 'Attendance updated and audit log saved successfully!'})
+            return JsonResponse({
+                'success': True, 
+                'message': f'Attendance updated successfully! Status evaluated to: {att.get_status_display()}'
+            })
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
             
@@ -1573,28 +1639,40 @@ def management_overview_view(request):
     selected_branch_id = request.GET.get('branch', '').strip()
     branches = request.user.get_accessible_branches()
     
-    branch_users = User.objects.filter(
-        Q(branches__in=branches) | Q(active_branch__in=branches)
-    ).distinct()
-    if is_owner(request.user):
-        branch_users = User.objects.all()
-        
     if selected_branch_id:
-        branch_users = branch_users.filter(
-            Q(branches__id=selected_branch_id) | Q(active_branch__id=selected_branch_id)
+        # Find users who checked in at this specific branch on selected_date
+        checked_in_user_ids = Attendance.objects.filter(
+            date=selected_date,
+            branch_id=selected_branch_id,
+            check_in__isnull=False
+        ).values_list('user_id', flat=True)
+        
+        # Primary Main Branch filter: Include staff whose active_branch matches, or who checked in here
+        branch_users = User.objects.filter(
+            Q(active_branch_id=selected_branch_id) |
+            Q(active_branch__isnull=True, branches__id=selected_branch_id) |
+            Q(id__in=checked_in_user_ids)
         ).distinct()
+    else:
+        if is_owner(request.user) or request.user.has_all_branches:
+            branch_users = User.objects.all()
+        else:
+            branch_users = User.objects.filter(
+                Q(branches__in=branches) | Q(active_branch__in=branches)
+            ).distinct()
+            
     branch_users = branch_users.select_related('active_branch').prefetch_related('branches').order_by('employee_id', 'username')
     total_staff_count = branch_users.count()
     
     # 3. Selected Date's checkins
     date_records = Attendance.objects.filter(date=selected_date)
-    if not is_owner(request.user):
-        date_records = date_records.filter(
-            Q(branch__in=branches) | Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
-        ).distinct()
     if selected_branch_id:
         date_records = date_records.filter(
-            Q(branch__id=selected_branch_id) | Q(user__branches__id=selected_branch_id) | Q(user__active_branch__id=selected_branch_id)
+            Q(branch__id=selected_branch_id) | Q(user__branches__id=selected_branch_id)
+        ).distinct()
+    elif not (is_owner(request.user) or request.user.has_all_branches):
+        date_records = date_records.filter(
+            Q(branch__in=branches) | Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
         ).distinct()
         
     stats = date_records.aggregate(
@@ -1635,10 +1713,59 @@ def management_overview_view(request):
         
     # Build dictionary map of date's attendance in 1 single query
     date_records_map = {rec.user_id: rec for rec in date_records.select_related('user', 'branch')}
+    
+    # Bulk query past unworked days in this month up to selected_date
+    month_start = selected_date.replace(day=1)
+    month_atts = Attendance.objects.filter(
+        user__in=branch_users,
+        date__gte=month_start,
+        date__lte=selected_date
+    )
+    month_atts_map = {}
+    for att in month_atts:
+        month_atts_map.setdefault(att.user_id, {})[att.date] = att
+
+    month_leaves = LeaveRequest.objects.filter(
+        user__in=branch_users,
+        start_date__lte=selected_date,
+        end_date__gte=month_start,
+        status='approved'
+    )
+    month_leaves_map = {}
+    for l in month_leaves:
+        month_leaves_map.setdefault(l.user_id, []).append((l.start_date, l.end_date))
+
     staff_today_status = []
     for staff in branch_users:
         rec = date_records_map.get(staff.id)
-        st = rec.status if rec else 'absent'
+        if rec:
+            st = rec.status
+        else:
+            staff_lvs = month_leaves_map.get(staff.id, [])
+            on_leave_today = any(sdate <= selected_date <= edate for sdate, edate in staff_lvs)
+            if on_leave_today:
+                st = 'on_leave'
+            elif selected_date > today:
+                st = 'future'
+            else:
+                allowed_offs = staff.monthly_off_count or 4
+                u_atts = month_atts_map.get(staff.id, {})
+                unworked_cnt = 0
+                cur_d = month_start
+                while cur_d <= selected_date:
+                    d_att = u_atts.get(cur_d)
+                    if not d_att:
+                        is_lv = any(sdate <= cur_d <= edate for sdate, edate in staff_lvs)
+                        if not is_lv:
+                            unworked_cnt += 1
+                    elif d_att.status == 'week_off':
+                        unworked_cnt += 1
+                    cur_d += datetime.timedelta(days=1)
+                
+                if unworked_cnt <= allowed_offs:
+                    st = 'week_off'
+                else:
+                    st = 'absent'
 
         # Apply Status Filter
         if status_filter:
@@ -1649,6 +1776,8 @@ def management_overview_view(request):
             elif status_filter == 'half_day' and st != 'half_day':
                 continue
             elif status_filter == 'on_leave' and st != 'on_leave':
+                continue
+            elif status_filter == 'week_off' and st != 'week_off':
                 continue
             elif status_filter == 'absent' and st != 'absent':
                 continue
@@ -1673,6 +1802,42 @@ def management_overview_view(request):
     
     # Sort staff_today_status in ascending order based on employee_id
     staff_today_status.sort(key=lambda x: (x['user'].employee_id or '', x['user'].username or ''))
+
+    # 5. CSV Export Handler
+    if request.GET.get('export') == 'csv':
+        import csv
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="management_overview_{selected_date.strftime("%Y%m%d")}.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Employee ID', 'Employee Name', 'Username', 'Role', 'Branch', 'Date', 'Status', 'Check-In Time', 'Mid-Day Check', 'Check-Out Time', 'Notes'])
+        
+        for item in staff_today_status:
+            user = item['user']
+            rec = item['record']
+            status_display = item['status'].replace('_', ' ').title()
+            
+            full_name = f"{user.first_name} {user.last_name}".strip() or user.username
+            branch_name = rec.branch.name if (rec and rec.branch) else (user.active_branch.name if user.active_branch else "All Branches")
+            
+            check_in_time = rec.check_in.strftime('%I:%M %p') if (rec and rec.check_in) else "-"
+            mid_day_time = rec.mid_day_time.strftime('%I:%M %p') if (rec and rec.mid_day_time) else "-"
+            check_out_time = rec.check_out.strftime('%I:%M %p') if (rec and rec.check_out) else "-"
+            notes = rec.notes if (rec and rec.notes) else "-"
+            
+            writer.writerow([
+                user.employee_id or '-',
+                full_name,
+                user.username,
+                user.get_role_display() if hasattr(user, 'get_role_display') else getattr(user, 'role', '-'),
+                branch_name,
+                selected_date.strftime('%Y-%m-%d'),
+                status_display,
+                check_in_time,
+                mid_day_time,
+                check_out_time,
+                notes
+            ])
+        return response
         
     context = {
         'today': today,
@@ -1693,5 +1858,31 @@ def management_overview_view(request):
         'pending_leaves': pending_leaves,
         'pending_permissions': pending_permissions,
         'staff_today_status': staff_today_status,
+        'is_owner': is_owner(request.user),
     }
     return render(request, 'attendance/management_overview.html', context)
+
+
+@login_required
+def update_bank_details_ajax(request, user_id):
+    if not is_owner(request.user):
+        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            user = get_object_or_404(User, id=user_id)
+            user.designation = data.get('designation', user.designation)
+            user.bank_name = data.get('bank_name', user.bank_name)
+            user.account_number = data.get('account_number', user.account_number)
+            user.ifsc_code = data.get('ifsc_code', user.ifsc_code)
+            doj_str = data.get('date_of_joining')
+            if doj_str:
+                try:
+                    user.date_of_joining = datetime.datetime.strptime(doj_str, '%Y-%m-%d').date()
+                except Exception:
+                    pass
+            user.save(update_fields=['designation', 'bank_name', 'account_number', 'ifsc_code', 'date_of_joining'])
+            return JsonResponse({'success': True, 'message': 'Bank & Employee details updated successfully!'})
+        except Exception as ex:
+            return JsonResponse({'success': False, 'message': str(ex)})
+    return JsonResponse({'success': False, 'message': 'Invalid request'})

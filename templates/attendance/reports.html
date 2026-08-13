@@ -4,47 +4,360 @@
 {% block title %}Attendance Reports - Aaron Billing{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-3 px-3">
-    <!-- Header Row -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 bg-white p-3 rounded-3 shadow-sm border">
-        <div>
-            <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                <i class="bi bi-person-check-fill text-success"></i> Attendance Reports
-            </h5>
-            <small class="text-muted" style="font-size: 0.75rem;">Audit employee attendance, verify photo captures, view monthly grid, and export reports.</small>
+<style>
+    /* ── Attendance Reports Premium Aesthetics ── */
+    :root {
+        --ar-primary: #4f46e5;
+        --ar-primary-gradient: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+        --ar-card-bg: rgba(255, 255, 255, 0.95);
+        --ar-glass-border: 1px solid rgba(226, 232, 240, 0.8);
+        --ar-shadow-sm: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .ar-wrapper {
+        padding: 1.5rem;
+        background: #f8fafc;
+        min-height: 100vh;
+    }
+
+    /* Executive Hero Header */
+    .ar-hero-card {
+        background: var(--ar-primary-gradient);
+        border-radius: 20px;
+        padding: 1.5rem 2rem;
+        color: #ffffff;
+        box-shadow: 0 12px 35px -10px rgba(49, 46, 129, 0.4);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+
+    .ar-hero-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 350px;
+        height: 350px;
+        background: radial-gradient(circle, rgba(124, 58, 237, 0.35) 0%, rgba(255, 255, 255, 0) 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .ar-hero-title {
+        font-family: 'Outfit', 'Inter', sans-serif;
+        font-weight: 800;
+        font-size: 1.5rem;
+        letter-spacing: -0.02em;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .ar-hero-subtitle {
+        color: rgba(226, 232, 240, 0.85);
+        font-size: 0.82rem;
+        margin-top: 0.25rem;
+    }
+
+    .ar-date-pill {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+        padding: 0.5rem 1.2rem;
+        border-radius: 50px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Tab Pills Navigation */
+    .ar-nav-pills {
+        display: flex;
+        gap: 0.6rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .ar-nav-btn {
+        border-radius: 50px !important;
+        padding: 0.6rem 1.4rem !important;
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 800 !important;
+        font-size: 0.82rem !important;
+        border: 1.5px solid #cbd5e1 !important;
+        background: #ffffff !important;
+        color: #475569 !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .ar-nav-btn:hover {
+        border-color: #6366f1 !important;
+        color: #4f46e5 !important;
+        background: rgba(99, 102, 241, 0.05) !important;
+    }
+
+    .ar-nav-btn.active {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+        color: #ffffff !important;
+        border-color: transparent !important;
+        box-shadow: 0 6px 20px rgba(79, 70, 229, 0.35) !important;
+    }
+
+    /* Filter Cards */
+    .ar-filter-card {
+        background: var(--ar-card-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: var(--ar-glass-border);
+        border-radius: 16px;
+        padding: 1.2rem 1.5rem;
+        box-shadow: var(--ar-shadow-sm);
+        margin-bottom: 1.5rem;
+    }
+
+    .ar-field-label {
+        font-size: 0.68rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #64748b;
+        margin-bottom: 0.35rem;
+        display: block;
+    }
+
+    .ar-input, .ar-select {
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 10px !important;
+        font-size: 0.82rem !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
+        padding: 0.5rem 0.85rem !important;
+        transition: all 0.2s ease !important;
+        background-color: #ffffff !important;
+    }
+
+    .ar-input:focus, .ar-select:focus {
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12) !important;
+    }
+
+    .ar-btn-filter {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        font-size: 0.8rem !important;
+        padding: 0.55rem 1.3rem !important;
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3) !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .ar-btn-filter:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 70, 229, 0.45) !important;
+    }
+
+    .ar-btn-export {
+        background: rgba(16, 185, 129, 0.1) !important;
+        color: #059669 !important;
+        border: 1.5px solid rgba(16, 185, 129, 0.3) !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        font-size: 0.8rem !important;
+        padding: 0.55rem 1.1rem !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .ar-btn-export:hover {
+        background: #10b981 !important;
+        color: #ffffff !important;
+        border-color: transparent !important;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important;
+    }
+
+    /* Section Cards & Tables */
+    .ar-section-card {
+        background: #ffffff;
+        border-radius: 18px;
+        border: 1px solid #f1f5f9;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+        overflow: hidden;
+    }
+
+    .ar-card-header {
+        background: #ffffff;
+        padding: 1.1rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .ar-card-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Tables Styling */
+    .ar-table {
+        margin: 0;
+    }
+
+    .ar-table thead tr {
+        background: #f8fafc;
+    }
+
+    .ar-table th {
+        font-size: 0.67rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #64748b;
+        padding: 0.85rem 1.1rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .ar-table td {
+        padding: 0.85rem 1.1rem;
+        vertical-align: middle;
+        font-size: 0.82rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .ar-table tbody tr {
+        transition: background 0.15s ease;
+    }
+
+    .ar-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    /* Status Badges */
+    .mo-badge-status {
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.68rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .mo-bs-present { background: #d1fae5; color: #047857; }
+    .mo-bs-late    { background: #fef3c7; color: #b45309; }
+    .mo-bs-half    { background: #e0f2fe; color: #0369a1; }
+    .mo-bs-absent  { background: #fee2e2; color: #b91c1c; }
+
+    .cursor-zoom { cursor: zoom-in; }
+    .cursor-pointer { cursor: pointer; }
+
+    /* Mobile Responsive Optimizations (< 768px) */
+    @media (max-width: 768px) {
+        .ar-wrapper {
+            padding: 0.75rem !important;
+        }
+
+        .ar-hero-card {
+            border-radius: 16px !important;
+            padding: 1.1rem 1rem !important;
+            margin-bottom: 1rem !important;
+        }
+
+        .ar-hero-title {
+            font-size: 1.2rem !important;
+        }
+
+        .ar-nav-pills {
+            flex-direction: column !important;
+            gap: 0.5rem !important;
+        }
+
+        .ar-nav-btn {
+            width: 100% !important;
+            justify-content: center !important;
+        }
+
+        .ar-filter-card {
+            padding: 1rem !important;
+            border-radius: 14px !important;
+        }
+
+        .ar-table th, .ar-table td {
+            padding: 0.65rem 0.75rem !important;
+            font-size: 0.75rem !important;
+        }
+
+        .table-responsive {
+            border-radius: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+    }
+</style>
+
+<div class="ar-wrapper">
+    <!-- Executive Hero Header -->
+    <div class="ar-hero-card">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <h1 class="ar-hero-title">
+                    <i class="bi bi-person-check-fill text-warning"></i> Attendance Reports & Analytics
+                </h1>
+                <div class="ar-hero-subtitle">
+                    Audit employee attendance, verify photo snapshots, view monthly grid sheets, and export reports.
+                </div>
+            </div>
+            <div>
+                <div class="ar-date-pill">
+                    <i class="bi bi-calendar-event me-1 text-warning"></i>
+                    <span>{% now "d M Y" %}</span>
+                </div>
+            </div>
         </div>
-        <div>
-            <span class="badge bg-light text-dark border px-3 py-1.5 rounded-pill fw-semibold" style="font-size: 0.75rem;">
-                <i class="bi bi-calendar-event me-1 text-success"></i> {% now "d M Y" %}
-            </span>
     </div>
 
     {% if messages %}
-    <div class="mb-3">
+    <div class="mb-4">
         {% for message in messages %}
-            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show border-0 shadow-sm rounded-3 py-2 px-3 small d-flex align-items-center gap-2 mb-2" role="alert" style="font-size: 0.8rem; background-color: #ecfdf5; color: #047857; border-left: 4px solid #10b981 !important;">
+            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show border-0 shadow-sm rounded-4 py-2.5 px-3.5 small d-flex align-items-center gap-2 mb-2" role="alert" style="background-color: #ecfdf5; color: #047857; border-left: 5px solid #10b981 !important;">
                 <i class="bi {% if message.tags == 'error' %}bi-exclamation-triangle-fill text-danger{% else %}bi-check-circle-fill text-success{% endif %} fs-6"></i>
-                <div class="fw-semibold">{{ message }}</div>
-                <button type="button" class="btn-close ms-auto py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+                <div class="fw-bold">{{ message }}</div>
+                <button type="button" class="btn-close ms-auto py-2.5" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         {% endfor %}
     </div>
     {% endif %}
 
     <!-- Main Navigation Tabs -->
-    <ul class="nav nav-pills mb-3 gap-2" id="reportsTab" role="tablist">
+    <ul class="nav ar-nav-pills mb-4" id="reportsTab" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="btn btn-sm btn-outline-success {% if active_tab == 'grid' or not active_tab or active_tab != 'logs' and active_tab != 'audit' %}active{% endif %} rounded-pill px-3 py-1.5 fw-semibold" style="font-size: 0.78rem;" id="grid-tab" data-bs-toggle="pill" data-bs-target="#gridSection" type="button" role="tab">
+            <button class="btn ar-nav-btn {% if active_tab == 'grid' or not active_tab or active_tab != 'logs' and active_tab != 'audit' %}active{% endif %}" id="grid-tab" data-bs-toggle="pill" data-bs-target="#gridSection" type="button" role="tab">
                 <i class="bi bi-grid-3x3-gap-fill me-1"></i> Monthly Visual Grid
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="btn btn-sm btn-outline-success {% if active_tab == 'logs' %}active{% endif %} rounded-pill px-3 py-1.5 fw-semibold" style="font-size: 0.78rem;" id="logs-tab" data-bs-toggle="pill" data-bs-target="#logsSection" type="button" role="tab">
+            <button class="btn ar-nav-btn {% if active_tab == 'logs' %}active{% endif %}" id="logs-tab" data-bs-toggle="pill" data-bs-target="#logsSection" type="button" role="tab">
                 <i class="bi bi-list-task me-1"></i> Detailed Daily Logs
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="btn btn-sm btn-outline-success {% if active_tab == 'audit' %}active{% endif %} rounded-pill px-3 py-1.5 fw-semibold" style="font-size: 0.78rem;" id="audit-tab" data-bs-toggle="pill" data-bs-target="#auditSection" type="button" role="tab">
+            <button class="btn ar-nav-btn {% if active_tab == 'audit' %}active{% endif %}" id="audit-tab" data-bs-toggle="pill" data-bs-target="#auditSection" type="button" role="tab">
                 <i class="bi bi-shield-check me-1"></i> Edit Audit History Log
             </button>
         </li>
@@ -54,126 +367,129 @@
         <!-- TAB 1: Visual Monthly Grid -->
         <div class="tab-pane fade {% if active_tab != 'logs' and active_tab != 'audit' %}show active{% endif %}" id="gridSection" role="tabpanel">
             <!-- Grid Filter Form -->
-            <div class="card border-0 shadow-sm mb-3 bg-white rounded-3">
-                <div class="card-body p-2.5">
-                    <form method="get" class="row g-2 align-items-end" style="font-size: 0.75rem;">
-                        <input type="hidden" name="tab" value="grid">
-                        <div class="col-lg-3 col-md-4">
-                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Branch</label>
-                            <select name="branch" class="form-select form-select-sm rounded-3 no-search" data-no-search="true">
-                                <option value="">All Branches</option>
-                                {% for b in branches %}
-                                    <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-lg-3 col-md-4">
-                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Month</label>
-                            <select name="grid_month" class="form-select form-select-sm rounded-3 no-search" data-no-search="true">
-                                <option value="1" {% if grid_month == 1 %}selected{% endif %}>January</option>
-                                <option value="2" {% if grid_month == 2 %}selected{% endif %}>February</option>
-                                <option value="3" {% if grid_month == 3 %}selected{% endif %}>March</option>
-                                <option value="4" {% if grid_month == 4 %}selected{% endif %}>April</option>
-                                <option value="5" {% if grid_month == 5 %}selected{% endif %}>May</option>
-                                <option value="6" {% if grid_month == 6 %}selected{% endif %}>June</option>
-                                <option value="7" {% if grid_month == 7 %}selected{% endif %}>July</option>
-                                <option value="8" {% if grid_month == 8 %}selected{% endif %}>August</option>
-                                <option value="9" {% if grid_month == 9 %}selected{% endif %}>September</option>
-                                <option value="10" {% if grid_month == 10 %}selected{% endif %}>October</option>
-                                <option value="11" {% if grid_month == 11 %}selected{% endif %}>November</option>
-                                <option value="12" {% if grid_month == 12 %}selected{% endif %}>December</option>
-                            </select>
-                        </div>
-                        <div class="col-lg-2 col-md-4">
-                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Year</label>
-                            <select name="grid_year" class="form-select form-select-sm rounded-3 no-search" data-no-search="true">
-                                {% for y in years %}
-                                    <option value="{{ y }}" {% if grid_year == y %}selected{% endif %}>{{ y }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-lg-4 col-md-12 d-flex gap-2">
-                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 py-1.5 fw-semibold w-50" style="font-size: 0.75rem;">
-                                <i class="bi bi-arrow-repeat me-1"></i> Update Grid
-                            </button>
-                            <a href="?tab=grid&branch={{ selected_branch }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}&export=grid_csv" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 fw-semibold w-50 d-flex align-items-center justify-content-center text-nowrap" style="font-size: 0.75rem;" title="Export Monthly Grid as CSV">
-                                <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> Export CSV
-                            </a>
-                        </div>
-                    </form>
-                </div>
+            <div class="ar-filter-card">
+                <form method="get" class="row g-3 align-items-end">
+                    <input type="hidden" name="tab" value="grid">
+                    <div class="col-lg-3 col-md-4">
+                        <label class="ar-field-label"><i class="bi bi-shop me-1 text-primary"></i> Branch</label>
+                        <select name="branch" class="form-select ar-select">
+                            <option value="">🏢 All Branches</option>
+                            {% for b in branches %}
+                                <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-lg-3 col-md-4">
+                        <label class="ar-field-label"><i class="bi bi-calendar-month me-1 text-primary"></i> Month</label>
+                        <select name="grid_month" class="form-select ar-select">
+                            <option value="1" {% if grid_month == 1 %}selected{% endif %}>January</option>
+                            <option value="2" {% if grid_month == 2 %}selected{% endif %}>February</option>
+                            <option value="3" {% if grid_month == 3 %}selected{% endif %}>March</option>
+                            <option value="4" {% if grid_month == 4 %}selected{% endif %}>April</option>
+                            <option value="5" {% if grid_month == 5 %}selected{% endif %}>May</option>
+                            <option value="6" {% if grid_month == 6 %}selected{% endif %}>June</option>
+                            <option value="7" {% if grid_month == 7 %}selected{% endif %}>July</option>
+                            <option value="8" {% if grid_month == 8 %}selected{% endif %}>August</option>
+                            <option value="9" {% if grid_month == 9 %}selected{% endif %}>September</option>
+                            <option value="10" {% if grid_month == 10 %}selected{% endif %}>October</option>
+                            <option value="11" {% if grid_month == 11 %}selected{% endif %}>November</option>
+                            <option value="12" {% if grid_month == 12 %}selected{% endif %}>December</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="ar-field-label"><i class="bi bi-calendar-event me-1 text-primary"></i> Year</label>
+                        <select name="grid_year" class="form-select ar-select">
+                            {% for y in years %}
+                                <option value="{{ y }}" {% if grid_year == y %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-lg-4 col-md-12 d-flex gap-2">
+                        <button type="submit" class="btn ar-btn-filter w-50">
+                            <i class="bi bi-arrow-repeat me-1"></i> Update Grid
+                        </button>
+                        <a href="?tab=grid&branch={{ selected_branch }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}&export=grid_csv" class="btn ar-btn-export w-50 text-decoration-none d-flex align-items-center justify-content-center">
+                            <i class="bi bi-file-earmark-spreadsheet-fill me-1.5"></i> Export CSV
+                        </a>
+                    </div>
+                </form>
             </div>
 
             <!-- Visual Grid Table Card -->
-            <div class="card border-0 shadow-sm bg-white rounded-3">
-                <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
-                        <i class="bi bi-calendar3"></i> Monthly Sheet: {{ grid_month }}/{{ grid_year }}
-                    </h6>
+            <div class="ar-section-card">
+                <div class="ar-card-header">
+                    <h2 class="ar-card-title">
+                        <i class="bi bi-calendar3 text-primary"></i> Monthly Attendance Sheet ({{ grid_month }}/{{ grid_year }})
+                    </h2>
                     <!-- Legend -->
-                    <div class="d-flex flex-wrap gap-2 text-xxs" style="font-size: 0.7rem;">
-                        <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-success d-inline-block" style="width: 8px; height: 8px;"></span> Present</span>
-                        <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-warning d-inline-block" style="width: 8px; height: 8px;"></span> Late</span>
-                        <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-secondary d-inline-block" style="width: 8px; height: 8px;"></span> Half Day</span>
-                        <span class="d-flex align-items-center gap-1"><span class="badge rounded-circle p-1 bg-danger d-inline-block" style="width: 8px; height: 8px;"></span> Absent</span>
+                    <div class="d-flex flex-wrap gap-2 text-xxs" style="font-size: 0.72rem;">
+                        <span class="d-flex align-items-center gap-1.5"><span class="badge rounded-circle p-1 bg-success d-inline-block" style="width: 10px; height: 10px;"></span> Present (P)</span>
+                        <span class="d-flex align-items-center gap-1.5"><span class="badge rounded-circle p-1 bg-warning d-inline-block" style="width: 10px; height: 10px;"></span> Late (L)</span>
+                        <span class="d-flex align-items-center gap-1.5"><span class="badge rounded-circle p-1 bg-secondary d-inline-block" style="width: 10px; height: 10px;"></span> Half Day (H)</span>
+                        <span class="d-flex align-items-center gap-1.5"><span class="badge rounded-circle p-1 d-inline-block" style="width: 10px; height: 10px; background-color: #0284c7;"></span> Week Off (WO)</span>
+                        <span class="d-flex align-items-center gap-1.5"><span class="badge rounded-circle p-1 bg-danger d-inline-block" style="width: 10px; height: 10px;"></span> Absent (A)</span>
                     </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-sm table-bordered table-hover align-middle text-center mb-0" style="font-size: 0.75rem;">
-                            <thead class="table-light text-muted" style="font-size: 0.7rem;">
+                        <table class="table ar-table table-bordered align-middle text-center mb-0" style="font-size: 0.78rem;">
+                            <thead>
                                 <tr>
-                                    <th class="text-start ps-3 py-1.5" style="min-width: 130px; position: sticky; left: 0; background: #f8fafc; z-index: 2;">Employee</th>
+                                    <th class="text-start ps-3.5" style="min-width: 150px; position: sticky; left: 0; background: #f8fafc; z-index: 2;">Employee</th>
                                     {% for d in day_numbers %}
-                                        <th class="py-1.5" style="width: 26px; min-width: 26px; font-size: 0.65rem;">{{ d }}</th>
+                                        <th style="width: 28px; min-width: 28px; font-size: 0.68rem;">{{ d }}</th>
                                     {% endfor %}
-                                    <th class="bg-light py-1.5" style="min-width: 110px;">Summary (P/L/H/A)</th>
+                                    <th class="bg-light" style="min-width: 120px;">Summary (P/L/H/WO/A)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for item in grid_data %}
                                 <tr>
-                                    <!-- Employee username -->
-                                    <td class="text-start ps-3 py-1.5 fw-bold text-dark" style="position: sticky; left: 0; background: #ffffff; z-index: 2; border-right: 2px solid #dee2e6;">
-                                        <div style="font-size: 0.78rem;">
+                                    <!-- Employee Info -->
+                                    <td class="text-start ps-3.5 py-2 fw-bold text-dark" style="position: sticky; left: 0; background: #ffffff; z-index: 2; border-right: 2px solid #e2e8f0;">
+                                        <div style="font-size: 0.82rem;">
                                             {{ item.user.first_name }} {{ item.user.last_name }}
                                             {% if not item.user.first_name and not item.user.last_name %}{{ item.user.username }}{% endif %}
                                         </div>
-                                        <div class="text-muted text-xxs" style="font-weight: normal; font-size: 0.65rem;">@{{ item.user.username }} &middot; ID: {{ item.user.employee_id|default:"-" }}</div>
+                                        <div class="text-muted" style="font-weight: normal; font-size: 0.68rem;">@{{ item.user.username }} &middot; ID: {{ item.user.employee_id|default:"-" }}</div>
                                     </td>
                                     
-                                    <!-- Days indicators -->
+                                    <!-- Days Status Badges -->
                                     {% for day in item.days %}
-                                        <td class="p-0.5">
+                                        <td class="p-1">
                                             {% if day.status == 'present' %}
-                                                <span class="badge rounded-circle bg-success d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 20px; height: 20px; font-size: 0.6rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Present{% endif %}" 
+                                                <span class="badge rounded-circle bg-success d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px; font-size: 0.62rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Present{% endif %}" 
                                                       {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'present', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>P</span>
                                             {% elif day.status == 'late' %}
-                                                <span class="badge rounded-circle bg-warning d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %} text-dark" style="width: 20px; height: 20px; font-size: 0.6rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Late Check-in{% endif %}"
+                                                <span class="badge rounded-circle bg-warning d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %} text-dark" style="width: 22px; height: 22px; font-size: 0.62rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Late Check-in{% endif %}"
                                                       {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'late', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>L</span>
                                             {% elif day.status == 'half_day' %}
-                                                <span class="badge rounded-circle bg-secondary d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 20px; height: 20px; font-size: 0.6rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Half Day{% endif %}"
+                                                <span class="badge rounded-circle bg-secondary d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px; font-size: 0.62rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Half Day{% endif %}"
                                                       {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'half_day', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>H</span>
+                                            {% elif day.status == 'week_off' %}
+                                                <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px; font-size: 0.62rem; background-color: #0284c7; color: #ffffff;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Week Off (Role Monthly Allowance){% endif %}"
+                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'week_off', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>WO</span>
                                             {% elif day.status == 'absent' %}
-                                                <span class="badge rounded-circle bg-danger d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 20px; height: 20px; font-size: 0.6rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Absent / Unrecorded{% endif %}"
+                                                <span class="badge rounded-circle bg-danger d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px; font-size: 0.62rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Absent / Unrecorded{% endif %}"
                                                       {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'absent', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>A</span>
                                             {% else %}
-                                                <span class="text-muted opacity-25" style="font-size: 0.65rem;">-</span>
+                                                <span class="text-muted opacity-30" style="font-size: 0.7rem;">-</span>
                                             {% endif %}
                                         </td>
                                     {% endfor %}
                                     
-                                    <!-- Summary counts -->
-                                    <td class="bg-light fw-bold text-dark py-1.5" style="font-size: 0.7rem;">
-                                        <span class="text-success">{{ item.summary.present }}</span>/
-                                        <span class="text-warning">{{ item.summary.late }}</span>/
-                                        <span class="text-secondary">{{ item.summary.half_day }}</span>/
+                                    <!-- Summary Counts -->
+                                    <td class="bg-light fw-bold text-dark py-2" style="font-size: 0.72rem;">
+                                        <span class="text-success">{{ item.summary.present }}</span> /
+                                        <span class="text-warning">{{ item.summary.late }}</span> /
+                                        <span class="text-secondary">{{ item.summary.half_day }}</span> /
+                                        <span class="text-info">{{ item.summary.week_off }}</span> /
                                         <span class="text-danger">{{ item.summary.absent }}</span>
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="{{ day_numbers|length|add:2 }}" class="text-center py-3 text-muted">No employees found.</td>
+                                    <td colspan="{{ day_numbers|length|add:2 }}" class="text-center py-4 text-muted">No employee attendance records found for this period.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -183,116 +499,114 @@
             </div>
         </div>
 
-        <!-- TAB 2: Detailed Logs list -->
+        <!-- TAB 2: Detailed Logs List -->
         <div class="tab-pane fade {% if active_tab == 'logs' %}show active{% endif %}" id="logsSection" role="tabpanel">
-            <!-- Detailed filters -->
-            <div class="card border-0 shadow-sm mb-3 bg-white rounded-3">
-                <div class="card-body p-2.5">
-                    <form method="get" class="row g-2 align-items-end" style="font-size: 0.75rem;">
-                        <input type="hidden" name="tab" value="logs">
-                        <div class="col-md-3">
-                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Branch</label>
-                            <select name="branch" class="form-select form-select-sm rounded-3">
-                                <option value="">All Branches</option>
-                                {% for b in branches %}
-                                    <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Employee</label>
-                            <select name="user" class="form-select form-select-sm rounded-3">
-                                <option value="">All Employees</option>
-                                {% for u in users %}
-                                    <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"i" %}selected{% endif %}>{{ u.username }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Start Date</label>
-                            <input type="date" name="start_date" class="form-control form-control-sm rounded-3" value="{{ start_date_val }}">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">End Date</label>
-                            <input type="date" name="end_date" class="form-control form-control-sm rounded-3" value="{{ end_date_val }}">
-                        </div>
-                        <div class="col-md-2 d-flex gap-1.5">
-                            <button type="submit" class="btn btn-sm btn-success w-100 rounded-pill py-1.5" style="font-size: 0.75rem;">
-                                <i class="bi bi-filter"></i> Filter
-                            </button>
-                            <button type="submit" name="export" value="csv" class="btn btn-sm btn-outline-success rounded-pill px-2.5 py-1.5" title="Export to CSV" style="font-size: 0.75rem;">
-                                <i class="bi bi-file-earmark-excel-fill"></i>
-                            </button>
-                        </div>
-                    </form>
-                </div>
+            <!-- Detailed Filters Card -->
+            <div class="ar-filter-card">
+                <form method="get" class="row g-3 align-items-end">
+                    <input type="hidden" name="tab" value="logs">
+                    <div class="col-md-3">
+                        <label class="ar-field-label"><i class="bi bi-shop me-1 text-primary"></i> Branch</label>
+                        <select name="branch" class="form-select ar-select">
+                            <option value="">🏢 All Branches</option>
+                            {% for b in branches %}
+                                <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="ar-field-label"><i class="bi bi-person me-1 text-primary"></i> Employee</label>
+                        <select name="user" class="form-select ar-select">
+                            <option value="">All Employees</option>
+                            {% for u in users %}
+                                <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"i" %}selected{% endif %}>{{ u.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="ar-field-label"><i class="bi bi-calendar-event me-1 text-primary"></i> Start Date</label>
+                        <input type="date" name="start_date" class="form-control ar-input" value="{{ start_date_val }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="ar-field-label"><i class="bi bi-calendar-event me-1 text-primary"></i> End Date</label>
+                        <input type="date" name="end_date" class="form-control ar-input" value="{{ end_date_val }}">
+                    </div>
+                    <div class="col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn ar-btn-filter w-100">
+                            <i class="bi bi-funnel-fill me-1"></i> Filter
+                        </button>
+                        <button type="submit" name="export" value="csv" class="btn ar-btn-export" title="Export to CSV">
+                            <i class="bi bi-file-earmark-excel-fill"></i>
+                        </button>
+                    </div>
+                </form>
             </div>
 
             <!-- Detailed Logs Table -->
-            <div class="card border-0 shadow-sm bg-white rounded-3">
-                <div class="card-header bg-white border-bottom py-2.5 px-3">
-                    <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
-                        <i class="bi bi-list-check"></i> Attendance Daily Logs
-                    </h6>
+            <div class="ar-section-card">
+                <div class="ar-card-header">
+                    <h2 class="ar-card-title">
+                        <i class="bi bi-list-check text-primary"></i> Attendance Daily Logs
+                    </h2>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.75rem;">
-                            <thead class="table-light text-muted" style="font-size: 0.7rem;">
+                        <table class="table ar-table align-middle">
+                            <thead>
                                 <tr>
-                                    <th class="ps-3 py-2">Employee</th>
-                                    <th class="py-2">Date / Status</th>
-                                    <th class="py-2">1. Check-In</th>
-                                    <th class="py-2">2. Mid-Day Check</th>
-                                    <th class="py-2">3. Check-Out</th>
-                                    <th class="pe-3 py-2">Actions</th>
+                                    <th class="ps-3.5">Employee</th>
+                                    <th>Date / Status</th>
+                                    <th>1. Check-In</th>
+                                    <th>2. Mid-Day Check</th>
+                                    <th>3. Check-Out</th>
+                                    <th class="pe-3.5">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for record in page_obj %}
                                 <tr>
                                     <!-- Employee info -->
-                                    <td class="ps-3 py-2">
-                                        <div class="fw-bold text-dark" style="font-size: 0.78rem;">
+                                    <td class="ps-3.5 py-2.5">
+                                        <div class="fw-bold text-dark" style="font-size: 0.85rem;">
                                             {{ record.user.first_name }} {{ record.user.last_name }}
                                             {% if not record.user.first_name and not record.user.last_name %}{{ record.user.username }}{% endif %}
                                         </div>
-                                        <div class="text-muted text-xxs" style="font-size: 0.68rem;">
-                                            @{{ record.user.username }} &middot; ID: {{ record.user.employee_id|default:"No ID" }} &middot; {{ record.user.role_display }}
+                                        <div class="text-muted" style="font-size: 0.72rem;">
+                                            @{{ record.user.username }} &middot; ID: <strong class="text-dark">{{ record.user.employee_id|default:"No ID" }}</strong> &middot; {{ record.user.role_display }}
                                         </div>
-                                        <div class="mt-0.5">
-                                            <span class="badge border" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.6rem; padding: 0.15rem 0.35rem; font-weight: 600;">Branch: {{ record.branch.name }}</span>
+                                        <div class="mt-1">
+                                            <span class="badge border" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.65rem; font-weight: 700;">Branch: {{ record.branch.name }}</span>
                                         </div>
                                     </td>
                                     
                                     <!-- Date & Status -->
-                                    <td class="py-2">
+                                    <td class="py-2.5">
                                         <div class="fw-bold text-dark">{{ record.date|date:"d M Y" }}</div>
-                                        <div class="mt-0.5">
+                                        <div class="mt-1">
                                             {% if record.status == 'present' %}
-                                                <span class="badge rounded-pill px-2 py-0.5" style="background-color: #d1fae5; color: #047857; font-size: 0.65rem; font-weight: 600;">Present</span>
+                                                <span class="mo-badge-status mo-bs-present"><i class="bi bi-check-circle-fill"></i> Present</span>
                                             {% elif record.status == 'late' %}
-                                                <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fef3c7; color: #b45309; font-size: 0.65rem; font-weight: 600;">Late Check-in</span>
+                                                <span class="mo-badge-status mo-bs-late"><i class="bi bi-exclamation-circle-fill"></i> Late Check-in</span>
                                             {% elif record.status == 'half_day' %}
-                                                <span class="badge rounded-pill px-2 py-0.5" style="background-color: #e5e7eb; color: #374151; font-size: 0.65rem; font-weight: 600;">Half Day</span>
+                                                <span class="mo-badge-status mo-bs-half"><i class="bi bi-pie-chart-fill"></i> Half Day</span>
                                             {% else %}
-                                                <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fee2e2; color: #b91c1c; font-size: 0.65rem; font-weight: 600;">Absent</span>
+                                                <span class="mo-badge-status mo-bs-absent"><i class="bi bi-x-circle-fill"></i> Absent</span>
                                             {% endif %}
                                         </div>
                                     </td>
 
-                                    <!-- 1. Check In -->
-                                    <td class="py-2">
+                                    <!-- Check-In -->
+                                    <td class="py-2.5">
                                         {% if record.check_in %}
-                                            <div class="d-flex align-items-center gap-1.5">
+                                            <div class="d-flex align-items-center gap-2">
                                                 {% if record.check_in_photo %}
-                                                    <img src="{{ record.check_in_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 28px; height: 20px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.check_in_photo|cloudinary_optimize }}', 'Check-In Photo ({{ record.user.username }})')"/>
+                                                    <img src="{{ record.check_in_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded-3 border cursor-zoom shadow-xs" style="width: 32px; height: 24px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.check_in_photo|cloudinary_optimize }}', 'Check-In Photo ({{ record.user.username }})')"/>
                                                 {% endif %}
                                                 <div class="lh-sm">
-                                                    <span class="fw-semibold text-dark d-block">{{ record.check_in|date:"h:i A" }}</span>
+                                                    <span class="fw-bold text-dark d-block">{{ record.check_in|date:"h:i A" }}</span>
                                                     {% if record.check_in_lat %}
-                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_in_lat }},{{ record.check_in_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.65rem;"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS</a>
-                                                        <span class="gps-coord text-muted text-xxs d-block" style="font-size: 0.65rem;" data-lat="{{ record.check_in_lat }}" data-lng="{{ record.check_in_lng }}"></span>
+                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_in_lat }},{{ record.check_in_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.68rem;"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS</a>
+                                                        <span class="gps-coord text-muted text-xxs d-block" style="font-size: 0.68rem;" data-lat="{{ record.check_in_lat }}" data-lng="{{ record.check_in_lng }}"></span>
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -301,18 +615,18 @@
                                         {% endif %}
                                     </td>
 
-                                    <!-- 2. Mid Day check -->
-                                    <td class="py-2">
+                                    <!-- Mid-Day -->
+                                    <td class="py-2.5">
                                         {% if record.mid_day_time %}
-                                            <div class="d-flex align-items-center gap-1.5">
+                                            <div class="d-flex align-items-center gap-2">
                                                 {% if record.mid_day_photo %}
-                                                    <img src="{{ record.mid_day_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 28px; height: 20px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.mid_day_photo|cloudinary_optimize }}', 'Mid-Day Photo ({{ record.user.username }})')"/>
+                                                    <img src="{{ record.mid_day_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded-3 border cursor-zoom shadow-xs" style="width: 32px; height: 24px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.mid_day_photo|cloudinary_optimize }}', 'Mid-Day Photo ({{ record.user.username }})')"/>
                                                 {% endif %}
                                                 <div class="lh-sm">
-                                                    <span class="fw-semibold text-dark d-block">{{ record.mid_day_time|date:"h:i A" }}</span>
+                                                    <span class="fw-bold text-dark d-block">{{ record.mid_day_time|date:"h:i A" }}</span>
                                                     {% if record.mid_day_lat %}
-                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.mid_day_lat }},{{ record.mid_day_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.65rem;"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS</a>
-                                                        <span class="gps-coord text-muted text-xxs d-block" style="font-size: 0.65rem;" data-lat="{{ record.mid_day_lat }}" data-lng="{{ record.mid_day_lng }}"></span>
+                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.mid_day_lat }},{{ record.mid_day_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.68rem;"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS</a>
+                                                        <span class="gps-coord text-muted text-xxs d-block" style="font-size: 0.68rem;" data-lat="{{ record.mid_day_lat }}" data-lng="{{ record.mid_day_lng }}"></span>
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -321,18 +635,18 @@
                                         {% endif %}
                                     </td>
 
-                                    <!-- 3. Check Out -->
-                                    <td class="py-2">
+                                    <!-- Check-Out -->
+                                    <td class="py-2.5">
                                         {% if record.check_out %}
-                                            <div class="d-flex align-items-center gap-1.5">
+                                            <div class="d-flex align-items-center gap-2">
                                                 {% if record.check_out_photo %}
-                                                    <img src="{{ record.check_out_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded border cursor-zoom shadow-xs" style="width: 28px; height: 20px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.check_out_photo|cloudinary_optimize }}', 'Check-Out Photo ({{ record.user.username }})')"/>
+                                                    <img src="{{ record.check_out_photo|cloudinary_optimize:"w_60,h_45" }}" class="rounded-3 border cursor-zoom shadow-xs" style="width: 32px; height: 24px; object-fit: cover;" data-bs-toggle="modal" data-bs-target="#photoModal" onclick="showFullPhoto('{{ record.check_out_photo|cloudinary_optimize }}', 'Check-Out Photo ({{ record.user.username }})')"/>
                                                 {% endif %}
                                                 <div class="lh-sm">
-                                                    <span class="fw-semibold text-dark d-block">{{ record.check_out|date:"h:i A" }}</span>
+                                                    <span class="fw-bold text-dark d-block">{{ record.check_out|date:"h:i A" }}</span>
                                                     {% if record.check_out_lat %}
-                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_out_lat }},{{ record.check_out_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.65rem;"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS</a>
-                                                        <span class="gps-coord text-muted text-xxs d-block" style="font-size: 0.65rem;" data-lat="{{ record.check_out_lat }}" data-lng="{{ record.check_out_lng }}"></span>
+                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ record.check_out_lat }},{{ record.check_out_lng }}" target="_blank" class="text-primary text-decoration-none" style="font-size: 0.68rem;"><i class="bi bi-geo-alt-fill text-danger me-0.5"></i>GPS</a>
+                                                        <span class="gps-coord text-muted text-xxs d-block" style="font-size: 0.68rem;" data-lat="{{ record.check_out_lat }}" data-lng="{{ record.check_out_lng }}"></span>
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -341,25 +655,26 @@
                                         {% endif %}
                                     </td>
                                     
-                                    <!-- Action button -->
-                                    <td class="pe-3 py-2">
+                                    <!-- Action -->
+                                    <td class="pe-3.5 py-2.5">
                                         {% if is_owner %}
-                                        <button class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-0.5 d-flex align-items-center gap-1" 
+                                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-bold d-flex align-items-center gap-1" 
                                                 type="button" 
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#editAttendanceModal"
-                                                onclick="initEditModal('{{ record.id }}', '{{ record.user.username }}', '{{ record.date|date:"d M Y" }}', '{{ record.status }}', '{{ record.notes|default:"" }}')">
-                                            <i class="bi bi-pencil-fill" style="font-size: 0.65rem;"></i>
+                                                onclick="initEditModal('{{ record.id }}', '{{ record.user.username }}', '{{ record.date|date:"d M Y" }}', '{{ record.status }}', '{{ record.notes|default:"" }}')"
+                                                style="font-size: 0.72rem;">
+                                            <i class="bi bi-pencil-fill"></i>
                                             <span>Edit</span>
                                         </button>
                                         {% else %}
-                                        <span class="text-muted" style="font-size: 0.7rem;"><i class="bi bi-lock-fill me-1"></i>View Only</span>
+                                        <span class="text-muted small"><i class="bi bi-lock-fill me-1"></i>View Only</span>
                                         {% endif %}
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="6" class="text-center py-3 text-muted">No attendance logs match the filters.</td>
+                                    <td colspan="6" class="text-center py-4 text-muted">No attendance logs match the filter criteria.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -367,27 +682,27 @@
                     </div>
 
                     {% if page_obj.has_other_pages %}
-                    <nav aria-label="Page navigation" class="py-2.5 border-top">
-                        <ul class="pagination pagination-sm justify-content-center mb-0" style="font-size: 0.75rem;">
+                    <nav aria-label="Page navigation" class="py-3 border-top">
+                        <ul class="pagination pagination-sm justify-content-center mb-0">
                             {% if page_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link rounded-start-pill px-3 border-0 text-success" href="?page=1&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="First Page">&laquo; First</a>
+                                    <a class="page-link rounded-start-pill px-3 border-0 text-primary fw-bold" href="?page=1&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">&laquo; First</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link px-3 border-0 text-success" href="?page={{ page_obj.previous_page_number }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Previous Page">Previous</a>
+                                    <a class="page-link px-3 border-0 text-primary fw-bold" href="?page={{ page_obj.previous_page_number }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Previous</a>
                                 </li>
                             {% endif %}
 
                             <li class="page-item disabled">
-                                <span class="page-link px-3 border-0 bg-light text-dark">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                                <span class="page-link px-3 border-0 bg-light text-dark fw-bold">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
                             </li>
 
                             {% if page_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link px-3 border-0 text-success" href="?page={{ page_obj.next_page_number }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Next Page">Next</a>
+                                    <a class="page-link px-3 border-0 text-primary fw-bold" href="?page={{ page_obj.next_page_number }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Next</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link rounded-end-pill px-3 border-0 text-success" href="?page={{ page_obj.paginator.num_pages }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Last Page">Last &raquo;</a>
+                                    <a class="page-link rounded-end-pill px-3 border-0 text-primary fw-bold" href="?page={{ page_obj.paginator.num_pages }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Last &raquo;</a>
                                 </li>
                             {% endif %}
                         </ul>
@@ -399,111 +714,107 @@
 
         <!-- TAB 3: Edit Audit History Log -->
         <div class="tab-pane fade {% if active_tab == 'audit' %}show active{% endif %}" id="auditSection" role="tabpanel">
-            <!-- Audit Logs Filter Form -->
-            <div class="card border-0 shadow-sm mb-3 bg-white rounded-3">
-                <div class="card-body p-2.5">
-                    <form method="get" class="row g-2 align-items-end" style="font-size: 0.75rem;">
-                        <input type="hidden" name="tab" value="audit">
-                        <div class="col-md-3">
-                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Branch</label>
-                            <select name="branch" class="form-select form-select-sm rounded-3 no-search" data-no-search="true">
-                                <option value="">All Branches</option>
-                                {% for b in branches %}
-                                    <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Staff Employee</label>
-                            <select name="user" class="form-select form-select-sm rounded-3 no-search" data-no-search="true">
-                                <option value="">All Employees</option>
-                                {% for u in users %}
-                                    <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"i" %}selected{% endif %}>{{ u.first_name }} {{ u.last_name }} (@{{ u.username }})</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Start Date</label>
-                            <input type="date" name="start_date" value="{{ start_date_val }}" class="form-control form-control-sm rounded-3">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">End Date</label>
-                            <input type="date" name="end_date" value="{{ end_date_val }}" class="form-control form-control-sm rounded-3">
-                        </div>
-                        <div class="col-md-2 d-flex gap-1.5">
-                            <button type="submit" class="btn btn-sm btn-primary w-100 rounded-pill py-1.5" style="font-size: 0.75rem;">
-                                <i class="bi bi-funnel me-1"></i> Filter
-                            </button>
-                            <a href="?tab=audit" class="btn btn-sm btn-outline-secondary rounded-pill w-100 py-1.5 d-flex align-items-center justify-content-center" style="font-size: 0.75rem;">
-                                <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
-                            </a>
-                        </div>
-                    </form>
-                </div>
+            <!-- Audit Filters Card -->
+            <div class="ar-filter-card">
+                <form method="get" class="row g-3 align-items-end">
+                    <input type="hidden" name="tab" value="audit">
+                    <div class="col-md-3">
+                        <label class="ar-field-label"><i class="bi bi-shop me-1 text-primary"></i> Branch</label>
+                        <select name="branch" class="form-select ar-select">
+                            <option value="">🏢 All Branches</option>
+                            {% for b in branches %}
+                                <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="ar-field-label"><i class="bi bi-person me-1 text-primary"></i> Employee</label>
+                        <select name="user" class="form-select ar-select">
+                            <option value="">All Employees</option>
+                            {% for u in users %}
+                                <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"i" %}selected{% endif %}>{{ u.first_name }} {{ u.last_name }} (@{{ u.username }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="ar-field-label"><i class="bi bi-calendar-event me-1 text-primary"></i> Start Date</label>
+                        <input type="date" name="start_date" value="{{ start_date_val }}" class="form-control ar-input">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="ar-field-label"><i class="bi bi-calendar-event me-1 text-primary"></i> End Date</label>
+                        <input type="date" name="end_date" value="{{ end_date_val }}" class="form-control ar-input">
+                    </div>
+                    <div class="col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn ar-btn-filter w-100">
+                            <i class="bi bi-funnel-fill me-1"></i> Filter
+                        </button>
+                        <a href="?tab=audit" class="btn btn-outline-secondary rounded-3 py-2 px-3 text-decoration-none d-flex align-items-center justify-content-center" style="font-size: 0.8rem; font-weight: 700;">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </a>
+                    </div>
+                </form>
             </div>
 
-            <!-- Audit Logs Table Card -->
-            <div class="card border-0 shadow-sm bg-white rounded-3">
-                <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <div>
-                        <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-1.5" style="font-size: 0.85rem;">
-                            <i class="bi bi-shield-check"></i> Attendance Edit History & Audit Logs
-                        </h6>
-                    </div>
-                    <a href="?tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}&export=audit_csv" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold text-nowrap" style="font-size: 0.75rem;">
-                        <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> Export Audit CSV
+            <!-- Audit History Table -->
+            <div class="ar-section-card">
+                <div class="ar-card-header">
+                    <h2 class="ar-card-title">
+                        <i class="bi bi-shield-check text-primary"></i> Attendance Edit History & Audit Logs
+                    </h2>
+                    <a href="?tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}&export=audit_csv" class="btn ar-btn-export text-decoration-none d-flex align-items-center">
+                        <i class="bi bi-file-earmark-spreadsheet-fill me-1.5"></i> Export Audit CSV
                     </a>
                 </div>
 
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.75rem;">
-                            <thead class="table-light text-muted" style="font-size: 0.7rem;">
+                        <table class="table ar-table align-middle mb-0">
+                            <thead>
                                 <tr>
-                                    <th class="ps-3 py-2">Edited At</th>
-                                    <th class="py-2">Employee</th>
-                                    <th class="py-2">Attendance Date</th>
-                                    <th class="py-2">Branch</th>
-                                    <th class="py-2">Edited By</th>
-                                    <th class="py-2">Status Change</th>
-                                    <th class="pe-3 py-2">Correction Reason / Notes</th>
+                                    <th class="ps-3.5">Edited At</th>
+                                    <th>Employee</th>
+                                    <th>Attendance Date</th>
+                                    <th>Branch</th>
+                                    <th>Edited By</th>
+                                    <th>Status Change</th>
+                                    <th class="pe-3.5">Correction Reason / Notes</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for log in audit_page_obj %}
                                 <tr>
-                                    <td class="ps-3 py-2">
-                                        <div class="fw-bold text-dark">{{ log.timestamp|date:"d M Y, h:i A" }}</div>
+                                    <td class="ps-3.5 py-2.5 fw-bold text-dark">
+                                        {{ log.timestamp|date:"d M Y, h:i A" }}
                                     </td>
-                                    <td class="py-2">
-                                        <div class="fw-bold text-dark">{{ log.attendance.user.first_name }} {{ log.attendance.user.last_name }}</div>
-                                        <div class="text-muted text-xxs" style="font-size: 0.68rem;">@{{ log.attendance.user.username }} &middot; ID: {{ log.attendance.user.employee_id|default:"-" }}</div>
+                                    <td class="py-2.5">
+                                        <div class="fw-bold text-dark" style="font-size: 0.85rem;">{{ log.attendance.user.first_name }} {{ log.attendance.user.last_name }}</div>
+                                        <div class="text-muted" style="font-size: 0.72rem;">@{{ log.attendance.user.username }} &middot; ID: {{ log.attendance.user.employee_id|default:"-" }}</div>
                                     </td>
-                                    <td class="py-2">
-                                        <span class="badge bg-light text-dark border rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">{{ log.attendance.date|date:"d M Y" }}</span>
+                                    <td class="py-2.5">
+                                        <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1 fw-bold" style="font-size: 0.7rem;">{{ log.attendance.date|date:"d M Y" }}</span>
                                     </td>
-                                    <td class="py-2">
-                                        <span class="text-muted" style="font-size: 0.7rem;">{{ log.attendance.branch.name|default:"-" }}</span>
+                                    <td class="py-2.5">
+                                        <span class="text-muted" style="font-size: 0.75rem;">{{ log.attendance.branch.name|default:"-" }}</span>
                                     </td>
-                                    <td class="py-2">
-                                        <span class="badge rounded-pill px-2 py-0.5" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.65rem; font-weight: 600;">
+                                    <td class="py-2.5">
+                                        <span class="badge rounded-pill px-2.5 py-1" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.7rem; font-weight: 700;">
                                             <i class="bi bi-person-badge-fill me-1"></i>@{{ log.edited_by.username|default:"System" }}
                                         </span>
                                     </td>
-                                    <td class="py-2">
-                                        <div class="d-flex align-items-center gap-1">
-                                            <span class="badge bg-secondary rounded-pill px-2 py-0.5 opacity-75" style="font-size: 0.65rem;">{{ log.old_status|default:"absent"|capfirst }}</span>
-                                            <i class="bi bi-arrow-right text-muted" style="font-size: 0.65rem;"></i>
-                                            <span class="badge bg-success rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">{{ log.new_status|capfirst }}</span>
+                                    <td class="py-2.5">
+                                        <div class="d-flex align-items-center gap-1.5">
+                                            <span class="badge bg-secondary rounded-pill px-2 py-0.5 opacity-75" style="font-size: 0.68rem;">{{ log.old_status|default:"absent"|capfirst }}</span>
+                                            <i class="bi bi-arrow-right text-muted" style="font-size: 0.7rem;"></i>
+                                            <span class="badge bg-success rounded-pill px-2 py-0.5" style="font-size: 0.68rem;">{{ log.new_status|capfirst }}</span>
                                         </div>
                                     </td>
-                                    <td class="pe-3 py-2">
-                                        <p class="mb-0 text-muted text-wrap" style="max-width: 280px; font-size: 0.7rem;">{{ log.notes|default:"No reason specified" }}</p>
+                                    <td class="pe-3.5 py-2.5">
+                                        <p class="mb-0 text-muted text-wrap" style="max-width: 300px; font-size: 0.75rem;">{{ log.notes|default:"No reason specified" }}</p>
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="7" class="text-center py-3 text-muted">No attendance edit audit logs match the filter criteria.</td>
+                                    <td colspan="7" class="text-center py-4 text-muted">No attendance edit audit logs match criteria.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -511,27 +822,27 @@
                     </div>
 
                     {% if audit_page_obj.has_other_pages %}
-                    <nav aria-label="Audit Page navigation" class="py-2.5 border-top">
-                        <ul class="pagination pagination-sm justify-content-center mb-0" style="font-size: 0.75rem;">
+                    <nav aria-label="Audit Page navigation" class="py-3 border-top">
+                        <ul class="pagination pagination-sm justify-content-center mb-0">
                             {% if audit_page_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link rounded-start-pill px-3 border-0 text-primary" href="?audit_page=1&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="First Page">&laquo; First</a>
+                                    <a class="page-link rounded-start-pill px-3 border-0 text-primary fw-bold" href="?audit_page=1&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">&laquo; First</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link px-3 border-0 text-primary" href="?audit_page={{ audit_page_obj.previous_page_number }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Previous Page">Previous</a>
+                                    <a class="page-link px-3 border-0 text-primary fw-bold" href="?audit_page={{ audit_page_obj.previous_page_number }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Previous</a>
                                 </li>
                             {% endif %}
 
                             <li class="page-item disabled">
-                                <span class="page-link px-3 border-0 bg-light text-dark">Page {{ audit_page_obj.number }} of {{ audit_page_obj.paginator.num_pages }}</span>
+                                <span class="page-link px-3 border-0 bg-light text-dark fw-bold">Page {{ audit_page_obj.number }} of {{ audit_page_obj.paginator.num_pages }}</span>
                             </li>
 
                             {% if audit_page_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link px-3 border-0 text-primary" href="?audit_page={{ audit_page_obj.next_page_number }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Next Page">Next</a>
+                                    <a class="page-link px-3 border-0 text-primary fw-bold" href="?audit_page={{ audit_page_obj.next_page_number }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Next</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link rounded-end-pill px-3 border-0 text-primary" href="?audit_page={{ audit_page_obj.paginator.num_pages }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}" title="Last Page">Last &raquo;</a>
+                                    <a class="page-link rounded-end-pill px-3 border-0 text-primary fw-bold" href="?audit_page={{ audit_page_obj.paginator.num_pages }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Last &raquo;</a>
                                 </li>
                             {% endif %}
                         </ul>
@@ -543,15 +854,15 @@
     </div>
 </div>
 
-<!-- Photo Zoom Modal -->
+<!-- Verification Photo Zoom Modal -->
 <div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header border-0 bg-dark text-white py-2.5 px-3">
-                <h6 class="modal-title fw-bold" id="photoModalLabel" style="font-size: 0.85rem;">Verification Photo</h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header border-0 bg-dark text-white py-3 px-4">
+                <h6 class="modal-title fw-bold" id="photoModalLabel" style="font-size: 0.88rem;">Verification Photo</h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0 bg-black">
+            <div class="modal-body p-0 bg-black text-center">
                 <img id="fullPhotoEl" src="" class="w-100 h-auto object-fit-contain" style="max-height: 80vh;" alt="Verification Photo"/>
             </div>
         </div>
@@ -562,13 +873,15 @@
 <div class="modal fade" id="editAttendanceModal" tabindex="-1" aria-labelledby="editAttendanceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header border-0 bg-primary text-white py-2.5 px-3">
-                <h6 class="modal-title fw-bold" id="editAttendanceModalLabel" style="font-size: 0.85rem;"><i class="bi bi-pencil-square me-1.5"></i>Edit Attendance Record</h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header border-0 bg-primary text-white py-3 px-4">
+                <h6 class="modal-title fw-bold" id="editAttendanceModalLabel" style="font-size: 0.9rem;">
+                    <i class="bi bi-pencil-square me-1.5"></i> Edit Attendance Record
+                </h6>
+                <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-3 bg-light">
-                <div class="alert alert-secondary border-0 bg-white rounded-3 mb-3 py-2 px-3 small shadow-sm" style="font-size: 0.75rem;">
-                    <div class="d-flex justify-content-between mb-1">
+            <div class="modal-body p-4 bg-light">
+                <div class="alert alert-secondary border-0 bg-white rounded-3 mb-3 p-3 shadow-sm" style="font-size: 0.8rem;">
+                    <div class="d-flex justify-content-between mb-1.5">
                         <span class="fw-semibold text-muted">Employee:</span>
                         <span id="editEmpName" class="fw-bold text-dark">--</span>
                     </div>
@@ -578,8 +891,8 @@
                     </div>
                 </div>
 
-                <div id="editModalAlert" class="alert alert-success border-0 shadow-sm rounded-3 mb-3 py-2 px-3 small d-none align-items-center gap-2" style="font-size: 0.78rem; background-color: #d1fae5; color: #065f46;">
-                    <i class="bi bi-check-circle-fill text-success"></i>
+                <div id="editModalAlert" class="alert alert-success border-0 shadow-sm rounded-3 mb-3 p-3 small d-none align-items-center gap-2" style="font-size: 0.8rem; background-color: #d1fae5; color: #065f46;">
+                    <i class="bi bi-check-circle-fill text-success fs-6"></i>
                     <span id="editModalAlertMsg">Attendance updated and audit log saved successfully!</span>
                 </div>
 
@@ -587,24 +900,39 @@
                     <input type="hidden" id="editRecordId">
                     <input type="hidden" id="editUserId">
                     <input type="hidden" id="editIsoDate">
-                    <div class="mb-2.5">
-                        <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Status</label>
-                        <select id="editStatus" class="form-select form-select-sm rounded-3" required style="font-size: 0.75rem;">
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="ar-field-label"><i class="bi bi-clock-history me-1 text-primary"></i> Manual Check-In Time</label>
+                            <input type="time" id="editCheckInTime" class="form-control ar-input" style="border-radius: 8px !important;">
+                        </div>
+                        <div class="col-6">
+                            <label class="ar-field-label"><i class="bi bi-clock me-1 text-secondary"></i> Manual Check-Out Time</label>
+                            <input type="time" id="editCheckOutTime" class="form-control ar-input" style="border-radius: 8px !important;">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="ar-field-label">Status Override</label>
+                        <select id="editStatus" class="form-select ar-select" required>
+                            <option value="auto">⚡ Auto-Calculate from Check-In Time</option>
                             <option value="present">Present</option>
-                            <option value="late">Late</option>
+                            <option value="late">Late Check-in</option>
                             <option value="half_day">Half Day</option>
+                            <option value="week_off">Week Off</option>
+                            <option value="on_leave">On Leave</option>
                             <option value="absent">Absent</option>
                         </select>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem;">Correction Notes / Reason</label>
-                        <textarea id="editNotes" rows="2" class="form-control form-control-sm rounded-3" placeholder="Explain the reason for manual adjustment..." required style="font-size: 0.75rem;"></textarea>
+                        <label class="ar-field-label">Correction Notes / Reason</label>
+                        <textarea id="editNotes" rows="2" class="form-control ar-input" placeholder="Explain reason for manual check-in entry..." required style="border-radius: 10px !important;"></textarea>
                     </div>
 
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill w-50 py-1.5" data-bs-dismiss="modal" style="font-size: 0.75rem;">Cancel</button>
-                        <button type="submit" id="saveEditBtn" class="btn btn-sm btn-primary rounded-pill w-50 py-1.5" style="font-size: 0.75rem;">Save Changes</button>
+                        <button type="button" class="btn btn-secondary rounded-pill w-50 py-2 fw-bold" data-bs-dismiss="modal" style="font-size: 0.8rem;">Cancel</button>
+                        <button type="submit" id="saveEditBtn" class="btn btn-primary rounded-pill w-50 py-2 fw-bold" style="font-size: 0.8rem;">Save Changes</button>
                     </div>
                 </form>
             </div>
@@ -620,14 +948,23 @@
         document.getElementById('photoModalLabel').textContent = label;
     }
 
-    function initEditModal(id, username, date, status, notes, userId, isoDate) {
+    function initEditModal(id, username, date, status, notes, userId, isoDate, checkInTime, checkOutTime) {
         document.getElementById('editRecordId').value = id || 0;
         document.getElementById('editUserId').value = userId || '';
         document.getElementById('editIsoDate').value = isoDate || '';
         document.getElementById('editEmpName').textContent = username;
         document.getElementById('editEmpDate').textContent = date;
-        document.getElementById('editStatus').value = (status && status !== 'future') ? status : 'present';
+        document.getElementById('editCheckInTime').value = checkInTime || '';
+        document.getElementById('editCheckOutTime').value = checkOutTime || '';
+        document.getElementById('editStatus').value = 'auto';
         document.getElementById('editNotes').value = notes || '';
+        
+        const checkInEl = document.getElementById('editCheckInTime');
+        if (checkInEl) {
+            checkInEl.oninput = function() {
+                document.getElementById('editStatus').value = 'auto';
+            };
+        }
         
         const alertBox = document.getElementById('editModalAlert');
         if (alertBox) {
@@ -637,7 +974,7 @@
         const btn = document.getElementById('saveEditBtn');
         if (btn) {
             btn.disabled = false;
-            btn.className = "btn btn-sm btn-primary rounded-pill w-50 py-1.5";
+            btn.className = "btn btn-primary rounded-pill w-50 py-2 fw-bold";
             btn.innerHTML = 'Save Changes';
         }
     }
@@ -648,6 +985,8 @@
         const id = document.getElementById('editRecordId').value || 0;
         const userId = document.getElementById('editUserId').value;
         const isoDate = document.getElementById('editIsoDate').value;
+        const checkInTime = document.getElementById('editCheckInTime').value;
+        const checkOutTime = document.getElementById('editCheckOutTime').value;
         const status = document.getElementById('editStatus').value;
         const notes = document.getElementById('editNotes').value;
         
@@ -671,6 +1010,8 @@
             body: JSON.stringify({
                 user_id: userId,
                 date: isoDate,
+                check_in_time: checkInTime,
+                check_out_time: checkOutTime,
                 status: status,
                 notes: notes
             })
@@ -721,31 +1062,7 @@
         });
     });
 
-    // In-page inline notification renderer
     document.addEventListener("DOMContentLoaded", function() {
-        const savedNotice = sessionStorage.getItem('inline_attendance_notice');
-        if (savedNotice) {
-            sessionStorage.removeItem('inline_attendance_notice');
-            const cardBody = document.querySelector('.card-body') || document.querySelector('.container-fluid');
-            if (cardBody) {
-                const noticeDiv = document.createElement('div');
-                noticeDiv.className = 'alert alert-success alert-dismissible fade show border-0 shadow-sm rounded-3 mb-3 py-2 px-3 small d-flex align-items-center gap-2';
-                noticeDiv.style.cssText = 'font-size: 0.8rem; background-color: #ecfdf5; color: #047857; border-left: 4px solid #10b981 !important;';
-                noticeDiv.innerHTML = `
-                    <i class="bi bi-check-circle-fill text-success fs-6"></i>
-                    <div class="fw-semibold">${savedNotice}</div>
-                    <button type="button" class="btn-close ms-auto py-2" data-bs-dismiss="alert" aria-label="Close"></button>
-                `;
-                cardBody.insertBefore(noticeDiv, cardBody.firstChild);
-                setTimeout(() => {
-                    if (noticeDiv && noticeDiv.parentNode) {
-                        const bsAlert = new bootstrap.Alert(noticeDiv);
-                        bsAlert.close();
-                    }
-                }, 4000);
-            }
-        }
-
         const coords = Array.from(document.querySelectorAll('.gps-coord'));
         let delay = 0;
         const cache = {};
@@ -783,24 +1100,8 @@
                 }
             }, delay);
             
-            delay += 600; // 600ms spacing to respect OpenStreetMap rate limits
+            delay += 600;
         });
     });
 </script>
-<style>
-    .cursor-zoom {
-        cursor: zoom-in;
-        transition: transform 0.2s ease;
-    }
-    .cursor-zoom:hover {
-        transform: scale(1.08);
-    }
-    .btn-xs {
-        font-size: 0.7rem !important;
-        padding: 0.15rem 0.4rem !important;
-    }
-    .cursor-pointer {
-        cursor: pointer;
-    }
-</style>
 {% endblock %}
