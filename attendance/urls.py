@@ -20,6 +20,7 @@ urlpatterns = [
     
     path('reports/', views.attendance_reports, name='reports'),
     path('my-summary/', views.my_summary_view, name='my_summary'),
+    path('management/', views.management_overview_view, name='management'),
     path('management-overview/', views.management_overview_view, name='management_overview'),
     
     path('salaries/', views.salary_list, name='payroll_list'),

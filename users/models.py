@@ -91,11 +91,16 @@ class RoleShiftPolicy(models.Model):
         try:
             from django.apps import apps
             User = apps.get_model('users', 'User')
+            Attendance = apps.get_model('attendance', 'Attendance')
             User.objects.filter(role=self.role).update(
                 shift_start_time=self.shift_start_time,
                 shift_end_time=self.shift_end_time,
                 monthly_off_count=self.monthly_off_count
             )
+            # Recalculate status for all attendance records belonging to users with this role
+            for att in Attendance.objects.filter(user__role=self.role):
+                att.recalculate_status()
+                att.save()
         except Exception:
             pass
 

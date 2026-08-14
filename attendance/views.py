@@ -223,21 +223,7 @@ def check_in(request):
             
             delay_minutes = (now - local_shift_datetime).total_seconds() / 60.0
 
-            if delay_minutes <= grace_mins:
-                status = 'present'
-            else:
-                # Check if user has an approved permission request for today
-                has_approved_perm = PermissionRequest.objects.filter(
-                    user=request.user, 
-                    date=today, 
-                    status='approved'
-                ).exists()
-                if has_approved_perm:
-                    status = 'present'
-                else:
-                    # Arrived after grace period (even 1 minute late) -> Half Day deduction!
-                    status = 'half_day'
-                
+            status = 'checked_in'
             # If there's an approved leave for today, set status to 'on_leave'
             on_leave = LeaveRequest.objects.filter(
                 user=request.user, 
@@ -345,29 +331,8 @@ def check_out(request):
             attendance.check_out_lat = lat
             attendance.check_out_lng = lng
 
-            # Calculate assigned shift duration for user (e.g., 12 hrs for 9:30-9:30, 8 hrs for 10:00-6:00)
-            user_start = request.user.shift_start_time or datetime.time(9, 30)
-            user_end = request.user.shift_end_time or datetime.time(21, 30)
-
-            start_mins = user_start.hour * 60 + user_start.minute
-            end_mins = user_end.hour * 60 + user_end.minute
-            if end_mins <= start_mins:
-                end_mins += 24 * 60  # Handle overnight shift
-
-            shift_duration_mins = end_mins - start_mins
-            half_day_threshold_mins = shift_duration_mins / 2.0  # 50% of shift duration (6h for 12h shift, 4h for 8h shift)
-            full_day_threshold_mins = shift_duration_mins - 60   # 1 hour grace before full shift completion
-
-            # Evaluate actual worked hours (Check-In to Check-Out duration)
-            if attendance.check_in:
-                worked_minutes = (now_dt - attendance.check_in).total_seconds() / 60.0
-                if worked_minutes < half_day_threshold_mins:
-                    # Worked less than 50% of assigned shift duration -> Absent
-                    attendance.status = 'absent'
-                elif worked_minutes < full_day_threshold_mins:
-                    # Worked at least 50% of shift duration -> Half Day
-                    attendance.status = 'half_day'
-
+            # Automatically calculate attendance status based on shift & worked duration
+            attendance.recalculate_status()
             attendance.save()
             
             return JsonResponse({
@@ -875,6 +840,7 @@ def attendance_reports(request):
         writer.writerow(header)
         
         status_map = {
+            'checked_in': 'IN',
             'present': 'P',
             'late': 'L',
             'half_day': 'H',
@@ -933,7 +899,13 @@ def attendance_reports(request):
         response['Content-Disposition'] = f'attachment; filename="attendance_audit_logs_{today}.csv"'
         writer = csv.writer(response)
         
-        writer.writerow(['Timestamp', 'Employee ID', 'Employee Name', 'Username', 'Attendance Date', 'Branch', 'Edited By', 'Old Status', 'New Status', 'Correction Notes'])
+        writer.writerow([
+            'Timestamp', 'Employee ID', 'Employee Name', 'Username', 'Attendance Date', 'Branch', 'Edited By', 
+            'Old Status', 'New Status', 
+            'Old Check-In Time', 'New Check-In Time', 
+            'Old Check-Out Time', 'New Check-Out Time', 
+            'Correction Notes'
+        ])
         
         for log in audit_logs_qs:
             u = log.attendance.user
@@ -941,6 +913,11 @@ def attendance_reports(request):
             branch_name = log.attendance.branch.name if log.attendance.branch else ''
             edited_by = log.edited_by.username if log.edited_by else 'System'
             edited_time = timezone.localtime(log.timestamp).strftime('%Y-%m-%d %I:%M %p') if log.timestamp else ''
+            
+            old_in = log.old_check_in_time.strftime('%I:%M %p') if log.old_check_in_time else '-'
+            new_in = log.new_check_in_time.strftime('%I:%M %p') if log.new_check_in_time else '-'
+            old_out = log.old_check_out_time.strftime('%I:%M %p') if log.old_check_out_time else '-'
+            new_out = log.new_check_out_time.strftime('%I:%M %p') if log.new_check_out_time else '-'
             
             writer.writerow([
                 edited_time,
@@ -952,6 +929,10 @@ def attendance_reports(request):
                 edited_by,
                 log.old_status or 'absent',
                 log.new_status,
+                old_in,
+                new_in,
+                old_out,
+                new_out,
                 log.notes or ''
             ])
             
@@ -1477,6 +1458,11 @@ def edit_attendance_ajax(request, pk):
                 )
                 old_status = 'absent' if created else att.status
 
+            old_in_t_obj = timezone.localtime(att.check_in).time() if att.check_in else None
+            old_out_t_obj = timezone.localtime(att.check_out).time() if att.check_out else None
+            old_in_t = timezone.localtime(att.check_in).strftime('%I:%M %p') if att.check_in else '-'
+            old_out_t = timezone.localtime(att.check_out).strftime('%I:%M %p') if att.check_out else '-'
+
             # Handle Manual Check-In Time entry by Admin
             if check_in_time_str:
                 try:
@@ -1490,25 +1476,6 @@ def edit_attendance_ajax(request, pk):
                     
                     combined_in = datetime.datetime.combine(att.date, t_obj)
                     att.check_in = timezone.make_aware(combined_in, timezone.get_current_timezone())
-                    
-                    # Auto-evaluate status from check-in time
-                    shift_start = att.user.shift_start_time or datetime.time(9, 0)
-                    global_policy = GlobalPermissionPolicy.get_policy()
-                    grace_mins = global_policy.grace_period_minutes
-                    
-                    shift_datetime = timezone.make_aware(
-                        datetime.datetime.combine(att.date, shift_start),
-                        timezone.get_current_timezone()
-                    )
-                    delay_mins = (att.check_in - shift_datetime).total_seconds() / 60.0
-                    if delay_mins <= grace_mins:
-                        calc_status = 'present'
-                    else:
-                        calc_status = 'half_day'
-                    
-                    # Apply calc_status unless Admin explicitly chose another status override besides 'auto'
-                    if status == 'auto' or not status or status in ['half_day', 'absent', 'present', 'late']:
-                        status = calc_status
                 except Exception as ex:
                     pass
 
@@ -1530,21 +1497,28 @@ def edit_attendance_ajax(request, pk):
 
             if status and status != 'auto':
                 att.status = status
-            elif not att.status:
-                att.status = 'present'
+            else:
+                att.recalculate_status()
 
             att.updated_by = request.user
             if notes:
                 att.notes = notes
             att.save()
 
-            # Create Audit Log record
+            new_in_t = timezone.localtime(att.check_in).time() if att.check_in else None
+            new_out_t = timezone.localtime(att.check_out).time() if att.check_out else None
+
+            # Create Audit Log record with changed time info
             AttendanceAuditLog.objects.create(
                 attendance=att,
                 edited_by=request.user,
                 old_status=old_status,
                 new_status=att.status,
-                notes=notes or att.notes or 'Manual Admin Check-In Time Entry'
+                old_check_in_time=old_in_t_obj,
+                new_check_in_time=new_in_t,
+                old_check_out_time=old_out_t_obj,
+                new_check_out_time=new_out_t,
+                notes=notes or att.notes or f'Manual Time Entry (In: {old_in_t} -> {timezone.localtime(att.check_in).strftime("%I:%M %p") if att.check_in else "-"}, Out: {old_out_t} -> {timezone.localtime(att.check_out).strftime("%I:%M %p") if att.check_out else "-"})'
             )
             return JsonResponse({
                 'success': True, 
@@ -1886,6 +1860,9 @@ def management_overview_view(request):
         'pending_leaves': pending_leaves,
         'pending_permissions': pending_permissions,
         'staff_today_status': staff_today_status,
+        'recent_audit_logs': AttendanceAuditLog.objects.select_related(
+            'attendance', 'attendance__user', 'attendance__branch', 'edited_by'
+        ).filter(attendance__date=selected_date).order_by('-timestamp'),
         'is_owner': is_owner(request.user),
     }
     return render(request, 'attendance/management_overview.html', context)

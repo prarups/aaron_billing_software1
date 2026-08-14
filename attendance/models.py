@@ -3,6 +3,7 @@ from django.conf import settings
 from decimal import Decimal
 class Attendance(models.Model):
     STATUS_CHOICES = (
+        ('checked_in', 'Checked In'),
         ('present', 'Present'),
         ('absent', 'Absent'),
         ('late', 'Late'),
@@ -44,6 +45,102 @@ class Attendance(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.date} - {self.status}"
 
+    def recalculate_status(self):
+        """
+        Calculates and returns the appropriate status for an Attendance record based on:
+        - Approved Leave Requests
+        - User / Role Shift timings (shift_start_time & shift_end_time)
+        - Check-in delay vs grace period (Permission Requests)
+        - Check-out / worked duration vs shift length (Half Day / Absent / Present)
+        """
+        from attendance.models import LeaveRequest, PermissionRequest, GlobalPermissionPolicy
+        from users.models import RoleShiftPolicy
+        import datetime
+        from django.utils import timezone
+
+        # 1. Leave Check
+        on_leave = LeaveRequest.objects.filter(
+            user=self.user,
+            start_date__lte=self.date,
+            end_date__gte=self.date,
+            status='approved'
+        ).exists()
+        if on_leave:
+            self.status = 'on_leave'
+            return self.status
+
+        # 2. Get User / Role Shift Timings
+        shift_start = self.user.shift_start_time
+        shift_end = self.user.shift_end_time
+        if not shift_start or not shift_end:
+            try:
+                policy = RoleShiftPolicy.get_policy_for_role(self.user.role)
+                shift_start = shift_start or policy.shift_start_time
+                shift_end = shift_end or policy.shift_end_time
+            except Exception:
+                pass
+        
+        if not shift_start:
+            shift_start = datetime.time(9, 0)
+        if not shift_end:
+            shift_end = datetime.time(17, 0)
+
+        global_policy = GlobalPermissionPolicy.get_policy()
+        grace_mins = global_policy.grace_period_minutes or 15
+
+        # 3. Check-In Late Evaluation
+        is_late_check_in = False
+        if self.check_in:
+            check_in_local = timezone.localtime(self.check_in)
+            shift_datetime = timezone.make_aware(
+                datetime.datetime.combine(self.date, shift_start),
+                timezone.get_current_timezone()
+            )
+            delay_mins = (check_in_local - shift_datetime).total_seconds() / 60.0
+
+            if delay_mins > grace_mins:
+                has_approved_perm = PermissionRequest.objects.filter(
+                    user=self.user,
+                    date=self.date,
+                    status='approved'
+                ).exists()
+                if not has_approved_perm:
+                    is_late_check_in = True
+
+        # 4. Check-Out / Worked Duration Evaluation
+        today = timezone.localdate()
+        if self.check_in and self.check_out:
+            worked_mins = (self.check_out - self.check_in).total_seconds() / 60.0
+            
+            start_mins = shift_start.hour * 60 + shift_start.minute
+            end_mins = shift_end.hour * 60 + shift_end.minute
+            if end_mins <= start_mins:
+                end_mins += 24 * 60  # Overnight shift
+
+            shift_duration_mins = end_mins - start_mins
+            half_day_threshold_mins = shift_duration_mins / 2.0
+            full_day_threshold_mins = max(shift_duration_mins - grace_mins, shift_duration_mins - 30.0)
+
+            if worked_mins < half_day_threshold_mins:
+                self.status = 'absent'
+            elif worked_mins < full_day_threshold_mins or is_late_check_in:
+                self.status = 'half_day'
+            else:
+                self.status = 'present'
+        elif self.check_in and self.date < today:
+            # Past date record where employee forgot check-out
+            if is_late_check_in:
+                self.status = 'half_day'
+            else:
+                self.status = 'present'
+        else:
+            # Active check-in for current day (checkout not logged yet)
+            # Show status as 'checked_in'; calculate final status (present/half_day/absent) after checkout or day end
+            self.status = 'checked_in'
+
+        return self.status
+
+
 
 class AttendanceAuditLog(models.Model):
     attendance = models.ForeignKey(Attendance, on_delete=models.CASCADE, related_name='audit_logs')
@@ -51,6 +148,10 @@ class AttendanceAuditLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     old_status = models.CharField(max_length=50, blank=True, null=True)
     new_status = models.CharField(max_length=50)
+    old_check_in_time = models.TimeField(null=True, blank=True)
+    new_check_in_time = models.TimeField(null=True, blank=True)
+    old_check_out_time = models.TimeField(null=True, blank=True)
+    new_check_out_time = models.TimeField(null=True, blank=True)
     notes = models.TextField(blank=True, null=True)
 
     class Meta:

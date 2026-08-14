@@ -523,7 +523,9 @@
                             <tr>
                                 <td class="fw-bold text-dark">{{ item.date|date:"d M Y" }}</td>
                                 <td>
-                                    {% if item.status == 'present' %}
+                                     {% if item.status == 'checked_in' %}
+                                         <span class="mo-badge-status" style="background-color: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd;"><i class="bi bi-box-arrow-in-right"></i> Checked In</span>
+                                     {% elif item.status == 'present' %}
                                         <span class="mo-badge-status mo-bs-present"><i class="bi bi-check-circle-fill"></i> Present</span>
                                     {% elif item.status == 'late' %}
                                         <span class="mo-badge-status mo-bs-late"><i class="bi bi-exclamation-circle-fill"></i> Late Check-in</span>

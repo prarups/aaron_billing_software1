@@ -637,7 +637,9 @@
 
                                 <!-- Status -->
                                 <td>
-                                     {% if item.status == 'present' %}
+                                     {% if item.status == 'checked_in' %}
+                                         <span class="mo-badge-status" style="background-color: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd;"><i class="bi bi-box-arrow-in-right"></i> Checked In</span>
+                                     {% elif item.status == 'present' %}
                                          <span class="mo-badge-status mo-bs-present"><i class="bi bi-check-circle-fill"></i> Present</span>
                                      {% elif item.status == 'late' %}
                                          <span class="mo-badge-status mo-bs-late"><i class="bi bi-exclamation-circle-fill"></i> Late Check-in</span>
@@ -772,6 +774,91 @@
                     {% endfor %}
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Edit History & Audit Logs Section -->
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden mt-4">
+    <div class="card-header border-0 bg-white py-3 px-4 d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 0.9rem;">
+            <i class="bi bi-shield-check text-primary fs-5"></i> Attendance Edit History & Audit Logs ({{ selected_date|date:"d M Y" }})
+        </h6>
+        <span class="badge bg-primary-subtle text-primary rounded-pill px-2.5 py-1 fw-bold" style="font-size: 0.72rem;">
+            {{ recent_audit_logs|length }} Record(s) Edited
+        </span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0" style="font-size: 0.8rem;">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Edited At</th>
+                        <th>Employee</th>
+                        <th>Edited By</th>
+                        <th>Status Change</th>
+                        <th>Time Changes (Old → New)</th>
+                        <th class="pe-4">Reason / Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in recent_audit_logs %}
+                    <tr>
+                        <td class="ps-4 py-2.5 fw-bold text-dark">
+                            {{ log.timestamp|date:"d M Y, h:i A" }}
+                        </td>
+                        <td class="py-2.5">
+                            <div class="fw-bold text-dark">{{ log.attendance.user.first_name }} {{ log.attendance.user.last_name }}</div>
+                            <div class="text-muted" style="font-size: 0.72rem;">@{{ log.attendance.user.username }} &middot; ID: {{ log.attendance.user.employee_id|default:"-" }}</div>
+                        </td>
+                        <td class="py-2.5">
+                            <span class="badge rounded-pill px-2.5 py-1" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.7rem; font-weight: 700;">
+                                <i class="bi bi-person-badge-fill me-1"></i>@{{ log.edited_by.username|default:"System" }}
+                            </span>
+                        </td>
+                        <td class="py-2.5">
+                            <div class="d-flex align-items-center gap-1.5">
+                                <span class="badge bg-secondary rounded-pill px-2 py-0.5 opacity-75" style="font-size: 0.68rem;">{{ log.old_status|default:"absent"|capfirst }}</span>
+                                <i class="bi bi-arrow-right text-muted" style="font-size: 0.7rem;"></i>
+                                <span class="badge bg-success rounded-pill px-2 py-0.5" style="font-size: 0.68rem;">{{ log.new_status|capfirst }}</span>
+                            </div>
+                        </td>
+                        <td class="py-2.5">
+                            <div class="d-flex flex-column gap-1">
+                                {% if log.old_check_in_time or log.new_check_in_time %}
+                                    <div class="d-flex align-items-center gap-1" style="font-size: 0.7rem;">
+                                        <span class="text-muted fw-bold me-0.5">In:</span>
+                                        <span class="badge bg-light text-dark border px-1.5 py-0.5" style="font-size: 0.65rem;">{{ log.old_check_in_time|time:"h:i A"|default:"-" }}</span>
+                                        <i class="bi bi-arrow-right text-muted" style="font-size: 0.65rem;"></i>
+                                        <span class="badge bg-info text-dark px-1.5 py-0.5" style="font-size: 0.65rem;">{{ log.new_check_in_time|time:"h:i A"|default:"-" }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if log.old_check_out_time or log.new_check_out_time %}
+                                    <div class="d-flex align-items-center gap-1" style="font-size: 0.7rem;">
+                                        <span class="text-muted fw-bold me-0.5">Out:</span>
+                                        <span class="badge bg-light text-dark border px-1.5 py-0.5" style="font-size: 0.65rem;">{{ log.old_check_out_time|time:"h:i A"|default:"-" }}</span>
+                                        <i class="bi bi-arrow-right text-muted" style="font-size: 0.65rem;"></i>
+                                        <span class="badge bg-warning text-dark px-1.5 py-0.5" style="font-size: 0.65rem;">{{ log.new_check_out_time|time:"h:i A"|default:"-" }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if not log.old_check_in_time and not log.new_check_in_time and not log.old_check_out_time and not log.new_check_out_time %}
+                                    <span class="text-muted opacity-50" style="font-size: 0.72rem;">-</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="pe-4 py-2.5">
+                            <p class="mb-0 text-muted text-wrap" style="max-width: 280px; font-size: 0.75rem;">{{ log.notes|default:"No notes specified" }}</p>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted" style="font-size: 0.8rem;">
+                            <i class="bi bi-info-circle me-1"></i> No attendance edits have been recorded for {{ selected_date|date:"d M Y" }}.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

@@ -457,7 +457,10 @@
                                     <!-- Days Status Badges -->
                                     {% for day in item.days %}
                                         <td class="p-1">
-                                            {% if day.status == 'present' %}
+                                            {% if day.status == 'checked_in' %}
+                                                <span class="badge rounded-circle bg-info text-dark d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px; font-size: 0.58rem; font-weight: bold;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Checked In (Active Shift){% endif %}" 
+                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'checked_in', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>IN</span>
+                                            {% elif day.status == 'present' %}
                                                 <span class="badge rounded-circle bg-success d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px; font-size: 0.62rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Present{% endif %}" 
                                                       {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'present', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>P</span>
                                             {% elif day.status == 'late' %}
@@ -583,12 +586,18 @@
                                     <td class="py-2.5">
                                         <div class="fw-bold text-dark">{{ record.date|date:"d M Y" }}</div>
                                         <div class="mt-1">
-                                            {% if record.status == 'present' %}
+                                            {% if record.status == 'checked_in' %}
+                                                <span class="mo-badge-status" style="background-color: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd;"><i class="bi bi-box-arrow-in-right"></i> Checked In</span>
+                                            {% elif record.status == 'present' %}
                                                 <span class="mo-badge-status mo-bs-present"><i class="bi bi-check-circle-fill"></i> Present</span>
                                             {% elif record.status == 'late' %}
                                                 <span class="mo-badge-status mo-bs-late"><i class="bi bi-exclamation-circle-fill"></i> Late Check-in</span>
                                             {% elif record.status == 'half_day' %}
                                                 <span class="mo-badge-status mo-bs-half"><i class="bi bi-pie-chart-fill"></i> Half Day</span>
+                                            {% elif record.status == 'on_leave' %}
+                                                <span class="mo-badge-status" style="background-color: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe;"><i class="bi bi-calendar-check-fill"></i> On Leave</span>
+                                            {% elif record.status == 'week_off' %}
+                                                <span class="mo-badge-status" style="background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;"><i class="bi bi-calendar-minus-fill"></i> Week Off</span>
                                             {% else %}
                                                 <span class="mo-badge-status mo-bs-absent"><i class="bi bi-x-circle-fill"></i> Absent</span>
                                             {% endif %}
@@ -772,6 +781,7 @@
                                     <th>Branch</th>
                                     <th>Edited By</th>
                                     <th>Status Change</th>
+                                    <th>Time Changes (Old → New)</th>
                                     <th class="pe-3.5">Correction Reason / Notes</th>
                                 </tr>
                             </thead>
@@ -801,6 +811,29 @@
                                             <span class="badge bg-secondary rounded-pill px-2 py-0.5 opacity-75" style="font-size: 0.68rem;">{{ log.old_status|default:"absent"|capfirst }}</span>
                                             <i class="bi bi-arrow-right text-muted" style="font-size: 0.7rem;"></i>
                                             <span class="badge bg-success rounded-pill px-2 py-0.5" style="font-size: 0.68rem;">{{ log.new_status|capfirst }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-2.5">
+                                        <div class="d-flex flex-column gap-1">
+                                            {% if log.old_check_in_time or log.new_check_in_time %}
+                                                <div class="d-flex align-items-center gap-1" style="font-size: 0.7rem;">
+                                                    <span class="text-muted fw-bold me-0.5">In:</span>
+                                                    <span class="badge bg-light text-dark border px-1.5 py-0.5" style="font-size: 0.65rem;">{{ log.old_check_in_time|time:"h:i A"|default:"-" }}</span>
+                                                    <i class="bi bi-arrow-right text-muted" style="font-size: 0.65rem;"></i>
+                                                    <span class="badge bg-info text-dark px-1.5 py-0.5" style="font-size: 0.65rem;">{{ log.new_check_in_time|time:"h:i A"|default:"-" }}</span>
+                                                </div>
+                                            {% endif %}
+                                            {% if log.old_check_out_time or log.new_check_out_time %}
+                                                <div class="d-flex align-items-center gap-1" style="font-size: 0.7rem;">
+                                                    <span class="text-muted fw-bold me-0.5">Out:</span>
+                                                    <span class="badge bg-light text-dark border px-1.5 py-0.5" style="font-size: 0.65rem;">{{ log.old_check_out_time|time:"h:i A"|default:"-" }}</span>
+                                                    <i class="bi bi-arrow-right text-muted" style="font-size: 0.65rem;"></i>
+                                                    <span class="badge bg-warning text-dark px-1.5 py-0.5" style="font-size: 0.65rem;">{{ log.new_check_out_time|time:"h:i A"|default:"-" }}</span>
+                                                </div>
+                                            {% endif %}
+                                            {% if not log.old_check_in_time and not log.new_check_in_time and not log.old_check_out_time and not log.new_check_out_time %}
+                                                <span class="text-muted opacity-50" style="font-size: 0.72rem;">-</span>
+                                            {% endif %}
                                         </div>
                                     </td>
                                     <td class="pe-3.5 py-2.5">
