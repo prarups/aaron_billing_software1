@@ -129,7 +129,7 @@
                                 <td class="fw-bold text-dark">₹ {{ item.salary_config.monthly_base_salary|default:"0.00" }}</td>
                                 <td>
                                     <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fef3c7; color: #b45309; font-size: 0.65rem;">
-                                        <i class="bi bi-clock-history me-1"></i> 4 Lates = 0.5 Day Cut
+                                        <i class="bi bi-clock-history me-1"></i> {% if global_policy.late_threshold_for_half_day_deduction == 1 %}1 Late = 0.5 Day Cut{% else %}{{ global_policy.late_threshold_for_half_day_deduction|default:1 }} Lates = 0.5 Day Cut{% endif %}
                                     </span>
                                 </td>
                                 <td>

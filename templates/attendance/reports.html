@@ -728,13 +728,8 @@
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label class="ar-field-label"><i class="bi bi-person me-1 text-primary"></i> Employee</label>
-                        <select name="user" class="form-select ar-select">
-                            <option value="">All Employees</option>
-                            {% for u in users %}
-                                <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"i" %}selected{% endif %}>{{ u.first_name }} {{ u.last_name }} (@{{ u.username }})</option>
-                            {% endfor %}
-                        </select>
+                        <label class="ar-field-label"><i class="bi bi-search me-1 text-primary"></i> Search Employee</label>
+                        <input type="text" name="audit_q" value="{{ audit_q }}" placeholder="Name, @username, Employee ID..." class="form-control ar-input">
                     </div>
                     <div class="col-md-2">
                         <label class="ar-field-label"><i class="bi bi-calendar-event me-1 text-primary"></i> Start Date</label>
@@ -761,7 +756,7 @@
                     <h2 class="ar-card-title">
                         <i class="bi bi-shield-check text-primary"></i> Attendance Edit History & Audit Logs
                     </h2>
-                    <a href="?tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}&export=audit_csv" class="btn ar-btn-export text-decoration-none d-flex align-items-center">
+                    <a href="?tab=audit&branch={{ selected_branch }}&audit_q={{ audit_q|urlencode }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}&export=audit_csv" class="btn ar-btn-export text-decoration-none d-flex align-items-center">
                         <i class="bi bi-file-earmark-spreadsheet-fill me-1.5"></i> Export Audit CSV
                     </a>
                 </div>
@@ -826,10 +821,10 @@
                         <ul class="pagination pagination-sm justify-content-center mb-0">
                             {% if audit_page_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link rounded-start-pill px-3 border-0 text-primary fw-bold" href="?audit_page=1&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">&laquo; First</a>
+                                    <a class="page-link rounded-start-pill px-3 border-0 text-primary fw-bold" href="?audit_page=1&tab=audit&branch={{ selected_branch }}&audit_q={{ audit_q|urlencode }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">&laquo; First</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link px-3 border-0 text-primary fw-bold" href="?audit_page={{ audit_page_obj.previous_page_number }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Previous</a>
+                                    <a class="page-link px-3 border-0 text-primary fw-bold" href="?audit_page={{ audit_page_obj.previous_page_number }}&tab=audit&branch={{ selected_branch }}&audit_q={{ audit_q|urlencode }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Previous</a>
                                 </li>
                             {% endif %}
 
@@ -839,10 +834,10 @@
 
                             {% if audit_page_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link px-3 border-0 text-primary fw-bold" href="?audit_page={{ audit_page_obj.next_page_number }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Next</a>
+                                    <a class="page-link px-3 border-0 text-primary fw-bold" href="?audit_page={{ audit_page_obj.next_page_number }}&tab=audit&branch={{ selected_branch }}&audit_q={{ audit_q|urlencode }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Next</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link rounded-end-pill px-3 border-0 text-primary fw-bold" href="?audit_page={{ audit_page_obj.paginator.num_pages }}&tab=audit&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Last &raquo;</a>
+                                    <a class="page-link rounded-end-pill px-3 border-0 text-primary fw-bold" href="?audit_page={{ audit_page_obj.paginator.num_pages }}&tab=audit&branch={{ selected_branch }}&audit_q={{ audit_q|urlencode }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Last &raquo;</a>
                                 </li>
                             {% endif %}
                         </ul>

@@ -129,7 +129,7 @@ def format_duration_display(hours_val):
 class GlobalPermissionPolicy(models.Model):
     max_permissions_per_month = models.IntegerField(default=2, help_text="Maximum permission requests allowed per month for all employees")
     max_hours_per_permission = models.DecimalField(max_digits=4, decimal_places=2, default=2.00, help_text="Maximum hours allowed per permission request for all employees")
-    late_threshold_for_half_day_deduction = models.IntegerField(default=4, help_text="Number of late check-ins per month that trigger half-day salary deduction")
+    late_threshold_for_half_day_deduction = models.IntegerField(default=1, help_text="Number of late check-ins per month that trigger half-day salary deduction")
     grace_period_minutes = models.IntegerField(default=15, help_text="Global grace period in minutes before marked Late")
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
@@ -150,7 +150,7 @@ class GlobalPermissionPolicy(models.Model):
         policy, _ = cls.objects.get_or_create(id=1, defaults={
             'max_permissions_per_month': 2,
             'max_hours_per_permission': 2.00,
-            'late_threshold_for_half_day_deduction': 4,
+            'late_threshold_for_half_day_deduction': 1,
             'grace_period_minutes': 15,
         })
         return policy

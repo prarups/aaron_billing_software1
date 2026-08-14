@@ -193,11 +193,11 @@
                 <form method="post" action="{% url 'attendance:update_global_policy' %}">
                     {% csrf_token %}
                     <div class="row g-2 mb-2">
-                        <div class="col-6 col-md-4">
+                        <div class="col-6 col-md-3">
                             <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Max Perms / Month</label>
                             <input type="number" name="max_permissions_per_month" value="{{ global_policy.max_permissions_per_month }}" min="1" max="30" class="form-control sp-input" required>
                         </div>
-                        <div class="col-6 col-md-4">
+                        <div class="col-6 col-md-3">
                             <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Max Hours / Perm</label>
                             <select name="max_hours_per_permission" class="form-select sp-select" required>
                                 <option value="0.5" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "0.50" %}selected{% endif %}>30 Mins (0.5 hrs)</option>
@@ -212,9 +212,13 @@
                                 <option value="6.0" {% if global_policy.max_hours_per_permission|stringformat:".2f" == "6.00" %}selected{% endif %}>6 Hours</option>
                             </select>
                         </div>
-                        <div class="col-6 col-md-4">
+                        <div class="col-6 col-md-3">
                             <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Grace Mins (Check-in)</label>
                             <input type="number" name="grace_period_minutes" value="{{ global_policy.grace_period_minutes|default:15 }}" min="0" max="120" class="form-control sp-input" required>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Lates for 0.5 Cut</label>
+                            <input type="number" name="late_threshold_for_half_day_deduction" value="{{ global_policy.late_threshold_for_half_day_deduction|default:4 }}" min="1" max="30" class="form-control sp-input" required>
                         </div>
                     </div>
                     <div class="d-flex justify-content-end pt-1">

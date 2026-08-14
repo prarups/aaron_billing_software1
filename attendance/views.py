@@ -226,8 +226,17 @@ def check_in(request):
             if delay_minutes <= grace_mins:
                 status = 'present'
             else:
-                # Arrived after grace period (even 1 minute late) -> Half Day deduction!
-                status = 'half_day'
+                # Check if user has an approved permission request for today
+                has_approved_perm = PermissionRequest.objects.filter(
+                    user=request.user, 
+                    date=today, 
+                    status='approved'
+                ).exists()
+                if has_approved_perm:
+                    status = 'present'
+                else:
+                    # Arrived after grace period (even 1 minute late) -> Half Day deduction!
+                    status = 'half_day'
                 
             # If there's an approved leave for today, set status to 'on_leave'
             on_leave = LeaveRequest.objects.filter(
@@ -481,6 +490,7 @@ def update_global_permission_policy(request):
             max_perms = int(request.POST.get('max_permissions_per_month', 2))
             max_hours = Decimal(request.POST.get('max_hours_per_permission', '2.00'))
             grace_mins = int(request.POST.get('grace_period_minutes', 15))
+            late_thresh = int(request.POST.get('late_threshold_for_half_day_deduction', 4))
             
             if max_perms < 1:
                 messages.error(request, 'Max permissions per month must be at least 1.')
@@ -491,11 +501,15 @@ def update_global_permission_policy(request):
             if grace_mins < 0:
                 messages.error(request, 'Grace period minutes cannot be negative.')
                 return redirect('attendance:permission_list')
+            if late_thresh < 1:
+                messages.error(request, 'Late threshold must be at least 1.')
+                return redirect('attendance:permission_list')
                 
             policy = GlobalPermissionPolicy.get_policy()
             policy.max_permissions_per_month = max_perms
             policy.max_hours_per_permission = max_hours
             policy.grace_period_minutes = grace_mins
+            policy.late_threshold_for_half_day_deduction = late_thresh
             policy.updated_by = request.user
             policy.save()
             
@@ -513,7 +527,7 @@ def update_global_permission_policy(request):
             
             messages.success(
                 request,
-                f'Global permission policy updated! All employees have grace period of {grace_mins} mins, {max_perms} permissions/month, and max {policy_dur_str} per request.'
+                f'Global policy updated! Grace period: {grace_mins} mins, {max_perms} perms/month ({policy_dur_str} max), {late_thresh} Lates = 0.5 Day Cut.'
             )
         except Exception as e:
             messages.error(request, f'Failed to update global permission policy: {e}')
@@ -894,11 +908,25 @@ def attendance_reports(request):
         return response
         
     # Audit logs for history
+    audit_q = request.GET.get('audit_q', '').strip()
     audit_logs_qs = AttendanceAuditLog.objects.select_related('attendance', 'attendance__user', 'attendance__branch', 'edited_by').order_by('-timestamp')
     if selected_branch:
         audit_logs_qs = audit_logs_qs.filter(attendance__branch_id=selected_branch)
-    if selected_user:
-        audit_logs_qs = audit_logs_qs.filter(attendance__user_id=selected_user)
+    if start_date_str:
+        audit_logs_qs = audit_logs_qs.filter(attendance__date__gte=start_date)
+    if end_date_str:
+        audit_logs_qs = audit_logs_qs.filter(attendance__date__lte=end_date)
+    if audit_q:
+        audit_logs_qs = audit_logs_qs.filter(
+            Q(attendance__user__first_name__icontains=audit_q) |
+            Q(attendance__user__last_name__icontains=audit_q) |
+            Q(attendance__user__username__icontains=audit_q) |
+            Q(attendance__user__employee_id__icontains=audit_q) |
+            Q(edited_by__first_name__icontains=audit_q) |
+            Q(edited_by__last_name__icontains=audit_q) |
+            Q(edited_by__username__icontains=audit_q) |
+            Q(edited_by__employee_id__icontains=audit_q)
+        ).distinct()
 
     if request.GET.get('export') == 'audit_csv':
         response = HttpResponse(content_type='text/csv')
@@ -941,6 +969,7 @@ def attendance_reports(request):
         'users': users,
         'selected_branch': selected_branch,
         'selected_user': selected_user,
+        'audit_q': audit_q,
         'start_date_val': start_date.strftime('%Y-%m-%d'),
         'end_date_val': end_date.strftime('%Y-%m-%d'),
         'active_tab': active_tab,
@@ -982,6 +1011,8 @@ def salary_list(request):
     
     today = timezone.localdate()
     
+    global_policy = GlobalPermissionPolicy.get_policy()
+    
     context = {
         'users': users,
         'branches': branches,
@@ -991,6 +1022,7 @@ def salary_list(request):
         'years': range(today.year - 2, today.year + 2),
         'current_month': today.month,
         'current_year': today.year,
+        'global_policy': global_policy,
     }
     return render(request, 'attendance/payroll.html', context)
 
@@ -1048,7 +1080,7 @@ def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=Tr
         leave_dict.setdefault(uid, []).append((sdate, edate))
 
     global_policy = GlobalPermissionPolicy.get_policy()
-    late_thresh = max(1, global_policy.late_threshold_for_half_day_deduction or 4)
+    late_thresh = max(1, global_policy.late_threshold_for_half_day_deduction or 1)
 
     for user in users_to_process:
         config = salary_configs.get(user.id)
@@ -1165,10 +1197,6 @@ def pay_slips_view(request):
         payrolls = payrolls.filter(status=status_payroll)
 
     payrolls = payrolls.distinct().order_by('user__employee_id', 'user__username')
-    days_in_month = calendar.monthrange(selected_year, selected_month)[1]
-    for p in payrolls:
-        p.payable_days = max(0, days_in_month - float(p.lop_days or 0))
-        p.total_days_in_month = days_in_month
 
     # CSV Export
     if request.GET.get('export') == 'csv':
@@ -1335,7 +1363,7 @@ def generate_payroll(request):
                             current_date += datetime.timedelta(days=1)
                         
                         global_policy = GlobalPermissionPolicy.get_policy()
-                        late_thresh = max(1, global_policy.late_threshold_for_half_day_deduction or 4)
+                        late_thresh = max(1, global_policy.late_threshold_for_half_day_deduction or 1)
                         
                         lop_days_to_deduct = Decimal(str(max(0, unapproved_leaves - 4)))
                         per_day_rate = config.monthly_base_salary / Decimal(str(days_in_month)) if days_in_month > 0 else Decimal('0')

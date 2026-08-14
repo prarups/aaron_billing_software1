@@ -118,7 +118,7 @@ class AttendanceTestCase(TestCase):
         lop_days_to_deduct = max(0, absent_days - 4)
         per_day_rate = Decimal('30000.00') / Decimal(str(days_in_month))
         half_day_rate = per_day_rate / Decimal('2')
-        expected_deductions = (Decimal(str(lop_days_to_deduct)) * per_day_rate) + (Decimal('0') * half_day_rate)
+        expected_deductions = (Decimal(str(lop_days_to_deduct)) * per_day_rate) + (Decimal('1') * half_day_rate)
         self.assertEqual(payroll.deductions.quantize(Decimal('0.01')), expected_deductions.quantize(Decimal('0.01')))
         
         expected_net = Decimal('30000.00') - expected_deductions
@@ -140,11 +140,12 @@ class AttendanceTestCase(TestCase):
         # Create a MonthlyPayroll
         today = timezone.localdate()
         days_in_month = calendar.monthrange(today.year, today.month)[1]
+        present_days = days_in_month - 8
         payroll = MonthlyPayroll.objects.create(
             user=self.staff,
             month=today.month,
             year=today.year,
-            present_days=20,
+            present_days=present_days,
             absent_days=10,
             late_days=3,
             approved_leaves=2,
