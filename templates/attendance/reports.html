@@ -459,22 +459,22 @@
                                         <td class="p-1">
                                             {% if day.status == 'checked_in' %}
                                                 <span class="badge rounded-circle bg-info text-dark d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px; font-size: 0.58rem; font-weight: bold;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Checked In (Active Shift){% endif %}" 
-                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'checked_in', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>IN</span>
+                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'checked_in', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}', '', '', '{{ item.user.shift_start_time|time:"H:i" }}', '{{ item.user.shift_end_time|time:"H:i" }}')"{% endif %}>IN</span>
                                             {% elif day.status == 'present' %}
                                                 <span class="badge rounded-circle bg-success d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px; font-size: 0.62rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Present{% endif %}" 
-                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'present', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>P</span>
+                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'present', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}', '', '', '{{ item.user.shift_start_time|time:"H:i" }}', '{{ item.user.shift_end_time|time:"H:i" }}')"{% endif %}>P</span>
                                             {% elif day.status == 'late' %}
                                                 <span class="badge rounded-circle bg-warning d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %} text-dark" style="width: 22px; height: 22px; font-size: 0.62rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Late Check-in{% endif %}"
-                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'late', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>L</span>
+                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'late', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}', '', '', '{{ item.user.shift_start_time|time:"H:i" }}', '{{ item.user.shift_end_time|time:"H:i" }}')"{% endif %}>L</span>
                                             {% elif day.status == 'half_day' %}
                                                 <span class="badge rounded-circle bg-secondary d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px; font-size: 0.62rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Half Day{% endif %}"
-                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'half_day', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>H</span>
+                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'half_day', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}', '', '', '{{ item.user.shift_start_time|time:"H:i" }}', '{{ item.user.shift_end_time|time:"H:i" }}')"{% endif %}>H</span>
                                             {% elif day.status == 'week_off' %}
                                                 <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px; font-size: 0.62rem; background-color: #0284c7; color: #ffffff;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Week Off (Role Monthly Allowance){% endif %}"
-                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'week_off', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>WO</span>
+                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'week_off', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}', '', '', '{{ item.user.shift_start_time|time:"H:i" }}', '{{ item.user.shift_end_time|time:"H:i" }}')"{% endif %}>WO</span>
                                             {% elif day.status == 'absent' %}
                                                 <span class="badge rounded-circle bg-danger d-inline-flex align-items-center justify-content-center {% if is_owner %}cursor-pointer{% endif %}" style="width: 22px; height: 22px; font-size: 0.62rem;" title="{% if day.notes %}Note: {{ day.notes }}{% else %}Absent / Unrecorded{% endif %}"
-                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'absent', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}')"{% endif %}>A</span>
+                                                      {% if is_owner %}data-bs-toggle="modal" data-bs-target="#editAttendanceModal" onclick="initEditModal('{{ day.record_id|default:0 }}', '{{ item.user.username }}', '{{ day.day }}/{{ grid_month }}/{{ grid_year }}', 'absent', '{{ day.notes|escapejs }}', '{{ item.user.id }}', '{{ grid_year }}-{% if grid_month < 10 %}0{% endif %}{{ grid_month }}-{% if day.day < 10 %}0{% endif %}{{ day.day }}', '', '', '{{ item.user.shift_start_time|time:"H:i" }}', '{{ item.user.shift_end_time|time:"H:i" }}')"{% endif %}>A</span>
                                             {% else %}
                                                 <span class="text-muted opacity-30" style="font-size: 0.7rem;">-</span>
                                             {% endif %}
@@ -671,7 +671,7 @@
                                                 type="button" 
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#editAttendanceModal"
-                                                onclick="initEditModal('{{ record.id }}', '{{ record.user.username }}', '{{ record.date|date:"d M Y" }}', '{{ record.status }}', '{{ record.notes|default:"" }}')"
+                                                onclick="initEditModal('{{ record.id }}', '{{ record.user.username }}', '{{ record.date|date:"d M Y" }}', '{{ record.status }}', '{{ record.notes|default:"" }}', '{{ record.user.id }}', '{{ record.date|date:"Y-m-d" }}', '{{ record.check_in|date:"H:i" }}', '{{ record.check_out|date:"H:i" }}', '{{ record.user.shift_start_time|time:"H:i" }}', '{{ record.user.shift_end_time|time:"H:i" }}')"
                                                 style="font-size: 0.72rem;">
                                             <i class="bi bi-pencil-fill"></i>
                                             <span>Edit</span>
@@ -929,7 +929,7 @@
                     <input type="hidden" id="editUserId">
                     <input type="hidden" id="editIsoDate">
 
-                    <div class="row g-2 mb-3">
+                    <div class="row g-2 mb-2">
                         <div class="col-6">
                             <label class="ar-field-label"><i class="bi bi-clock-history me-1 text-primary"></i> Manual Check-In Time</label>
                             <input type="time" id="editCheckInTime" class="form-control ar-input" style="border-radius: 8px !important;">
@@ -940,17 +940,21 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="ar-field-label">Status Override</label>
-                        <select id="editStatus" class="form-select ar-select" required>
-                            <option value="auto">⚡ Auto-Calculate from Check-In Time</option>
-                            <option value="present">Present</option>
-                            <option value="late">Late Check-in</option>
-                            <option value="half_day">Half Day</option>
-                            <option value="week_off">Week Off</option>
-                            <option value="on_leave">On Leave</option>
-                            <option value="absent">Absent</option>
-                        </select>
+                    <!-- Quick Time Presets -->
+                    <div class="mb-3 p-2 bg-white rounded-3 border">
+                        <label class="ar-field-label text-muted mb-1.5" style="font-size: 0.72rem;"><i class="bi bi-lightning-charge-fill text-warning me-1"></i> Quick Time Presets (Role Shift Timings)</label>
+                        <div class="d-flex flex-wrap gap-1.5">
+                            <button type="button" class="btn btn-xs btn-outline-success rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('full')">⚡ Role Full Day</button>
+                            <button type="button" class="btn btn-xs btn-outline-warning rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('half')">🌓 Role Half Day</button>
+                            <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('late')">🕒 Late Entry</button>
+                            <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('absent')">❌ Clear / Absent</button>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="editStatus" value="auto">
+
+                    <div class="mb-3 p-2 bg-white rounded-3 border text-muted" style="font-size: 0.72rem;">
+                        <i class="bi bi-shield-check text-success me-1"></i> <strong>Status Evaluation:</strong> Auto-calculated strictly from Check-In & Check-Out times vs Role Shift Policy.
                     </div>
 
                     <div class="mb-3">
@@ -976,7 +980,56 @@
         document.getElementById('photoModalLabel').textContent = label;
     }
 
-    function initEditModal(id, username, date, status, notes, userId, isoDate, checkInTime, checkOutTime) {
+    function applyTimePreset(type) {
+        const shiftIn = window.activeShiftStart || '09:00';
+        const shiftOut = window.activeShiftEnd || '17:00';
+        
+        const [inH, inM] = shiftIn.split(':').map(Number);
+        const [outH, outM] = shiftOut.split(':').map(Number);
+        
+        const inTotalMins = (inH || 9) * 60 + (inM || 0);
+        let outTotalMins = (outH || 17) * 60 + (outM || 0);
+        if (outTotalMins <= inTotalMins) outTotalMins += 24 * 60;
+        
+        const duration = outTotalMins - inTotalMins;
+        
+        if (type === 'full') {
+            document.getElementById('editCheckInTime').value = shiftIn;
+            document.getElementById('editCheckOutTime').value = shiftOut;
+            document.getElementById('editStatus').value = 'auto';
+            document.getElementById('editNotes').value = `Full Shift (${shiftIn} - ${shiftOut})`;
+        } else if (type === 'half') {
+            const halfOutMins = inTotalMins + Math.round(duration / 2);
+            const hH = String(Math.floor(halfOutMins / 60) % 24).padStart(2, '0');
+            const hM = String(halfOutMins % 60).padStart(2, '0');
+            const halfOutStr = `${hH}:${hM}`;
+            
+            document.getElementById('editCheckInTime').value = shiftIn;
+            document.getElementById('editCheckOutTime').value = halfOutStr;
+            document.getElementById('editStatus').value = 'auto';
+            document.getElementById('editNotes').value = `Half Day Shift (${shiftIn} - ${halfOutStr})`;
+        } else if (type === 'late') {
+            const lateInMins = inTotalMins + 90; // 1.5 hrs late
+            const lH = String(Math.floor(lateInMins / 60) % 24).padStart(2, '0');
+            const lM = String(lateInMins % 60).padStart(2, '0');
+            const lateInStr = `${lH}:${lM}`;
+            
+            document.getElementById('editCheckInTime').value = lateInStr;
+            document.getElementById('editCheckOutTime').value = shiftOut;
+            document.getElementById('editStatus').value = 'auto';
+            document.getElementById('editNotes').value = `Late Entry Shift (${lateInStr} - ${shiftOut})`;
+        } else if (type === 'absent') {
+            document.getElementById('editCheckInTime').value = '';
+            document.getElementById('editCheckOutTime').value = '';
+            document.getElementById('editStatus').value = 'absent';
+            document.getElementById('editNotes').value = 'Marked Absent';
+        }
+    }
+
+    function initEditModal(id, username, date, status, notes, userId, isoDate, checkInTime, checkOutTime, shiftStart, shiftEnd) {
+        window.activeShiftStart = shiftStart || '09:00';
+        window.activeShiftEnd = shiftEnd || '17:00';
+        
         document.getElementById('editRecordId').value = id || 0;
         document.getElementById('editUserId').value = userId || '';
         document.getElementById('editIsoDate').value = isoDate || '';

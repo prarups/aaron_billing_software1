@@ -907,7 +907,7 @@ def export_sales_csv(request):
             returned_items,
             replacement_items,
             f"{exchange_pay_diff:.2f}" if exchange_pay_diff else '0.00',
-            bill.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            timezone.localtime(bill.created_at).strftime('%Y-%m-%d %I:%M %p')
         ])
         
     return response

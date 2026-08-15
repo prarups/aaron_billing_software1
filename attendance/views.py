@@ -65,8 +65,19 @@ def is_manager_or_owner(user):
         return True
     return user.is_manager()
 
+def auto_update_past_attendance_statuses():
+    try:
+        today = timezone.localdate()
+        past_records = Attendance.objects.filter(date__lt=today, status='checked_in')
+        for att in past_records:
+            att.recalculate_status()
+            att.save()
+    except Exception as e:
+        logger.error(f"Error auto updating past attendance statuses: {e}")
+
 @login_required
 def attendance_dashboard(request):
+    auto_update_past_attendance_statuses()
     today = timezone.localdate()
     # Fetch today's attendance record
     attendance = Attendance.objects.filter(user=request.user, date=today).first()
@@ -110,12 +121,9 @@ def attendance_dashboard(request):
             absent_count = 0
             
         # Pending approvals
-        pending_leaves = LeaveRequest.objects.filter(status='pending')
+        pending_leaves = LeaveRequest.objects.none()
         pending_permissions = PermissionRequest.objects.filter(status='pending')
         if not is_owner(request.user):
-            pending_leaves = pending_leaves.filter(
-                Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
-            ).distinct()
             pending_permissions = pending_permissions.filter(
                 Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
             ).distinct()
@@ -149,14 +157,7 @@ def attendance_dashboard(request):
         total_days_passed = (today - start_of_month).days + 1
         recorded_days = personal_month_atts.count()
         
-        unrecorded_leaves = LeaveRequest.objects.filter(
-            user=request.user,
-            status='approved',
-            start_date__gte=start_of_month,
-            end_date__lte=today
-        ).exclude(
-            start_date__in=personal_month_atts.values_list('date', flat=True)
-        ).count()
+        unrecorded_leaves = 0
         
         absent_cnt = total_days_passed - recorded_days - unrecorded_leaves
         if absent_cnt < 0:
@@ -224,13 +225,7 @@ def check_in(request):
             delay_minutes = (now - local_shift_datetime).total_seconds() / 60.0
 
             status = 'checked_in'
-            # If there's an approved leave for today, set status to 'on_leave'
-            on_leave = LeaveRequest.objects.filter(
-                user=request.user, 
-                start_date__lte=today, 
-                end_date__gte=today, 
-                status='approved'
-            ).exists()
+            on_leave = False
             if on_leave:
                 status = 'on_leave'
 
@@ -345,7 +340,7 @@ def check_out(request):
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 
-# --- Leave Views ---
+# --- Leave Views (Disabled) ---
 
 @login_required
 def leave_list(request):
@@ -642,6 +637,7 @@ def permission_approve(request, pk, action):
 
 @login_required
 def attendance_reports(request):
+    auto_update_past_attendance_statuses()
     if not is_manager_or_owner(request.user):
         messages.error(request, 'Unauthorized access.')
         return redirect('attendance:dashboard')
@@ -699,9 +695,9 @@ def attendance_reports(request):
         writer.writerow(['Date', 'Employee ID', 'Username', 'Branch', 'Check In', 'Check Out', 'Mid Day Check', 'Status', 'Notes'])
         
         for r in records:
-            check_in_time = timezone.localtime(r.check_in).strftime('%Y-%m-%d %I:%M %p') if r.check_in else ''
-            check_out_time = timezone.localtime(r.check_out).strftime('%Y-%m-%d %I:%M %p') if r.check_out else ''
-            mid_day = timezone.localtime(r.mid_day_time).strftime('%Y-%m-%d %I:%M %p') if r.mid_day_time else ''
+            check_in_time = timezone.localtime(r.check_in).strftime('%I:%M %p') if r.check_in else '-'
+            check_out_time = timezone.localtime(r.check_out).strftime('%I:%M %p') if r.check_out else '-'
+            mid_day = timezone.localtime(r.mid_day_time).strftime('%I:%M %p') if r.mid_day_time else '-'
             branch_name = r.branch.name if r.branch else ''
             writer.writerow([
                 r.date, 
@@ -749,19 +745,8 @@ def attendance_reports(request):
     )
     atts_dict = {(att.user_id, att.date.day): att for att in all_grid_atts}
 
-    # Bulk fetch ALL Approved Leave requests for this grid month
-    grid_start_date = datetime.date(grid_year, grid_month, 1)
-    grid_end_date = datetime.date(grid_year, grid_month, days_in_month)
-    all_grid_leaves = LeaveRequest.objects.filter(
-        user_id__in=grid_user_ids,
-        start_date__lte=grid_end_date,
-        end_date__gte=grid_start_date,
-        status='approved'
-    ).values_list('user_id', 'start_date', 'end_date', 'reason')
-
+    all_grid_leaves = []
     leave_dict = {}
-    for uid, sdate, edate, reason in all_grid_leaves:
-        leave_dict.setdefault(uid, []).append((sdate, edate, reason))
 
     grid_data = []
     for u in grid_users:
@@ -976,8 +961,10 @@ def salary_list(request):
         return redirect('attendance:dashboard')
         
     users = User.objects.all().order_by('username')
-    for user in users:
-        SalaryConfig.objects.get_or_create(user=user)
+    existing_config_user_ids = set(SalaryConfig.objects.values_list('user_id', flat=True))
+    missing_users = [u for u in users if u.id not in existing_config_user_ids]
+    if missing_users:
+        SalaryConfig.objects.bulk_create([SalaryConfig(user=u, monthly_base_salary=Decimal('0.00')) for u in missing_users])
         
     q_staff = request.GET.get('q_staff', '').strip()
     branch_staff = request.GET.get('branch_staff', '').strip()
@@ -1049,17 +1036,6 @@ def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=Tr
     for uid, pdate in all_perms:
         perm_dict.setdefault(uid, set()).add(pdate)
 
-    # 4. Bulk fetch Approved Leave requests into dictionary: {user_id: [(start_date, end_date)]}
-    all_leaves = LeaveRequest.objects.filter(
-        user_id__in=proc_user_ids,
-        start_date__lte=last_day,
-        end_date__gte=first_day,
-        status='approved'
-    ).values_list('user_id', 'start_date', 'end_date')
-    leave_dict = {}
-    for uid, sdate, edate in all_leaves:
-        leave_dict.setdefault(uid, []).append((sdate, edate))
-
     global_policy = GlobalPermissionPolicy.get_policy()
     late_thresh = max(1, global_policy.late_threshold_for_half_day_deduction or 1)
 
@@ -1072,6 +1048,7 @@ def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=Tr
         present_days = 0
         absent_days = 0
         late_days = 0
+        approved_leaves = 0
         unapproved_leaves = 0
 
         current_date = first_day
@@ -1079,7 +1056,7 @@ def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=Tr
             att_rec = att_dict.get((user.id, current_date))
 
             if att_rec:
-                if att_rec.status == 'present':
+                if att_rec.status in ['present', 'checked_in']:
                     present_days += 1
                 elif att_rec.status == 'late':
                     if current_date not in user_perm_dates:
@@ -1119,7 +1096,7 @@ def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=Tr
                 'present_days': Decimal(str(present_days)),
                 'absent_days': Decimal(str(absent_days)),
                 'late_days': late_days,
-                'approved_leaves': 0,
+                'approved_leaves': approved_leaves,
                 'unapproved_leaves': unapproved_leaves,
                 'base_salary': base_salary,
                 'deductions': total_deductions,
@@ -1259,130 +1236,18 @@ def salary_config_view(request, user_id):
 @login_required
 def generate_payroll(request):
     if not is_owner(request.user):
-        return JsonResponse({'success': False, 'message': 'Unauthorized'})
+        messages.error(request, 'Unauthorized.')
+        return redirect('attendance:dashboard')
         
     if request.method == 'POST':
         try:
             month = int(request.POST.get('month'))
             year = int(request.POST.get('year'))
             
-            # Find all users (including admins/managers)
-            users = User.objects.all().order_by('username')
+            ensure_monthly_payrolls(month, year, request.user, force_recalculate=True)
             
-            # Setup month date ranges
-            first_day = datetime.date(year, month, 1)
-            days_in_month = calendar.monthrange(year, month)[1]
-            last_day = datetime.date(year, month, days_in_month)
-            
-            success_count = 0
-            failed_users = []
-            
-            for user in users:
-                try:
-                    with transaction.atomic():
-                        config, _ = SalaryConfig.objects.get_or_create(user=user)
-                        
-                        # Exclude dates where short permission was approved
-                        approved_perm_dates = set(
-                            PermissionRequest.objects.filter(
-                                user=user,
-                                date__range=(first_day, last_day),
-                                status='approved'
-                            ).values_list('date', flat=True)
-                        )
-                        
-                        late_days = Attendance.objects.filter(
-                            user=user, 
-                            date__range=(first_day, last_day),
-                            status='late'
-                        ).exclude(date__in=approved_perm_dates).count()
-                        
-                        present_att = Attendance.objects.filter(
-                            user=user, 
-                            date__range=(first_day, last_day)
-                        )
-                        
-                        present_days = 0
-                        absent_days = 0
-                        approved_leaves = 0
-                        unapproved_leaves = 0
-                        
-                        current_date = first_day
-                        while current_date <= last_day:
-                            att_rec = present_att.filter(date=current_date).first()
-                            
-                            if att_rec:
-                                if att_rec.status in ['present', 'late']:
-                                    present_days += 1
-                                elif att_rec.status == 'half_day':
-                                    present_days += 0.5
-                                    absent_days += 0.5
-                                elif att_rec.status == 'on_leave':
-                                    leave = LeaveRequest.objects.filter(
-                                        user=user, 
-                                        start_date__lte=current_date, 
-                                        end_date__gte=current_date, 
-                                        status='approved'
-                                    ).first()
-                                    if leave:
-                                        approved_leaves += 1
-                                    else:
-                                        unapproved_leaves += 1
-                            else:
-                                leave = LeaveRequest.objects.filter(
-                                    user=user, 
-                                    start_date__lte=current_date, 
-                                    end_date__gte=current_date, 
-                                    status='approved'
-                                ).first()
-                                if leave:
-                                    approved_leaves += 1
-                                else:
-                                    absent_days += 1
-                                    unapproved_leaves += 1
-                                    
-                            current_date += datetime.timedelta(days=1)
-                        
-                        global_policy = GlobalPermissionPolicy.get_policy()
-                        late_thresh = max(1, global_policy.late_threshold_for_half_day_deduction or 1)
-                        
-                        lop_days_to_deduct = Decimal(str(max(0, unapproved_leaves - 4)))
-                        per_day_rate = config.monthly_base_salary / Decimal(str(days_in_month)) if days_in_month > 0 else Decimal('0')
-                        half_day_rate = per_day_rate / Decimal('2')
-                        
-                        lop_deduction = lop_days_to_deduct * per_day_rate
-                        late_half_days = Decimal(str(late_days // late_thresh))
-                        late_deduction = late_half_days * half_day_rate
-                        
-                        total_deductions = late_deduction + lop_deduction
-                        net_salary = max(Decimal('0.00'), config.monthly_base_salary - total_deductions)
-                            
-                        MonthlyPayroll.objects.update_or_create(
-                            user=user,
-                            month=month,
-                            year=year,
-                            defaults={
-                                'present_days': Decimal(str(present_days)),
-                                'absent_days': Decimal(str(absent_days)),
-                                'late_days': late_days,
-                                'approved_leaves': approved_leaves,
-                                'unapproved_leaves': unapproved_leaves,
-                                'base_salary': config.monthly_base_salary,
-                                'deductions': total_deductions,
-                                'net_salary': net_salary,
-                                'processed_by': request.user,
-                                'status': 'draft'
-                            }
-                        )
-                        success_count += 1
-                except Exception as user_err:
-                    failed_users.append(f"{user.username} ({user_err})")
-            
-            if failed_users:
-                messages.warning(request, f"Payroll generated for {success_count} employees. Failed for: {', '.join(failed_users)}")
-            else:
-                messages.success(request, f"Payroll generated successfully for all {success_count} staff members.")
-                
+            count = MonthlyPayroll.objects.filter(month=month, year=year).count()
+            messages.success(request, f"Payroll generated successfully for all {count} staff members.")
             return redirect(f"{reverse('attendance:pay_slips')}?month={month}&year={year}")
         except Exception as e:
             messages.error(request, f"Error generating payroll: {e}")
@@ -1464,39 +1329,69 @@ def edit_attendance_ajax(request, pk):
             old_out_t = timezone.localtime(att.check_out).strftime('%I:%M %p') if att.check_out else '-'
 
             # Handle Manual Check-In Time entry by Admin
-            if check_in_time_str:
-                try:
-                    time_clean = check_in_time_str.strip()
-                    if 'AM' in time_clean.upper() or 'PM' in time_clean.upper():
-                        t_obj = datetime.datetime.strptime(time_clean, '%I:%M %p').time()
-                    elif len(time_clean.split(':')) == 3:
-                        t_obj = datetime.datetime.strptime(time_clean, '%H:%M:%S').time()
-                    else:
-                        t_obj = datetime.datetime.strptime(time_clean, '%H:%M').time()
-                    
-                    combined_in = datetime.datetime.combine(att.date, t_obj)
-                    att.check_in = timezone.make_aware(combined_in, timezone.get_current_timezone())
-                except Exception as ex:
-                    pass
+            if check_in_time_str is not None:
+                time_clean = str(check_in_time_str).strip()
+                if time_clean == '':
+                    att.check_in = None
+                else:
+                    try:
+                        if 'AM' in time_clean.upper() or 'PM' in time_clean.upper():
+                            t_obj = datetime.datetime.strptime(time_clean, '%I:%M %p').time()
+                        elif len(time_clean.split(':')) == 3:
+                            t_obj = datetime.datetime.strptime(time_clean, '%H:%M:%S').time()
+                        else:
+                            t_obj = datetime.datetime.strptime(time_clean, '%H:%M').time()
+                        
+                        combined_in = datetime.datetime.combine(att.date, t_obj)
+                        att.check_in = timezone.make_aware(combined_in, timezone.get_current_timezone())
+                    except Exception as ex:
+                        pass
 
             # Handle Manual Check-Out Time entry by Admin
-            if check_out_time_str:
-                try:
-                    time_clean = check_out_time_str.strip()
-                    if 'AM' in time_clean.upper() or 'PM' in time_clean.upper():
-                        t_obj = datetime.datetime.strptime(time_clean, '%I:%M %p').time()
-                    elif len(time_clean.split(':')) == 3:
-                        t_obj = datetime.datetime.strptime(time_clean, '%H:%M:%S').time()
-                    else:
-                        t_obj = datetime.datetime.strptime(time_clean, '%H:%M').time()
-                    
-                    combined_out = datetime.datetime.combine(att.date, t_obj)
-                    att.check_out = timezone.make_aware(combined_out, timezone.get_current_timezone())
-                except Exception as ex:
-                    pass
+            if check_out_time_str is not None:
+                time_clean = str(check_out_time_str).strip()
+                if time_clean == '':
+                    att.check_out = None
+                else:
+                    try:
+                        if 'AM' in time_clean.upper() or 'PM' in time_clean.upper():
+                            t_obj = datetime.datetime.strptime(time_clean, '%I:%M %p').time()
+                        elif len(time_clean.split(':')) == 3:
+                            t_obj = datetime.datetime.strptime(time_clean, '%H:%M:%S').time()
+                        else:
+                            t_obj = datetime.datetime.strptime(time_clean, '%H:%M').time()
+                        
+                        combined_out = datetime.datetime.combine(att.date, t_obj)
+                        att.check_out = timezone.make_aware(combined_out, timezone.get_current_timezone())
+                    except Exception as ex:
+                        pass
 
             if status and status != 'auto':
                 att.status = status
+                # If marked Present/Late/Half Day directly without times, fill standard shift times dynamically from user role policy
+                shift_in = att.user.shift_start_time or datetime.time(9, 0)
+                shift_out = att.user.shift_end_time or datetime.time(17, 0)
+                
+                in_mins = shift_in.hour * 60 + shift_in.minute
+                out_mins = shift_out.hour * 60 + shift_out.minute
+                if out_mins <= in_mins:
+                    out_mins += 24 * 60
+                
+                if status == 'present' and not att.check_in:
+                    combined_in = datetime.datetime.combine(att.date, shift_in)
+                    att.check_in = timezone.make_aware(combined_in, timezone.get_current_timezone())
+                    combined_out = datetime.datetime.combine(att.date, shift_out)
+                    att.check_out = timezone.make_aware(combined_out, timezone.get_current_timezone())
+                elif status == 'half_day' and not att.check_in:
+                    combined_in = datetime.datetime.combine(att.date, shift_in)
+                    att.check_in = timezone.make_aware(combined_in, timezone.get_current_timezone())
+                    half_out_mins = in_mins + ((out_mins - in_mins) // 2)
+                    half_out_time = datetime.time((half_out_mins // 60) % 24, half_out_mins % 60)
+                    combined_out = datetime.datetime.combine(att.date, half_out_time)
+                    att.check_out = timezone.make_aware(combined_out, timezone.get_current_timezone())
+                elif status == 'absent':
+                    att.check_in = None
+                    att.check_out = None
             else:
                 att.recalculate_status()
 
@@ -1531,10 +1426,14 @@ def edit_attendance_ajax(request, pk):
 
 @login_required
 def my_summary_view(request):
+    auto_update_past_attendance_statuses()
     today = timezone.localdate()
     month = int(request.GET.get('month', today.month))
     year = int(request.GET.get('year', today.year))
     
+    # Auto-ensure monthly payroll is calculated so user can see personal payslips summary
+    ensure_monthly_payrolls(month, year, request.user, force_recalculate=False)
+
     # Calculate days in month
     days_in_month = calendar.monthrange(year, month)[1]
     day_numbers = list(range(1, days_in_month + 1))
@@ -1549,24 +1448,15 @@ def my_summary_view(request):
     records_by_day = {r.date.day: r for r in records}
     
     # Compile stats
-    present_cnt = records.filter(status='present').count()
+    present_cnt = records.filter(Q(status='present') | Q(status='checked_in')).count()
     late_cnt = records.filter(status='late').count()
     half_day_cnt = records.filter(status='half_day').count()
-    leave_cnt = records.filter(status='on_leave').count()
+    leave_cnt = 0
     
     total_days_passed = today.day if (today.month == month and today.year == year) else days_in_month
     recorded_days = records.count()
     
-    unrecorded_leaves = LeaveRequest.objects.filter(
-        user=request.user,
-        status='approved',
-        start_date__gte=datetime.date(year, month, 1),
-        end_date__lte=datetime.date(year, month, days_in_month)
-    ).exclude(
-        start_date__in=records.values_list('date', flat=True)
-    ).count()
-    
-    absent_cnt = total_days_passed - recorded_days - unrecorded_leaves
+    absent_cnt = total_days_passed - recorded_days
     if absent_cnt < 0:
         absent_cnt = 0
         
@@ -1581,16 +1471,7 @@ def my_summary_view(request):
             if d_date > today:
                 status = 'future'
             else:
-                leave = LeaveRequest.objects.filter(
-                    user=request.user,
-                    start_date__lte=d_date,
-                    end_date__gte=d_date,
-                    status='approved'
-                ).first()
-                if leave:
-                    status = 'on_leave'
-                else:
-                    status = 'absent'
+                status = 'absent'
                     
         day_list.append({
             'day': d,
@@ -1621,6 +1502,7 @@ def my_summary_view(request):
 
 @login_required
 def management_overview_view(request):
+    auto_update_past_attendance_statuses()
     if not is_manager_or_owner(request.user):
         messages.error(request, 'Unauthorized access to Management Overview.')
         return redirect('attendance:dashboard')
@@ -1692,19 +1574,13 @@ def management_overview_view(request):
         absent_count = 0
         
     # Pending approvals
-    pending_leaves = LeaveRequest.objects.filter(status='pending').select_related('user')
+    pending_leaves = LeaveRequest.objects.none()
     pending_permissions = PermissionRequest.objects.filter(status='pending').select_related('user')
     if not is_owner(request.user):
-        pending_leaves = pending_leaves.filter(
-            Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
-        ).distinct()
         pending_permissions = pending_permissions.filter(
             Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
         ).distinct()
     if selected_branch_id:
-        pending_leaves = pending_leaves.filter(
-            Q(user__branches__id=selected_branch_id) | Q(user__active_branch__id=selected_branch_id)
-        ).distinct()
         pending_permissions = pending_permissions.filter(
             Q(user__branches__id=selected_branch_id) | Q(user__active_branch__id=selected_branch_id)
         ).distinct()
@@ -1727,12 +1603,7 @@ def management_overview_view(request):
     for att in month_atts:
         month_atts_map.setdefault(att.user_id, {})[att.date] = att
 
-    month_leaves = LeaveRequest.objects.filter(
-        user__in=branch_users,
-        start_date__lte=selected_date,
-        end_date__gte=month_start,
-        status='approved'
-    )
+    month_leaves = LeaveRequest.objects.none()
     month_leaves_map = {}
     for l in month_leaves:
         month_leaves_map.setdefault(l.user_id, []).append((l.start_date, l.end_date))
@@ -1821,9 +1692,9 @@ def management_overview_view(request):
             full_name = f"{user.first_name} {user.last_name}".strip() or user.username
             branch_name = rec.branch.name if (rec and rec.branch) else (user.active_branch.name if user.active_branch else "All Branches")
             
-            check_in_time = rec.check_in.strftime('%I:%M %p') if (rec and rec.check_in) else "-"
-            mid_day_time = rec.mid_day_time.strftime('%I:%M %p') if (rec and rec.mid_day_time) else "-"
-            check_out_time = rec.check_out.strftime('%I:%M %p') if (rec and rec.check_out) else "-"
+            check_in_time = timezone.localtime(rec.check_in).strftime('%I:%M %p') if (rec and rec.check_in) else "-"
+            mid_day_time = timezone.localtime(rec.mid_day_time).strftime('%I:%M %p') if (rec and rec.mid_day_time) else "-"
+            check_out_time = timezone.localtime(rec.check_out).strftime('%I:%M %p') if (rec and rec.check_out) else "-"
             notes = rec.notes if (rec and rec.notes) else "-"
             
             writer.writerow([

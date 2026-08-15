@@ -58,18 +58,7 @@ class Attendance(models.Model):
         import datetime
         from django.utils import timezone
 
-        # 1. Leave Check
-        on_leave = LeaveRequest.objects.filter(
-            user=self.user,
-            start_date__lte=self.date,
-            end_date__gte=self.date,
-            status='approved'
-        ).exists()
-        if on_leave:
-            self.status = 'on_leave'
-            return self.status
-
-        # 2. Get User / Role Shift Timings
+        # 1. Get User / Role Shift Timings
         shift_start = self.user.shift_start_time
         shift_end = self.user.shift_end_time
         if not shift_start or not shift_end:
@@ -122,15 +111,20 @@ class Attendance(models.Model):
             full_day_threshold_mins = max(shift_duration_mins - grace_mins, shift_duration_mins - 30.0)
 
             if worked_mins < half_day_threshold_mins:
-                self.status = 'absent'
-            elif worked_mins < full_day_threshold_mins or is_late_check_in:
+                if is_late_check_in:
+                    self.status = 'late'
+                else:
+                    self.status = 'absent' if worked_mins < 15 else 'half_day'
+            elif worked_mins < full_day_threshold_mins:
                 self.status = 'half_day'
+            elif is_late_check_in:
+                self.status = 'late'
             else:
                 self.status = 'present'
         elif self.check_in and self.date < today:
             # Past date record where employee forgot check-out
             if is_late_check_in:
-                self.status = 'half_day'
+                self.status = 'late'
             else:
                 self.status = 'present'
         else:
@@ -297,7 +291,7 @@ class MonthlyPayroll(models.Model):
 
     @property
     def late_deduction_amount(self):
-        return Decimal('0.00')
+        return max(Decimal('0.00'), self.deductions - self.lop_deduction_amount)
 
     @property
     def lop_days(self):

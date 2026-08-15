@@ -712,7 +712,7 @@
                                             type="button" 
                                             data-bs-toggle="modal" 
                                             data-bs-target="#editAttendanceModal"
-                                            onclick="initEditModal('{% if item.record %}{{ item.record.id }}{% else %}0{% endif %}', '{{ item.user.username }}', '{{ selected_date|date:"d M Y" }}', '{{ item.status }}', '{{ item.record.notes|default:"" }}', '{{ item.user.id }}', '{{ selected_date|date:"Y-m-d" }}', '{% if item.record and item.record.check_in %}{{ item.record.check_in|date:"H:i" }}{% endif %}', '{% if item.record and item.record.check_out %}{{ item.record.check_out|date:"H:i" }}{% endif %}')">
+                                            onclick="initEditModal('{% if item.record %}{{ item.record.id }}{% else %}0{% endif %}', '{{ item.user.username }}', '{{ selected_date|date:"d M Y" }}', '{{ item.status }}', '{{ item.record.notes|default:"" }}', '{{ item.user.id }}', '{{ selected_date|date:"Y-m-d" }}', '{% if item.record and item.record.check_in %}{{ item.record.check_in|date:"H:i" }}{% endif %}', '{% if item.record and item.record.check_out %}{{ item.record.check_out|date:"H:i" }}{% endif %}', '{{ item.user.shift_start_time|time:"H:i" }}', '{{ item.user.shift_end_time|time:"H:i" }}')">
                                         <i class="bi bi-clock-history me-1"></i>Manual Entry
                                     </button>
                                     {% endif %}
@@ -778,90 +778,7 @@
     </div>
 </div>
 
-<!-- Attendance Edit History & Audit Logs Section -->
-<div class="card border-0 shadow-sm rounded-4 overflow-hidden mt-4">
-    <div class="card-header border-0 bg-white py-3 px-4 d-flex align-items-center justify-content-between">
-        <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 0.9rem;">
-            <i class="bi bi-shield-check text-primary fs-5"></i> Attendance Edit History & Audit Logs ({{ selected_date|date:"d M Y" }})
-        </h6>
-        <span class="badge bg-primary-subtle text-primary rounded-pill px-2.5 py-1 fw-bold" style="font-size: 0.72rem;">
-            {{ recent_audit_logs|length }} Record(s) Edited
-        </span>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table align-middle mb-0" style="font-size: 0.8rem;">
-                <thead class="bg-light">
-                    <tr>
-                        <th class="ps-4">Edited At</th>
-                        <th>Employee</th>
-                        <th>Edited By</th>
-                        <th>Status Change</th>
-                        <th>Time Changes (Old → New)</th>
-                        <th class="pe-4">Reason / Notes</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for log in recent_audit_logs %}
-                    <tr>
-                        <td class="ps-4 py-2.5 fw-bold text-dark">
-                            {{ log.timestamp|date:"d M Y, h:i A" }}
-                        </td>
-                        <td class="py-2.5">
-                            <div class="fw-bold text-dark">{{ log.attendance.user.first_name }} {{ log.attendance.user.last_name }}</div>
-                            <div class="text-muted" style="font-size: 0.72rem;">@{{ log.attendance.user.username }} &middot; ID: {{ log.attendance.user.employee_id|default:"-" }}</div>
-                        </td>
-                        <td class="py-2.5">
-                            <span class="badge rounded-pill px-2.5 py-1" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.7rem; font-weight: 700;">
-                                <i class="bi bi-person-badge-fill me-1"></i>@{{ log.edited_by.username|default:"System" }}
-                            </span>
-                        </td>
-                        <td class="py-2.5">
-                            <div class="d-flex align-items-center gap-1.5">
-                                <span class="badge bg-secondary rounded-pill px-2 py-0.5 opacity-75" style="font-size: 0.68rem;">{{ log.old_status|default:"absent"|capfirst }}</span>
-                                <i class="bi bi-arrow-right text-muted" style="font-size: 0.7rem;"></i>
-                                <span class="badge bg-success rounded-pill px-2 py-0.5" style="font-size: 0.68rem;">{{ log.new_status|capfirst }}</span>
-                            </div>
-                        </td>
-                        <td class="py-2.5">
-                            <div class="d-flex flex-column gap-1">
-                                {% if log.old_check_in_time or log.new_check_in_time %}
-                                    <div class="d-flex align-items-center gap-1" style="font-size: 0.7rem;">
-                                        <span class="text-muted fw-bold me-0.5">In:</span>
-                                        <span class="badge bg-light text-dark border px-1.5 py-0.5" style="font-size: 0.65rem;">{{ log.old_check_in_time|time:"h:i A"|default:"-" }}</span>
-                                        <i class="bi bi-arrow-right text-muted" style="font-size: 0.65rem;"></i>
-                                        <span class="badge bg-info text-dark px-1.5 py-0.5" style="font-size: 0.65rem;">{{ log.new_check_in_time|time:"h:i A"|default:"-" }}</span>
-                                    </div>
-                                {% endif %}
-                                {% if log.old_check_out_time or log.new_check_out_time %}
-                                    <div class="d-flex align-items-center gap-1" style="font-size: 0.7rem;">
-                                        <span class="text-muted fw-bold me-0.5">Out:</span>
-                                        <span class="badge bg-light text-dark border px-1.5 py-0.5" style="font-size: 0.65rem;">{{ log.old_check_out_time|time:"h:i A"|default:"-" }}</span>
-                                        <i class="bi bi-arrow-right text-muted" style="font-size: 0.65rem;"></i>
-                                        <span class="badge bg-warning text-dark px-1.5 py-0.5" style="font-size: 0.65rem;">{{ log.new_check_out_time|time:"h:i A"|default:"-" }}</span>
-                                    </div>
-                                {% endif %}
-                                {% if not log.old_check_in_time and not log.new_check_in_time and not log.old_check_out_time and not log.new_check_out_time %}
-                                    <span class="text-muted opacity-50" style="font-size: 0.72rem;">-</span>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td class="pe-4 py-2.5">
-                            <p class="mb-0 text-muted text-wrap" style="max-width: 280px; font-size: 0.75rem;">{{ log.notes|default:"No notes specified" }}</p>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" class="text-center py-4 text-muted" style="font-size: 0.8rem;">
-                            <i class="bi bi-info-circle me-1"></i> No attendance edits have been recorded for {{ selected_date|date:"d M Y" }}.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+
 
 <!-- Verification Photo Zoom Modal -->
 <div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
@@ -912,7 +829,7 @@
                     <input type="hidden" id="editUserId">
                     <input type="hidden" id="editIsoDate">
 
-                    <div class="row g-2 mb-3">
+                    <div class="row g-2 mb-2">
                         <div class="col-6">
                             <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem; text-transform: uppercase;"><i class="bi bi-clock-history me-1 text-primary"></i> Manual Check-In Time</label>
                             <input type="time" id="editCheckInTime" class="form-control form-control-sm rounded-2 fw-semibold">
@@ -923,17 +840,21 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem; text-transform: uppercase;">Status Override</label>
-                        <select id="editStatus" class="form-select form-select-sm rounded-2 fw-semibold" required>
-                            <option value="auto">⚡ Auto-Calculate from Check-In Time</option>
-                            <option value="present">Present</option>
-                            <option value="late">Late Check-in</option>
-                            <option value="half_day">Half Day</option>
-                            <option value="week_off">Week Off</option>
-                            <option value="on_leave">On Leave</option>
-                            <option value="absent">Absent</option>
-                        </select>
+                    <!-- Quick Time Presets -->
+                    <div class="mb-3 p-2 bg-white rounded-3 border">
+                        <label class="form-label text-muted mb-1.5" style="font-size: 0.7rem; text-transform: uppercase;"><i class="bi bi-lightning-charge-fill text-warning me-1"></i> Quick Time Presets (Role Shift Timings)</label>
+                        <div class="d-flex flex-wrap gap-1.5">
+                            <button type="button" class="btn btn-xs btn-outline-success rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('full')">⚡ Role Full Day</button>
+                            <button type="button" class="btn btn-xs btn-outline-warning rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('half')">🌓 Role Half Day</button>
+                            <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('late')">🕒 Late Entry</button>
+                            <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('absent')">❌ Clear / Absent</button>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="editStatus" value="auto">
+
+                    <div class="mb-3 p-2 bg-white rounded-3 border text-muted" style="font-size: 0.72rem;">
+                        <i class="bi bi-shield-check text-success me-1"></i> <strong>Status Evaluation:</strong> Auto-calculated strictly from Check-In & Check-Out times vs Role Shift Policy.
                     </div>
 
                     <div class="mb-3">
@@ -959,7 +880,56 @@
         document.getElementById('photoModalLabel').textContent = label;
     }
 
-    function initEditModal(id, username, date, status, notes, userId, isoDate, checkInTime, checkOutTime) {
+    function applyTimePreset(type) {
+        const shiftIn = window.activeShiftStart || '09:00';
+        const shiftOut = window.activeShiftEnd || '17:00';
+        
+        const [inH, inM] = shiftIn.split(':').map(Number);
+        const [outH, outM] = shiftOut.split(':').map(Number);
+        
+        const inTotalMins = (inH || 9) * 60 + (inM || 0);
+        let outTotalMins = (outH || 17) * 60 + (outM || 0);
+        if (outTotalMins <= inTotalMins) outTotalMins += 24 * 60;
+        
+        const duration = outTotalMins - inTotalMins;
+        
+        if (type === 'full') {
+            document.getElementById('editCheckInTime').value = shiftIn;
+            document.getElementById('editCheckOutTime').value = shiftOut;
+            document.getElementById('editStatus').value = 'auto';
+            document.getElementById('editNotes').value = `Full Shift (${shiftIn} - ${shiftOut})`;
+        } else if (type === 'half') {
+            const halfOutMins = inTotalMins + Math.round(duration / 2);
+            const hH = String(Math.floor(halfOutMins / 60) % 24).padStart(2, '0');
+            const hM = String(halfOutMins % 60).padStart(2, '0');
+            const halfOutStr = `${hH}:${hM}`;
+            
+            document.getElementById('editCheckInTime').value = shiftIn;
+            document.getElementById('editCheckOutTime').value = halfOutStr;
+            document.getElementById('editStatus').value = 'auto';
+            document.getElementById('editNotes').value = `Half Day Shift (${shiftIn} - ${halfOutStr})`;
+        } else if (type === 'late') {
+            const lateInMins = inTotalMins + 90; // 1.5 hrs late
+            const lH = String(Math.floor(lateInMins / 60) % 24).padStart(2, '0');
+            const lM = String(lateInMins % 60).padStart(2, '0');
+            const lateInStr = `${lH}:${lM}`;
+            
+            document.getElementById('editCheckInTime').value = lateInStr;
+            document.getElementById('editCheckOutTime').value = shiftOut;
+            document.getElementById('editStatus').value = 'auto';
+            document.getElementById('editNotes').value = `Late Entry Shift (${lateInStr} - ${shiftOut})`;
+        } else if (type === 'absent') {
+            document.getElementById('editCheckInTime').value = '';
+            document.getElementById('editCheckOutTime').value = '';
+            document.getElementById('editStatus').value = 'absent';
+            document.getElementById('editNotes').value = 'Marked Absent';
+        }
+    }
+
+    function initEditModal(id, username, date, status, notes, userId, isoDate, checkInTime, checkOutTime, shiftStart, shiftEnd) {
+        window.activeShiftStart = shiftStart || '09:00';
+        window.activeShiftEnd = shiftEnd || '17:00';
+        
         document.getElementById('editRecordId').value = id || 0;
         document.getElementById('editUserId').value = userId || '';
         document.getElementById('editIsoDate').value = isoDate || '';

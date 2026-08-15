@@ -132,12 +132,16 @@
                                 <tr>
                                     <td class="ps-3 py-2 fw-bold text-dark">{{ day.date|date:"d M (D)" }}</td>
                                     <td class="py-2">
-                                        {% if day.status == 'present' %}
+                                        {% if day.status == 'checked_in' %}
+                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #e0f2fe; color: #0369a1; font-size: 0.65rem; font-weight: 600;">Checked In</span>
+                                        {% elif day.status == 'present' %}
                                             <span class="badge rounded-pill px-2 py-0.5" style="background-color: #d1fae5; color: #047857; font-size: 0.65rem; font-weight: 600;">Present</span>
                                         {% elif day.status == 'late' %}
                                             <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fef3c7; color: #b45309; font-size: 0.65rem; font-weight: 600;">Late Check-in</span>
                                         {% elif day.status == 'half_day' %}
                                             <span class="badge rounded-pill px-2 py-0.5" style="background-color: #e5e7eb; color: #374151; font-size: 0.65rem; font-weight: 600;">Half Day</span>
+                                        {% elif day.status == 'week_off' %}
+                                            <span class="badge rounded-pill px-2 py-0.5" style="background-color: #f3e8ff; color: #7e22ce; font-size: 0.65rem; font-weight: 600;">Week Off</span>
                                         {% elif day.status == 'absent' %}
                                             <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fee2e2; color: #b91c1c; font-size: 0.65rem; font-weight: 600;">Absent</span>
                                         {% else %}

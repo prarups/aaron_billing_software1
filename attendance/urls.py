@@ -9,9 +9,7 @@ urlpatterns = [
     path('mid-day/', views.mid_day_check, name='mid_day'),
     path('check-out/', views.check_out, name='check_out'),
     
-    path('leaves/', views.leave_list, name='leave_list'),
-    path('leaves/request/', views.leave_request, name='leave_request'),
-    path('leaves/approve/<int:pk>/<str:action>/', views.leave_approve, name='leave_approve'),
+
     
     path('permissions/', views.permission_list, name='permission_list'),
     path('permissions/request/', views.permission_request, name='permission_request'),

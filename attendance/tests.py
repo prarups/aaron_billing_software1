@@ -64,17 +64,6 @@ class AttendanceTestCase(TestCase):
             status="pending"
         )
         self.assertEqual(leave.status, "pending")
-        
-        # Accessing leave views should return 404 since leave management is disabled
-        self.client.login(username="owner_user", password="testpassword")
-        response = self.client.get(reverse('attendance:leave_approve', args=[leave.pk, 'approve']))
-        self.assertEqual(response.status_code, 404)
-        
-        response_list = self.client.get(reverse('attendance:leave_list'))
-        self.assertEqual(response_list.status_code, 404)
-        
-        response_req = self.client.post(reverse('attendance:leave_request'))
-        self.assertEqual(response_req.status_code, 404)
 
     def test_payroll_generation(self):
         # Let's generate a month of attendance
