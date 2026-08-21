@@ -613,23 +613,25 @@
                                             </div>
                                             <div class="mt-1 d-flex flex-wrap gap-1 align-items-center">
                                                 <span class="badge bg-light text-secondary border px-2 py-0.5" style="font-size: 0.62rem;">{{ item.user.role_display }}</span>
-                                                {% if item.user.active_branch and item.user.branches.all %}
-                                                    <span class="badge border" style="background-color: #dbeafe; color: #1e40af; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;" title="Primary Main Branch">
-                                                        <i class="bi bi-house-door-fill me-1"></i>Primary: {{ item.user.active_branch.name }}
-                                                    </span>
-                                                {% endif %}
-                                                {% for b in item.user.branches.all %}
-                                                    {% if b != item.user.active_branch %}
-                                                        <span class="badge border" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;" title="Secondary Access Branch">
-                                                            <i class="bi bi-shop me-1"></i>Access: {{ b.name }}
-                                                        </span>
-                                                    {% endif %}
-                                                {% endfor %}
-                                                {% if item.user.has_all_branches or item.user.role == 'owner' or item.user.role == 'regional_manager' %}
-                                                    <span class="badge border" style="background-color: #fef3c7; color: #b45309; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;"><i class="bi bi-globe me-1"></i>All Branches Access</span>
-                                                {% elif not item.user.active_branch and not item.user.branches.all %}
-                                                    <span class="badge bg-light text-muted border" style="font-size: 0.62rem; font-style: italic;">No branch assigned</span>
-                                                {% endif %}
+                                                {% if item.user.active_branch in item.user.branches.all %}
+                                                     <span class="badge border" style="background-color: #dbeafe; color: #1e40af; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;" title="Primary Main Branch">
+                                                         <i class="bi bi-house-door-fill me-1"></i>Primary: {{ item.user.active_branch.name }}
+                                                     </span>
+                                                 {% endif %}
+                                                 {% if not item.user.has_all_branches and item.user.role != 'owner' and item.user.role != 'regional_manager' %}
+                                                 {% for b in item.user.branches.all %}
+                                                     {% if b != item.user.active_branch %}
+                                                         <span class="badge border" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;" title="Secondary Access Branch">
+                                                             <i class="bi bi-shop me-1"></i>Access: {{ b.name }}
+                                                         </span>
+                                                     {% endif %}
+                                                 {% endfor %}
+                                                 {% endif %}
+                                                 {% if item.user.has_all_branches or item.user.role == 'owner' or item.user.role == 'regional_manager' %}
+                                                     <span class="badge border" style="background-color: #fef3c7; color: #b45309; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;"><i class="bi bi-globe me-1"></i>All Branches Access</span>
+                                                 {% elif not item.user.active_branch and not item.user.branches.all %}
+                                                     <span class="badge bg-light text-muted border" style="font-size: 0.62rem; font-style: italic;">No branch assigned</span>
+                                                 {% endif %}
                                             </div>
                                         </div>
                                     </div>
@@ -756,6 +758,7 @@
                                 <span class="badge bg-warning-subtle text-warning-dark border border-warning-subtle rounded-pill px-2 py-0.5 fw-bold" style="font-size: 0.62rem;">Pending</span>
                             </div>
                             <p class="text-secondary bg-light p-2 rounded-3 border text-wrap mb-2" style="font-size: 0.74rem;">{{ p.reason }}</p>
+                            {% if is_owner %}
                             <div class="d-flex gap-2">
                                 <a href="{% url 'attendance:permission_approve' p.pk 'approve' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-success rounded-pill px-3 py-1 fw-bold js-perm-action" style="font-size: 0.73rem;">
                                     <i class="bi bi-check-lg me-1"></i> Approve
@@ -764,6 +767,7 @@
                                     <i class="bi bi-x-lg me-1"></i> Reject
                                 </a>
                             </div>
+                            {% endif %}
                         </div>
                     {% empty %}
                         <div class="text-center py-5 px-3 text-muted">

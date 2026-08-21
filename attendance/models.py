@@ -295,11 +295,11 @@ class MonthlyPayroll(models.Model):
 
     @property
     def lop_days(self):
-        import calendar
-        days_in_month = calendar.monthrange(self.year, self.month)[1] if (self.year and self.month) else 31
-        unworked = float(days_in_month) - float(self.present_days or 0)
         allowed = float(getattr(self.user, 'monthly_off_count', 4))
-        return max(0.0, unworked - allowed)
+        unapproved = float(self.unapproved_leaves or self.absent_days or 0)
+        if float(self.present_days or 0) == 0:
+            return unapproved
+        return max(0.0, unapproved - allowed)
 
     @property
     def lop_deduction_amount(self):

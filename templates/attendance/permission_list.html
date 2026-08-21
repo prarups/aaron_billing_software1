@@ -218,7 +218,7 @@
                         </div>
                         <div class="col-6 col-md-3">
                             <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.68rem; text-transform: uppercase;">Lates for 0.5 Cut</label>
-                            <input type="number" name="late_threshold_for_half_day_deduction" value="{{ global_policy.late_threshold_for_half_day_deduction|default:4 }}" min="1" max="30" class="form-control sp-input" required>
+                            <input type="number" name="late_threshold_for_half_day_deduction" value="{{ global_policy.late_threshold_for_half_day_deduction|default:1 }}" min="1" max="30" class="form-control sp-input" required>
                         </div>
                     </div>
                     <div class="d-flex justify-content-end pt-1">
@@ -267,8 +267,10 @@
                             <span class="d-inline-block text-truncate" style="max-width: 240px;" title="{{ perm.reason }}">{{ perm.reason }}</span>
                         </td>
                         <td class="pe-3 text-end">
+                            {% if is_owner %}
                             <a href="{% url 'attendance:permission_approve' perm.pk 'approve' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-success rounded-pill px-3 py-1 font-weight-bold me-1 js-perm-action" style="font-size: 0.75rem;">Approve</a>
                             <a href="{% url 'attendance:permission_approve' perm.pk 'reject' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 font-weight-bold js-perm-action" style="font-size: 0.75rem;">Reject</a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -281,7 +283,7 @@
     <!-- Main Section: Form & My Logs -->
     <div class="row g-3">
         <!-- Request Permission Form Card -->
-        <div class="col-lg-4">
+        <div class="col-lg-5">
             <div class="sp-card h-100">
                 <div class="sp-card-header">
                     <h2 class="sp-card-title">
@@ -440,7 +442,7 @@
         </div>
 
         <!-- My Permissions Logs Card -->
-        <div class="col-lg-8">
+        <div class="col-lg-7">
             <div class="sp-card h-100">
                 <div class="sp-card-header">
                     <h2 class="sp-card-title">

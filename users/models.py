@@ -180,14 +180,14 @@ class User(AbstractUser):
         return False
 
     def is_owner(self):
-        if self.is_superuser or self.role in ['owner', 'admin', 'regional_manager']:
+        if self.is_superuser or self.role in ['owner', 'admin']:
             return True
-        if self.dashboard_access in ['owner', 'regional_manager']:
+        if self.dashboard_access == 'owner':
             return True
         if self.role:
             try:
                 crole = CustomRole.objects.get(code=self.role)
-                if crole.dashboard_access in ['owner', 'regional_manager']:
+                if crole.dashboard_access == 'owner':
                     return True
             except Exception:
                 pass

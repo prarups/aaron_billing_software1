@@ -604,11 +604,11 @@
                     <div class="row g-2 mb-2.5">
                         <div class="col-6">
                             <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem; text-transform: uppercase;">Account Number</label>
-                            <input type="text" id="bankAccNoInput" class="form-control form-control-sm rounded-2" placeholder="e.g. 501002938471">
+                            <input type="text" id="bankAccNoInput" class="form-control form-control-sm rounded-2" placeholder="e.g. 501002938471" maxlength="20" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                         </div>
                         <div class="col-6">
                             <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.7rem; text-transform: uppercase;">IFSC Code</label>
-                            <input type="text" id="bankIfscInput" class="form-control form-control-sm rounded-2" placeholder="e.g. HDFC0001234">
+                            <input type="text" id="bankIfscInput" class="form-control form-control-sm rounded-2 text-uppercase" placeholder="e.g. HDFC0001234" maxlength="11" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
                         </div>
                     </div>
 
@@ -828,8 +828,10 @@
                         setTimeout(function() {
                             window.focus();
                             window.print();
-                            setTimeout(function() { window.close(); }, 300);
-                        }, 250);
+                        }, 400);
+                    };
+                    window.onafterprint = function() {
+                        window.close();
                     };
                 <\/script>
             </body>

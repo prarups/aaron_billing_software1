@@ -676,14 +676,16 @@
                     <!-- Branches -->
                     <td data-label="Branches">
                         <div class="d-flex flex-wrap gap-1">
-                        {% if staff.active_branch and staff.branches.all %}
+                        {% if staff.active_branch in staff.branches.all %}
                         <span style="background:#dbeafe;color:#1e40af;border-radius:999px;padding:1px 9px;font-size:0.67rem;font-weight:700;white-space:nowrap;" title="Primary Main Branch"><i class="bi bi-house-door-fill me-1"></i>Primary: {{ staff.active_branch.name }}</span>
                         {% endif %}
+                        {% if not staff.has_all_branches and staff.role != 'owner' and staff.role != 'regional_manager' %}
                         {% for b in staff.branches.all %}
                         {% if b != staff.active_branch %}
                         <span style="background:#ede9fe;color:#7c3aed;border-radius:999px;padding:1px 9px;font-size:0.67rem;font-weight:600;white-space:nowrap;" title="Secondary Access Branch"><i class="bi bi-shop me-1"></i>Access: {{ b.name }}</span>
                         {% endif %}
                         {% endfor %}
+                        {% endif %}
                         {% if staff.has_all_branches or staff.role == 'owner' or staff.role == 'regional_manager' %}
                         <span class="badge bg-warning-subtle text-dark border border-warning-subtle rounded-pill px-2 py-0.5" style="font-size:0.67rem;"><i class="bi bi-globe me-1"></i>All Branches Access</span>
                         {% elif not staff.active_branch and not staff.branches.all %}
@@ -883,7 +885,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label x-small text-muted fw-bold text-uppercase">Contact Number</label>
-                        <input type="text" name="contact_number" id="editBranchContact" class="form-control rounded-pill shadow-sm border-0 bg-light px-3">
+                        <input type="text" name="contact_number" id="editBranchContact" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Contact Number (10 digits)" maxlength="10" minlength="10" pattern="[0-9]{10}" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                     </div>
                     <div class="mb-3">
                         <label class="form-label x-small text-muted fw-bold text-uppercase">Invoice Prefix</label>
@@ -1054,7 +1056,7 @@
                                         </div>
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Employee ID</label>
-                                            <input type="text" name="employee_id" id="editStaffEmployeeId" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Employee ID (Auto-generated if blank)" autocomplete="off">
+                                            <input type="text" name="employee_id" id="editStaffEmployeeId" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" readonly disabled autocomplete="off">
                                         </div>
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Date of Joining</label>
@@ -1070,15 +1072,15 @@
                                         </div>
                                         <div class="col-6 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Account Number</label>
-                                            <input type="text" name="account_number" id="editStaffAccountNumber" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Account Number" autocomplete="off">
+                                            <input type="text" name="account_number" id="editStaffAccountNumber" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Account Number (Digits only)" maxlength="20" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" autocomplete="off">
                                         </div>
                                         <div class="col-6 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">IFSC Code</label>
-                                            <input type="text" name="ifsc_code" id="editStaffIfscCode" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="IFSC Code" autocomplete="off">
+                                            <input type="text" name="ifsc_code" id="editStaffIfscCode" class="form-control rounded-pill shadow-sm border-0 bg-light px-3 text-uppercase" placeholder="IFSC Code (e.g. SBIN0001234)" maxlength="11" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')" autocomplete="off">
                                         </div>
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Mobile Number</label>
-                                            <input type="text" name="mobile_number" id="editStaffMobileNumber" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Mobile Number" autocomplete="off" required>
+                                            <input type="text" name="mobile_number" id="editStaffMobileNumber" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Mobile Number (10 digits)" maxlength="10" minlength="10" pattern="[0-9]{10}" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')" autocomplete="off" required>
                                         </div>
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Address</label>
@@ -1369,7 +1371,7 @@
         document.getElementById('editStaffFirstName').value = firstName;
         document.getElementById('editStaffLastName').value = lastName;
         document.getElementById('editStaffPassword').value = '';
-        document.getElementById('editStaffEmployeeId').value = (employeeId === 'None' || !employeeId) ? '' : employeeId;
+        document.getElementById('editStaffEmployeeId').value = (employeeId === 'None' || !employeeId) ? 'Auto-generated' : employeeId;
         document.getElementById('editStaffMobileNumber').value = (mobileNumber === 'None' || !mobileNumber) ? '' : mobileNumber;
         document.getElementById('editStaffAddress').value = (address === 'None' || !address) ? '' : address;
         document.getElementById('editStaffDateOfJoining').value = (dateOfJoining === 'None' || !dateOfJoining) ? '' : dateOfJoining;

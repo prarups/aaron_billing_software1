@@ -36,14 +36,16 @@
                     </div>
                 </td>
                 <td>
-                    {% if staff.active_branch and staff.branches.all %}
+                    {% if staff.active_branch in staff.branches.all %}
                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 mb-1 me-1"><i class="bi bi-house-door-fill me-1"></i>Primary: {{ staff.active_branch.name }}</span>
                     {% endif %}
+                    {% if not staff.has_all_branches and staff.role != 'owner' and staff.role != 'regional_manager' %}
                     {% for b in staff.branches.all %}
                     {% if b != staff.active_branch %}
                     <span class="badge bg-light text-dark border rounded-pill px-2 py-1 mb-1 me-1"><i class="bi bi-shop me-1"></i>Access: {{ b.name }}</span>
                     {% endif %}
                     {% endfor %}
+                    {% endif %}
                     {% if staff.has_all_branches or staff.role == 'owner' or staff.role == 'regional_manager' %}
                     <span class="badge bg-warning-subtle text-dark border rounded-pill px-2 py-1 mb-1 me-1"><i class="bi bi-globe me-1"></i>All Branches Access</span>
                     {% elif not staff.active_branch and not staff.branches.all %}
@@ -75,7 +77,7 @@ function openEditStaffModal(id, username, firstName, lastName, role, branchIdsSt
     document.getElementById('editStaffFirstName').value = firstName;
     document.getElementById('editStaffLastName').value = lastName;
     document.getElementById('editStaffPassword').value = '';
-    document.getElementById('editStaffEmployeeId').value = employeeId === 'None' ? '' : employeeId;
+    document.getElementById('editStaffEmployeeId').value = (employeeId === 'None' || !employeeId) ? 'Auto-generated' : employeeId;
     document.getElementById('editStaffMobileNumber').value = (mobileNumber === 'None' || !mobileNumber) ? '' : mobileNumber;
     document.getElementById('editStaffAddress').value = (address === 'None' || !address) ? '' : address;
     const roleSelect = document.getElementById('editStaffRole');

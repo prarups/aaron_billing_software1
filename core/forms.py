@@ -10,7 +10,7 @@ class BranchForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control rounded-pill'}),
             'location': forms.TextInput(attrs={'class': 'form-control rounded-pill'}),
-            'contact_number': forms.TextInput(attrs={'class': 'form-control rounded-pill'}),
+            'contact_number': forms.TextInput(attrs={'class': 'form-control rounded-pill', 'placeholder': 'Contact Number (10 digits)', 'maxlength': '10', 'minlength': '10', 'pattern': '[0-9]{10}', 'inputmode': 'numeric', 'oninput': "this.value=this.value.replace(/[^0-9]/g,'')"}),
             'invoice_prefix': forms.TextInput(attrs={'class': 'form-control rounded-pill'}),
         }
 
@@ -23,6 +23,14 @@ class BranchForm(forms.ModelForm):
             if qs.exists():
                 raise forms.ValidationError("A branch with this name already exists.")
         return name
+
+    def clean_contact_number(self):
+        contact = self.cleaned_data.get('contact_number')
+        if contact:
+            contact = contact.strip()
+            if not contact.isdigit() or len(contact) != 10:
+                raise forms.ValidationError("Contact number must be exactly 10 digits (numbers only, no special characters or letters).")
+        return contact
 
     def clean_invoice_prefix(self):
         prefix = self.cleaned_data.get('invoice_prefix')

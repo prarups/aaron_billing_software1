@@ -44,7 +44,7 @@ class BranchForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Branch Name'}),
             'location': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Location Address'}),
-            'contact_number': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Contact Number'}),
+            'contact_number': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Contact Number (10 digits)', 'maxlength': '10', 'minlength': '10', 'pattern': '[0-9]{10}', 'inputmode': 'numeric', 'oninput': "this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"}),
             'invoice_prefix': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Invoice Prefix (e.g. AG)'}),
         }
 
@@ -57,6 +57,14 @@ class BranchForm(forms.ModelForm):
             if qs.exists():
                 raise forms.ValidationError("A branch with this name already exists.")
         return name
+
+    def clean_contact_number(self):
+        contact = self.cleaned_data.get('contact_number')
+        if contact:
+            contact = contact.strip()
+            if not contact.isdigit() or len(contact) != 10:
+                raise forms.ValidationError("Contact number must be exactly 10 digits (numbers only, no special characters or letters).")
+        return contact
 
     def clean_invoice_prefix(self):
         prefix = self.cleaned_data.get('invoice_prefix')
@@ -90,11 +98,11 @@ class StaffForm(forms.ModelForm):
             'designation': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Designation / Job Title', 'autocomplete': 'off'}),
             'branches': forms.SelectMultiple(attrs={'class': 'form-select rounded-pill shadow-sm border-0 bg-light', 'size': '6'}),
             'employee_id': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Employee ID (Auto-generated if blank)', 'maxlength': '10', 'autocomplete': 'off'}),
-            'mobile_number': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Mobile Number', 'autocomplete': 'off'}),
+            'mobile_number': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Mobile Number (10 digits)', 'maxlength': '10', 'minlength': '10', 'pattern': '[0-9]{10}', 'inputmode': 'numeric', 'oninput': "this.value=this.value.replace(/[^0-9]/g,'')", 'autocomplete': 'off'}),
             'address': forms.Textarea(attrs={'class': 'form-control rounded-3 shadow-sm border-0 bg-light px-3', 'placeholder': 'Address', 'rows': '2', 'autocomplete': 'off'}),
             'bank_name': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Bank Name (e.g. HDFC Bank)', 'autocomplete': 'off'}),
-            'account_number': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Bank Account Number', 'autocomplete': 'off'}),
-            'ifsc_code': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Bank IFSC Code', 'autocomplete': 'off'}),
+            'account_number': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Bank Account Number (Digits only)', 'maxlength': '20', 'inputmode': 'numeric', 'oninput': "this.value=this.value.replace(/[^0-9]/g,'')", 'autocomplete': 'off'}),
+            'ifsc_code': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3 text-uppercase', 'placeholder': 'Bank IFSC Code (e.g. SBIN0001234)', 'maxlength': '11', 'oninput': "this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')", 'autocomplete': 'off'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'date_of_joining': forms.DateInput(attrs={'type':'date','class':'form-control rounded-pill shadow-sm border-0 bg-light px-3','placeholder':'Date of Joining', 'autocomplete': 'off'}),
             'has_pos_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -127,6 +135,14 @@ class StaffForm(forms.ModelForm):
         self.fields['mobile_number'].required = True
 
 
+    def clean_mobile_number(self):
+        mobile = self.cleaned_data.get('mobile_number')
+        if mobile:
+            mobile = mobile.strip()
+            if not mobile.isdigit() or len(mobile) != 10:
+                raise forms.ValidationError("Mobile number must be exactly 10 digits.")
+        return mobile
+
     def clean_is_active(self):
         is_active = self.cleaned_data.get('is_active')
         if self.instance.pk and 'is_active' not in self.data:
@@ -154,6 +170,26 @@ class StaffForm(forms.ModelForm):
             from django.utils import timezone
             return timezone.now().date()
         return date
+
+    def clean_account_number(self):
+        acc = self.cleaned_data.get('account_number')
+        if acc:
+            acc = acc.strip()
+            if not acc.isdigit():
+                raise forms.ValidationError("Account number can accept only numbers (no letters or special characters).")
+            if len(acc) < 8 or len(acc) > 20:
+                raise forms.ValidationError("Account number must be between 8 and 20 digits long.")
+        return acc
+
+    def clean_ifsc_code(self):
+        ifsc = self.cleaned_data.get('ifsc_code')
+        if ifsc:
+            ifsc = ifsc.strip().upper()
+            if not ifsc.isalnum():
+                raise forms.ValidationError("IFSC code can accept only numbers and capital letters.")
+            if len(ifsc) != 11:
+                raise forms.ValidationError("IFSC code must be exactly 11 alphanumeric characters (e.g., SBIN0001234).")
+        return ifsc
 
     def clean(self):
         cleaned_data = super().clean()

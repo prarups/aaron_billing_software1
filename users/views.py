@@ -1312,7 +1312,7 @@ def branch_staff_management(request):
             b.current_goal_percent = 0
             b.current_goal_percent_exact = 0
             
-    staff_qs = User.objects.all().prefetch_related('branches').order_by('employee_id', 'username')
+    staff_qs = User.objects.all().select_related('active_branch').prefetch_related('branches').order_by('employee_id', 'username')
     custom_roles = CustomRole.objects.all()
     
     from users.models import RoleShiftPolicy

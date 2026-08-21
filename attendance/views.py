@@ -120,13 +120,12 @@ def attendance_dashboard(request):
         if absent_count < 0:
             absent_count = 0
             
-        # Pending approvals
+        # Pending approvals - ONLY FOR ADMIN (OWNER)
         pending_leaves = LeaveRequest.objects.none()
-        pending_permissions = PermissionRequest.objects.filter(status='pending')
-        if not is_owner(request.user):
-            pending_permissions = pending_permissions.filter(
-                Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
-            ).distinct()
+        if is_owner(request.user):
+            pending_permissions = PermissionRequest.objects.filter(status='pending')
+        else:
+            pending_permissions = PermissionRequest.objects.none()
             
         context.update({
             'total_staff_count': total_staff_count,
@@ -375,15 +374,8 @@ def permission_list(request):
     if is_owner(user):
         pending_perms = PermissionRequest.objects.filter(status='pending').exclude(user=user).select_related('user', 'approved_by')
         past_perms_qs = PermissionRequest.objects.exclude(status='pending').exclude(user=user).select_related('user', 'approved_by')
-    elif is_manager_or_owner(user):
-        pending_perms = PermissionRequest.objects.filter(
-            Q(user__branches__in=branches) | Q(user__active_branch__in=branches),
-            status='pending'
-        ).exclude(user=user).select_related('user', 'approved_by').distinct()
-        past_perms_qs = PermissionRequest.objects.filter(
-            Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
-        ).exclude(status='pending').exclude(user=user).select_related('user', 'approved_by').distinct()
     else:
+        pending_perms = []
         past_perms_qs = PermissionRequest.objects.none()
 
     # Apply search/filters
@@ -450,7 +442,7 @@ def update_global_permission_policy(request):
             max_perms = int(request.POST.get('max_permissions_per_month', 2))
             max_hours = Decimal(request.POST.get('max_hours_per_permission', '2.00'))
             grace_mins = int(request.POST.get('grace_period_minutes', 15))
-            late_thresh = int(request.POST.get('late_threshold_for_half_day_deduction', 4))
+            late_thresh = int(request.POST.get('late_threshold_for_half_day_deduction', 1))
             
             if max_perms < 1:
                 messages.error(request, 'Max permissions per month must be at least 1.')
@@ -577,28 +569,14 @@ def permission_approve(request, pk, action):
     next_url = request.GET.get('next') or request.POST.get('next') or request.META.get('HTTP_REFERER') or 'attendance:permission_list'
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.GET.get('ajax') == '1'
     
-    if not is_manager_or_owner(request.user):
-        msg = 'Unauthorized access.'
+    if not is_owner(request.user):
+        msg = 'Unauthorized access. Only Admin can approve or reject permission requests.'
         if is_ajax:
             return JsonResponse({'success': False, 'message': msg}, status=403)
         messages.error(request, msg)
         return redirect(next_url)
         
     perm = get_object_or_404(PermissionRequest, pk=pk)
-    
-    # Manager check
-    if not is_owner(request.user):
-        user_branches = request.user.get_accessible_branches()
-        user_branch_ids = set(user_branches.values_list('id', flat=True))
-        perm_user_branches = set(perm.user.branches.values_list('id', flat=True))
-        if perm.user.active_branch_id:
-            perm_user_branches.add(perm.user.active_branch_id)
-        if not (user_branch_ids & perm_user_branches):
-            msg = 'You do not have permission to approve permissions for this staff.'
-            if is_ajax:
-                return JsonResponse({'success': False, 'message': msg}, status=403)
-            messages.error(request, msg)
-            return redirect(next_url)
             
     try:
         if action == 'approve':
@@ -1399,6 +1377,7 @@ def edit_attendance_ajax(request, pk):
             if notes:
                 att.notes = notes
             att.save()
+            ensure_monthly_payrolls(att.date.month, att.date.year, request.user, force_recalculate=True)
 
             new_in_t = timezone.localtime(att.check_in).time() if att.check_in else None
             new_out_t = timezone.localtime(att.check_out).time() if att.check_out else None
@@ -1432,7 +1411,7 @@ def my_summary_view(request):
     year = int(request.GET.get('year', today.year))
     
     # Auto-ensure monthly payroll is calculated so user can see personal payslips summary
-    ensure_monthly_payrolls(month, year, request.user, force_recalculate=False)
+    ensure_monthly_payrolls(month, year, request.user, force_recalculate=True)
 
     # Calculate days in month
     days_in_month = calendar.monthrange(year, month)[1]
@@ -1573,17 +1552,16 @@ def management_overview_view(request):
     if absent_count < 0:
         absent_count = 0
         
-    # Pending approvals
+    # Pending approvals - ONLY FOR ADMIN (OWNER)
     pending_leaves = LeaveRequest.objects.none()
-    pending_permissions = PermissionRequest.objects.filter(status='pending').select_related('user')
-    if not is_owner(request.user):
-        pending_permissions = pending_permissions.filter(
-            Q(user__branches__in=branches) | Q(user__active_branch__in=branches)
-        ).distinct()
-    if selected_branch_id:
-        pending_permissions = pending_permissions.filter(
-            Q(user__branches__id=selected_branch_id) | Q(user__active_branch__id=selected_branch_id)
-        ).distinct()
+    if is_owner(request.user):
+        pending_permissions = PermissionRequest.objects.filter(status='pending').select_related('user')
+        if selected_branch_id:
+            pending_permissions = pending_permissions.filter(
+                Q(user__branches__id=selected_branch_id) | Q(user__active_branch__id=selected_branch_id)
+            ).distinct()
+    else:
+        pending_permissions = PermissionRequest.objects.none()
 
     # 4. Status Filter & Search Query
     status_filter = request.GET.get('status', '').strip()
@@ -1747,10 +1725,24 @@ def update_bank_details_ajax(request, user_id):
         try:
             data = json.loads(request.body)
             user = get_object_or_404(User, id=user_id)
+            acc_no = data.get('account_number')
+            if acc_no is not None:
+                acc_no = acc_no.strip()
+                if acc_no and not acc_no.isdigit():
+                    return JsonResponse({'success': False, 'message': 'Account number can accept only numbers (no letters or special characters).'})
+                user.account_number = acc_no
+
+            ifsc = data.get('ifsc_code')
+            if ifsc is not None:
+                ifsc = ifsc.strip().upper()
+                if ifsc and not ifsc.isalnum():
+                    return JsonResponse({'success': False, 'message': 'IFSC code can accept only numbers and capital letters.'})
+                if ifsc and len(ifsc) != 11:
+                    return JsonResponse({'success': False, 'message': 'IFSC code must be exactly 11 characters long (e.g., SBIN0001234).'})
+                user.ifsc_code = ifsc
+
             user.designation = data.get('designation', user.designation)
             user.bank_name = data.get('bank_name', user.bank_name)
-            user.account_number = data.get('account_number', user.account_number)
-            user.ifsc_code = data.get('ifsc_code', user.ifsc_code)
             doj_str = data.get('date_of_joining')
             if doj_str:
                 try:
