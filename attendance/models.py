@@ -275,7 +275,7 @@ class MonthlyPayroll(models.Model):
     absent_days = models.DecimalField(max_digits=5, decimal_places=1, default=Decimal('0.0'))
     late_days = models.IntegerField(default=0)
     approved_leaves = models.IntegerField(default=0)
-    unapproved_leaves = models.IntegerField(default=0)
+    unapproved_leaves = models.DecimalField(max_digits=5, decimal_places=1, default=Decimal('0.0'))
     
     base_salary = models.DecimalField(max_digits=10, decimal_places=2)
     allowances = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
@@ -291,23 +291,25 @@ class MonthlyPayroll(models.Model):
 
     @property
     def late_deduction_amount(self):
-        return max(Decimal('0.00'), self.deductions - self.lop_deduction_amount)
+        import calendar
+        from decimal import Decimal
+        if not self.late_days:
+            return Decimal('0.00')
+        days_in_month = calendar.monthrange(self.year, self.month)[1] if (self.year and self.month) else 30
+        per_day_rate = self.base_salary / Decimal(str(days_in_month)) if (self.base_salary > 0 and days_in_month > 0) else Decimal('0')
+        half_day_rate = per_day_rate / Decimal('2')
+        global_policy = GlobalPermissionPolicy.get_policy()
+        late_thresh = max(1, global_policy.late_threshold_for_half_day_deduction or 1)
+        late_half_days = Decimal(str(self.late_days // late_thresh))
+        return (late_half_days * half_day_rate).quantize(Decimal('0.01'))
 
     @property
     def lop_days(self):
-        allowed = float(getattr(self.user, 'monthly_off_count', 4))
-        unapproved = float(self.unapproved_leaves or self.absent_days or 0)
-        if float(self.present_days or 0) == 0:
-            return unapproved
-        return max(0.0, unapproved - allowed)
+        return float(self.unapproved_leaves or 0)
 
     @property
     def lop_deduction_amount(self):
-        import calendar
-        from decimal import Decimal
-        days_in_month = calendar.monthrange(self.year, self.month)[1] if (self.year and self.month) else 31
-        per_day_rate = self.base_salary / Decimal(str(days_in_month)) if days_in_month > 0 else Decimal('0')
-        return (Decimal(str(self.lop_days)) * per_day_rate).quantize(Decimal('0.01'))
+        return max(Decimal('0.00'), self.deductions - self.late_deduction_amount)
 
     @property
     def payable_days(self):

@@ -141,13 +141,27 @@ class Bill(models.Model):
 
     def save(self, *args, **kwargs):
         from django.db.models import Max
-        if not self.sequence_number:
-            max_seq = Bill.objects.filter(branch=self.branch).aggregate(max_seq=Max('sequence_number'))['max_seq'] or 0
-            self.sequence_number = max_seq + 1
-        if not self.invoice_number:
+        from django.db import IntegrityError
+        if not self.pk and (not self.sequence_number or not self.invoice_number):
             prefix = getattr(self.branch, 'invoice_prefix', None) or 'AG'
-            self.invoice_number = f"{prefix}-{self.sequence_number:04d}"
-        super().save(*args, **kwargs)
+            for attempt in range(5):
+                if not self.sequence_number:
+                    max_seq = Bill.objects.filter(branch=self.branch).aggregate(max_seq=Max('sequence_number'))['max_seq'] or 0
+                    self.sequence_number = max_seq + 1 + attempt
+                self.invoice_number = f"{prefix}-{self.sequence_number:04d}"
+                try:
+                    super().save(*args, **kwargs)
+                    return
+                except IntegrityError as e:
+                    if 'invoice_number' in str(e).lower() or 'unique' in str(e).lower():
+                        if attempt == 4:
+                            raise
+                        self.sequence_number = None
+                        self.invoice_number = None
+                    else:
+                        raise
+        else:
+            super().save(*args, **kwargs)
 
 class BillItem(models.Model):
     bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='items')

@@ -125,9 +125,16 @@ def export_products_csv(request):
     writer = csv.writer(response)
     writer.writerow(['Branch Name', 'Branch Code', 'Product Name', 'Barcode', 'Price', 'Combo', 'Stock', 'Low Stock Level', 'Registered On'])
 
+    from core.models import ComboGroup
+    active_combo_pairs = set(
+        ComboGroup.objects.filter(
+            is_active=True, branches__in=accessible_branches
+        ).values_list('products__id', 'branches__id')
+    )
+
     for reg in registrations:
         date_str = reg.created_at.strftime("%Y-%m-%d %H:%M")
-        combo_str = 'Yes' if reg.is_in_active_combo else '-'
+        combo_str = 'Yes' if (reg.product_id, reg.branch_id) in active_combo_pairs else '-'
         writer.writerow([
             reg.branch.name, 
             reg.branch.code or '',

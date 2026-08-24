@@ -688,24 +688,30 @@
         if (slipLateDaysElem) slipLateDaysElem.textContent = lateDays + ' Days';
         // Financial values (format with INR symbol)
         const fmt = (val) => '₹ ' + Number(val).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        const lopVal = Number(lopDeduction || 0);
+        const lateVal = Number(lateDeduction || 0);
+        const calcDed = (lopVal + lateVal);
+        const totalDed = (Number(deductions) > 0 && Number(deductions) >= calcDed) ? Number(deductions) : calcDed;
+        const finalNet = Math.max(0, Number(baseSalary || 0) - totalDed);
+
         document.getElementById('slipBaseSalary').textContent = fmt(baseSalary);
-        document.getElementById('slipLopDeduction').textContent = '- ' + fmt(lopDeduction);
-        document.getElementById('slipLateDeduction').textContent = '- ' + fmt(lateDeduction);
+        document.getElementById('slipLopDeduction').textContent = '- ' + fmt(lopVal);
+        document.getElementById('slipLateDeduction').textContent = '- ' + fmt(lateVal);
         document.getElementById('slipGrossEarnings').textContent = fmt(baseSalary);
-        document.getElementById('slipDeductions').textContent = '- ' + fmt(deductions);
-        document.getElementById('slipNetSalary').textContent = fmt(netSalary);
+        document.getElementById('slipDeductions').textContent = '- ' + fmt(totalDed);
+        document.getElementById('slipNetSalary').textContent = fmt(finalNet);
         // Update LOP subtext
         const lopSubtext = document.getElementById('slipLopSubtext');
         if (lopSubtext) lopSubtext.textContent = Number(lopDays).toFixed(1) + ' absent days deducted';
         // Show / hide dynamic rows
         const lopRow = document.getElementById('slipLopRow');
-        if (lopRow) lopRow.style.display = (Number(lopDeduction) > 0) ? 'flex' : 'none';
+        if (lopRow) lopRow.style.display = (lopVal > 0) ? 'flex' : 'none';
         const lateRow = document.getElementById('slipLateRow');
-        if (lateRow) lateRow.style.display = (Number(lateDeduction) > 0) ? 'flex' : 'none';
+        if (lateRow) lateRow.style.display = (lateVal > 0) ? 'flex' : 'none';
         // Amount in words
         const amountInWordsElem = document.getElementById('slipAmountInWords');
         if (amountInWordsElem && typeof numberToWords === 'function') {
-            const words = numberToWords(Number(netSalary));
+            const words = numberToWords(finalNet);
             amountInWordsElem.textContent = words ? '(' + words.trim() + ' Rupees Only)' : '(Net Amount Credited to Bank Account)';
         }
         // Show the modal
@@ -858,76 +864,8 @@
         }
         var integerPart = Math.floor(num);
         var words = inWords(integerPart);
-        return words ? '(' + words.trim() + ' Rupees Only)' : '(Zero Rupees Only)';
+        return words ? words.trim() : 'Zero';
     }
 
-    function openPayslipModal(username, fullName, empId, designation, doj, bankName, accNo, ifsc, base, deductions, net, present, late, lop, payDays, totalDays, period, status, lateDed, lopDed) {
-        if (document.getElementById('slipEmpName')) document.getElementById('slipEmpName').textContent = (fullName && fullName.trim() !== '') ? fullName : username;
-        if (document.getElementById('slipEmpId')) document.getElementById('slipEmpId').textContent = empId || '-';
-        if (document.getElementById('slipDesignation')) document.getElementById('slipDesignation').textContent = designation || '-';
-        if (document.getElementById('slipDoj')) document.getElementById('slipDoj').textContent = doj || '-';
-        if (document.getElementById('slipBankName')) document.getElementById('slipBankName').textContent = bankName || 'Not Provided';
-        if (document.getElementById('slipAccNo')) document.getElementById('slipAccNo').textContent = accNo || 'Not Provided';
-        if (document.getElementById('slipIfsc')) document.getElementById('slipIfsc').textContent = ifsc || 'Not Provided';
-        
-        if (document.getElementById('slipTotalDays')) document.getElementById('slipTotalDays').textContent = (totalDays || 30) + ' Days';
-        if (document.getElementById('slipPayDays')) document.getElementById('slipPayDays').textContent = (payDays || 0) + ' Days';
-        if (document.getElementById('slipLeaveDays')) document.getElementById('slipLeaveDays').textContent = (lop || 0) + ' Days';
-        if (document.getElementById('slipLateDays')) document.getElementById('slipLateDays').textContent = (late || 0) + ' Days';
-
-        const netVal = parseFloat(net || 0);
-        const baseVal = parseFloat(base || 0);
-        const lateVal = parseFloat(lateDed || 0);
-        const lopVal = parseFloat(lopDed || 0);
-        const dedVal = parseFloat(deductions || 0);
-
-        if (document.getElementById('slipBaseSalary')) document.getElementById('slipBaseSalary').textContent = '₹ ' + baseVal.toFixed(2);
-        if (document.getElementById('slipGrossEarnings')) document.getElementById('slipGrossEarnings').textContent = '₹ ' + baseVal.toFixed(2);
-        if (document.getElementById('slipLateDeduction')) document.getElementById('slipLateDeduction').textContent = '- ₹ ' + lateVal.toFixed(2);
-        if (document.getElementById('slipLopDeduction')) document.getElementById('slipLopDeduction').textContent = '- ₹ ' + lopVal.toFixed(2);
-        if (document.getElementById('slipDeductions')) document.getElementById('slipDeductions').textContent = '- ₹ ' + dedVal.toFixed(2);
-        if (document.getElementById('slipNetSalary')) document.getElementById('slipNetSalary').textContent = '₹ ' + netVal.toFixed(2);
-        if (document.getElementById('slipAmountInWords')) document.getElementById('slipAmountInWords').textContent = numberToWords(netVal);
-        
-        const lateRow = document.getElementById('slipLateRow');
-        if (lateRow) {
-            lateRow.style.display = lateVal > 0 ? 'flex' : 'none';
-        }
-
-        const lopRow = document.getElementById('slipLopRow');
-        if (lopRow) {
-            lopRow.style.display = lopVal > 0 ? 'flex' : 'none';
-        }
-
-        if (document.getElementById('slipLopSubtext')) {
-            document.getElementById('slipLopSubtext').textContent = (lop || 0) + ' absent days deducted';
-        }
-
-        if (document.getElementById('payslipPeriod')) document.getElementById('payslipPeriod').textContent = period || '';
-        if (document.getElementById('slipPeriodText')) document.getElementById('slipPeriodText').textContent = period || '';
-
-        const badge = document.getElementById('slipStatusBadge');
-        if (badge) {
-            if (status === 'paid') {
-                badge.className = 'badge rounded-pill px-3 py-1.5 fw-bold text-xs shadow-xs';
-                badge.style.backgroundColor = '#d1fae5';
-                badge.style.color = '#047857';
-                badge.style.border = '1px solid #a7f3d0';
-                badge.textContent = 'PAID (SETTLED)';
-            } else {
-                badge.className = 'badge rounded-pill px-3 py-1.5 fw-bold text-xs shadow-xs';
-                badge.style.backgroundColor = '#fef3c7';
-                badge.style.color = '#b45309';
-                badge.style.border = '1px solid #fde68a';
-                badge.textContent = 'DRAFT (PENDING)';
-            }
-        }
-
-        const modalElem = document.getElementById('payslipModal');
-        if (modalElem) {
-            const payslipModal = bootstrap.Modal.getOrCreateInstance(modalElem);
-            payslipModal.show();
-        }
-    }
 </script>
 {% endblock %}

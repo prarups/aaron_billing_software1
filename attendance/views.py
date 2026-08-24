@@ -68,7 +68,12 @@ def is_manager_or_owner(user):
 def auto_update_past_attendance_statuses():
     try:
         today = timezone.localdate()
-        past_records = Attendance.objects.filter(date__lt=today, status='checked_in')
+        recent_past_cutoff = today - datetime.timedelta(days=7)
+        past_records = Attendance.objects.filter(
+            date__gte=recent_past_cutoff,
+            date__lt=today,
+            status='checked_in'
+        ).select_related('user', 'branch')
         for att in past_records:
             att.recalculate_status()
             att.save()
@@ -281,10 +286,20 @@ def mid_day_check(request):
             if not photo_file:
                 return JsonResponse({'success': False, 'message': 'Photo capture is required.'})
                 
-            attendance.mid_day_time = timezone.now()
+            now_dt = timezone.now()
+            attendance.mid_day_time = now_dt
             attendance.mid_day_photo = photo_file
             attendance.mid_day_lat = lat
             attendance.mid_day_lng = lng
+            
+            # If a manual edit had previously set check_out prior to this mid-day verification, clear it
+            if attendance.check_out and attendance.check_out <= now_dt:
+                attendance.check_out = None
+                attendance.check_out_photo = None
+                attendance.check_out_lat = None
+                attendance.check_out_lng = None
+                attendance.recalculate_status()
+                
             attendance.save()
             
             return JsonResponse({
@@ -766,12 +781,8 @@ def attendance_reports(request):
                         notes = leave_match or 'Approved Leave'
                         lv_cnt += 1
                     else:
-                        if wo_cnt < allowed_offs:
-                            status = 'week_off'
-                            wo_cnt += 1
-                        else:
-                            status = 'absent'
-                            a_cnt += 1
+                        status = 'absent'
+                        a_cnt += 1
             
             u_days.append({
                 'day': d,
@@ -1027,7 +1038,8 @@ def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=Tr
         absent_days = 0
         late_days = 0
         approved_leaves = 0
-        unapproved_leaves = 0
+        manual_absent_days = 0
+        unpunched_days = 0
 
         current_date = first_day
         while current_date <= last_day:
@@ -1043,21 +1055,28 @@ def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=Tr
                 elif att_rec.status == 'half_day':
                     present_days += 0.5
                     absent_days += 0.5
-                else:
+                    manual_absent_days += 0.5
+                elif att_rec.status in ['week_off', 'on_leave']:
                     absent_days += 1
-                    unapproved_leaves += 1
+                    approved_leaves += 1
+                else: # 'absent'
+                    absent_days += 1
+                    manual_absent_days += 1
             else:
                 absent_days += 1
-                unapproved_leaves += 1
+                unpunched_days += 1
 
             current_date += datetime.timedelta(days=1)
 
+        unapproved_leaves = manual_absent_days + unpunched_days
         allowed_offs = getattr(user, 'monthly_off_count', 4)
         if present_days == 0:
             lop_days_to_deduct = Decimal(str(unapproved_leaves))
         else:
-            lop_days_to_deduct = Decimal(str(max(0, unapproved_leaves - allowed_offs)))
-        per_day_rate = base_salary / Decimal(str(days_in_month)) if days_in_month > 0 else Decimal('0')
+            remaining_allowed_offs = max(0, allowed_offs - approved_leaves)
+            unpunched_lop = max(0, unpunched_days - remaining_allowed_offs)
+            lop_days_to_deduct = Decimal(str(manual_absent_days + unpunched_lop))
+        per_day_rate = base_salary / Decimal(str(days_in_month)) if (base_salary > 0 and days_in_month > 0) else Decimal('0')
         half_day_rate = per_day_rate / Decimal('2')
 
         lop_deduction = lop_days_to_deduct * per_day_rate
@@ -1075,7 +1094,7 @@ def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=Tr
                 'absent_days': Decimal(str(absent_days)),
                 'late_days': late_days,
                 'approved_leaves': approved_leaves,
-                'unapproved_leaves': unapproved_leaves,
+                'unapproved_leaves': lop_days_to_deduct,
                 'base_salary': base_salary,
                 'deductions': total_deductions,
                 'net_salary': net_salary,
@@ -1345,6 +1364,22 @@ def edit_attendance_ajax(request, pk):
                         pass
 
             if status and status != 'auto':
+                if status == 'week_off' and old_status != 'week_off':
+                    allowed_off_limit = getattr(att.user, 'monthly_off_count', 4) or 4
+                    existing_wo_count = Attendance.objects.filter(
+                        user=att.user,
+                        date__year=att.date.year,
+                        date__month=att.date.month,
+                        status='week_off'
+                    ).exclude(pk=att.pk).count()
+
+                    if existing_wo_count >= allowed_off_limit:
+                        user_name = att.user.get_full_name() or att.user.username
+                        return JsonResponse({
+                            'success': False,
+                            'message': f"Cannot assign Week Off. {user_name} has already reached the maximum allowed monthly week-offs ({allowed_off_limit} days/month)."
+                        })
+
                 att.status = status
                 # If marked Present/Late/Half Day directly without times, fill standard shift times dynamically from user role policy
                 shift_in = att.user.shift_start_time or datetime.time(9, 0)
@@ -1367,7 +1402,7 @@ def edit_attendance_ajax(request, pk):
                     half_out_time = datetime.time((half_out_mins // 60) % 24, half_out_mins % 60)
                     combined_out = datetime.datetime.combine(att.date, half_out_time)
                     att.check_out = timezone.make_aware(combined_out, timezone.get_current_timezone())
-                elif status == 'absent':
+                elif status in ['absent', 'week_off', 'on_leave']:
                     att.check_in = None
                     att.check_out = None
             else:
@@ -1599,24 +1634,7 @@ def management_overview_view(request):
             elif selected_date > today:
                 st = 'future'
             else:
-                allowed_offs = staff.monthly_off_count or 4
-                u_atts = month_atts_map.get(staff.id, {})
-                unworked_cnt = 0
-                cur_d = month_start
-                while cur_d <= selected_date:
-                    d_att = u_atts.get(cur_d)
-                    if not d_att:
-                        is_lv = any(sdate <= cur_d <= edate for sdate, edate in staff_lvs)
-                        if not is_lv:
-                            unworked_cnt += 1
-                    elif d_att.status == 'week_off':
-                        unworked_cnt += 1
-                    cur_d += datetime.timedelta(days=1)
-                
-                if unworked_cnt <= allowed_offs:
-                    st = 'week_off'
-                else:
-                    st = 'absent'
+                st = 'absent'
 
         # Apply Status Filter
         if status_filter:

@@ -113,9 +113,12 @@ def get_branches():
 @router.get("/products")
 def get_products(branch_id: int, query: Optional[str] = None):
     """Get products under a specific branch with stock levels"""
+    from django.db.models import Q
     registry_qs = ProductRegistry.objects.filter(branch_id=branch_id).select_related('product')
     if query:
-        registry_qs = registry_qs.filter(product__name__icontains=query) | registry_qs.filter(product__barcode__icontains=query)
+        registry_qs = registry_qs.filter(
+            Q(product__name__icontains=query) | Q(product__barcode__icontains=query)
+        ).distinct()
     
     # Limit to 100 for high performance
     registries = registry_qs[:100]
@@ -155,27 +158,32 @@ def get_bills(branch_id: int, limit: int = 20):
 
 @router.get("/stats")
 def get_stats(branch_id: int):
-    """Get fast dashboard statistics for today's sales in a branch"""
-    today = date.today()
-    bills_today = Bill.objects.filter(branch_id=branch_id, created_at__date=today)
-    
-    total_sales = Decimal('0')
-    cash_total = Decimal('0')
-    online_total = Decimal('0')
-    bill_count = bills_today.count()
-    
-    for b in bills_today:
-        total_sales += b.total_amount
-        cash_total += b.cash_amount
-        online_total += b.online_amount
-        
+    """Get fast dashboard statistics for today's sales in a branch using DB aggregation"""
+    from django.utils import timezone
+    from django.db.models import Sum, Count
+    import datetime
+
+    today = timezone.localdate()
+    start_of_day = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+    end_of_day = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+
+    aggregated = Bill.objects.filter(
+        branch_id=branch_id,
+        created_at__range=(start_of_day, end_of_day)
+    ).aggregate(
+        total_sales=Sum('total_amount'),
+        cash_sales=Sum('cash_amount'),
+        online_sales=Sum('online_amount'),
+        bill_count=Count('id')
+    )
+
     return {
         "branch_id": branch_id,
         "date": today.isoformat(),
-        "total_sales": float(total_sales),
-        "cash_sales": float(cash_total),
-        "online_sales": float(online_total),
-        "bill_count": bill_count
+        "total_sales": float(aggregated['total_sales'] or 0),
+        "cash_sales": float(aggregated['cash_sales'] or 0),
+        "online_sales": float(aggregated['online_sales'] or 0),
+        "bill_count": aggregated['bill_count'] or 0
     }
 
 # ----------------- ATTENDANCE ENDPOINTS -----------------
@@ -245,8 +253,14 @@ def get_current_user(request: Request):
                 detail="Invalid session: User ID not found in session."
             )
         User = get_user_model()
-        user = User.objects.get(pk=uid)
-        return user
+        try:
+            user = User.objects.get(pk=uid)
+            return user
+        except User.DoesNotExist:
+            raise HTTPException(
+                status_code=401,
+                detail="User account no longer exists."
+            )
     except Session.DoesNotExist:
         raise HTTPException(
             status_code=401,
@@ -344,10 +358,19 @@ def api_mid_day(payload: AttendanceActionRequest, current_user = Depends(get_cur
         if not photo_file:
             raise HTTPException(status_code=400, detail="Photo capture is required and must be valid base64.")
             
-        attendance.mid_day_time = timezone.now()
+        now_dt = timezone.now()
+        attendance.mid_day_time = now_dt
         attendance.mid_day_photo = photo_file
         attendance.mid_day_lat = Decimal(str(payload.lat))
         attendance.mid_day_lng = Decimal(str(payload.lng))
+        
+        if attendance.check_out and attendance.check_out <= now_dt:
+            attendance.check_out = None
+            attendance.check_out_photo = None
+            attendance.check_out_lat = None
+            attendance.check_out_lng = None
+            attendance.recalculate_status()
+            
         attendance.save()
         
         return {

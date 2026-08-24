@@ -919,7 +919,7 @@
                     </div>
                 </div>
 
-                <div id="editModalAlert" class="alert alert-success border-0 shadow-sm rounded-3 mb-3 p-3 small d-none align-items-center gap-2" style="font-size: 0.8rem; background-color: #d1fae5; color: #065f46;">
+                <div id="editModalAlert" class="alert alert-success border-0 shadow-sm rounded-3 mb-3 p-3 small d-none align-items-center gap-2" style="font-size: 0.8rem;">
                     <i class="bi bi-check-circle-fill text-success fs-6"></i>
                     <span id="editModalAlertMsg">Attendance updated and audit log saved successfully!</span>
                 </div>
@@ -942,19 +942,30 @@
 
                     <!-- Quick Time Presets -->
                     <div class="mb-3 p-2 bg-white rounded-3 border">
-                        <label class="ar-field-label text-muted mb-1.5" style="font-size: 0.72rem;"><i class="bi bi-lightning-charge-fill text-warning me-1"></i> Quick Time Presets (Role Shift Timings)</label>
-                        <div class="d-flex flex-wrap gap-1.5">
-                            <button type="button" class="btn btn-xs btn-outline-success rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('full')">⚡ Role Full Day</button>
-                            <button type="button" class="btn btn-xs btn-outline-warning rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('half')">🌓 Role Half Day</button>
+                        <label class="ar-field-label text-muted mb-1.5" style="font-size: 0.72rem;"><i class="bi bi-lightning-charge-fill text-warning me-1"></i> Quick Presets & Status Selection</label>
+                        <div class="d-flex flex-wrap gap-1.5 mb-2">
+                            <button type="button" class="btn btn-xs btn-outline-success rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('full')">⚡ Full Day</button>
+                            <button type="button" class="btn btn-xs btn-outline-warning rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('half')">🌓 Half Day</button>
                             <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('late')">🕒 Late Entry</button>
+                            <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('week_off')">🏖️ Week Off (WO)</button>
                             <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-1" style="font-size: 0.7rem;" onclick="applyTimePreset('absent')">❌ Clear / Absent</button>
                         </div>
                     </div>
 
-                    <input type="hidden" id="editStatus" value="auto">
+                    <div class="mb-3">
+                        <label class="ar-field-label text-muted fw-bold mb-1" style="font-size: 0.7rem; text-transform: uppercase;"><i class="bi bi-ui-checks me-1 text-primary"></i> Override Attendance Status</label>
+                        <select id="editStatus" class="form-select form-select-sm rounded-2 fw-semibold">
+                            <option value="auto">Auto (Calculate from Times & Shift Policy)</option>
+                            <option value="present">Present (P)</option>
+                            <option value="half_day">Half Day (H)</option>
+                            <option value="late">Late (L)</option>
+                            <option value="week_off">Week Off (WO)</option>
+                            <option value="absent">Absent (A)</option>
+                        </select>
+                    </div>
 
                     <div class="mb-3 p-2 bg-white rounded-3 border text-muted" style="font-size: 0.72rem;">
-                        <i class="bi bi-shield-check text-success me-1"></i> <strong>Status Evaluation:</strong> Auto-calculated strictly from Check-In & Check-Out times vs Role Shift Policy.
+                        <i class="bi bi-shield-check text-success me-1"></i> <strong>Status Note:</strong> Admin can force Week Off (WO) or Absent (A) directly, or leave Auto to calculate from Check-In & Check-Out times.
                     </div>
 
                     <div class="mb-3">
@@ -1023,6 +1034,11 @@
             document.getElementById('editCheckOutTime').value = '';
             document.getElementById('editStatus').value = 'absent';
             document.getElementById('editNotes').value = 'Marked Absent';
+        } else if (type === 'week_off') {
+            document.getElementById('editCheckInTime').value = '';
+            document.getElementById('editCheckOutTime').value = '';
+            document.getElementById('editStatus').value = 'week_off';
+            document.getElementById('editNotes').value = 'Marked Week Off (WO)';
         }
     }
 
@@ -1037,7 +1053,7 @@
         document.getElementById('editEmpDate').textContent = date;
         document.getElementById('editCheckInTime').value = checkInTime || '';
         document.getElementById('editCheckOutTime').value = checkOutTime || '';
-        document.getElementById('editStatus').value = 'auto';
+        document.getElementById('editStatus').value = status || 'auto';
         document.getElementById('editNotes').value = notes || '';
         
         const checkInEl = document.getElementById('editCheckInTime');
@@ -1102,8 +1118,11 @@
             if (data.success) {
                 if (alertBox && alertMsg) {
                     alertMsg.textContent = data.message;
-                    alertBox.classList.remove('d-none');
-                    alertBox.classList.add('d-flex');
+                    alertBox.className = "alert alert-success border-0 shadow-sm rounded-3 mb-3 p-3 small d-flex align-items-center gap-2";
+                    alertBox.style.backgroundColor = "#d1fae5";
+                    alertBox.style.color = "#065f46";
+                    const icon = alertBox.querySelector('i');
+                    if (icon) icon.className = "bi bi-check-circle-fill text-success fs-6";
                 }
                 if (btn) {
                     btn.classList.remove('btn-primary');
@@ -1120,8 +1139,11 @@
             } else {
                 if (alertBox && alertMsg) {
                     alertMsg.textContent = "Error: " + data.message;
-                    alertBox.classList.remove('alert-success', 'd-none');
-                    alertBox.classList.add('alert-danger', 'd-flex');
+                    alertBox.className = "alert alert-danger border-0 shadow-sm rounded-3 mb-3 p-3 small d-flex align-items-center gap-2";
+                    alertBox.style.backgroundColor = "#fee2e2";
+                    alertBox.style.color = "#991b1b";
+                    const icon = alertBox.querySelector('i');
+                    if (icon) icon.className = "bi bi-exclamation-triangle-fill text-danger fs-6";
                 }
                 if (btn) {
                     btn.disabled = false;
