@@ -4,6 +4,16 @@
 
 {% block extra_css %}
 <style>
+    /* Hide up and down spinner arrows in number inputs (Split Cash, Split Online, Qty) */
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    input[type="number"] {
+        -moz-appearance: textfield;
+    }
+
     .cart-item {
         border-bottom: 1px solid #edf2f7;
         padding-bottom: 0.6rem;
@@ -417,13 +427,13 @@
                             <div class="col-6">
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text bg-white border-0 small py-0.5 px-1.5" style="font-size: 0.7rem;">Cash</span>
-                                    <input type="number" step="1" id="split-cash" class="form-control form-control-sm border-0 px-1.5" placeholder="0" onfocus="this.select()" oninput="calculateSplit('cash')">
+                                    <input type="number" step="1" id="split-cash" class="form-control form-control-sm border-0 px-1.5" placeholder="0" onfocus="this.select()" onwheel="this.blur()" oninput="calculateSplit('cash')">
                                 </div>
                             </div>
                             <div class="col-6">
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text bg-white border-0 small py-0.5 px-1.5" style="font-size: 0.7rem;">Online</span>
-                                    <input type="number" step="1" id="split-online" class="form-control form-control-sm border-0 px-1.5" placeholder="0" onfocus="this.select()" oninput="calculateSplit('online')">
+                                    <input type="number" step="1" id="split-online" class="form-control form-control-sm border-0 px-1.5" placeholder="0" onfocus="this.select()" onwheel="this.blur()" oninput="calculateSplit('online')">
                                 </div>
                             </div>
                         </div>

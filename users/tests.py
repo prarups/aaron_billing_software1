@@ -693,6 +693,80 @@ class CustomDynamicRoleTestCase(TestCase):
         self.assertNotIn(b4, accessible)
 
 
+class AuthenticationSecurityTests(TestCase):
+    def setUp(self):
+        from users.security import BruteForceLimiter
+        BruteForceLimiter.reset_attempts('127.0.0.1')
+        self.user = User.objects.create_user(
+            username='sec_user',
+            password='Password123!',
+            role='staff'
+        )
+
+    def test_encrypt_decrypt_credentials_payload(self):
+        from users.security import encrypt_credentials_payload, decrypt_credentials_payload
+        csrf_token = "test_csrf_token_12345"
+        payload = {"username": "sec_user", "password": "Password123!", "timestamp": 12345678}
+        
+        encrypted_b64 = encrypt_credentials_payload(payload, csrf_token)
+        self.assertIsNotNone(encrypted_b64)
+        self.assertNotEqual(encrypted_b64, "Password123!")
+        
+        decrypted = decrypt_credentials_payload(encrypted_b64, csrf_token)
+        self.assertIsNotNone(decrypted)
+        self.assertEqual(decrypted["username"], "sec_user")
+        self.assertEqual(decrypted["password"], "Password123!")
+
+    def test_login_with_encrypted_credentials(self):
+        from users.security import encrypt_credentials_payload
+        csrf_token = "mock_csrf_val"
+        payload = {"username": "sec_user", "password": "Password123!"}
+        encrypted_b64 = encrypt_credentials_payload(payload, csrf_token)
+        
+        response = self.client.post(
+            reverse('login'),
+            {
+                'csrfmiddlewaretoken': csrf_token,
+                'encrypted_credentials': encrypted_b64
+            }
+        )
+        self.assertEqual(response.status_code, 302)
+
+    def test_hsts_and_security_headers_enforced(self):
+        response = self.client.get(reverse('login'))
+        self.assertIn('Strict-Transport-Security', response.headers)
+        self.assertEqual(response.headers['Strict-Transport-Security'], 'max-age=31536000; includeSubDomains; preload')
+        self.assertEqual(response.headers.get('X-Content-Type-Options'), 'nosniff')
+        self.assertEqual(response.headers.get('X-Frame-Options'), 'DENY')
+
+    def test_sensitive_data_scrubber(self):
+        from users.security import SensitiveDataScrubber
+        text = "Login attempt with password='SecretPassword123' and token=abc123xyz"
+        scrubbed = SensitiveDataScrubber.scrub_text(text)
+        self.assertNotIn("SecretPassword123", scrubbed)
+        self.assertIn("[REDACTED]", scrubbed)
+
+    def test_brute_force_ip_lockout(self):
+        from users.security import BruteForceLimiter
+        ip = '192.168.1.100'
+        BruteForceLimiter.reset_attempts(ip)
+        
+        for _ in range(4):
+            BruteForceLimiter.record_failed_attempt(ip)
+            is_locked, _ = BruteForceLimiter.is_locked_out(ip)
+            self.assertFalse(is_locked)
+            
+        BruteForceLimiter.record_failed_attempt(ip)
+        is_locked, ttl = BruteForceLimiter.is_locked_out(ip)
+        self.assertTrue(is_locked)
+        self.assertGreater(ttl, 0)
+        
+        BruteForceLimiter.reset_attempts(ip)
+        is_locked, _ = BruteForceLimiter.is_locked_out(ip)
+        self.assertFalse(is_locked)
+
+
+
 
 
 

@@ -728,3 +728,151 @@ class OwnerBillListFilterTestCase(TestCase):
         bills = response.context['page_obj'].object_list
         self.assertIn(self.bill_yesterday_b1_cash, bills)
         self.assertNotIn(self.bill_today_b1_cash, bills)
+
+
+class AdminBillEditTests(TestCase):
+    def setUp(self):
+        self.branch = Branch.objects.create(name="Test Branch", location="Test Location", invoice_prefix="TB")
+        self.owner = User.objects.create_user(username="admin_owner", password="password", role="owner", active_branch=self.branch)
+        self.staff = User.objects.create_user(username="sales_staff", password="password", role="sales_staff", active_branch=self.branch)
+        
+        self.product = Product.objects.create(name="Shirt", barcode="12345", price=Decimal("500"), branch=self.branch)
+        ProductRegistry.objects.create(product=self.product, branch=self.branch, stock_quantity=20)
+        
+        self.bill = Bill.objects.create(
+            branch=self.branch,
+            staff=self.staff,
+            customer_name="John Doe",
+            customer_phone="9876543210",
+            total_amount=500,
+            payment_method="cash",
+            cash_amount=500,
+            online_amount=0
+        )
+        self.bill_item = BillItem.objects.create(
+            bill=self.bill,
+            product=self.product,
+            quantity=1,
+            unit_price=500,
+            subtotal=Decimal("500")
+        )
+        # Set bill created_at to yesterday to simulate editing after creation
+        self.bill.created_at = timezone.now() - timezone.timedelta(days=1)
+        self.bill.save()
+
+    def test_admin_can_edit_bill_after_creation(self):
+        self.client.force_login(self.owner)
+        # Check bill detail view
+        detail_res = self.client.get(reverse('bill_detail', args=[self.bill.id]))
+        self.assertEqual(detail_res.status_code, 200)
+        self.assertTrue(detail_res.context['allow_edit'])
+
+        # Access edit_bill_back view
+        edit_res = self.client.get(reverse('edit_bill_back', args=[self.bill.id]))
+        self.assertEqual(edit_res.status_code, 302)  # Redirects to pos_index
+        self.assertIn('pos_edit_cart', self.client.session)
+        cart_data = self.client.session['pos_edit_cart']
+        self.assertEqual(cart_data['editing_bill_id'], self.bill.id)
+
+    def test_sales_staff_cannot_edit_past_bill_after_creation(self):
+        self.client.force_login(self.staff)
+        # Check bill detail view
+        detail_res = self.client.get(reverse('bill_detail', args=[self.bill.id]))
+        self.assertEqual(detail_res.status_code, 200)
+        self.assertFalse(detail_res.context['allow_edit'])
+
+        # Access edit_bill_back view should be forbidden
+        edit_res = self.client.get(reverse('edit_bill_back', args=[self.bill.id]))
+        self.assertEqual(edit_res.status_code, 403)
+
+    def test_bill_edit_stock_reversion_and_export_calculations(self):
+        import json
+        from django.urls import reverse
+        from core.models import StockTransaction
+
+        # Create Product A and Product B
+        prod_a = Product.objects.create(name="Item A", barcode="11111", price=Decimal("100"), branch=self.branch)
+        reg_a = ProductRegistry.objects.create(product=prod_a, branch=self.branch, stock_quantity=50)
+
+        prod_b = Product.objects.create(name="Item B", barcode="22222", price=Decimal("300"), branch=self.branch)
+        reg_b = ProductRegistry.objects.create(product=prod_b, branch=self.branch, stock_quantity=30)
+
+        # 1. Process initial bill with Item A (Qty: 2) -> Total ₹200 (Cash)
+        self.client.force_login(self.owner)
+        initial_payload = {
+            'items': [{'id': prod_a.id, 'quantity': 2}],
+            'customer_name': 'Original Customer',
+            'customer_phone': '9999999999',
+            'payment_method': 'cash',
+            'cash_amount': 200,
+            'online_amount': 0,
+            'retail_price': 0,
+        }
+        res = self.client.post(reverse('process_bill'), data=json.dumps(initial_payload), content_type='application/json')
+        self.assertEqual(res.status_code, 200)
+        bill_id = res.json()['bill_id']
+        bill = Bill.objects.get(id=bill_id)
+
+        # Verify initial stock: Item A stock reduced from 50 to 48
+        reg_a.refresh_from_db()
+        self.assertEqual(reg_a.stock_quantity, 48)
+        reg_b.refresh_from_db()
+        self.assertEqual(reg_b.stock_quantity, 30)
+
+        # Verify initial StockTransaction created for Item A
+        tx_a = StockTransaction.objects.filter(product=prod_a, reference=f"Bill {bill.invoice_number}")
+        self.assertEqual(tx_a.count(), 1)
+        self.assertEqual(tx_a.first().quantity, 2)
+
+        # 2. Edit the bill: replace Item A with Item B (Qty: 3), change payment to Online -> Total ₹900
+        edit_payload = {
+            'editing_bill_id': bill.id,
+            'items': [{'id': prod_b.id, 'quantity': 3}],
+            'customer_name': 'Updated Customer',
+            'customer_phone': '8888888888',
+            'payment_method': 'online',
+            'cash_amount': 0,
+            'online_amount': 900,
+            'retail_price': 0,
+        }
+        res_edit = self.client.post(reverse('process_bill'), data=json.dumps(edit_payload), content_type='application/json')
+        self.assertEqual(res_edit.status_code, 200)
+
+        # 3. Verify Stock Reversion & Deduction
+        reg_a.refresh_from_db()
+        self.assertEqual(reg_a.stock_quantity, 50)  # Reverted back from 48 to 50!
+        reg_b.refresh_from_db()
+        self.assertEqual(reg_b.stock_quantity, 27)  # Deducted 3 from 30 -> 27!
+
+        # 4. Verify StockTransactions
+        self.assertFalse(StockTransaction.objects.filter(product=prod_a, reference=f"Bill {bill.invoice_number}").exists())
+        tx_b = StockTransaction.objects.filter(product=prod_b, reference=f"Bill {bill.invoice_number}")
+        self.assertEqual(tx_b.count(), 1)
+        self.assertEqual(tx_b.first().quantity, 3)
+
+        # 5. Verify Bill & Dashboard / CSV Export Calculations
+        bill.refresh_from_db()
+        self.assertEqual(bill.total_amount, 900)
+        self.assertEqual(bill.payment_method, 'online')
+        self.assertEqual(bill.online_amount, 900)
+        self.assertEqual(bill.cash_amount, 0)
+        self.assertEqual(bill.customer_name, 'Updated Customer')
+
+        # Check Sales Report List View Dashboard stats
+        yesterday_iso = (timezone.now() - timezone.timedelta(days=1)).date().isoformat()
+        today_iso = timezone.now().date().isoformat()
+        list_res = self.client.get(reverse('owner_bill_list'), {'start_date': yesterday_iso, 'end_date': today_iso})
+        self.assertEqual(list_res.status_code, 200)
+        stats = list_res.context['stats']
+        self.assertEqual(stats['total_online'], 900)
+        self.assertEqual(stats['total_cash'], 500) # from self.bill created yesterday in setUp
+
+        # Check CSV Export content contains updated customer & item info
+        csv_res = self.client.get(reverse('export_sales_csv'))
+        self.assertEqual(csv_res.status_code, 200)
+        csv_content = csv_res.content.decode('utf-8')
+        self.assertIn('Updated Customer', csv_content)
+        self.assertIn('Item B', csv_content)
+        self.assertNotIn('Original Customer', csv_content)
+
+

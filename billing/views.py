@@ -95,14 +95,24 @@ def get_product_by_barcode(request):
         return JsonResponse({'error': 'No barcode provided'}, status=400)
     
     try:
-        product = Product.objects.get(barcode=barcode, branch=request.user.active_branch)
-        try:
-            registry = ProductRegistry.objects.get(product=product, branch=request.user.active_branch)
+        active_br = request.user.active_branch
+        registry = ProductRegistry.objects.filter(
+            branch=active_br,
+            product__barcode=barcode
+        ).select_related('product').prefetch_related('product__combos').first()
+
+        if registry:
+            product = registry.product
             stock = registry.stock_quantity
-        except ProductRegistry.DoesNotExist:
+        else:
+            product = Product.objects.prefetch_related('combos').get(barcode=barcode, branch=active_br)
             stock = 0
-            
-        combos_qs = product.combos.filter(branch=request.user.active_branch).order_by('-quantity')
+
+        combos_list = [
+            {'quantity': c.quantity, 'price': int(c.price)}
+            for c in sorted(product.combos.all(), key=lambda x: x.quantity, reverse=True)
+            if c.branch_id == active_br.id or c.branch_id is None
+        ]
 
         return JsonResponse({
             'id': product.id,
@@ -110,7 +120,7 @@ def get_product_by_barcode(request):
             'barcode': product.barcode,
             'price': int(product.price),
             'stock': stock,
-            'combos': [{'quantity': c.quantity, 'price': int(c.price)} for c in combos_qs],
+            'combos': combos_list,
         })
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'}, status=404)
@@ -149,7 +159,7 @@ def process_bill(request):
                     bill = get_object_or_404(Bill, id=editing_bill_id)
                     
                     # Double-check authorization to edit
-                    can_edit = request.user.role == 'owner' or getattr(request.user, 'has_bill_edit_rights', False)
+                    can_edit = request.user.is_superuser or request.user.is_owner() or getattr(request.user, 'has_bill_edit_rights', False)
                     is_newly_created = request.session.get('newly_created_bill_id') == bill.id
                     if not (can_edit or is_newly_created):
                         return JsonResponse({'error': 'Unauthorized to edit this bill.'}, status=403)
@@ -212,7 +222,7 @@ def process_bill(request):
                 products_dict = Product.objects.in_bulk(product_ids)
                 
                 # Fetch all registries in bulk
-                registries = ProductRegistry.objects.filter(product_id__in=product_ids, branch=request.user.active_branch)
+                registries = ProductRegistry.objects.filter(product_id__in=product_ids, branch=bill.branch)
                 registries_dict = {r.product_id: r for r in registries}
                 
                 regs_to_update = {}
@@ -230,7 +240,7 @@ def process_bill(request):
                         raise ValueError(f"Stock registry not found for product: {product.name}")
                         
                     if registry.stock_quantity < quantity:
-                        raise ValueError(f"Insufficient stock for {product.name} at {request.user.active_branch.name}. Available: {registry.stock_quantity}")
+                        raise ValueError(f"Insufficient stock for {product.name} at {bill.branch.name}. Available: {registry.stock_quantity}")
                     
                     # Decrement stock in memory
                     registry.stock_quantity -= quantity
@@ -374,7 +384,7 @@ def process_bill(request):
                     
                     stock_transactions_to_create.append(StockTransaction(
                         product=product,
-                        branch=request.user.active_branch,
+                        branch=bill.branch,
                         transaction_type='OUT',
                         quantity=quantity,
                         reference=f"Bill {bill.invoice_number}",
@@ -446,38 +456,50 @@ def update_customer_details(request, bill_id):
 @login_required
 def edit_bill_back(request, bill_id):
     bill = get_object_or_404(Bill, id=bill_id)
-    # Check permissions (branch ownership)
-    if not request.user.is_superuser and bill.branch != request.user.active_branch:
-        return HttpResponse("Unauthorized to edit this bill.", status=403)
+    
+    # Existing permission check: allow superusers, owners or users with explicit edit rights
+    can_edit = request.user.is_superuser or request.user.is_owner() or getattr(request.user, 'has_bill_edit_rights', False)
 
-    # Restrict editing to the same calendar day as bill creation (applies to all users, including admin)
-    from django.utils import timezone
-    if bill.created_at.date() != timezone.now().date():
-        return HttpResponse("Editing is only allowed on the same day the bill was created.", status=403)
+    # Check permissions (branch ownership & access)
+    accessible_branches = request.user.get_accessible_branches()
+    if not request.user.is_superuser and not request.user.is_owner() and bill.branch != request.user.active_branch:
+        if bill.branch not in accessible_branches:
+            return HttpResponse("Unauthorized to edit this bill.", status=403)
 
-    # Existing permission check: allow owners or users with explicit edit rights
-    can_edit = request.user.role == 'owner' or getattr(request.user, 'has_bill_edit_rights', False)
-    # Allow editing from POS interface (e.g., when a staff is actively billing) via a query flag
+    # Auto-switch active branch for owners/managers editing a bill belonging to another accessible branch
+    if bill.branch and request.user.active_branch != bill.branch:
+        if request.user.is_superuser or request.user.is_owner() or bill.branch in accessible_branches:
+            request.user.active_branch = bill.branch
+            request.user.save()
+
+    # For non-admin staff, enforce same-day and immediate session restrictions
     from_pos = request.GET.get('from_pos') == 'true'
-    if from_pos:
-        can_edit = True
+    is_newly_created = request.session.get('newly_created_bill_id') == bill.id
+
     if not can_edit:
-        # Also allow if this is the bill just created in the current session
-        if request.session.get('newly_created_bill_id') != bill.id:
+        from django.utils import timezone
+        if bill.created_at.date() != timezone.now().date():
+            return HttpResponse("Editing is only allowed on the same day the bill was created.", status=403)
+        if not (from_pos or is_newly_created):
             return HttpResponse("Editing is only allowed immediately after generating the bill.", status=403)
             
-    items_data = []
-    for item in bill.items.all():
-        # Get current registry stock
-        current_stock = 0
-        try:
-            current_stock = ProductRegistry.objects.get(product=item.product, branch=bill.branch).stock_quantity
-        except ProductRegistry.DoesNotExist:
-            pass
+    bill_items = list(bill.items.select_related('product').all())
+    product_ids = [item.product_id for item in bill_items]
 
-        # Fetch combos
-        combos_qs = item.product.combos.filter(branch=bill.branch).order_by('-quantity')
-        combos_list = [{'quantity': c.quantity, 'price': int(c.price)} for c in combos_qs]
+    # Bulk fetch current stock registries for these items
+    registries = ProductRegistry.objects.filter(product_id__in=product_ids, branch=bill.branch)
+    stock_dict = {r.product_id: r.stock_quantity for r in registries}
+
+    # Bulk fetch combo prices for these items
+    combos_qs = ComboPrice.objects.filter(product_id__in=product_ids, branch=bill.branch).order_by('-quantity')
+    combos_dict = {}
+    for c in combos_qs:
+        combos_dict.setdefault(c.product_id, []).append({'quantity': c.quantity, 'price': int(c.price)})
+
+    items_data = []
+    for item in bill_items:
+        current_stock = stock_dict.get(item.product_id, 0)
+        combos_list = combos_dict.get(item.product_id, [])
 
         items_data.append({
             'id': str(item.product.id),
@@ -532,11 +554,12 @@ def bill_detail(request, bill_id):
     encoded_text = urllib.parse.quote(wa_text)
     wa_link = f"https://wa.me/{normalized_phone}?text={encoded_text}" if normalized_phone else None
     
-    # Check if this bill was just created in the current session and redirected from POS
+    # Check if this bill can be edited: allow admins, owners, or users with edit rights anytime,
+    # or sales staff immediately after creating the bill in this session.
     from_pos = request.GET.get('from_pos') == 'true'
     newly_created_id = request.session.get('newly_created_bill_id')
-    # Allow edit only immediately after a newly created bill in this session
-    allow_edit = (newly_created_id == bill.id)
+    can_edit_rights = request.user.is_superuser or request.user.is_owner() or getattr(request.user, 'has_bill_edit_rights', False)
+    allow_edit = can_edit_rights or (newly_created_id == bill.id)
     
     # Build items list with barcode formatting for Code39 font
     items = list(items)
@@ -720,26 +743,38 @@ def owner_bill_list(request):
         
     # Stats for the filtered selection
     from .return_models import ReturnRequest
-    total_bill_amount = bills.aggregate(total=Sum('total_amount'))['total'] or 0
+    bill_aggs = bills.aggregate(
+        total_bill=Sum('total_amount'),
+        cash=Sum('cash_amount'),
+        online=Sum('online_amount'),
+        cnt=Count('id')
+    )
+    total_bill_amount = bill_aggs['total_bill'] or 0
+    bill_cash = bill_aggs['cash'] or 0
+    bill_online = bill_aggs['online'] or 0
+    bill_count = bill_aggs['cnt'] or 0
 
     # Include extra payments collected from return/exchange transactions
-    return_qs = ReturnRequest.objects.filter(
+    return_aggs = ReturnRequest.objects.filter(
         invoice__in=bills,
         status=ReturnRequest.Status.APPROVED
+    ).aggregate(
+        ret_cash=Sum('cash_amount'),
+        ret_online=Sum('online_amount')
     )
-    total_exchange_cash = return_qs.aggregate(total=Sum('cash_amount'))['total'] or 0
-    total_exchange_online = return_qs.aggregate(total=Sum('online_amount'))['total'] or 0
+    total_exchange_cash = return_aggs['ret_cash'] or 0
+    total_exchange_online = return_aggs['ret_online'] or 0
     total_exchange_collected = total_exchange_cash + total_exchange_online
 
     # Cash = bills cash + return exchange cash paid by customer
-    total_cash = (bills.aggregate(total=Sum('cash_amount'))['total'] or 0) + total_exchange_cash
+    total_cash = bill_cash + total_exchange_cash
     # Online = bills online + return exchange online paid by customer
-    total_online = (bills.aggregate(total=Sum('online_amount'))['total'] or 0) + total_exchange_online
+    total_online = bill_online + total_exchange_online
 
     stats = {
         # Revenue = total billed + extra collected during exchanges
         'total_revenue': total_bill_amount + total_exchange_collected,
-        'bill_count': bills.count(),
+        'bill_count': bill_count,
         'total_cash': total_cash,
         'total_online': total_online,
     }

@@ -373,18 +373,10 @@ class OwnerDashboardView(TemplateView):
         context['branches_by_code'] = branches_by_code_list
         context['branch_search'] = branch_search
         
-        context['recent_bills'] = Bill.objects.filter(branch__in=accessible_branches).order_by('-created_at')[:5]
+        context['recent_bills'] = Bill.objects.filter(branch__in=accessible_branches).select_related('branch', 'staff').order_by('-created_at')[:5]
         
-        # Staff list (admins, managers, and staff) without pagination for client-side search scalability
-        if self.request.user.is_superuser or self.request.user.role == 'owner':
-            staff_qs = User.objects.all().prefetch_related('branches').order_by('employee_id', 'username')
-        else:
-            staff_qs = User.objects.filter(branches__in=accessible_branches).prefetch_related('branches').distinct().order_by('employee_id', 'username')
-        context['staff_list'] = staff_qs
-        context['staff_list'] = staff_qs
-        
-        # Manager employee performance data
-        managers = [u for u in User.objects.all().prefetch_related('branches') if u.is_manager() and not u.is_owner()]
+        # Manager employee performance data (filtered directly at DB level for instant load)
+        managers = list(User.objects.filter(role__in=['manager', 'branch_manager', 'regional_manager']).prefetch_related('branches'))
         manager_data = []
         import datetime
         today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
@@ -528,15 +520,28 @@ class ManagerDashboardView(TemplateView):
         context['staff_count'] = User.objects.filter(branches__in=target_branches).distinct().count()
         context['recent_branch_bills'] = Bill.objects.filter(branch__in=target_branches).order_by('-created_at')[:5]
 
-        # Multi-branch summary performance breakdown
+        # Multi-branch summary performance breakdown (bulk queries to eliminate N+1 overhead)
+        branch_ids = [b.id for b in accessible_branches]
+        
+        # 1. Fetch sales per branch in 1 SQL query
+        sales_by_branch_data = Bill.objects.filter(
+            branch_id__in=branch_ids,
+            created_at__range=(today_start, today_end)
+        ).values('branch_id').annotate(total_sales=Sum('total_amount'))
+        sales_by_branch = {item['branch_id']: item['total_sales'] or 0 for item in sales_by_branch_data}
+
+        # 2. Fetch staff counts per branch in 1 SQL query
+        staff_count_data = User.branches.through.objects.filter(
+            branch_id__in=branch_ids
+        ).values('branch_id').annotate(staff_cnt=Count('user_id', distinct=True))
+        staff_by_branch = {item['branch_id']: item['staff_cnt'] for item in staff_count_data}
+
         branch_performances = []
         for b in accessible_branches:
-            b_bills = Bill.objects.filter(branch=b, created_at__range=(today_start, today_end))
-            b_sales = b_bills.aggregate(s=Sum('total_amount'))['s'] or 0
             branch_performances.append({
                 'branch': b,
-                'sales_today': b_sales,
-                'staff_count': b.assigned_users.count()
+                'sales_today': sales_by_branch.get(b.id, 0),
+                'staff_count': staff_by_branch.get(b.id, 0)
             })
         context['branch_performances'] = branch_performances
 
@@ -1159,17 +1164,49 @@ def export_staff_csv(request):
 
 @login_required
 def get_staff_online_status(request):
-    """API endpoint to get the online/offline status of all staff members."""
+    """API endpoint to get the online/offline status and details of all staff members."""
     if not (request.user.is_owner() or request.user.is_manager()):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
         
-    staff_qs = User.objects.all().only('id', 'last_activity')
+    staff_qs = User.objects.all().select_related('active_branch').prefetch_related('branches')
+    
+    from core.models import Branch
+    total_branches_count = Branch.objects.count()
     
     status_data = {}
+    details = []
     for staff in staff_qs:
-        status_data[staff.id] = staff.is_online
+        is_online = staff.is_online
+        status_data[staff.id] = is_online
         
-    return JsonResponse(status_data)
+        assigned_branches = list(staff.branches.all())
+        if staff.has_all_branches or staff.is_owner() or (total_branches_count > 0 and len(assigned_branches) >= total_branches_count):
+            branches_str = 'All Branches'
+        else:
+            branch_names = [b.name for b in assigned_branches]
+            if staff.active_branch and staff.active_branch.name not in branch_names:
+                branch_names.insert(0, f"Primary: {staff.active_branch.name}")
+            branches_str = ', '.join(branch_names) if branch_names else 'None'
+        
+        details.append({
+            'id': staff.id,
+            'emp_id': staff.employee_id or 'No ID',
+            'username': staff.username,
+            'name': f"{staff.first_name} {staff.last_name}".strip() or staff.username,
+            'role': staff.role_display,
+            'branches': branches_str,
+            'is_online': is_online
+        })
+        
+    res = {
+        'status_map': status_data,
+        'staff_details': details
+    }
+    # Keep backward compatibility for key-value dictionary access
+    for k, v in status_data.items():
+        res[k] = v
+        
+    return JsonResponse(res)
 
 
 @login_required
@@ -1233,94 +1270,99 @@ def branch_staff_management(request):
     
     today = timezone.now().date()
     
-    # Subquery for active staff count
-    staff_subquery = User.objects.filter(
-        branches=OuterRef('pk')
-    ).order_by().values('branches').annotate(cnt=Count('id')).values('cnt')
-    
-    # Subquery for sales (today)
-    today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
-    today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
-    sales_subquery = Bill.objects.filter(
-        branch=OuterRef('pk'),
-        created_at__range=(today_start, today_end)
-    ).order_by().values('branch').annotate(total=Sum('total_amount')).values('total')
-    
-    cash_subquery = Bill.objects.filter(
-        branch=OuterRef('pk'),
-        created_at__range=(today_start, today_end)
-    ).order_by().values('branch').annotate(total=Sum('cash_amount')).values('total')
-    
-    online_subquery = Bill.objects.filter(
-        branch=OuterRef('pk'),
-        created_at__range=(today_start, today_end)
-    ).order_by().values('branch').annotate(total=Sum('online_amount')).values('total')
-    
-    branches = Branch.objects.annotate(
-        today_sales=Coalesce(Subquery(sales_subquery), 0, output_field=models.DecimalField()),
-        today_cash=Coalesce(Subquery(cash_subquery), 0, output_field=models.DecimalField()),
-        today_online=Coalesce(Subquery(online_subquery), 0, output_field=models.DecimalField()),
-        active_staff_count=Coalesce(Subquery(staff_subquery), 0, output_field=models.IntegerField())
-    ).order_by('-today_sales', 'name')
-    
-    current_month_start = today.replace(day=1)
-    import calendar
-    current_month_start_dt = timezone.make_aware(datetime.datetime(today.year, today.month, 1, 0, 0, 0))
-    _, last_day = calendar.monthrange(today.year, today.month)
-    current_month_end_dt = timezone.make_aware(datetime.datetime(today.year, today.month, last_day, 23, 59, 59))
-    
-    goals_dict = {g.branch_id: g.target_sales for g in BranchGoal.objects.filter(month=current_month_start)}
-    monthly_sales_dict = {
-        row['branch']: row['total']
-        for row in Bill.objects.filter(created_at__range=(current_month_start_dt, current_month_end_dt))
-        .values('branch')
-        .annotate(total=Sum('total_amount'))
-    }
-    
-    branches_list = list(branches)
-    for b in branches_list:
-        b.current_goal = int(goals_dict.get(b.id, 0))
-        b.current_month_sales = int(monthly_sales_dict.get(b.id, 0))
-        if b.current_goal > 0:
-            b.current_goal_percent = min(100, int((b.current_month_sales * 100) / b.current_goal))
-            b.current_goal_percent_exact = round((b.current_month_sales * 100) / b.current_goal, 1)
-        else:
-            b.current_goal_percent = 0
-            b.current_goal_percent_exact = 0
-            
-    branch_search = request.GET.get('branch_search', '').strip()
-    if branch_search:
-        search_lower = branch_search.lower()
-        branches_by_code_list = [
-            b for b in branches_list
-            if search_lower in b.name.lower() or 
-               (b.location and search_lower in b.location.lower()) or 
-               (b.invoice_prefix and search_lower in b.invoice_prefix.lower()) or 
-               (b.code and str(b.code) == branch_search)
-        ]
-    else:
-        branches_by_code_list = list(branches_list)
+    if active_tab == 'branches':
+        staff_subquery = User.objects.filter(
+            branches=OuterRef('pk')
+        ).order_by().values('branches').annotate(cnt=Count('id')).values('cnt')
         
-    branches_by_code_list.sort(key=lambda b: (b.code or 0, b.id))
-    for b in branches_by_code_list:
-        b.current_goal = int(goals_dict.get(b.id, 0))
-        b.current_month_sales = int(monthly_sales_dict.get(b.id, 0))
-        if b.current_goal > 0:
-            b.current_goal_percent = min(100, int((b.current_month_sales * 100) / b.current_goal))
-            b.current_goal_percent_exact = round((b.current_month_sales * 100) / b.current_goal, 1)
+        branches = Branch.objects.annotate(
+            active_staff_count=Coalesce(Subquery(staff_subquery), 0, output_field=models.IntegerField())
+        ).order_by('code', 'id')
+        
+        current_month_start = today.replace(day=1)
+        import calendar
+        current_month_start_dt = timezone.make_aware(datetime.datetime(today.year, today.month, 1, 0, 0, 0))
+        _, last_day = calendar.monthrange(today.year, today.month)
+        current_month_end_dt = timezone.make_aware(datetime.datetime(today.year, today.month, last_day, 23, 59, 59))
+        
+        from billing.models import BranchGoal
+        goals_dict = {g.branch_id: g.target_sales for g in BranchGoal.objects.filter(month=current_month_start)}
+        monthly_sales_dict = {
+            row['branch']: row['total']
+            for row in Bill.objects.filter(created_at__range=(current_month_start_dt, current_month_end_dt))
+            .values('branch')
+            .annotate(total=Sum('total_amount'))
+        }
+        
+        branches_list = list(branches)
+        for b in branches_list:
+            b.current_goal = int(goals_dict.get(b.id, 0))
+            b.current_month_sales = int(monthly_sales_dict.get(b.id, 0))
+            if b.current_goal > 0:
+                b.current_goal_percent = min(100, int((b.current_month_sales * 100) / b.current_goal))
+                b.current_goal_percent_exact = round((b.current_month_sales * 100) / b.current_goal, 1)
+            else:
+                b.current_goal_percent = 0
+                b.current_goal_percent_exact = 0
+                
+        branch_search = request.GET.get('branch_search', '').strip()
+        if branch_search:
+            search_lower = branch_search.lower()
+            branches_by_code_list = [
+                b for b in branches_list
+                if search_lower in b.name.lower() or 
+                   (b.location and search_lower in b.location.lower()) or 
+                   (b.invoice_prefix and search_lower in b.invoice_prefix.lower()) or 
+                   (b.code and str(b.code) == branch_search)
+            ]
         else:
-            b.current_goal_percent = 0
-            b.current_goal_percent_exact = 0
+            branches_by_code_list = list(branches_list)
             
-    staff_qs = User.objects.all().select_related('active_branch').prefetch_related('branches').order_by('employee_id', 'username')
+        staff_qs = []
+        page_obj = None
+        total_staff_count = 0
+        staff_search = ''
+        branch_filter = 'all'
+        role_filter = 'all'
+    else:
+        branches_list = list(Branch.objects.all().order_by('code', 'id'))
+        branches_by_code_list = branches_list
+        branch_search = ''
+        
+        staff_search = request.GET.get('staff_search', '').strip()
+        branch_filter = request.GET.get('branch_filter', 'all').strip()
+        role_filter = request.GET.get('role_filter', 'all').strip()
+        page_number = request.GET.get('page', 1)
+        
+        qs = User.objects.all().select_related('active_branch').prefetch_related('branches')
+        if staff_search:
+            qs = qs.filter(
+                Q(username__icontains=staff_search) |
+                Q(first_name__icontains=staff_search) |
+                Q(last_name__icontains=staff_search) |
+                Q(employee_id__icontains=staff_search)
+            )
+        if branch_filter and branch_filter != 'all':
+            b_id = branch_filter.replace('branch-', '')
+            qs = qs.filter(Q(branches__id=b_id) | Q(active_branch__id=b_id))
+        if role_filter and role_filter != 'all':
+            qs = qs.filter(role=role_filter)
+            
+        qs = qs.distinct().order_by('employee_id', 'username')
+        
+        from django.core.paginator import Paginator
+        paginator = Paginator(qs, 10)
+        page_obj = paginator.get_page(page_number)
+        total_staff_count = paginator.count
+        
+        staff_qs = list(page_obj.object_list)
+        for s in staff_qs:
+            s.assigned_branches = list(s.branches.all())
+            s.branch_ids_str = ','.join(str(b.id) for b in s.assigned_branches)
+        
     custom_roles = CustomRole.objects.all()
     
     from users.models import RoleShiftPolicy
-    standard_roles = ['owner', 'regional_manager', 'general_manager', 'manager', 'assistant_manager', 'sales_staff']
-    for rcode in standard_roles:
-        RoleShiftPolicy.get_policy_for_role(rcode)
-    for crole in custom_roles:
-        RoleShiftPolicy.get_policy_for_role(crole.code)
     role_policies = RoleShiftPolicy.objects.all().order_by('id')
 
     from users.forms import BranchForm, StaffForm
@@ -1332,9 +1374,14 @@ def branch_staff_management(request):
         'branches_by_code': branches_by_code_list,
         'branch_search': branch_search,
         'staff_list': staff_qs,
+        'page_obj': page_obj,
+        'total_staff_count': total_staff_count,
+        'staff_search': staff_search,
+        'branch_filter': branch_filter,
+        'role_filter': role_filter,
         'custom_roles': custom_roles,
         'role_policies': role_policies,
-        'all_branches': Branch.objects.all(),
+        'all_branches': branches_list,
         'branch_form': branch_form,
         'staff_form': staff_form,
         'active_tab': active_tab,

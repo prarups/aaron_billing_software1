@@ -17,10 +17,9 @@ app.add_middleware(
         "https://aaron-billing-software1-nn2t.onrender.com",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
-        "*",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

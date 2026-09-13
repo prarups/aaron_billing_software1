@@ -79,6 +79,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'users.middleware.UserActivityMiddleware',
+    'users.middleware.SecurityPayloadAndHSTSMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -120,7 +121,7 @@ else:
     # Production: PostgreSQL (Railway, Render, or custom)
     if os.environ.get('DATABASE_URL'):
         DATABASES = {
-            'default': dj_database_url.config(conn_max_age=0)
+            'default': dj_database_url.config(conn_max_age=600, conn_health_checks=True)
         }
     else:
         DATABASES = {
@@ -131,6 +132,8 @@ else:
                 'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'p@ssw0rd'),
                 'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
                 'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+                'CONN_MAX_AGE': 600,
+                'CONN_HEALTH_CHECKS': True,
             }
         }
 
@@ -200,6 +203,13 @@ if custom_csrf:
         if origin.strip():
             CSRF_TRUSTED_ORIGINS.append(origin.strip())
 
+DEFAULT_EXCEPTION_REPORTER_FILTER = 'django.views.debug.SafeExceptionReporterFilter'
+
+# Strict Transport Security (HSTS) settings across environments
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
 # Security headers for production
 if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
@@ -208,9 +218,6 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     X_FRAME_OPTIONS = 'DENY'
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
 else:
     # Development (including mobile) settings: allow cookies over HTTP for testing
     SESSION_COOKIE_SECURE = False
@@ -222,6 +229,11 @@ else:
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'filters': {
+        'sensitive_data_scrubber': {
+            '()': 'users.security.SensitiveDataScrubber',
+        },
+    },
     'formatters': {
         'verbose': {
             'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
@@ -232,6 +244,7 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
+            'filters': ['sensitive_data_scrubber'],
         },
     },
     'root': {

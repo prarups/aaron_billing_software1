@@ -331,101 +331,190 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container-fluid p-0">
 
     {% if active_tab == 'branches' %}
-        <!-- 2. BRANCHES CONTENT -->
+        <!-- 2. BRANCHES CONTENT — Executive Modern Dashboard -->
         <div class="animate-fade-in" id="branches">
-            <div class="glass-card p-3">
-                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
-                    <div class="d-flex align-items-center flex-wrap gap-2">
-                        <h6 class="fw-bold text-primary mb-0 me-2"><i class="bi bi-shop me-1.5"></i>Overall Branches</h6>
-                        <div class="input-group input-group-sm" style="max-width: 200px;">
-                            <span class="input-group-text bg-light border-0 rounded-start-pill text-xxs"><i class="bi bi-search"></i></span>
-                            <input type="text" id="branchSearchInput" class="form-control border-0 bg-light rounded-end-pill text-xs py-1" placeholder="Search code or name..." oninput="filterBranches()">
-                            <script>document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('branchSearchInput');
-        if (searchInput) searchInput.value = '';
-        filterBranches();
-    });</script>
+
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+                <!-- Toolbar Header (Side-by-Side Clean Alignment) -->
+                <div class="p-3 px-3 px-md-4 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3" style="background: linear-gradient(120deg, #4f46e5 0%, #2563eb 50%, #1d4ed8 100%);">
+                    <!-- Left: Icon + Title + Search Bar Side-by-Side -->
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div class="d-flex align-items-center gap-2.5">
+                            <div class="rounded-3 p-2 d-flex align-items-center justify-content-center text-white flex-shrink-0" style="background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); width: 40px; height: 40px;">
+                                <i class="bi bi-diagram-3-fill fs-5 text-white"></i>
+                            </div>
+                            <h5 class="fw-bold text-white mb-0" style="font-size: 1.05rem; letter-spacing: -0.01em; white-space: nowrap;">Overall Branch Directory</h5>
+                        </div>
+
+                        <!-- Search Bar right next to Title -->
+                        <div class="position-relative" style="width: 240px;">
+                            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style="font-size: 0.8rem; z-index: 5;"></i>
+                            <input type="text" id="branchSearchInput" class="form-control form-control-sm border-0 bg-white rounded-pill ps-5 pe-3 py-1.5 text-xs fw-semibold shadow-sm w-100" placeholder="Search code or name..." oninput="filterBranches()" style="color: #1e293b; font-size: 0.78rem;">
                         </div>
                     </div>
+
+                    <!-- Right: Action Buttons -->
                     {% if user.role == 'owner' %}
-                    <div class="d-flex gap-2">
-                        <a href="{% url 'export_branches_csv' %}" class="btn btn-premium-export btn-sm rounded-pill px-3.5 py-1.5 text-xs fw-bold shadow-sm d-inline-flex align-items-center">
-                            <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i>Export CSV
+                    <div class="d-flex align-items-center gap-2 flex-wrap ms-auto ms-md-0">
+                        <a href="{% url 'export_branches_csv' %}" class="btn btn-sm btn-light fw-semibold rounded-pill px-3 py-1.5 text-xs shadow-sm d-inline-flex align-items-center gap-1">
+                            <i class="bi bi-file-earmark-spreadsheet text-success"></i> Export CSV
                         </a>
-                        <button class="btn btn-premium-add btn-sm rounded-pill px-3.5 py-1.5 text-xs fw-bold shadow-sm d-inline-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addBranchModal">
-                            <i class="bi bi-plus-circle me-1"></i>Create Branch
+                        <button class="btn btn-sm rounded-pill px-3.5 py-1.5 text-xs fw-bold text-white shadow-sm d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addBranchModal" style="background: #0f172a; border: none;">
+                            <i class="bi bi-plus-lg me-1"></i>Create Branch
                         </button>
                     </div>
                     {% endif %}
                 </div>
 
-                <div class="table-responsive">
-                    <table class="table align-middle table-compact">
-                        <thead>
-                            <tr class="border-bottom">
-                                <th>Branch ID / Code</th>
-                                <th>Branch Name</th>
-                                <th>Location</th>
-                                <th>Contact</th>
-                                <th>Prefix</th>
-                                <th>Sales Staff Count</th>
-                                <th>Monthly Goal</th>
+                <div class="px-2 px-md-4 pb-3 pb-md-4">
+
+                <style>
+                    .sortable-th {
+                        cursor: pointer !important;
+                        user-select: none !important;
+                        transition: color 0.15s ease, background-color 0.15s ease;
+                    }
+                    .sortable-th:hover {
+                        color: #4f46e5 !important;
+                        background-color: #f1f5f9 !important;
+                    }
+                    .branch-sort-icon {
+                        font-size: 0.72rem !important;
+                        opacity: 0;
+                        transition: opacity 0.2s ease, transform 0.2s ease;
+                        display: inline-block;
+                    }
+                    .sortable-th:hover .branch-sort-icon {
+                        opacity: 0.5 !important;
+                    }
+                    .branch-sort-icon.active-sort {
+                        opacity: 1 !important;
+                        color: #4f46e5 !important;
+                    }
+                </style>
+
+                <!-- Table Container -->
+                <div class="table-responsive rounded-3 border border-light" style="-webkit-overflow-scrolling: touch;">
+                    <table class="table align-middle mb-0" style="font-size: 0.85rem;">
+                        <thead style="background: #f8fafc; color: #475569;">
+                            <tr class="text-uppercase text-xxs tracking-wider border-bottom" style="font-weight: 800;">
+                                <th class="py-3 px-3.5 sortable-th" onclick="sortBranchTable(0)" title="Click to sort by Code/ID" style="width: 110px; white-space: nowrap;">
+                                    Code / ID <i class="bi bi-arrow-down-up ms-1 branch-sort-icon" id="bsort-0"></i>
+                                </th>
+                                <th class="py-3 px-3.5 sortable-th" onclick="sortBranchTable(1)" title="Click to sort by Branch Name" style="min-width: 180px; white-space: nowrap;">
+                                    Branch Name <i class="bi bi-arrow-down-up ms-1 branch-sort-icon" id="bsort-1"></i>
+                                </th>
+                                <th class="py-3 px-3.5 sortable-th" onclick="sortBranchTable(2)" title="Click to sort by Location" style="width: 140px; white-space: nowrap;">
+                                    Location <i class="bi bi-arrow-down-up ms-1 branch-sort-icon" id="bsort-2"></i>
+                                </th>
+                                <th class="py-3 px-3.5 sortable-th" onclick="sortBranchTable(3)" title="Click to sort by Contact" style="width: 140px; white-space: nowrap;">
+                                    Contact <i class="bi bi-arrow-down-up ms-1 branch-sort-icon" id="bsort-3"></i>
+                                </th>
+                                <th class="py-3 px-3.5 sortable-th text-center" onclick="sortBranchTable(4)" title="Click to sort by Prefix" style="width: 100px; white-space: nowrap;">
+                                    Prefix <i class="bi bi-arrow-down-up ms-1 branch-sort-icon" id="bsort-4"></i>
+                                </th>
+                                <th class="py-3 px-3.5 sortable-th text-center" onclick="sortBranchTable(5)" title="Click to sort by Staff Count" style="width: 120px; white-space: nowrap;">
+                                    Staff Count <i class="bi bi-arrow-down-up ms-1 branch-sort-icon" id="bsort-5"></i>
+                                </th>
+                                <th class="py-3 px-3.5 sortable-th" onclick="sortBranchTable(6)" title="Click to sort by Monthly Goal" style="width: 160px; white-space: nowrap;">
+                                    Monthly Goal <i class="bi bi-arrow-down-up ms-1 branch-sort-icon" id="bsort-6"></i>
+                                </th>
                                 {% if user.role == 'owner' %}
-                                <th class="text-center" style="width: 130px;">Actions</th>
+                                <th class="py-3 px-3.5 text-center" style="width: 120px; white-space: nowrap;">Actions</th>
                                 {% endif %}
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody class="bg-white">
                             {% for branch in branches_by_code %}
-                            <tr id="branch-row-{{ branch.id }}" class="branch-row">
-                                <td class="fw-bold text-muted text-xs branch-code">{{ branch.code|default:branch.id }}</td>
-                                <td class="fw-bold text-primary text-xs branch-name">{{ branch.name }}</td>
-                                <td class="text-xs">{{ branch.location }}</td>
-                                <td class="text-xs">{{ branch.contact_number|default:"-" }}</td>
-                                <td><span class="badge bg-light text-dark border text-xxs">{{ branch.invoice_prefix }}</span></td>
-                                <td><span class="badge bg-primary bg-opacity-10 text-primary text-xxs">{{ branch.active_staff_count }} staff</span></td>
-                                <td>
+                            <tr id="branch-row-{{ branch.id }}" class="branch-row align-middle border-bottom border-light hover-bg-light" style="transition: background-color 0.15s ease;">
+                                <td class="py-3 px-3.5">
+                                    <span class="badge rounded-pill px-2.5 py-1 text-xxs fw-bold branch-code" style="background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe;">
+                                        #{{ branch.code|default:branch.id }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-3.5 fw-bold text-dark branch-name">
+                                    <span class="text-indigo fw-bold d-block">{{ branch.name }}</span>
+                                </td>
+                                <td class="py-3 px-3.5 text-muted text-xs">
+                                    {% if branch.location %}
+                                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2.5 py-1 text-xxs fw-semibold d-inline-block text-truncate" style="max-width: 130px; vertical-align: middle;" title="{{ branch.location }}">
+                                        <i class="bi bi-geo-alt-fill me-0.5"></i>{{ branch.location|truncatechars:18 }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted opacity-50">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-3.5 text-muted text-xs">
+                                    {% if branch.contact_number %}
+                                    <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-0.5 text-xxs fw-semibold">
+                                        <i class="bi bi-telephone-fill me-0.5"></i>{{ branch.contact_number }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted opacity-50">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-3.5 text-center">
+                                    <span class="badge rounded-pill px-2.5 py-1 text-xxs fw-bold" style="background: #f3e8ff; color: #7e22ce; border: 1px solid rgba(126, 34, 206, 0.2);">
+                                        {{ branch.invoice_prefix }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-3.5 text-center">
+                                    <span class="badge rounded-pill px-2.5 py-1 text-xxs fw-bold" style="background: #d1fae5; color: #047857; border: 1px solid #a7f3d0;">
+                                        <i class="bi bi-people-fill me-1"></i>{{ branch.active_staff_count }} staff
+                                    </span>
+                                </td>
+                                <td class="py-3 px-3.5">
                                     <div class="d-flex align-items-center gap-1.5">
-                                        <span id="branch-goal-val-{{ branch.id }}" class="fw-semibold text-xs text-dark">
+                                        <span id="branch-goal-val-{{ branch.id }}" class="fw-bold text-xs text-dark">
                                             {% if branch.current_goal > 0 %}
                                                 ₹{{ branch.current_goal }}
                                             {% else %}
-                                                Not Set
+                                                <span class="badge bg-secondary bg-opacity-10 text-muted text-xxs fw-normal">Not Set</span>
                                             {% endif %}
                                         </span>
                                         {% if user.role == 'owner' %}
-                                        <button class="btn btn-link p-0 text-decoration-none text-success" 
+                                        <button class="btn btn-sm btn-link p-0 text-warning" 
                                                 onclick="quickAutoSetGoal('{{ branch.id }}')" 
-                                                title="Quick Auto-Set 110% of last month sales" style="line-height:1;">
-                                            <i class="bi bi-lightning-charge-fill" style="font-size: 11px;"></i>
+                                                title="Quick Auto-Set 110% of last month sales">
+                                            <i class="bi bi-lightning-charge-fill" style="font-size: 13px;"></i>
                                         </button>
                                         {% endif %}
                                     </div>
                                     {% if branch.current_goal > 0 %}
-                                    <div style="width: 100px;" class="mt-1">
+                                    <div style="width: 110px;" class="mt-1">
                                         <div class="d-flex justify-content-between text-xxs text-muted mb-0.5">
                                             <span>Progress:</span>
                                             <span class="fw-bold text-dark">{{ branch.current_goal_percent }}%</span>
                                         </div>
-                                        <div class="progress" style="height: 4px;" title="₹{{ branch.current_month_sales }} / ₹{{ branch.current_goal }} ({{ branch.current_goal_percent_exact }}%)">
-                                            <div class="progress-bar {% if branch.current_goal_percent >= 100 %}bg-success{% elif branch.current_goal_percent >= 50 %}bg-primary{% else %}bg-warning{% endif %}" 
+                                        <div class="progress rounded-pill bg-light" style="height: 5px;" title="₹{{ branch.current_month_sales }} / ₹{{ branch.current_goal }} ({{ branch.current_goal_percent_exact }}%)">
+                                            <div class="progress-bar rounded-pill {% if branch.current_goal_percent >= 100 %}bg-success{% elif branch.current_goal_percent >= 50 %}bg-primary{% else %}bg-warning{% endif %}" 
                                                  role="progressbar" 
-                                                 style="width: {{ branch.current_goal_percent }}%"></div>
+                                                 style="width: {{ branch.current_goal_percent }}%;"></div>
                                         </div>
                                     </div>
                                     {% endif %}
                                 </td>
                                 {% if user.role == 'owner' %}
-                                <td class="text-center hover-actions d-flex justify-content-center gap-1.5">
-                                    <button class="btn btn-outline-success btn-xs rounded-circle p-1" onclick="openSetGoalModal('{{ branch.id }}', '{{ branch.name|escapejs }}', '{{ branch.current_goal }}')" title="Set Monthly Sales Target" style="width: 24px; height: 24px; line-height: 1;">
-                                        <i class="bi bi-target" style="font-size: 10px; display: block;"></i>
-                                    </button>
-                                    <button class="btn btn-outline-primary btn-xs rounded-circle p-1" onclick="openEditBranchModal('{{ branch.id }}', '{{ branch.name|escapejs }}', '{{ branch.location|escapejs }}', '{{ branch.contact_number|default:''|escapejs }}', '{{ branch.invoice_prefix|escapejs }}')" title="Edit Branch Settings" style="width: 24px; height: 24px; line-height: 1;">
-                                        <i class="bi bi-pencil" style="font-size: 10px; display: block;"></i>
-                                    </button>
+                                <td class="py-3 px-3.5 text-center">
+                                    <div class="d-flex align-items-center justify-content-center gap-2">
+                                        <button class="btn btn-sm border-0 rounded-circle p-0 d-inline-flex align-items-center justify-content-center shadow-xs" 
+                                                onclick="openEditBranchModal('{{ branch.id }}', '{{ branch.name|escapejs }}', '{{ branch.location|escapejs }}', '{{ branch.contact_number|default:''|escapejs }}', '{{ branch.invoice_prefix|escapejs }}')" 
+                                                title="Edit Branch Information" 
+                                                style="width: 32px; height: 32px; background: #e0e7ff; color: #4338ca;"
+                                                onmouseover="this.style.background='#c7d2fe'" onmouseout="this.style.background='#e0e7ff'">
+                                            <i class="bi bi-pencil-fill" style="font-size: 0.75rem;"></i>
+                                        </button>
+                                        <button class="btn btn-sm border-0 rounded-circle p-0 d-inline-flex align-items-center justify-content-center shadow-xs" 
+                                                onclick="openSetGoalModal('{{ branch.id }}', '{{ branch.name|escapejs }}', '{{ branch.current_goal }}')" 
+                                                title="Set Monthly Sales Target Goal" 
+                                                style="width: 32px; height: 32px; background: #d1fae5; color: #047857;"
+                                                onmouseover="this.style.background='#a7f3d0'" onmouseout="this.style.background='#d1fae5'">
+                                            <i class="bi bi-bullseye" style="font-size: 0.75rem;"></i>
+                                        </button>
+                                    </div>
                                 </td>
                                 {% endif %}
                             </tr>
@@ -437,14 +526,18 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 gap-2">
-                    <div class="text-muted text-xs" id="branch-count-info">
+
+                <!-- Footer Pagination Controls -->
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-2 gap-2 border-top border-light">
+                    <div class="text-muted text-xs fw-semibold" id="branch-count-info">
                         Showing all {{ branches_by_code|length }} branches
                     </div>
                     <nav aria-label="Branch pagination" class="mb-0" id="branch-pagination-nav">
                     </nav>
                 </div>
             </div>
+        </div>
+    </div>
          {% elif active_tab == 'staff' %}
     <!-- 3. STAFF TABLE — Clean Professional Layout -->
     <style>
@@ -483,11 +576,11 @@
     .s-act-edit:hover   { background:#6366f1; color:#fff; }
     .s-act-del    { border-color:#ef4444; color:#ef4444; }
     .s-act-del:hover    { background:#ef4444; color:#fff; }
-    .s-search { border:1.5px solid rgba(255,255,255,0.35); background:rgba(255,255,255,0.15); border-radius:999px; color:#fff; padding:5px 14px; font-size:0.78rem; outline:none; }
-    .s-search::placeholder { color:rgba(255,255,255,0.65); }
-    .s-search:focus { background:rgba(255,255,255,0.25); }
-    .s-select { border:1.5px solid rgba(255,255,255,0.35); background:rgba(255,255,255,0.15); border-radius:999px; color:#fff; padding:5px 12px; font-size:0.75rem; outline:none; cursor:pointer; }
-    .s-select option { color:#333; background:#fff; }
+    .s-search { border:1px solid #e2e8f0; background:#ffffff; border-radius:999px; color:#1e293b; padding:5px 14px; font-size:0.78rem; outline:none; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
+    .s-search::placeholder { color:#94a3b8; }
+    .s-search:focus { border-color:#6366f1; box-shadow:0 0 0 2px rgba(99,102,241,0.2); }
+    .s-select { border:1px solid #e2e8f0; background:#ffffff; border-radius:999px; color:#1e293b; padding:5px 12px; font-size:0.75rem; outline:none; cursor:pointer; font-weight:500; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
+    .s-select option { color:#1e293b; background:#ffffff; }
     .s-mini-switch { transform:scale(0.82); }
     /* Beautiful Custom Filter Dropdown Styles */
     .filter-dropdown-btn {
@@ -541,7 +634,7 @@
                     <div>
                         <h6><i class="bi bi-people-fill me-2"></i>Team Management</h6>
                         <div class="d-flex align-items-center gap-3 mt-1">
-                            <span style="color:rgba(255,255,255,0.75);font-size:0.73rem;">{{ staff_list|length }} members</span>
+                            <span style="color:rgba(255,255,255,0.75);font-size:0.73rem;">{% if total_staff_count %}{{ total_staff_count }}{% else %}{{ staff_list|length }}{% endif %} members</span>
                             <span class="d-flex align-items-center gap-1" onclick="showStaffStatusModal('online')" style="color:#86efac;font-size:0.73rem;cursor:pointer;">
                                 <span class="s-online-dot s-dot-on"></span>
                                 Online: <strong id="onlineStaffCount">0</strong>
@@ -553,57 +646,60 @@
                         </div>
                     </div>
                 </div>
-                <!-- Right: search + filters -->
+            </div>
+
+            <!-- Action buttons & Search/Filters row (Clean, Decent, Spacious) -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
+                <!-- Left Action Buttons -->
                 <div class="d-flex flex-wrap align-items-center gap-2">
-                    <input type="text" id="staffSearchInput" class="s-search" placeholder="🔍 Search…" oninput="filterStaff()" style="width:180px;">
+                    <a href="{% url 'export_staff_csv' %}" class="btn btn-sm btn-light fw-semibold rounded-pill px-3 d-inline-flex align-items-center gap-1" style="font-size:0.75rem;">
+                        <i class="bi bi-file-earmark-spreadsheet text-success"></i> Export CSV
+                    </a>
+                    <button class="btn btn-sm btn-light fw-semibold rounded-pill px-3 d-inline-flex align-items-center gap-1" style="font-size:0.75rem;" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+                        <i class="bi bi-person-plus-fill text-primary"></i> Add Staff
+                    </button>
+                    <button class="btn btn-sm fw-semibold rounded-pill px-3 d-inline-flex align-items-center gap-1" style="font-size:0.75rem;background:rgba(255,255,255,0.2);color:#fff;border:1.5px solid rgba(255,255,255,0.4);" data-bs-toggle="modal" data-bs-target="#createRoleModal">
+                        <i class="bi bi-shield-plus"></i> + Create Role
+                    </button>
+                </div>
+
+                <!-- Right Search + Dropdowns (Next to Create Role) -->
+                <div class="d-flex flex-wrap align-items-center gap-2" id="staffFilterForm">
+                    <!-- Main Search Input Box -->
+                    <div class="d-flex align-items-center bg-white rounded-pill px-3 py-1 shadow-sm border">
+                        <i class="bi bi-search text-muted me-1.5 text-xs"></i>
+                        <input type="text" name="staff_search" value="{{ staff_search }}" id="staffSearchInput" class="form-control form-control-sm border-0 p-0 text-xs fw-medium text-dark shadow-none" placeholder="Search staff..." oninput="triggerLiveStaffAjaxSearch()" style="width: 140px; background: transparent;">
+                    </div>
+
                     <!-- Branch Filter Dropdown -->
-                    <div class="dropdown d-inline-block">
-                        <button class="btn dropdown-toggle filter-dropdown-btn" type="button" id="branchFilterBtn" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-shop me-1"></i> All Branches
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 filter-dropdown-menu" aria-labelledby="branchFilterBtn" style="min-width: 180px; z-index: 1050;">
-                            <li><a class="dropdown-item filter-dropdown-item active" href="#" onclick="selectBranchFilter('all', 'All Branches', this); return false;">All Branches</a></li>
+                    <div class="d-flex align-items-center bg-white rounded-pill px-2.5 py-1 shadow-sm border">
+                        <select name="branch_filter" id="branchFilterSelect" class="form-select form-select-sm no-search border-0 py-0 text-xs fw-semibold text-dark shadow-none" data-no-search="true" onchange="triggerLiveStaffAjaxSearch()" style="width: auto; min-width: 120px; cursor: pointer;">
+                            <option value="all" {% if branch_filter == 'all' %}selected{% endif %}>All Branches</option>
                             {% for branch in branches %}
-                            <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectBranchFilter('branch-{{ branch.id }}', '{{ branch.name|escapejs }}', this); return false;">{{ branch.name }}</a></li>
+                            <option value="{{ branch.id }}" {% if branch_filter == branch.id|stringformat:"s" or branch_filter == 'branch-'|add:branch.id|stringformat:"s" %}selected{% endif %}>{{ branch.name }}</option>
                             {% endfor %}
-                        </ul>
-                        <input type="hidden" id="branchFilterSelect" value="all">
+                        </select>
                     </div>
 
                     <!-- Role Filter Dropdown -->
-                    <div class="dropdown d-inline-block">
-                        <button class="btn dropdown-toggle filter-dropdown-btn" type="button" id="roleFilterBtn" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-person-badge me-1"></i> All Roles
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 filter-dropdown-menu" aria-labelledby="roleFilterBtn" style="min-width: 180px; z-index: 1050;">
-                            <li><a class="dropdown-item filter-dropdown-item active" href="#" onclick="selectRoleFilter('all', 'All Roles', this); return false;">All Roles</a></li>
-                            <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('owner', 'Admin', this); return false;">Admin</a></li>
-                            <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('regional_manager', 'Regional Manager', this); return false;">Regional Manager</a></li>
-                            <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('manager', 'Manager', this); return false;">Manager</a></li>
-                            <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('assistant_manager', 'Asst. Manager', this); return false;">Asst. Manager</a></li>
-                            <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('sales_staff', 'Sales Staff', this); return false;">Sales Staff</a></li>
-                            {% if custom_roles %}
-                                <div class="dropdown-divider"></div>
-                                {% for crole in custom_roles %}
-                                <li><a class="dropdown-item filter-dropdown-item" href="#" onclick="selectRoleFilter('{{ crole.code|escapejs }}', '{{ crole.name|escapejs }}', this); return false;">{{ crole.name }}</a></li>
-                                {% endfor %}
-                            {% endif %}
-                        </ul>
-                        <input type="hidden" id="roleFilterSelect" value="all">
+                    <div class="d-flex align-items-center bg-white rounded-pill px-2.5 py-1 shadow-sm border">
+                        <select name="role_filter" id="roleFilterSelect" class="form-select form-select-sm no-search border-0 py-0 text-xs fw-semibold text-dark shadow-none" data-no-search="true" onchange="triggerLiveStaffAjaxSearch()" style="width: auto; min-width: 110px; cursor: pointer;">
+                            <option value="all" {% if role_filter == 'all' %}selected{% endif %}>All Roles</option>
+                            <option value="owner" {% if role_filter == 'owner' %}selected{% endif %}>Admin</option>
+                            <option value="regional_manager" {% if role_filter == 'regional_manager' %}selected{% endif %}>Regional Mgr</option>
+                            <option value="manager" {% if role_filter == 'manager' %}selected{% endif %}>Manager</option>
+                            <option value="assistant_manager" {% if role_filter == 'assistant_manager' %}selected{% endif %}>Asst. Mgr</option>
+                            <option value="sales_staff" {% if role_filter == 'sales_staff' %}selected{% endif %}>Sales Staff</option>
+                            {% for crole in custom_roles %}
+                            <option value="{{ crole.code }}" {% if role_filter == crole.code %}selected{% endif %}>{{ crole.name }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
+
+                    {% if staff_search or branch_filter != 'all' or role_filter != 'all' %}
+                    <button type="button" class="btn btn-sm btn-light rounded-pill px-3 py-1 text-xs fw-semibold text-danger shadow-sm border" onclick="resetLiveStaffFilters()" title="Reset Filters"><i class="bi bi-x-circle me-1"></i>Reset</button>
+                    {% endif %}
                 </div>
-            </div>
-            <!-- Action buttons row -->
-            <div class="d-flex flex-wrap gap-2 mt-3">
-                <a href="{% url 'export_staff_csv' %}" class="btn btn-sm btn-light fw-semibold rounded-pill px-3 d-inline-flex align-items-center gap-1" style="font-size:0.75rem;">
-                    <i class="bi bi-file-earmark-spreadsheet text-success"></i> Export CSV
-                </a>
-                <button class="btn btn-sm btn-light fw-semibold rounded-pill px-3 d-inline-flex align-items-center gap-1" style="font-size:0.75rem;" data-bs-toggle="modal" data-bs-target="#addStaffModal">
-                    <i class="bi bi-person-plus-fill text-primary"></i> Add Staff
-                </button>
-                <button class="btn btn-sm fw-semibold rounded-pill px-3 d-inline-flex align-items-center gap-1" style="font-size:0.75rem;background:rgba(255,255,255,0.2);color:#fff;border:1.5px solid rgba(255,255,255,0.4);" data-bs-toggle="modal" data-bs-target="#createRoleModal">
-                    <i class="bi bi-shield-plus"></i> + Create Role
-                </button>
             </div>
         </div>
 
@@ -624,7 +720,7 @@
                 {% for staff in staff_list %}
                 <tr class="staff-row"
                     id="staff-row-{{ staff.id }}"
-                    data-branches="{% if staff.role == 'owner' or staff.role == 'regional_manager' %}all{% else %}{% for b in staff.branches.all %}branch-{{ b.id }} {% endfor %}{% endif %}"
+                    data-branches="{% if staff.role == 'owner' or staff.role == 'regional_manager' %}all{% else %}{% for b in staff.assigned_branches %}branch-{{ b.id }} {% endfor %}{% endif %}"
                     data-role="{{ staff.role }}"
                     data-online="{% if staff.is_online %}true{% else %}false{% endif %}">
 
@@ -676,11 +772,11 @@
                     <!-- Branches -->
                     <td data-label="Branches">
                         <div class="d-flex flex-wrap gap-1">
-                        {% if staff.active_branch in staff.branches.all %}
+                        {% if staff.active_branch in staff.assigned_branches %}
                         <span style="background:#dbeafe;color:#1e40af;border-radius:999px;padding:1px 9px;font-size:0.67rem;font-weight:700;white-space:nowrap;" title="Primary Main Branch"><i class="bi bi-house-door-fill me-1"></i>Primary: {{ staff.active_branch.name }}</span>
                         {% endif %}
                         {% if not staff.has_all_branches and staff.role != 'owner' and staff.role != 'regional_manager' %}
-                        {% for b in staff.branches.all %}
+                        {% for b in staff.assigned_branches %}
                         {% if b != staff.active_branch %}
                         <span style="background:#ede9fe;color:#7c3aed;border-radius:999px;padding:1px 9px;font-size:0.67rem;font-weight:600;white-space:nowrap;" title="Secondary Access Branch"><i class="bi bi-shop me-1"></i>Access: {{ b.name }}</span>
                         {% endif %}
@@ -688,7 +784,7 @@
                         {% endif %}
                         {% if staff.has_all_branches or staff.role == 'owner' or staff.role == 'regional_manager' %}
                         <span class="badge bg-warning-subtle text-dark border border-warning-subtle rounded-pill px-2 py-0.5" style="font-size:0.67rem;"><i class="bi bi-globe me-1"></i>All Branches Access</span>
-                        {% elif not staff.active_branch and not staff.branches.all %}
+                        {% elif not staff.active_branch and not staff.assigned_branches %}
                         <span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">None (Unassigned)</span>
                         {% endif %}
                         </div>
@@ -746,7 +842,7 @@
                     <td class="text-center">
                         <div class="d-flex align-items-center justify-content-center gap-2">
                             <button class="s-act-btn s-act-edit" title="Edit Staff"
-                                onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{% for b in staff.branches.all %}{{ b.id }}{% if not forloop.last %},{% endif %}{% endfor %}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}', '{{ staff.date_of_joining|date:"Y-m-d"|default:'' }}', {% if staff.has_pos_access %}true{% else %}false{% endif %}, {% if staff.has_attendance_access %}true{% else %}false{% endif %}, '{{ staff.active_branch.id|default:'' }}', '{{ staff.designation|default:''|escapejs }}', '{{ staff.bank_name|default:''|escapejs }}', '{{ staff.account_number|default:''|escapejs }}', '{{ staff.ifsc_code|default:''|escapejs }}')">
+                                onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{{ staff.branch_ids_str }}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}', '{{ staff.date_of_joining|date:"Y-m-d"|default:'' }}', {% if staff.has_pos_access %}true{% else %}false{% endif %}, {% if staff.has_attendance_access %}true{% else %}false{% endif %}, '{{ staff.active_branch.id|default:'' }}', '{{ staff.designation|default:''|escapejs }}', '{{ staff.bank_name|default:''|escapejs }}', '{{ staff.account_number|default:''|escapejs }}', '{{ staff.ifsc_code|default:''|escapejs }}')">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
                         </div>
@@ -765,10 +861,38 @@
                 {% endfor %}
                 </tbody>
             </table>
-        <!-- Footer -->
-        <div class="d-flex justify-content-between align-items-center px-4 py-2" style="background:#f8fafc;border-top:1px solid #f1f5f9;">
-            <div id="staff-count-info" style="font-size:0.75rem;color:#94a3b8;">Showing all {{ staff_list|length }} staff members</div>
+        <!-- Footer with 10-Row Pagination Navigation -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center px-4 py-3 bg-light border-top border-light gap-2">
+            <div id="staff-count-info" data-server-paginated="{% if page_obj %}true{% else %}false{% endif %}" style="font-size:0.75rem;color:#64748b;" class="fw-semibold">
+                {% if page_obj %}
+                    Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ total_staff_count }} staff members
+                {% else %}
+                    Showing all {{ staff_list|length }} staff members
+                {% endif %}
+            </div>
+            {% if page_obj and page_obj.has_other_pages %}
+            <nav aria-label="Staff Pagination" class="mb-0">
+                <ul class="pagination pagination-sm justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?tab=staff&page={{ page_obj.previous_page_number }}&staff_search={{ staff_search|urlencode }}&branch_filter={{ branch_filter|urlencode }}&role_filter={{ role_filter|urlencode }}">Previous</a></li>
+                    {% endif %}
+                    
+                    {% for i in page_obj.paginator.page_range %}
+                        {% if page_obj.number == i %}
+                        <li class="page-item active"><span class="page-link rounded-pill border-0 shadow px-2.5 mx-1 bg-primary text-white">{{ i }}</span></li>
+                        {% elif i >= page_obj.number|add:"-2" and i <= page_obj.number|add:"2" %}
+                        <li class="page-item"><a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?tab=staff&page={{ i }}&staff_search={{ staff_search|urlencode }}&branch_filter={{ branch_filter|urlencode }}&role_filter={{ role_filter|urlencode }}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?tab=staff&page={{ page_obj.next_page_number }}&staff_search={{ staff_search|urlencode }}&branch_filter={{ branch_filter|urlencode }}&role_filter={{ role_filter|urlencode }}">Next</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% else %}
             <nav id="staff-pagination-nav"></nav>
+            {% endif %}
         </div>
 
     </div><!-- /.staff-section -->
@@ -1226,7 +1350,9 @@
                     </table>
                 </div>
             </div>
-            <div class="modal-footer bg-light border-0 p-2">
+            <div class="modal-footer bg-light border-0 px-3 py-2 justify-content-between align-items-center">
+                <span id="staffStatusModalCount" class="text-muted text-xs fw-semibold"></span>
+                <nav id="staffStatusModalPagination" class="mb-0"></nav>
                 <button type="button" class="btn btn-secondary btn-xs rounded-pill px-3 py-1" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
@@ -1259,58 +1385,81 @@
 
 {% block extra_js %}
 <script>
+    let currentStatusTarget = 'offline';
+    let currentStatusStaffList = [];
+    let currentStatusPage = 1;
+
+    function renderStatusModalPage(page = 1) {
+        currentStatusPage = page;
+        const modalBody = document.getElementById('staffStatusModalTableBody');
+        const modalCount = document.getElementById('staffStatusModalCount');
+        if (!modalBody) return;
+
+        modalBody.innerHTML = '';
+        const totalItems = currentStatusStaffList.length;
+        if (totalItems === 0) {
+            modalBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted text-xs p-4">No staff members are currently ${currentStatusTarget}.</td></tr>`;
+            if (modalCount) modalCount.textContent = 'Showing 0 of 0 staff members';
+            renderPagination('staffStatusModalPagination', 0, 1, () => {});
+            return;
+        }
+
+        const pageSize = 10;
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, totalItems);
+        const pageItems = currentStatusStaffList.slice(startIndex, endIndex);
+
+        pageItems.forEach(staff => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="text-xs fw-bold text-muted ps-3">${staff.emp_id}</td>
+                <td class="text-xs">
+                    <span class="fw-bold text-primary">${staff.username}</span><br>
+                    <small class="text-secondary">${staff.name}</small>
+                </td>
+                <td class="text-xs"><span class="badge bg-light text-dark border rounded-pill px-2.5 py-0.5">${staff.role}</span></td>
+                <td class="text-xs text-wrap pe-3">${staff.branches}</td>
+            `;
+            modalBody.appendChild(tr);
+        });
+
+        if (modalCount) {
+            modalCount.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${totalItems} ${currentStatusTarget} members`;
+        }
+
+        renderPagination('staffStatusModalPagination', totalItems, page, function(newPage) {
+            renderStatusModalPage(newPage);
+        });
+    }
+
     function showStaffStatusModal(status) {
+        currentStatusTarget = status;
         const modalTitle = document.getElementById('staffStatusModalTitle');
         const modalBody = document.getElementById('staffStatusModalTableBody');
         if (!modalTitle || !modalBody) return;
 
         modalTitle.innerHTML = status === 'online' ? '<i class="bi bi-people-fill me-2"></i>Online Staff Members' : '<i class="bi bi-people-fill me-2"></i>Offline Staff Members';
-        modalBody.innerHTML = '';
+        modalBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted text-xs p-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading staff details...</td></tr>';
 
-        const isOnlineTarget = (status === 'online');
-        const rows = document.querySelectorAll('.staff-row');
-        let count = 0;
-
-        rows.forEach(row => {
-            const isOnline = row.dataset.online === 'true';
-            if (isOnline === isOnlineTarget) {
-                count++;
-                const empId = row.querySelector('.staff-emp-id').textContent.trim();
-                const username = row.querySelector('.staff-username').textContent.trim();
-                const name = row.querySelector('.staff-name').textContent.trim();
-                
-                // Get role badge text
-                const roleBadge = row.querySelector('[data-label="Role"] span');
-                const roleText = roleBadge ? roleBadge.textContent.trim() : 'Sales Staff';
-                
-                // Get branches
-                const branchBadges = row.querySelectorAll('[data-label="Branches"] span');
-                let branchesList = [];
-                branchBadges.forEach(badge => {
-                    branchesList.push(badge.textContent.trim());
-                });
-                const branchesText = branchesList.length > 0 ? branchesList.join(', ') : 'None';
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="text-xs fw-bold text-muted ps-3">${empId}</td>
-                    <td class="text-xs">
-                        <span class="fw-bold text-primary">${username}</span><br>
-                        <small class="text-secondary">${name}</small>
-                    </td>
-                    <td class="text-xs"><span class="badge bg-light text-dark border rounded-pill px-2.5 py-0.5">${roleText}</span></td>
-                    <td class="text-xs text-wrap pe-3">${branchesText}</td>
-                `;
-                modalBody.appendChild(tr);
-            }
-        });
-
-        if (count === 0) {
-            modalBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted text-xs p-3">No staff members are currently ${status}.</td></tr>`;
+        const modalEl = document.getElementById('staffStatusDetailsModal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) {
+            modal = new bootstrap.Modal(modalEl);
         }
-
-        const modal = new bootstrap.Modal(document.getElementById('staffStatusDetailsModal'));
         modal.show();
+
+        fetch("{% url 'staff_online_status' %}")
+            .then(res => res.json())
+            .then(data => {
+                const list = data.staff_details || [];
+                const isOnlineTarget = (status === 'online');
+                currentStatusStaffList = list.filter(s => s.is_online === isOnlineTarget);
+                renderStatusModalPage(1);
+            })
+            .catch(err => {
+                console.error(err);
+                modalBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger text-xs p-4">Failed to load staff list.</td></tr>';
+            });
     }
 
     function togglePasswordVisibility(inputId, btn) {
@@ -1643,22 +1792,107 @@
         filterStaff();
     };
 
+    let staffLiveAjaxTimer;
+    window.triggerLiveStaffAjaxSearch = function(page = 1) {
+        clearTimeout(staffLiveAjaxTimer);
+        staffLiveAjaxTimer = setTimeout(() => {
+            const sEl = document.getElementById('staffSearchInput');
+            const bEl = document.getElementById('branchFilterSelect');
+            const rEl = document.getElementById('roleFilterSelect');
+            
+            const searchVal = sEl ? sEl.value.trim() : '';
+            const branchVal = bEl ? bEl.value : 'all';
+            const roleVal = rEl ? rEl.value : 'all';
+            
+            const url = `?tab=staff&page=${page}&staff_search=${encodeURIComponent(searchVal)}&branch_filter=${encodeURIComponent(branchVal)}&role_filter=${encodeURIComponent(roleVal)}`;
+            
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(res => res.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    const newTbody = doc.querySelector('#staffTable tbody');
+                    const oldTbody = document.querySelector('#staffTable tbody');
+                    if (newTbody && oldTbody) {
+                        oldTbody.innerHTML = newTbody.innerHTML;
+                    }
+                    
+                    const newCount = doc.querySelector('#staff-count-info');
+                    const oldCount = document.querySelector('#staff-count-info');
+                    if (newCount && oldCount) {
+                        oldCount.innerHTML = newCount.innerHTML;
+                    }
+                    
+                    const newFooterNav = doc.querySelector('.staff-section nav');
+                    const oldFooterNav = document.querySelector('.staff-section nav');
+                    if (newFooterNav && oldFooterNav) {
+                        oldFooterNav.innerHTML = newFooterNav.innerHTML;
+                        oldFooterNav.querySelectorAll('a.page-link').forEach(link => {
+                            const href = link.getAttribute('href');
+                            if (href && href.includes('page=')) {
+                                const match = href.match(/page=(\d+)/);
+                                if (match) {
+                                    const targetPage = match[1];
+                                    link.addEventListener('click', function(e) {
+                                        e.preventDefault();
+                                        triggerLiveStaffAjaxSearch(targetPage);
+                                    });
+                                }
+                            }
+                        });
+                    }
+                })
+                .catch(err => console.error('Live AJAX search error:', err));
+        }, 200);
+    };
+
+    window.resetLiveStaffFilters = function() {
+        const sEl = document.getElementById('staffSearchInput');
+        const bEl = document.getElementById('branchFilterSelect');
+        const rEl = document.getElementById('roleFilterSelect');
+        if (sEl) sEl.value = '';
+        if (bEl) bEl.value = 'all';
+        if (rEl) rEl.value = 'all';
+        triggerLiveStaffAjaxSearch(1);
+    };
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const sInput = document.getElementById('staffSearchInput');
+        if (sInput && sInput.value) {
+            sInput.focus();
+            const len = sInput.value.length;
+            sInput.setSelectionRange(len, len);
+        }
+    });
+
     function filterStaff(resetPage = true) {
         if (resetPage) {
             currentStaffPage = 1;
+            try { sessionStorage.setItem('activeStaffPage', 1); } catch (e) {}
+        } else {
+            try { sessionStorage.setItem('activeStaffPage', currentStaffPage); } catch (e) {}
         }
-        const searchVal = document.getElementById('staffSearchInput').value.toLowerCase();
-        const branchVal = document.getElementById('branchFilterSelect').value;
-        const roleVal = document.getElementById('roleFilterSelect').value;
+        const sEl = document.getElementById('staffSearchInput');
+        const bEl = document.getElementById('branchFilterSelect');
+        const rEl = document.getElementById('roleFilterSelect');
+        
+        const searchVal = sEl ? sEl.value.toLowerCase() : '';
+        const branchVal = bEl ? bEl.value : 'all';
+        const roleVal = rEl ? rEl.value : 'all';
         
         const matchedRows = [];
         
         document.querySelectorAll('.staff-row').forEach(function(row) {
-            const username = row.querySelector('.staff-username').textContent.toLowerCase();
-            const name = row.querySelector('.staff-name').textContent.toLowerCase();
-            const empId = row.querySelector('.staff-emp-id').textContent.toLowerCase();
+            const uEl = row.querySelector('.staff-username');
+            const nEl = row.querySelector('.staff-name');
+            const eEl = row.querySelector('.staff-emp-id');
+            const username = uEl ? uEl.textContent.toLowerCase() : '';
+            const name = nEl ? nEl.textContent.toLowerCase() : '';
+            const empId = eEl ? eEl.textContent.toLowerCase() : '';
+            
             const matchesSearch = (searchVal === '') || username.includes(searchVal) || name.includes(searchVal) || empId.includes(searchVal);
-            const matchesBranch = (branchVal === 'all') || row.dataset.branches === 'all' || row.dataset.branches.includes(branchVal);
+            const matchesBranch = (branchVal === 'all') || (row.dataset.branches && (row.dataset.branches === 'all' || row.dataset.branches.includes(branchVal)));
             const matchesRole = (roleVal === 'all') || (row.dataset.role === roleVal);
             
             if (matchesSearch && matchesBranch && matchesRole) {
@@ -1668,22 +1902,12 @@
             }
         });
 
-        let onlineCount = 0;
-        let offlineCount = 0;
-        matchedRows.forEach(function(row) {
-            if (row.dataset.online === 'true') {
-                onlineCount++;
-            } else {
-                offlineCount++;
-            }
-        });
-        
-        const onlineEl = document.getElementById('onlineStaffCount');
-        const offlineEl = document.getElementById('offlineStaffCount');
-        if (onlineEl) onlineEl.textContent = onlineCount;
-        if (offlineEl) offlineEl.textContent = offlineCount;
-
         const totalItems = matchedRows.length;
+        const totalPages = Math.ceil(totalItems / rowsPerPage) || 1;
+        if (currentStaffPage > totalPages) {
+            currentStaffPage = totalPages;
+            try { sessionStorage.setItem('activeStaffPage', currentStaffPage); } catch (e) {}
+        }
         const startIndex = totalItems === 0 ? 0 : (currentStaffPage - 1) * rowsPerPage;
         const endIndex = Math.min(startIndex + rowsPerPage, totalItems);
         
@@ -1696,7 +1920,7 @@
         });
         
         const info = document.getElementById('staff-count-info');
-        if (info) {
+        if (info && info.dataset.serverPaginated !== 'true') {
             if (totalItems === 0) {
                 info.textContent = 'Showing 0 to 0 of 0 staff accounts';
             } else {
@@ -1706,6 +1930,7 @@
         
         renderPagination('staff-pagination-nav', totalItems, currentStaffPage, function(newPage) {
             currentStaffPage = newPage;
+            try { sessionStorage.setItem('activeStaffPage', newPage); } catch (e) {}
             filterStaff(false);
         });
     }
@@ -1713,14 +1938,20 @@
     function filterBranches(resetPage = true) {
         if (resetPage) {
             currentBranchPage = 1;
+            try { sessionStorage.setItem('activeBranchPage', 1); } catch (e) {}
+        } else {
+            try { sessionStorage.setItem('activeBranchPage', currentBranchPage); } catch (e) {}
         }
-        const searchVal = document.getElementById('branchSearchInput').value.toLowerCase();
+        const bInput = document.getElementById('branchSearchInput');
+        const searchVal = bInput ? bInput.value.toLowerCase() : '';
         
         const matchedRows = [];
         
         document.querySelectorAll('.branch-row').forEach(function(row) {
-            const code = row.querySelector('.branch-code').textContent.toLowerCase();
-            const name = row.querySelector('.branch-name').textContent.toLowerCase();
+            const codeEl = row.querySelector('.branch-code');
+            const nameEl = row.querySelector('.branch-name');
+            const code = codeEl ? codeEl.textContent.toLowerCase() : '';
+            const name = nameEl ? nameEl.textContent.toLowerCase() : '';
             
             const matchesSearch = (searchVal === '') || code.includes(searchVal) || name.includes(searchVal);
             
@@ -1732,6 +1963,11 @@
         });
 
         const totalItems = matchedRows.length;
+        const totalPages = Math.ceil(totalItems / rowsPerPage) || 1;
+        if (currentBranchPage > totalPages) {
+            currentBranchPage = totalPages;
+            try { sessionStorage.setItem('activeBranchPage', currentBranchPage); } catch (e) {}
+        }
         const startIndex = totalItems === 0 ? 0 : (currentBranchPage - 1) * rowsPerPage;
         const endIndex = Math.min(startIndex + rowsPerPage, totalItems);
         
@@ -1754,6 +1990,7 @@
         
         renderPagination('branch-pagination-nav', totalItems, currentBranchPage, function(newPage) {
             currentBranchPage = newPage;
+            try { sessionStorage.setItem('activeBranchPage', newPage); } catch (e) {}
             filterBranches(false);
         });
     }
@@ -2035,8 +2272,14 @@
         fetch("{% url 'staff_online_status' %}")
             .then(res => res.json())
             .then(data => {
-                let updated = false;
+                let onlineCount = 0;
+                let offlineCount = 0;
                 for (const [staffId, isOnline] of Object.entries(data)) {
+                    if (isOnline) {
+                        onlineCount++;
+                    } else {
+                        offlineCount++;
+                    }
                     const row = document.getElementById(`staff-row-${staffId}`);
                     if (!row) continue;
                     
@@ -2044,7 +2287,6 @@
                     const newOnlineStr = isOnline ? 'true' : 'false';
                     if (oldOnline !== newOnlineStr) {
                         row.setAttribute('data-online', newOnlineStr);
-                        updated = true;
                     }
                     
                     // Update online dot classes in avatar
@@ -2058,57 +2300,45 @@
                             dot.classList.remove('s-dot-on');
                         }
                     }
-                    
-                    const activityCell = row.querySelector('td[data-label="Activity"]');
-                    if (activityCell) {
-                        const currentlyOnline = activityCell.querySelector('.bg-success-subtle') !== null;
-                        if (isOnline !== currentlyOnline) {
-                            if (isOnline) {
-                                activityCell.innerHTML = `
-                                    <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-0.5 text-xxs">
-                                        <i class="bi bi-circle-fill me-1" style="font-size: 6px; vertical-align: middle;"></i>Online
-                                    </span>
-                                `;
-                            } else {
-                                activityCell.innerHTML = `
-                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5 py-0.5 text-xxs">
-                                        <i class="bi bi-circle-fill me-1" style="font-size: 6px; vertical-align: middle;"></i>Offline
-                                    </span>
-                                `;
-                            }
-                        }
-                    }
                 }
                 
-                // Refresh pagination and count headers if status updated or initial counts are zero
                 const onlineEl = document.getElementById('onlineStaffCount');
                 const offlineEl = document.getElementById('offlineStaffCount');
-                const needsInitialUpdate = (onlineEl && onlineEl.textContent === '0' && offlineEl && offlineEl.textContent === '0');
-                if (updated || needsInitialUpdate) {
-                    if (typeof filterStaff === 'function') {
-                        filterStaff(false);
-                    }
-                }
+                if (onlineEl) onlineEl.textContent = onlineCount;
+                if (offlineEl) offlineEl.textContent = offlineCount;
             })
             .catch(err => console.error("Error polling staff status:", err));
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            initOwnerDashboard();
-            if (typeof filterStaff === 'function') {
-                filterStaff();
+    function runInitialDashboardFilters() {
+        try { initOwnerDashboard(); } catch (e) { console.error(e); }
+
+        try {
+            const savedStaffPage = sessionStorage.getItem('activeStaffPage');
+            if (savedStaffPage) {
+                const p = parseInt(savedStaffPage, 10);
+                if (!isNaN(p) && p > 0) currentStaffPage = p;
             }
-            pollStaffOnlineStatus();
-            setInterval(pollStaffOnlineStatus, 10000);
-        });
+        } catch (e) {}
+        try { if (typeof filterStaff === 'function') filterStaff(false); } catch (e) { console.error(e); }
+
+        try {
+            const savedBranchPage = sessionStorage.getItem('activeBranchPage');
+            if (savedBranchPage) {
+                const p = parseInt(savedBranchPage, 10);
+                if (!isNaN(p) && p > 0) currentBranchPage = p;
+            }
+        } catch (e) {}
+        try { if (typeof filterBranches === 'function') filterBranches(false); } catch (e) { console.error(e); }
+
+        try { pollStaffOnlineStatus(); } catch (e) { console.error(e); }
+        try { setInterval(pollStaffOnlineStatus, 10000); } catch (e) { console.error(e); }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', runInitialDashboardFilters);
     } else {
-        initOwnerDashboard();
-        if (typeof filterStaff === 'function') {
-            filterStaff();
-        }
-        pollStaffOnlineStatus();
-        setInterval(pollStaffOnlineStatus, 10000);
+        runInitialDashboardFilters();
     }
 </script>
 
@@ -2254,6 +2484,76 @@
     document.addEventListener("DOMContentLoaded", function() {
         updateLiveRoleAccessLevel();
     });
+
+    // ── Interactive Branch Column Sorting Handler ──
+    let currentBranchSortCol = -1;
+    let currentBranchSortDir = 'asc';
+
+    function sortBranchTable(colIndex) {
+        const tableBody = document.querySelector('#branches table tbody');
+        if (!tableBody) return;
+
+        const rows = Array.from(tableBody.querySelectorAll('tr.branch-row'));
+        if (!rows.length) return;
+
+        if (currentBranchSortCol === colIndex) {
+            currentBranchSortDir = currentBranchSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentBranchSortCol = colIndex;
+            currentBranchSortDir = 'asc';
+        }
+
+        // Reset all sort icon indicators
+        document.querySelectorAll('.branch-sort-icon').forEach(icon => {
+            icon.className = 'bi bi-arrow-down-up ms-1 branch-sort-icon';
+            icon.classList.remove('active-sort');
+        });
+
+        // Set active sort direction indicator
+        const activeIcon = document.getElementById(`bsort-${colIndex}`);
+        if (activeIcon) {
+            activeIcon.className = currentBranchSortDir === 'asc'
+                ? 'bi bi-sort-down ms-1 branch-sort-icon active-sort'
+                : 'bi bi-sort-up ms-1 branch-sort-icon active-sort';
+        }
+
+        const getCellValue = (row, col) => {
+            const cell = row.children[col];
+            if (!cell) return '';
+            let val = cell.innerText || cell.textContent || '';
+            val = val.trim();
+
+            if (col === 0) { // Code / ID (numeric match)
+                const num = val.replace(/[^0-9]/g, '');
+                return num ? parseInt(num, 10) : val;
+            }
+            if (col === 5) { // Staff Count (numeric match)
+                const num = val.replace(/[^0-9]/g, '');
+                return num ? parseInt(num, 10) : 0;
+            }
+            if (col === 6) { // Monthly Goal (numeric match)
+                const num = val.replace(/,/g, '').replace(/[^0-9.]/g, '');
+                return num ? parseFloat(num) : 0;
+            }
+
+            return val.toLowerCase();
+        };
+
+        rows.sort((a, b) => {
+            const valA = getCellValue(a, colIndex);
+            const valB = getCellValue(b, colIndex);
+
+            if (typeof valA === 'number' && typeof valB === 'number') {
+                return currentBranchSortDir === 'asc' ? valA - valB : valB - valA;
+            }
+
+            if (valA < valB) return currentBranchSortDir === 'asc' ? -1 : 1;
+            if (valA > valB) return currentBranchSortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        rows.forEach(row => tableBody.appendChild(row));
+    }
 </script>
 
 {% endblock %}

@@ -151,6 +151,40 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 pt-2 border-top">
+                <div class="text-muted text-xs">
+                    Showing <strong>{{ page_obj.start_index }}</strong> to <strong>{{ page_obj.end_index }}</strong> of <strong>{{ page_obj.paginator.count }}</strong> staff records
+                </div>
+                <nav>
+                    <ul class="pagination pagination-sm m-0">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link rounded-start-pill px-3" href="?page=1&q_staff={{ q_staff|urlencode }}&branch_staff={{ selected_branch_id }}">&laquo; First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link px-3" href="?page={{ page_obj.previous_page_number }}&q_staff={{ q_staff|urlencode }}&branch_staff={{ selected_branch_id }}">Previous</a>
+                            </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link px-3 bg-primary border-primary">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link px-3" href="?page={{ page_obj.next_page_number }}&q_staff={{ q_staff|urlencode }}&branch_staff={{ selected_branch_id }}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link rounded-end-pill px-3" href="?page={{ page_obj.paginator.num_pages }}&q_staff={{ q_staff|urlencode }}&branch_staff={{ selected_branch_id }}">Last &raquo;</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

@@ -138,7 +138,7 @@ class AttendanceTestCase(TestCase):
             absent_days=10,
             late_days=3,
             approved_leaves=2,
-            unapproved_leaves=8,
+            unapproved_leaves=4,
             base_salary=Decimal('30000.00'),
             deductions=Decimal('4600.00'),
             net_salary=Decimal('25400.00')

@@ -179,18 +179,26 @@ class User(AbstractUser):
             return (timezone.now() - self.last_activity).total_seconds() < 300
         return False
 
+    def _get_custom_role_obj(self):
+        if not self.role:
+            return None
+        if hasattr(self, '_custom_role_cache') and self._custom_role_cache:
+            return self._custom_role_cache.get(self.role)
+        if not hasattr(User, '_global_custom_role_map') or User._global_custom_role_map is None:
+            try:
+                User._global_custom_role_map = {cr.code: cr for cr in CustomRole.objects.all()}
+            except Exception:
+                User._global_custom_role_map = {}
+        return User._global_custom_role_map.get(self.role)
+
     def is_owner(self):
         if self.is_superuser or self.role in ['owner', 'admin']:
             return True
         if self.dashboard_access == 'owner':
             return True
-        if self.role:
-            try:
-                crole = CustomRole.objects.get(code=self.role)
-                if crole.dashboard_access == 'owner':
-                    return True
-            except Exception:
-                pass
+        crole = self._get_custom_role_obj()
+        if crole and crole.dashboard_access == 'owner':
+            return True
         return False
 
     def is_manager(self):
@@ -200,15 +208,12 @@ class User(AbstractUser):
             return True
         if self.dashboard_access in ['owner', 'manager', 'regional_manager']:
             return True
-        if self.role:
-            try:
-                crole = CustomRole.objects.get(code=self.role)
-                if crole.dashboard_access in ['owner', 'manager', 'regional_manager'] or crole.has_all_branches_access or crole.has_product_rights or crole.has_bill_edit_rights:
-                    return True
-            except Exception:
-                pass
-            if any(term in self.role.lower() for term in ['manager', 'admin', 'head', 'lead', 'supervisor', 'general', 'audit']):
+        crole = self._get_custom_role_obj()
+        if crole:
+            if crole.dashboard_access in ['owner', 'manager', 'regional_manager'] or crole.has_all_branches_access or crole.has_product_rights or crole.has_bill_edit_rights:
                 return True
+        if self.role and any(term in self.role.lower() for term in ['manager', 'admin', 'head', 'lead', 'supervisor', 'general', 'audit']):
+            return True
         return False
 
     def is_staff_role(self):
@@ -219,10 +224,10 @@ class User(AbstractUser):
         choices_dict = dict(self.ROLE_CHOICES)
         if self.role in choices_dict:
             return choices_dict[self.role]
-        try:
-            return CustomRole.objects.get(code=self.role).name
-        except Exception:
-            return self.role.replace('_', ' ').title()
+        crole = self._get_custom_role_obj()
+        if crole:
+            return crole.name
+        return (self.role or '').replace('_', ' ').title()
 
     def get_role_display(self):
         return self.role_display
@@ -231,12 +236,9 @@ class User(AbstractUser):
     def has_all_branches(self):
         if self.is_superuser or self.role in ['owner', 'admin', 'regional_manager']:
             return True
-        if self.role:
-            try:
-                crole = CustomRole.objects.get(code=self.role)
-                return crole.has_all_branches_access
-            except CustomRole.DoesNotExist:
-                pass
+        crole = self._get_custom_role_obj()
+        if crole:
+            return crole.has_all_branches_access
         return False
 
     def get_accessible_branches(self):

@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from core.models import Branch
 from .models import User
+from .security import BruteForceLimiter, get_client_ip
 
 class CustomAuthenticationForm(AuthenticationForm):
     def clean(self):
@@ -12,10 +13,24 @@ class CustomAuthenticationForm(AuthenticationForm):
             if user_by_emp:
                 self.cleaned_data['username'] = user_by_emp.username
 
-        cleaned_data = super().clean()
+        try:
+            cleaned_data = super().clean()
+        except forms.ValidationError as e:
+            if hasattr(self, 'request') and self.request:
+                ip = get_client_ip(self.request)
+                count = BruteForceLimiter.record_failed_attempt(ip)
+                if count >= BruteForceLimiter.MAX_ATTEMPTS:
+                    raise forms.ValidationError("Too many failed login attempts. Your IP has been temporarily locked out for 15 minutes.")
+            raise e
+
         user = self.get_user()
         
         if user:
+            # Reset failed brute force attempts on successful login
+            if hasattr(self, 'request') and self.request:
+                ip = get_client_ip(self.request)
+                BruteForceLimiter.reset_attempts(ip)
+
             # Check if account is active
             if not user.is_active:
                 raise forms.ValidationError("Your account is inactive. Please contact admin team.")

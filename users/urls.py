@@ -1,11 +1,21 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
+from django.views.decorators.debug import sensitive_post_parameters, sensitive_variables
 from . import views
 from .forms import CustomAuthenticationForm
 
+decorated_login = sensitive_post_parameters('password', 'username', 'encrypted_credentials')(
+    sensitive_variables('password', 'username', 'encrypted_credentials')(
+        auth_views.LoginView.as_view(
+            template_name='registration/login.html',
+            authentication_form=CustomAuthenticationForm
+        )
+    )
+)
+
 urlpatterns = [
     path('', views.dashboard_redirect, name='users_root'),
-    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html', authentication_form=CustomAuthenticationForm), name='login'),
+    path('login/', decorated_login, name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('dashboard/redirect/', views.dashboard_redirect, name='dashboard_redirect'),
     path('dashboard/owner/', views.OwnerDashboardView.as_view(), name='owner_dashboard'),

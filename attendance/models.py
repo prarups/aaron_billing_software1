@@ -240,15 +240,23 @@ class GlobalPermissionPolicy(models.Model):
     def formatted_max_hours(self):
         return format_duration_display(self.max_hours_per_permission)
 
+    _cached_policy = None
+
     @classmethod
     def get_policy(cls):
-        policy, _ = cls.objects.get_or_create(id=1, defaults={
-            'max_permissions_per_month': 2,
-            'max_hours_per_permission': 2.00,
-            'late_threshold_for_half_day_deduction': 1,
-            'grace_period_minutes': 15,
-        })
-        return policy
+        if cls._cached_policy is None:
+            policy, _ = cls.objects.get_or_create(id=1, defaults={
+                'max_permissions_per_month': 2,
+                'max_hours_per_permission': 2.00,
+                'late_threshold_for_half_day_deduction': 1,
+                'grace_period_minutes': 15,
+            })
+            cls._cached_policy = policy
+        return cls._cached_policy
+
+    def save(self, *args, **kwargs):
+        GlobalPermissionPolicy._cached_policy = None
+        super().save(*args, **kwargs)
 
 
 class SalaryConfig(models.Model):

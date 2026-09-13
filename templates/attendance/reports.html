@@ -498,6 +498,40 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Grid Pagination -->
+                    {% if grid_page_obj.has_other_pages %}
+                    <div class="d-flex flex-wrap justify-content-between align-items-center p-3 border-top">
+                        <div class="text-muted text-xs">
+                            Showing <strong>{{ grid_page_obj.start_index }}</strong> to <strong>{{ grid_page_obj.end_index }}</strong> of <strong>{{ grid_page_obj.paginator.count }}</strong> staff members
+                        </div>
+                        <nav>
+                            <ul class="pagination pagination-sm m-0">
+                                {% if grid_page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link rounded-start-pill px-3" href="?grid_page=1&tab=grid&branch={{ selected_branch }}&user={{ selected_user }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}">&laquo; First</a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link px-3" href="?grid_page={{ grid_page_obj.previous_page_number }}&tab=grid&branch={{ selected_branch }}&user={{ selected_user }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}">Previous</a>
+                                    </li>
+                                {% endif %}
+
+                                <li class="page-item active">
+                                    <span class="page-link px-3 bg-primary border-primary">Page {{ grid_page_obj.number }} of {{ grid_page_obj.paginator.num_pages }}</span>
+                                </li>
+
+                                {% if grid_page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link px-3" href="?grid_page={{ grid_page_obj.next_page_number }}&tab=grid&branch={{ selected_branch }}&user={{ selected_user }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}">Next</a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link rounded-end-pill px-3" href="?grid_page={{ grid_page_obj.paginator.num_pages }}&tab=grid&branch={{ selected_branch }}&user={{ selected_user }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}">Last &raquo;</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

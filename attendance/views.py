@@ -69,14 +69,20 @@ def auto_update_past_attendance_statuses():
     try:
         today = timezone.localdate()
         recent_past_cutoff = today - datetime.timedelta(days=7)
-        past_records = Attendance.objects.filter(
+        past_records = list(Attendance.objects.filter(
             date__gte=recent_past_cutoff,
             date__lt=today,
             status='checked_in'
-        ).select_related('user', 'branch')
+        ).select_related('user', 'branch'))
+        if not past_records:
+            return
+            
+        updated_atts = []
         for att in past_records:
             att.recalculate_status()
-            att.save()
+            updated_atts.append(att)
+        if updated_atts:
+            Attendance.objects.bulk_update(updated_atts, ['status', 'total_hours', 'overtime_hours', 'check_out'])
     except Exception as e:
         logger.error(f"Error auto updating past attendance statuses: {e}")
 
@@ -726,7 +732,17 @@ def attendance_reports(request):
     if selected_user:
         grid_users_qs = grid_users_qs.filter(id=selected_user)
 
-    grid_users = list(grid_users_qs)
+    # Grid HTML Pagination (10 staff members per page)
+    grid_paginator = Paginator(grid_users_qs, 10)
+    grid_page_number = request.GET.get('grid_page', 1)
+    grid_page_obj = grid_paginator.get_page(grid_page_number)
+
+    # If exporting grid CSV, use full dataset; otherwise use paginated page
+    if request.GET.get('export') == 'grid_csv':
+        grid_users = list(grid_users_qs)
+    else:
+        grid_users = list(grid_page_obj.object_list)
+
     grid_users.sort(key=lambda u: (u.employee_id or '', u.username or ''))
     grid_user_ids = [u.id for u in grid_users]
 
@@ -931,6 +947,7 @@ def attendance_reports(request):
         
         # Grid parameters
         'grid_data': grid_data,
+        'grid_page_obj': grid_page_obj,
         'day_numbers': day_numbers,
         'grid_month': grid_month,
         'grid_year': grid_year,
@@ -963,7 +980,13 @@ def salary_list(request):
     if branch_staff:
         users = users.filter(branches__id=branch_staff)
         
-    users = users.distinct()
+    users = users.distinct().select_related('salary_config').prefetch_related('branches').order_by('employee_id', 'username')
+    
+    from django.core.paginator import Paginator
+    paginator = Paginator(users, 10)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
     branches = Branch.objects.all().order_by('name')
     
     today = timezone.localdate()
@@ -971,7 +994,8 @@ def salary_list(request):
     global_policy = GlobalPermissionPolicy.get_policy()
     
     context = {
-        'users': users,
+        'page_obj': page_obj,
+        'users': page_obj.object_list,
         'branches': branches,
         'q_staff': q_staff,
         'selected_branch_id': branch_staff,
@@ -984,7 +1008,7 @@ def salary_list(request):
     return render(request, 'attendance/payroll.html', context)
 
 
-def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=True):
+def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=False):
     if force_recalculate:
         # Process users whose payroll is missing or still in 'draft'
         paid_user_ids = set(MonthlyPayroll.objects.filter(month=month, year=year, status='paid').values_list('user_id', flat=True))
@@ -1027,6 +1051,10 @@ def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=Tr
 
     global_policy = GlobalPermissionPolicy.get_policy()
     late_thresh = max(1, global_policy.late_threshold_for_half_day_deduction or 1)
+
+    existing_payrolls = {p.user_id: p for p in MonthlyPayroll.objects.filter(month=month, year=year, user_id__in=proc_user_ids)}
+    to_create = []
+    to_update = []
 
     for user in users_to_process:
         config = salary_configs.get(user.id)
@@ -1085,23 +1113,36 @@ def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=Tr
 
         total_deductions = late_deduction + lop_deduction
         net_salary = max(Decimal('0.00'), base_salary - total_deductions)
-        MonthlyPayroll.objects.update_or_create(
-            user=user,
-            month=month,
-            year=year,
-            defaults={
-                'present_days': Decimal(str(present_days)),
-                'absent_days': Decimal(str(absent_days)),
-                'late_days': late_days,
-                'approved_leaves': approved_leaves,
-                'unapproved_leaves': lop_days_to_deduct,
-                'base_salary': base_salary,
-                'deductions': total_deductions,
-                'net_salary': net_salary,
-                'processed_by': request_user if (request_user and request_user.is_authenticated) else None,
-                'status': 'draft',
-            }
-        )
+        
+        payroll_data = {
+            'present_days': Decimal(str(present_days)),
+            'absent_days': Decimal(str(absent_days)),
+            'late_days': late_days,
+            'approved_leaves': approved_leaves,
+            'unapproved_leaves': lop_days_to_deduct,
+            'base_salary': base_salary,
+            'deductions': total_deductions,
+            'net_salary': net_salary,
+            'processed_by': request_user if (request_user and request_user.is_authenticated) else None,
+            'status': 'draft',
+        }
+        
+        if user.id in existing_payrolls:
+            p = existing_payrolls[user.id]
+            for field, val in payroll_data.items():
+                setattr(p, field, val)
+            to_update.append(p)
+        else:
+            to_create.append(MonthlyPayroll(user=user, month=month, year=year, **payroll_data))
+
+    if to_create:
+        MonthlyPayroll.objects.bulk_create(to_create)
+    if to_update:
+        MonthlyPayroll.objects.bulk_update(to_update, [
+            'present_days', 'absent_days', 'late_days', 'approved_leaves',
+            'unapproved_leaves', 'base_salary', 'deductions', 'net_salary',
+            'processed_by', 'status'
+        ])
 
 
 @login_required
@@ -1114,8 +1155,8 @@ def pay_slips_view(request):
     selected_month = int(request.GET.get('month', today.month))
     selected_year = int(request.GET.get('year', today.year))
     
-    # Auto-ensure monthly payroll records exist for all users
-    ensure_monthly_payrolls(selected_month, selected_year, request.user, force_recalculate=True)
+    # Auto-ensure monthly payroll records exist for missing users
+    ensure_monthly_payrolls(selected_month, selected_year, request.user, force_recalculate=False)
     
     raw_month_payrolls = MonthlyPayroll.objects.filter(month=selected_month, year=selected_year).select_related('user')
     
@@ -1183,10 +1224,17 @@ def pay_slips_view(request):
             ])
         return response
 
+    # 10-Row Server-Side Pagination for Pay Slips
+    from django.core.paginator import Paginator
+    paginator = Paginator(payrolls, 10)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
     branches = Branch.objects.all().order_by('name')
     
     context = {
-        'payrolls': payrolls,
+        'page_obj': page_obj,
+        'payrolls': page_obj.object_list,
         'selected_month': selected_month,
         'selected_year': selected_year,
         'months': range(1, 13),
@@ -1200,7 +1248,7 @@ def pay_slips_view(request):
         'total_net': total_net,
         'paid_count': paid_count,
         'draft_count': draft_count,
-        'total_staff_payrolls': total_staff_payrolls,
+        'total_staff_payrolls': paginator.count,
     }
     return render(request, 'attendance/pay_slips.html', context)
 
@@ -1446,7 +1494,7 @@ def my_summary_view(request):
     year = int(request.GET.get('year', today.year))
     
     # Auto-ensure monthly payroll is calculated so user can see personal payslips summary
-    ensure_monthly_payrolls(month, year, request.user, force_recalculate=True)
+    ensure_monthly_payrolls(month, year, request.user, force_recalculate=False)
 
     # Calculate days in month
     days_in_month = calendar.monthrange(year, month)[1]
@@ -1707,8 +1755,16 @@ def management_overview_view(request):
                 notes
             ])
         return response
+
+    # 10-Row Server-Side Pagination for Staff Log
+    from django.core.paginator import Paginator
+    paginator = Paginator(staff_today_status, 10)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
         
     context = {
+        'page_obj': page_obj,
+        'staff_today_status': page_obj.object_list,
         'today': today,
         'selected_date': selected_date,
         'selected_date_str': selected_date.strftime('%Y-%m-%d'),
@@ -1726,7 +1782,6 @@ def management_overview_view(request):
         'pending_permissions_count': pending_permissions.count(),
         'pending_leaves': pending_leaves,
         'pending_permissions': pending_permissions,
-        'staff_today_status': staff_today_status,
         'recent_audit_logs': AttendanceAuditLog.objects.select_related(
             'attendance', 'attendance__user', 'attendance__branch', 'edited_by'
         ).filter(attendance__date=selected_date).order_by('-timestamp'),

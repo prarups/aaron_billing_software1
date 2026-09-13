@@ -157,7 +157,7 @@
                 <p class="login-subtitle">Sign in to your account to continue</p>
             </div>
             
-            <form method="post" action="{% url 'login' %}">
+            <form method="post" action="{% url 'login' %}" id="loginForm">
                 {% csrf_token %}
                 {% if form.non_field_errors %}
                 <div class="alert alert-danger p-2.5 small mb-4 rounded-3 text-center" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #fca5a5;">
@@ -186,7 +186,9 @@
                     </div>
                 </div>
                 
-                <button type="submit" class="btn btn-primary w-100 login-btn py-2.5 mt-2">Sign In</button>
+                <input type="hidden" name="encrypted_credentials" id="encrypted_credentials">
+
+                <button type="submit" class="btn btn-primary w-100 login-btn py-2.5 mt-2" id="submitBtn">Sign In</button>
             </form>
         </div>
     </div>
@@ -204,6 +206,83 @@
             passwordInput.type = 'password';
             eyeIcon.classList.remove('bi-eye-slash');
             eyeIcon.classList.add('bi-eye');
+        }
+    });
+
+    // Client-side AES-GCM Payload Encryption prior to transmission
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        if (this.dataset.encrypted === "true") return;
+        
+        const usernameInput = document.getElementById('id_username');
+        const passwordInput = document.getElementById('id_password');
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+        const encryptedField = document.getElementById('encrypted_credentials');
+
+        if (!window.crypto || !window.crypto.subtle || !csrfToken) {
+            // Fallback to standard transmission if Web Crypto is unavailable
+            return;
+        }
+
+        e.preventDefault();
+
+        try {
+            const username = usernameInput.value;
+            const password = passwordInput.value;
+            const payload = JSON.stringify({ username, password, timestamp: Date.now() });
+            
+            const enc = new TextEncoder();
+            const salt = window.crypto.getRandomValues(new Uint8Array(16));
+            const nonce = window.crypto.getRandomValues(new Uint8Array(12));
+            
+            // PBKDF2 Key Derivation matching server secret derivation
+            const secretMaterial = enc.encode("dev-secret-key-aaron-billing" + csrfToken);
+            const baseKey = await window.crypto.subtle.importKey(
+                "raw", secretMaterial, "PBKDF2", false, ["deriveKey"]
+            );
+            
+            const aesKey = await window.crypto.subtle.deriveKey(
+                {
+                    name: "PBKDF2",
+                    salt: salt,
+                    iterations: 1000,
+                    hash: "SHA-256"
+                },
+                baseKey,
+                { name: "AES-GCM", length: 256 },
+                false,
+                ["encrypt"]
+            );
+
+            const ciphertext = await window.crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: nonce },
+                aesKey,
+                enc.encode(payload)
+            );
+
+            // Combine salt (16) + nonce (12) + ciphertext
+            const combined = new Uint8Array(salt.length + nonce.length + ciphertext.byteLength);
+            combined.set(salt, 0);
+            combined.set(nonce, salt.length);
+            combined.set(new Uint8Array(ciphertext), salt.length + nonce.length);
+
+            // Base64 encode combined payload
+            let binary = '';
+            const bytes = new Uint8Array(combined);
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            encryptedField.value = btoa(binary);
+
+            // Clear raw sensitive inputs before network submit
+            usernameInput.value = '';
+            passwordInput.value = '';
+
+            this.dataset.encrypted = "true";
+            this.submit();
+        } catch (err) {
+            console.error("Payload encryption error, falling back to standard submit", err);
+            this.dataset.encrypted = "true";
+            this.submit();
         }
     });
 </script>

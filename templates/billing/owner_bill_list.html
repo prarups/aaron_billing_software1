@@ -467,6 +467,11 @@
                             <a href="{% url 'bill_detail' bill.id %}" class="btn-view-action">
                                 View
                             </a>
+                            {% if request.user.is_superuser or request.user.is_owner or request.user.has_bill_edit_rights %}
+                            <a href="{% url 'edit_bill_back' bill.id %}" class="btn btn-outline-primary rounded-pill text-xs fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 0.72rem; padding: 4px 12px; border: 1px solid rgba(13, 110, 253, 0.3); background: rgba(13, 110, 253, 0.04); color: #0d6efd; text-decoration: none;">
+                                Edit
+                            </a>
+                            {% endif %}
                             <a href="{% url 'return_create' %}?invoice_id={{ bill.invoice_number|default:bill.id }}" class="btn btn-outline-warning rounded-pill text-xs fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 0.72rem; padding: 4px 12px; border: 1px solid rgba(255, 193, 7, 0.3); background: rgba(255, 193, 7, 0.04); color: #ffc107; text-decoration: none;">
                                 Return
                             </a>
