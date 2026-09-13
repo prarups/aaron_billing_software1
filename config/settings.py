@@ -118,10 +118,11 @@ if DEBUG and not use_postgres:
         }
     }
 else:
-    # Production: PostgreSQL (Railway, Render, or custom)
+    # Production: PostgreSQL (Railway, Render, Supabase, or custom)
+    conn_max_age_val = int(os.environ.get('CONN_MAX_AGE', '0'))
     if os.environ.get('DATABASE_URL'):
         DATABASES = {
-            'default': dj_database_url.config(conn_max_age=600, conn_health_checks=True)
+            'default': dj_database_url.config(conn_max_age=conn_max_age_val, conn_health_checks=True)
         }
     else:
         DATABASES = {
@@ -132,7 +133,7 @@ else:
                 'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'p@ssw0rd'),
                 'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
                 'PORT': os.environ.get('POSTGRES_PORT', '5432'),
-                'CONN_MAX_AGE': 600,
+                'CONN_MAX_AGE': conn_max_age_val,
                 'CONN_HEALTH_CHECKS': True,
             }
         }

@@ -8,15 +8,15 @@ class UserActivityMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if hasattr(request, 'user') and request.user.is_authenticated:
-            try:
+        try:
+            if hasattr(request, 'user') and request.user.is_authenticated:
                 now = timezone.now()
                 last_activity = getattr(request.user, 'last_activity', None)
                 if not last_activity or (now - last_activity).total_seconds() > 60:
                     request.user.last_activity = now
                     request.user.save(update_fields=['last_activity'])
-            except Exception:
-                pass
+        except Exception:
+            pass
         
         response = self.get_response(request)
         
