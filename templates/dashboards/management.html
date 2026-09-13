@@ -2269,27 +2269,18 @@
     }
 
     function pollStaffOnlineStatus() {
-        fetch("{% url 'staff_online_status' %}")
+        fetch("{% url 'staff_online_status' %}?only_map=1")
             .then(res => res.json())
             .then(data => {
-                let onlineCount = 0;
-                let offlineCount = 0;
-                for (const [staffId, isOnline] of Object.entries(data)) {
-                    if (isOnline) {
-                        onlineCount++;
-                    } else {
-                        offlineCount++;
-                    }
-                    const row = document.getElementById(`staff-row-${staffId}`);
-                    if (!row) continue;
-                    
-                    const oldOnline = row.getAttribute('data-online');
-                    const newOnlineStr = isOnline ? 'true' : 'false';
-                    if (oldOnline !== newOnlineStr) {
-                        row.setAttribute('data-online', newOnlineStr);
-                    }
-                    
-                    // Update online dot classes in avatar
+                const statusMap = data.status_map || {};
+                const onlineCount = data.online_count !== undefined ? data.online_count : 0;
+                const offlineCount = data.offline_count !== undefined ? data.offline_count : 0;
+
+                document.querySelectorAll('.staff-row').forEach(row => {
+                    const staffId = row.dataset.staffId || (row.id ? row.id.replace('staff-row-', '') : null);
+                    if (!staffId) return;
+                    const isOnline = !!statusMap[staffId];
+                    row.setAttribute('data-online', isOnline ? 'true' : 'false');
                     const dot = row.querySelector('.s-online-dot');
                     if (dot) {
                         if (isOnline) {
@@ -2300,8 +2291,8 @@
                             dot.classList.remove('s-dot-on');
                         }
                     }
-                }
-                
+                });
+
                 const onlineEl = document.getElementById('onlineStaffCount');
                 const offlineEl = document.getElementById('offlineStaffCount');
                 if (onlineEl) onlineEl.textContent = onlineCount;

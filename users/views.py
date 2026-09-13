@@ -1164,29 +1164,50 @@ def export_staff_csv(request):
 
 @login_required
 def get_staff_online_status(request):
-    """API endpoint to get the online/offline status and details of all staff members."""
+    """API endpoint to get the online/offline status and details of staff members efficiently."""
     if not (request.user.is_owner() or request.user.is_manager()):
         return JsonResponse({'error': 'Unauthorized'}, status=403)
         
-    staff_qs = User.objects.all().select_related('active_branch').prefetch_related('branches')
-    
+    from django.utils import timezone
+    from datetime import timedelta
     from core.models import Branch
+    
+    # 3-minute cutoff for active online status
+    cutoff = timezone.now() - timedelta(seconds=180)
+    online_ids_set = set(User.objects.filter(is_active=True, last_activity__gte=cutoff).values_list('id', flat=True))
+    
+    only_map = request.GET.get('only_map') == '1'
+    total_staff_count = User.objects.filter(is_active=True).count()
+    online_count = len(online_ids_set)
+    offline_count = max(0, total_staff_count - online_count)
+    
+    status_map = {str(uid): True for uid in online_ids_set}
+    
+    if only_map:
+        return JsonResponse({
+            'status_map': status_map,
+            'online_count': online_count,
+            'offline_count': offline_count
+        })
+        
+    staff_qs = User.objects.filter(is_active=True).select_related('active_branch').prefetch_related('branches')
     total_branches_count = Branch.objects.count()
     
-    status_data = {}
     details = []
     for staff in staff_qs:
-        is_online = staff.is_online
-        status_data[staff.id] = is_online
+        is_online = staff.id in online_ids_set
         
-        assigned_branches = list(staff.branches.all())
-        if staff.has_all_branches or staff.is_owner() or (total_branches_count > 0 and len(assigned_branches) >= total_branches_count):
+        if staff.has_all_branches or staff.is_owner():
             branches_str = 'All Branches'
         else:
-            branch_names = [b.name for b in assigned_branches]
-            if staff.active_branch and staff.active_branch.name not in branch_names:
-                branch_names.insert(0, f"Primary: {staff.active_branch.name}")
-            branches_str = ', '.join(branch_names) if branch_names else 'None'
+            assigned_branches = list(staff.branches.all())
+            if total_branches_count > 0 and len(assigned_branches) >= total_branches_count:
+                branches_str = 'All Branches'
+            else:
+                branch_names = [b.name for b in assigned_branches]
+                if staff.active_branch and staff.active_branch.name not in branch_names:
+                    branch_names.insert(0, f"Primary: {staff.active_branch.name}")
+                branches_str = ', '.join(branch_names) if branch_names else 'None'
         
         details.append({
             'id': staff.id,
@@ -1198,15 +1219,12 @@ def get_staff_online_status(request):
             'is_online': is_online
         })
         
-    res = {
-        'status_map': status_data,
-        'staff_details': details
-    }
-    # Keep backward compatibility for key-value dictionary access
-    for k, v in status_data.items():
-        res[k] = v
-        
-    return JsonResponse(res)
+    return JsonResponse({
+        'status_map': status_map,
+        'staff_details': details,
+        'online_count': online_count,
+        'offline_count': offline_count
+    })
 
 
 @login_required

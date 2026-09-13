@@ -176,7 +176,7 @@ class User(AbstractUser):
     def is_online(self):
         if self.last_activity:
             from django.utils import timezone
-            return (timezone.now() - self.last_activity).total_seconds() < 300
+            return (timezone.now() - self.last_activity).total_seconds() < 180
         return False
 
     def _get_custom_role_obj(self):
