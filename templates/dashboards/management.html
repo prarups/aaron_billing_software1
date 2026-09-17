@@ -696,7 +696,16 @@
                         </select>
                     </div>
 
-                    {% if staff_search or branch_filter != 'all' or role_filter != 'all' %}
+                    <!-- Status Filter Dropdown -->
+                    <div class="d-flex align-items-center bg-white rounded-pill px-2.5 py-1 shadow-sm border">
+                        <select name="status_filter" id="statusFilterSelect" class="form-select form-select-sm no-search border-0 py-0 text-xs fw-semibold text-dark shadow-none" data-no-search="true" onchange="triggerLiveStaffAjaxSearch()" style="width: auto; min-width: 110px; cursor: pointer;">
+                            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active Only</option>
+                            <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive Only</option>
+                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Status</option>
+                        </select>
+                    </div>
+
+                    {% if staff_search or branch_filter != 'all' or role_filter != 'all' or status_filter != 'active' %}
                     <button type="button" class="btn btn-sm btn-light rounded-pill px-3 py-1 text-xs fw-semibold text-danger shadow-sm border" onclick="resetLiveStaffFilters()" title="Reset Filters"><i class="bi bi-x-circle me-1"></i>Reset</button>
                     {% endif %}
                 </div>
@@ -722,6 +731,7 @@
                     id="staff-row-{{ staff.id }}"
                     data-branches="{% if staff.role == 'owner' or staff.role == 'regional_manager' %}all{% else %}{% for b in staff.assigned_branches %}branch-{{ b.id }} {% endfor %}{% endif %}"
                     data-role="{{ staff.role }}"
+                    data-active="{% if staff.is_active %}true{% else %}false{% endif %}"
                     data-online="{% if staff.is_online %}true{% else %}false{% endif %}">
 
                     <!-- Staff Member -->
@@ -742,6 +752,9 @@
                                 <div class="fw-bold text-dark" style="font-size:0.84rem;line-height:1.3;">
                                     {{ staff.first_name }} {{ staff.last_name }}
                                     {% if not staff.first_name and not staff.last_name %}<span class="text-muted">{{ staff.username }}</span>{% endif %}
+                                    {% if not staff.is_active %}
+                                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-0.5 text-xxs ms-1" style="font-size:0.65rem;">Inactive</span>
+                                    {% endif %}
                                 </div>
                                 <div style="font-size:0.71rem;color:#94a3b8;">@{{ staff.username }} &middot; {{ staff.employee_id|default:"No ID" }} &middot; <i class="bi bi-clock"></i> {{ staff.shift_start_time|time:"h:i A" }} - {{ staff.shift_end_time|time:"h:i A" }}</div>
                             </div>
@@ -874,19 +887,19 @@
             <nav aria-label="Staff Pagination" class="mb-0">
                 <ul class="pagination pagination-sm justify-content-center mb-0">
                     {% if page_obj.has_previous %}
-                    <li class="page-item"><a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?tab=staff&page={{ page_obj.previous_page_number }}&staff_search={{ staff_search|urlencode }}&branch_filter={{ branch_filter|urlencode }}&role_filter={{ role_filter|urlencode }}">Previous</a></li>
+                    <li class="page-item"><a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?tab=staff&page={{ page_obj.previous_page_number }}&staff_search={{ staff_search|urlencode }}&branch_filter={{ branch_filter|urlencode }}&role_filter={{ role_filter|urlencode }}&status_filter={{ status_filter|urlencode }}">Previous</a></li>
                     {% endif %}
                     
                     {% for i in page_obj.paginator.page_range %}
                         {% if page_obj.number == i %}
                         <li class="page-item active"><span class="page-link rounded-pill border-0 shadow px-2.5 mx-1 bg-primary text-white">{{ i }}</span></li>
                         {% elif i >= page_obj.number|add:"-2" and i <= page_obj.number|add:"2" %}
-                        <li class="page-item"><a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?tab=staff&page={{ i }}&staff_search={{ staff_search|urlencode }}&branch_filter={{ branch_filter|urlencode }}&role_filter={{ role_filter|urlencode }}">{{ i }}</a></li>
+                        <li class="page-item"><a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?tab=staff&page={{ i }}&staff_search={{ staff_search|urlencode }}&branch_filter={{ branch_filter|urlencode }}&role_filter={{ role_filter|urlencode }}&status_filter={{ status_filter|urlencode }}">{{ i }}</a></li>
                         {% endif %}
                     {% endfor %}
                     
                     {% if page_obj.has_next %}
-                    <li class="page-item"><a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?tab=staff&page={{ page_obj.next_page_number }}&staff_search={{ staff_search|urlencode }}&branch_filter={{ branch_filter|urlencode }}&role_filter={{ role_filter|urlencode }}">Next</a></li>
+                    <li class="page-item"><a class="page-link rounded-pill border-0 shadow-sm px-2.5 mx-1" href="?tab=staff&page={{ page_obj.next_page_number }}&staff_search={{ staff_search|urlencode }}&branch_filter={{ branch_filter|urlencode }}&role_filter={{ role_filter|urlencode }}&status_filter={{ status_filter|urlencode }}">Next</a></li>
                     {% endif %}
                 </ul>
             </nav>
@@ -1799,12 +1812,14 @@
             const sEl = document.getElementById('staffSearchInput');
             const bEl = document.getElementById('branchFilterSelect');
             const rEl = document.getElementById('roleFilterSelect');
+            const stEl = document.getElementById('statusFilterSelect');
             
             const searchVal = sEl ? sEl.value.trim() : '';
             const branchVal = bEl ? bEl.value : 'all';
             const roleVal = rEl ? rEl.value : 'all';
+            const statusVal = stEl ? stEl.value : 'active';
             
-            const url = `?tab=staff&page=${page}&staff_search=${encodeURIComponent(searchVal)}&branch_filter=${encodeURIComponent(branchVal)}&role_filter=${encodeURIComponent(roleVal)}`;
+            const url = `?tab=staff&page=${page}&staff_search=${encodeURIComponent(searchVal)}&branch_filter=${encodeURIComponent(branchVal)}&role_filter=${encodeURIComponent(roleVal)}&status_filter=${encodeURIComponent(statusVal)}`;
             
             fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(res => res.text())
@@ -1851,9 +1866,11 @@
         const sEl = document.getElementById('staffSearchInput');
         const bEl = document.getElementById('branchFilterSelect');
         const rEl = document.getElementById('roleFilterSelect');
+        const stEl = document.getElementById('statusFilterSelect');
         if (sEl) sEl.value = '';
         if (bEl) bEl.value = 'all';
         if (rEl) rEl.value = 'all';
+        if (stEl) stEl.value = 'active';
         triggerLiveStaffAjaxSearch(1);
     };
 
@@ -1876,10 +1893,12 @@
         const sEl = document.getElementById('staffSearchInput');
         const bEl = document.getElementById('branchFilterSelect');
         const rEl = document.getElementById('roleFilterSelect');
+        const stEl = document.getElementById('statusFilterSelect');
         
         const searchVal = sEl ? sEl.value.toLowerCase() : '';
         const branchVal = bEl ? bEl.value : 'all';
         const roleVal = rEl ? rEl.value : 'all';
+        const statusVal = stEl ? stEl.value : 'active';
         
         const matchedRows = [];
         
@@ -1894,8 +1913,9 @@
             const matchesSearch = (searchVal === '') || username.includes(searchVal) || name.includes(searchVal) || empId.includes(searchVal);
             const matchesBranch = (branchVal === 'all') || (row.dataset.branches && (row.dataset.branches === 'all' || row.dataset.branches.includes(branchVal)));
             const matchesRole = (roleVal === 'all') || (row.dataset.role === roleVal);
+            const matchesStatus = (statusVal === 'all') || (statusVal === 'active' && row.dataset.active !== 'false') || (statusVal === 'inactive' && row.dataset.active === 'false');
             
-            if (matchesSearch && matchesBranch && matchesRole) {
+            if (matchesSearch && matchesBranch && matchesRole && matchesStatus) {
                 matchedRows.push(row);
             } else {
                 row.style.display = 'none';

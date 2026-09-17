@@ -109,10 +109,11 @@ def attendance_dashboard(request):
         # Fetch Admin/Manager Overview Statistics
         branches = request.user.get_accessible_branches()
         branch_users = User.objects.filter(
-            Q(branches__in=branches) | Q(active_branch__in=branches)
+            Q(branches__in=branches) | Q(active_branch__in=branches),
+            is_active=True
         ).distinct()
         if is_owner(request.user):
-            branch_users = User.objects.all()
+            branch_users = User.objects.filter(is_active=True)
             
         total_staff_count = branch_users.count()
         
@@ -641,6 +642,8 @@ def attendance_reports(request):
         messages.error(request, 'Unauthorized access.')
         return redirect('attendance:dashboard')
         
+    status_filter = request.GET.get('status_filter', 'active').strip()
+
     branches = request.user.get_accessible_branches()
     users = User.objects.filter(
         Q(branches__in=branches) | Q(active_branch__in=branches)
@@ -648,7 +651,13 @@ def attendance_reports(request):
     
     if is_owner(request.user):
         users = User.objects.all()
-    users = users.order_by('employee_id', 'username')
+
+    if status_filter == 'active':
+        users = users.filter(is_active=True)
+    elif status_filter == 'inactive':
+        users = users.filter(is_active=False)
+
+    users = users.order_by('-is_active', 'employee_id', 'username')
         
     # Filters for detailed list logs
     selected_branch = request.GET.get('branch', '')
@@ -680,7 +689,9 @@ def attendance_reports(request):
         ).distinct()
         
     if selected_branch:
-        records = records.filter(branch_id=selected_branch)
+        records = records.filter(
+            Q(branch_id=selected_branch) | Q(user__branches__id=selected_branch) | Q(user__active_branch__id=selected_branch)
+        ).distinct()
     if selected_user:
         records = records.filter(user_id=selected_user)
         
@@ -728,7 +739,9 @@ def attendance_reports(request):
     # Filter users based on selected branch/user if any
     grid_users_qs = users.order_by('employee_id', 'username')
     if selected_branch:
-        grid_users_qs = grid_users_qs.filter(branches__id=selected_branch).distinct()
+        grid_users_qs = grid_users_qs.filter(
+            Q(branches__id=selected_branch) | Q(active_branch__id=selected_branch)
+        ).distinct()
     if selected_user:
         grid_users_qs = grid_users_qs.filter(id=selected_user)
 
@@ -940,6 +953,7 @@ def attendance_reports(request):
         'users': users,
         'selected_branch': selected_branch,
         'selected_user': selected_user,
+        'status_filter': status_filter,
         'audit_q': audit_q,
         'start_date_val': start_date.strftime('%Y-%m-%d'),
         'end_date_val': end_date.strftime('%Y-%m-%d'),
@@ -966,7 +980,13 @@ def salary_list(request):
         messages.error(request, 'Unauthorized access to salary configs.')
         return redirect('attendance:dashboard')
         
-    users = User.objects.all().order_by('username')
+    status_filter = request.GET.get('status_filter', 'active').strip()
+    users = User.objects.all()
+    if status_filter == 'active':
+        users = users.filter(is_active=True)
+    elif status_filter == 'inactive':
+        users = users.filter(is_active=False)
+
     existing_config_user_ids = set(SalaryConfig.objects.values_list('user_id', flat=True))
     missing_users = [u for u in users if u.id not in existing_config_user_ids]
     if missing_users:
@@ -980,7 +1000,7 @@ def salary_list(request):
     if branch_staff:
         users = users.filter(branches__id=branch_staff)
         
-    users = users.distinct().select_related('salary_config').prefetch_related('branches').order_by('employee_id', 'username')
+    users = users.distinct().select_related('salary_config').prefetch_related('branches').order_by('-is_active', 'employee_id', 'username')
     
     from django.core.paginator import Paginator
     paginator = Paginator(users, 10)
@@ -998,6 +1018,7 @@ def salary_list(request):
         'users': page_obj.object_list,
         'branches': branches,
         'q_staff': q_staff,
+        'status_filter': status_filter,
         'selected_branch_id': branch_staff,
         'months': range(1, 13),
         'years': range(today.year - 2, today.year + 2),

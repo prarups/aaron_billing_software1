@@ -379,7 +379,15 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-lg-3 col-md-4">
+                    <div class="col-lg-2 col-md-4">
+                        <label class="ar-field-label"><i class="bi bi-person-badge me-1 text-primary"></i> Status</label>
+                        <select name="status_filter" class="form-select ar-select">
+                            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active Only</option>
+                            <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive Only</option>
+                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Staff</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
                         <label class="ar-field-label"><i class="bi bi-calendar-month me-1 text-primary"></i> Month</label>
                         <select name="grid_month" class="form-select ar-select">
                             <option value="1" {% if grid_month == 1 %}selected{% endif %}>January</option>
@@ -404,11 +412,11 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-lg-4 col-md-12 d-flex gap-2">
+                    <div class="col-lg-3 col-md-12 d-flex gap-2">
                         <button type="submit" class="btn ar-btn-filter w-50">
                             <i class="bi bi-arrow-repeat me-1"></i> Update Grid
                         </button>
-                        <a href="?tab=grid&branch={{ selected_branch }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}&export=grid_csv" class="btn ar-btn-export w-50 text-decoration-none d-flex align-items-center justify-content-center">
+                        <a href="?tab=grid&branch={{ selected_branch }}&status_filter={{ status_filter }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}&export=grid_csv" class="btn ar-btn-export w-50 text-decoration-none d-flex align-items-center justify-content-center">
                             <i class="bi bi-file-earmark-spreadsheet-fill me-1.5"></i> Export CSV
                         </a>
                     </div>
@@ -509,10 +517,10 @@
                             <ul class="pagination pagination-sm m-0">
                                 {% if grid_page_obj.has_previous %}
                                     <li class="page-item">
-                                        <a class="page-link rounded-start-pill px-3" href="?grid_page=1&tab=grid&branch={{ selected_branch }}&user={{ selected_user }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}">&laquo; First</a>
+                                        <a class="page-link rounded-start-pill px-3" href="?grid_page=1&tab=grid&branch={{ selected_branch }}&status_filter={{ status_filter|urlencode }}&user={{ selected_user }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}">&laquo; First</a>
                                     </li>
                                     <li class="page-item">
-                                        <a class="page-link px-3" href="?grid_page={{ grid_page_obj.previous_page_number }}&tab=grid&branch={{ selected_branch }}&user={{ selected_user }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}">Previous</a>
+                                        <a class="page-link px-3" href="?grid_page={{ grid_page_obj.previous_page_number }}&tab=grid&branch={{ selected_branch }}&status_filter={{ status_filter|urlencode }}&user={{ selected_user }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}">Previous</a>
                                     </li>
                                 {% endif %}
 
@@ -522,10 +530,10 @@
 
                                 {% if grid_page_obj.has_next %}
                                     <li class="page-item">
-                                        <a class="page-link px-3" href="?grid_page={{ grid_page_obj.next_page_number }}&tab=grid&branch={{ selected_branch }}&user={{ selected_user }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}">Next</a>
+                                        <a class="page-link px-3" href="?grid_page={{ grid_page_obj.next_page_number }}&tab=grid&branch={{ selected_branch }}&status_filter={{ status_filter|urlencode }}&user={{ selected_user }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}">Next</a>
                                     </li>
                                     <li class="page-item">
-                                        <a class="page-link rounded-end-pill px-3" href="?grid_page={{ grid_page_obj.paginator.num_pages }}&tab=grid&branch={{ selected_branch }}&user={{ selected_user }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}">Last &raquo;</a>
+                                        <a class="page-link rounded-end-pill px-3" href="?grid_page={{ grid_page_obj.paginator.num_pages }}&tab=grid&branch={{ selected_branch }}&status_filter={{ status_filter|urlencode }}&user={{ selected_user }}&grid_month={{ grid_month }}&grid_year={{ grid_year }}">Last &raquo;</a>
                                     </li>
                                 {% endif %}
                             </ul>
@@ -542,7 +550,7 @@
             <div class="ar-filter-card">
                 <form method="get" class="row g-3 align-items-end">
                     <input type="hidden" name="tab" value="logs">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="ar-field-label"><i class="bi bi-shop me-1 text-primary"></i> Branch</label>
                         <select name="branch" class="form-select ar-select">
                             <option value="">🏢 All Branches</option>
@@ -551,12 +559,20 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="col-md-2">
+                        <label class="ar-field-label"><i class="bi bi-person-badge me-1 text-primary"></i> Status</label>
+                        <select name="status_filter" class="form-select ar-select">
+                            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active Only</option>
+                            <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive Only</option>
+                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Staff</option>
+                        </select>
+                    </div>
                     <div class="col-md-3">
                         <label class="ar-field-label"><i class="bi bi-person me-1 text-primary"></i> Employee</label>
                         <select name="user" class="form-select ar-select">
                             <option value="">All Employees</option>
                             {% for u in users %}
-                                <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"i" %}selected{% endif %}>{{ u.username }}</option>
+                                <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"i" %}selected{% endif %}>{{ u.username }}{% if not u.is_active %} (Inactive){% endif %}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -729,10 +745,10 @@
                         <ul class="pagination pagination-sm justify-content-center mb-0">
                             {% if page_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link rounded-start-pill px-3 border-0 text-primary fw-bold" href="?page=1&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">&laquo; First</a>
+                                    <a class="page-link rounded-start-pill px-3 border-0 text-primary fw-bold" href="?page=1&tab=logs&branch={{ selected_branch }}&status_filter={{ status_filter|urlencode }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">&laquo; First</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link px-3 border-0 text-primary fw-bold" href="?page={{ page_obj.previous_page_number }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Previous</a>
+                                    <a class="page-link px-3 border-0 text-primary fw-bold" href="?page={{ page_obj.previous_page_number }}&tab=logs&branch={{ selected_branch }}&status_filter={{ status_filter|urlencode }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Previous</a>
                                 </li>
                             {% endif %}
 
@@ -742,10 +758,10 @@
 
                             {% if page_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link px-3 border-0 text-primary fw-bold" href="?page={{ page_obj.next_page_number }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Next</a>
+                                    <a class="page-link px-3 border-0 text-primary fw-bold" href="?page={{ page_obj.next_page_number }}&tab=logs&branch={{ selected_branch }}&status_filter={{ status_filter|urlencode }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Next</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link rounded-end-pill px-3 border-0 text-primary fw-bold" href="?page={{ page_obj.paginator.num_pages }}&tab=logs&branch={{ selected_branch }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Last &raquo;</a>
+                                    <a class="page-link rounded-end-pill px-3 border-0 text-primary fw-bold" href="?page={{ page_obj.paginator.num_pages }}&tab=logs&branch={{ selected_branch }}&status_filter={{ status_filter|urlencode }}&user={{ selected_user }}&start_date={{ start_date_val }}&end_date={{ end_date_val }}">Last &raquo;</a>
                                 </li>
                             {% endif %}
                         </ul>

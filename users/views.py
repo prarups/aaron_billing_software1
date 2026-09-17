@@ -252,7 +252,8 @@ class OwnerDashboardView(TemplateView):
         
         # Subquery for active staff count
         staff_subquery = User.objects.filter(
-            branches=OuterRef('pk')
+            branches=OuterRef('pk'),
+            is_active=True
         ).order_by().values('branches').annotate(cnt=Count('id')).values('cnt')
 
         # Subquery for sales (today or period range)
@@ -392,7 +393,8 @@ class OwnerDashboardView(TemplateView):
                 managed_branch_ids.add(b.id)
                 
         all_sales_staff = User.objects.filter(
-            branches__in=managed_branch_ids
+            branches__in=managed_branch_ids,
+            is_active=True
         ).prefetch_related('branches').distinct()
         
         # Map branch_id -> list of staff
@@ -532,7 +534,8 @@ class ManagerDashboardView(TemplateView):
 
         # 2. Fetch staff counts per branch in 1 SQL query
         staff_count_data = User.branches.through.objects.filter(
-            branch_id__in=branch_ids
+            branch_id__in=branch_ids,
+            user__is_active=True
         ).values('branch_id').annotate(staff_cnt=Count('user_id', distinct=True))
         staff_by_branch = {item['branch_id']: item['staff_cnt'] for item in staff_count_data}
 
@@ -549,7 +552,7 @@ class ManagerDashboardView(TemplateView):
 
         # Staff performance for manager/assistant manager/custom manager roles
         if user.is_owner() or user.is_manager():
-            staff_qs = User.objects.filter(branches__in=target_branches).exclude(id=user.id).distinct()
+            staff_qs = User.objects.filter(branches__in=target_branches, is_active=True).exclude(id=user.id).distinct()
             
             sales_data = Bill.objects.filter(staff__in=staff_qs, created_at__range=(today_start, today_end)).values('staff').annotate(total=Sum('total_amount'))
             staff_sales_dict = {item['staff']: item['total'] or 0 for item in sales_data}
@@ -596,7 +599,7 @@ class ManagerStaffPerformanceView(TemplateView):
         import datetime
         from_datetime = timezone.make_aware(datetime.datetime.combine(from_date, datetime.time.min))
         to_datetime = timezone.make_aware(datetime.datetime.combine(to_date, datetime.time.max))
-        staff_qs = User.objects.filter(branches__in=user.get_accessible_branches()).exclude(id=user.id).distinct()
+        staff_qs = User.objects.filter(branches__in=user.get_accessible_branches(), is_active=True).exclude(id=user.id).distinct()
         
         # Pre-calculate sales for all staff for date range to avoid N+1 queries
         sales_data = Bill.objects.filter(staff__in=staff_qs, created_at__range=(from_datetime, to_datetime)).values('staff').annotate(total=Sum('total_amount'))
@@ -1342,6 +1345,7 @@ def branch_staff_management(request):
         staff_search = ''
         branch_filter = 'all'
         role_filter = 'all'
+        status_filter = 'active'
     else:
         branches_list = list(Branch.objects.all().order_by('code', 'id'))
         branches_by_code_list = branches_list
@@ -1350,9 +1354,15 @@ def branch_staff_management(request):
         staff_search = request.GET.get('staff_search', '').strip()
         branch_filter = request.GET.get('branch_filter', 'all').strip()
         role_filter = request.GET.get('role_filter', 'all').strip()
+        status_filter = request.GET.get('status_filter', 'active').strip()
         page_number = request.GET.get('page', 1)
         
         qs = User.objects.all().select_related('active_branch').prefetch_related('branches')
+        if status_filter == 'active':
+            qs = qs.filter(is_active=True)
+        elif status_filter == 'inactive':
+            qs = qs.filter(is_active=False)
+
         if staff_search:
             qs = qs.filter(
                 Q(username__icontains=staff_search) |
@@ -1366,7 +1376,7 @@ def branch_staff_management(request):
         if role_filter and role_filter != 'all':
             qs = qs.filter(role=role_filter)
             
-        qs = qs.distinct().order_by('employee_id', 'username')
+        qs = qs.distinct().order_by('-is_active', 'employee_id', 'username')
         
         from django.core.paginator import Paginator
         paginator = Paginator(qs, 10)
@@ -1397,6 +1407,7 @@ def branch_staff_management(request):
         'staff_search': staff_search,
         'branch_filter': branch_filter,
         'role_filter': role_filter,
+        'status_filter': status_filter,
         'custom_roles': custom_roles,
         'role_policies': role_policies,
         'all_branches': branches_list,

@@ -606,7 +606,7 @@ class CustomDynamicRoleTestCase(TestCase):
         # 1. Create a dynamic custom role (e.g., General Manager / generan_manager)
         custom_role = CustomRole.objects.create(
             name="General Manager",
-            code="generan_manager",
+            code="general_manager",
             has_pos_access=True,
             has_attendance_access=True,
             has_all_branches_access=True
@@ -626,7 +626,7 @@ class CustomDynamicRoleTestCase(TestCase):
         self.assertTrue(form.is_valid(), f"StaffForm validation failed: {form.errors}")
         
         user = form.save()
-        self.assertEqual(user.role, 'generan_manager')
+        self.assertEqual(user.role, 'general_manager')
         self.assertEqual(user.get_role_display(), 'General Manager')
         self.assertEqual(user.role_display, 'General Manager')
         self.assertTrue(user.is_manager())
@@ -764,6 +764,36 @@ class AuthenticationSecurityTests(TestCase):
         BruteForceLimiter.reset_attempts(ip)
         is_locked, _ = BruteForceLimiter.is_locked_out(ip)
         self.assertFalse(is_locked)
+
+    def test_staff_status_filter_active_inactive(self):
+        # Create active and inactive users
+        active_user = User.objects.create_user(username='active_staff', password='password123', is_active=True, role='sales_staff')
+        inactive_user = User.objects.create_user(username='inactive_staff', password='password123', is_active=False, role='sales_staff')
+        owner = User.objects.create_superuser(username='owner_test', password='password123', role='owner')
+        
+        self.client.login(username='owner_test', password='password123')
+        
+        # Default status filter (active only)
+        response = self.client.get(reverse('branch_staff_management') + '?tab=staff')
+        self.assertEqual(response.status_code, 200)
+        staff_list = response.context['staff_list']
+        self.assertIn(active_user, staff_list)
+        self.assertNotIn(inactive_user, staff_list)
+
+        # Inactive filter
+        response_inactive = self.client.get(reverse('branch_staff_management') + '?tab=staff&status_filter=inactive')
+        self.assertEqual(response_inactive.status_code, 200)
+        staff_list_inactive = response_inactive.context['staff_list']
+        self.assertIn(inactive_user, staff_list_inactive)
+        self.assertNotIn(active_user, staff_list_inactive)
+
+        # All filter
+        response_all = self.client.get(reverse('branch_staff_management') + '?tab=staff&status_filter=all')
+        self.assertEqual(response_all.status_code, 200)
+        staff_list_all = response_all.context['staff_list']
+        self.assertIn(active_user, staff_list_all)
+        self.assertIn(inactive_user, staff_list_all)
+
 
 
 
