@@ -26,6 +26,7 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-_lu+wc&olsa#wd(n=(2a(r3y&p18#g3d07ykc8)zhyr3roaub#')
+PAYLOAD_ENCRYPTION_KEY = os.environ.get('PAYLOAD_ENCRYPTION_KEY', 'dev-secret-key-aaron-billing')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')

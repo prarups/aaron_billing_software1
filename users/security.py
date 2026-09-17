@@ -18,9 +18,10 @@ SENSITIVE_KEYS = {
 def derive_aes_key(salt: bytes, context_token: str) -> bytes:
     """
     Derives a 256-bit AES key using PBKDF2 with SHA-256 HMAC
-    from Django SECRET_KEY combined with context_token (e.g., CSRF token).
+    from PAYLOAD_ENCRYPTION_KEY combined with context_token (e.g., CSRF token).
     """
-    secret = (settings.SECRET_KEY + context_token).encode('utf-8')
+    client_secret = getattr(settings, 'PAYLOAD_ENCRYPTION_KEY', 'dev-secret-key-aaron-billing')
+    secret = (client_secret + context_token).encode('utf-8')
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
