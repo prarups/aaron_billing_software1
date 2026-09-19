@@ -406,6 +406,9 @@ class ExportCSVTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'text/csv')
         self.assertTrue('sales_staff_accounts.csv' in response['Content-Disposition'])
+        content = response.content.decode('utf-8')
+        self.assertIn('Date of Joining', content)
+        self.assertIn('Date of Exit', content)
 
     def test_export_staff_csv_as_staff_denied(self):
         self.client.login(username="staff_user_export", password="password123")
@@ -793,6 +796,62 @@ class AuthenticationSecurityTests(TestCase):
         staff_list_all = response_all.context['staff_list']
         self.assertIn(active_user, staff_list_all)
         self.assertIn(inactive_user, staff_list_all)
+
+
+class EmployeeSelfServiceWeekOffTests(TestCase):
+    def setUp(self):
+        from core.models import Branch
+        self.branch = Branch.objects.create(name="Nellore Branch", code=50001, invoice_prefix="NB")
+        self.user = User.objects.create_user(
+            username="test_emp_wo",
+            password="password123",
+            role="sales_staff",
+            monthly_off_count=4,
+            active_branch=self.branch
+        )
+        self.user.branches.add(self.branch)
+
+    def test_get_week_off_quota_and_defaults(self):
+        self.client.login(username="test_emp_wo", password="password123")
+        url = reverse('attendance:my_week_offs')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['status'], 'success')
+        self.assertEqual(data['monthly_quota'], 4)
+        self.assertEqual(data['selected_count'], 0)
+        self.assertEqual(data['remaining_quota'], 4)
+
+    def test_save_week_offs_within_quota(self):
+        from django.utils import timezone
+        today = timezone.localdate()
+        m_str = f"{today.year}-{today.month:02d}"
+        self.client.login(username="test_emp_wo", password="password123")
+        url = reverse('attendance:my_week_offs')
+        payload = {
+            "dates": [f"{m_str}-01", f"{m_str}-02", f"{m_str}-03", f"{m_str}-04"]
+        }
+        response = self.client.post(url, data=payload, content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['status'], 'success')
+        self.assertEqual(data['selected_count'], 4)
+
+    def test_save_week_offs_exceeding_quota_fails(self):
+        from django.utils import timezone
+        today = timezone.localdate()
+        m_str = f"{today.year}-{today.month:02d}"
+        self.client.login(username="test_emp_wo", password="password123")
+        url = reverse('attendance:my_week_offs')
+        payload = {
+            "dates": [f"{m_str}-01", f"{m_str}-02", f"{m_str}-03", f"{m_str}-04", f"{m_str}-05"]
+        }
+        response = self.client.post(url, data=payload, content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertEqual(data['status'], 'error')
+        self.assertIn("You can select at most 4 week offs", data['message'])
+
 
 
 

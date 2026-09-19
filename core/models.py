@@ -195,6 +195,13 @@ class StockTransaction(models.Model):
     user = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     
+    class Meta:
+        indexes = [
+            models.Index(fields=['branch', 'product']),
+            models.Index(fields=['branch', 'product', 'created_at']),
+            models.Index(fields=['product', 'created_at']),
+        ]
+
     def save(self, *args, **kwargs):
         if self.reference:
             self.reference = str(self.reference)[:100]

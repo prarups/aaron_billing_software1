@@ -104,7 +104,7 @@ class StaffForm(forms.ModelForm):
     
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'role', 'designation', 'branches', 'employee_id', 'mobile_number', 'address', 'bank_name', 'account_number', 'ifsc_code', 'is_active', 'date_of_joining', 'has_pos_access', 'has_attendance_access']
+        fields = ['username', 'first_name', 'last_name', 'role', 'designation', 'branches', 'employee_id', 'mobile_number', 'address', 'bank_name', 'account_number', 'ifsc_code', 'is_active', 'date_of_joining', 'date_of_exit', 'has_pos_access', 'has_attendance_access']
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'Username', 'autocomplete': 'new-username'}),
             'first_name': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3', 'placeholder': 'First Name', 'autocomplete': 'off'}),
@@ -120,6 +120,7 @@ class StaffForm(forms.ModelForm):
             'ifsc_code': forms.TextInput(attrs={'class': 'form-control rounded-pill shadow-sm border-0 bg-light px-3 text-uppercase', 'placeholder': 'Bank IFSC Code (e.g. SBIN0001234)', 'maxlength': '11', 'oninput': "this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')", 'autocomplete': 'off'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'date_of_joining': forms.DateInput(attrs={'type':'date','class':'form-control rounded-pill shadow-sm border-0 bg-light px-3','placeholder':'Date of Joining', 'autocomplete': 'off'}),
+            'date_of_exit': forms.DateInput(attrs={'type':'date','class':'form-control rounded-pill shadow-sm border-0 bg-light px-3','placeholder':'Date of Exit', 'autocomplete': 'off'}),
             'has_pos_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'has_attendance_access': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

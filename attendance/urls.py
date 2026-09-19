@@ -18,6 +18,7 @@ urlpatterns = [
     
     path('reports/', views.attendance_reports, name='reports'),
     path('my-summary/', views.my_summary_view, name='my_summary'),
+    path('my-week-offs/', views.select_my_week_offs, name='my_week_offs'),
     path('management/', views.management_overview_view, name='management'),
     path('management-overview/', views.management_overview_view, name='management_overview'),
     

@@ -757,6 +757,12 @@
                                     {% endif %}
                                 </div>
                                 <div style="font-size:0.71rem;color:#94a3b8;">@{{ staff.username }} &middot; {{ staff.employee_id|default:"No ID" }} &middot; <i class="bi bi-clock"></i> {{ staff.shift_start_time|time:"h:i A" }} - {{ staff.shift_end_time|time:"h:i A" }}</div>
+                                <div style="font-size:0.69rem;color:#64748b;" class="mt-0.5">
+                                    <i class="bi bi-calendar-check me-1 text-primary" title="Joining Date"></i>DOJ: {{ staff.date_of_joining|date:"d-m-Y"|default:"-" }}
+                                    {% if staff.date_of_exit %}
+                                    &middot; <i class="bi bi-calendar-x me-1 text-danger" title="Exit Date"></i>Exit: {{ staff.date_of_exit|date:"d-m-Y" }}
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                         <!-- Hidden search spans -->
@@ -785,19 +791,13 @@
                     <!-- Branches -->
                     <td data-label="Branches">
                         <div class="d-flex flex-wrap gap-1">
-                        {% if staff.active_branch in staff.assigned_branches %}
-                        <span style="background:#dbeafe;color:#1e40af;border-radius:999px;padding:1px 9px;font-size:0.67rem;font-weight:700;white-space:nowrap;" title="Primary Main Branch"><i class="bi bi-house-door-fill me-1"></i>Primary: {{ staff.active_branch.name }}</span>
-                        {% endif %}
-                        {% if not staff.has_all_branches and staff.role != 'owner' and staff.role != 'regional_manager' %}
-                        {% for b in staff.assigned_branches %}
-                        {% if b != staff.active_branch %}
-                        <span style="background:#ede9fe;color:#7c3aed;border-radius:999px;padding:1px 9px;font-size:0.67rem;font-weight:600;white-space:nowrap;" title="Secondary Access Branch"><i class="bi bi-shop me-1"></i>Access: {{ b.name }}</span>
-                        {% endif %}
-                        {% endfor %}
-                        {% endif %}
-                        {% if staff.has_all_branches or staff.role == 'owner' or staff.role == 'regional_manager' %}
-                        <span class="badge bg-warning-subtle text-dark border border-warning-subtle rounded-pill px-2 py-0.5" style="font-size:0.67rem;"><i class="bi bi-globe me-1"></i>All Branches Access</span>
-                        {% elif not staff.active_branch and not staff.assigned_branches %}
+                        {% if staff.has_all_branches or staff.role == 'owner' or staff.role == 'regional_manager' or staff.role == 'admin' or staff.is_superuser %}
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1" style="font-size:0.68rem; font-weight:700;"><i class="bi bi-globe me-1"></i>All Branches</span>
+                        {% elif staff.active_branch %}
+                        <span style="background:#dbeafe;color:#1e40af;border-radius:999px;padding:1px 9px;font-size:0.67rem;font-weight:700;white-space:nowrap;" title="Primary Branch"><i class="bi bi-house-door-fill me-1"></i>{{ staff.active_branch.name }}</span>
+                        {% elif staff.assigned_branches %}
+                        <span style="background:#dbeafe;color:#1e40af;border-radius:999px;padding:1px 9px;font-size:0.67rem;font-weight:700;white-space:nowrap;" title="Primary Branch"><i class="bi bi-house-door-fill me-1"></i>{{ staff.assigned_branches.0.name }}</span>
+                        {% else %}
                         <span style="color:#cbd5e1;font-size:0.72rem;font-style:italic;">None (Unassigned)</span>
                         {% endif %}
                         </div>
@@ -855,7 +855,7 @@
                     <td class="text-center">
                         <div class="d-flex align-items-center justify-content-center gap-2">
                             <button class="s-act-btn s-act-edit" title="Edit Staff"
-                                onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{{ staff.branch_ids_str }}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}', '{{ staff.date_of_joining|date:"Y-m-d"|default:'' }}', {% if staff.has_pos_access %}true{% else %}false{% endif %}, {% if staff.has_attendance_access %}true{% else %}false{% endif %}, '{{ staff.active_branch.id|default:'' }}', '{{ staff.designation|default:''|escapejs }}', '{{ staff.bank_name|default:''|escapejs }}', '{{ staff.account_number|default:''|escapejs }}', '{{ staff.ifsc_code|default:''|escapejs }}')">
+                                onclick="openEditStaffModal('{{ staff.id }}', '{{ staff.username }}', '{{ staff.first_name }}', '{{ staff.last_name }}', '{{ staff.role }}', '{{ staff.branch_ids_str }}', '{{ staff.employee_id|default:'' }}', '{{ staff.mobile_number|default:''|escapejs }}', '{{ staff.address|default:''|escapejs }}', '{{ staff.date_of_joining|date:"Y-m-d"|default:'' }}', '{{ staff.date_of_exit|date:"Y-m-d"|default:'' }}', {% if staff.has_pos_access %}true{% else %}false{% endif %}, {% if staff.has_attendance_access %}true{% else %}false{% endif %}, '{{ staff.active_branch.id|default:'' }}', '{{ staff.designation|default:''|escapejs }}', '{{ staff.bank_name|default:''|escapejs }}', '{{ staff.account_number|default:''|escapejs }}', '{{ staff.ifsc_code|default:''|escapejs }}')">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
                         </div>
@@ -1082,6 +1082,14 @@
                                             {{ staff_form.employee_id }}
                                             <div class="form-text small">Auto-generated based on branch if left blank.</div>
                                         </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Date of Joining</label>
+                                            {{ staff_form.date_of_joining }}
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Date of Exit</label>
+                                            {{ staff_form.date_of_exit }}
+                                        </div>
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Mobile Number</label>
                                             {{ staff_form.mobile_number }}
@@ -1195,9 +1203,13 @@
                                             <label class="form-label small text-muted fw-bold text-uppercase">Employee ID</label>
                                             <input type="text" name="employee_id" id="editStaffEmployeeId" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" readonly disabled autocomplete="off">
                                         </div>
-                                        <div class="col-12 mb-2">
+                                        <div class="col-6 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Date of Joining</label>
                                             <input type="date" name="date_of_joining" id="editStaffDateOfJoining" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Date of Joining" autocomplete="off">
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small text-muted fw-bold text-uppercase">Date of Exit</label>
+                                            <input type="date" name="date_of_exit" id="editStaffDateOfExit" class="form-control rounded-pill shadow-sm border-0 bg-light px-3" placeholder="Date of Exit" autocomplete="off">
                                         </div>
                                         <div class="col-12 mb-2">
                                             <label class="form-label small text-muted fw-bold text-uppercase">Designation / Job Title</label>
@@ -1527,7 +1539,7 @@
         modal.show();
     }
 
-    function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId, mobileNumber, address, dateOfJoining, hasPosAccess, hasAttendanceAccess, activeBranchId, designation, bankName, accountNumber, ifscCode) {
+    function openEditStaffModal(id, username, firstName, lastName, role, branchIdsStr, employeeId, mobileNumber, address, dateOfJoining, dateOfExit, hasPosAccess, hasAttendanceAccess, activeBranchId, designation, bankName, accountNumber, ifscCode) {
         document.getElementById('editStaffForm').action = `/users/staff/edit/${id}/`;
         document.getElementById('editStaffUsername').value = username;
         document.getElementById('editStaffFirstName').value = firstName;
@@ -1537,6 +1549,7 @@
         document.getElementById('editStaffMobileNumber').value = (mobileNumber === 'None' || !mobileNumber) ? '' : mobileNumber;
         document.getElementById('editStaffAddress').value = (address === 'None' || !address) ? '' : address;
         document.getElementById('editStaffDateOfJoining').value = (dateOfJoining === 'None' || !dateOfJoining) ? '' : dateOfJoining;
+        if (document.getElementById('editStaffDateOfExit')) document.getElementById('editStaffDateOfExit').value = (dateOfExit === 'None' || !dateOfExit) ? '' : dateOfExit;
         if (document.getElementById('editStaffDesignation')) document.getElementById('editStaffDesignation').value = (designation === 'None' || !designation) ? '' : designation;
         if (document.getElementById('editStaffBankName')) document.getElementById('editStaffBankName').value = (bankName === 'None' || !bankName) ? '' : bankName;
         if (document.getElementById('editStaffAccountNumber')) document.getElementById('editStaffAccountNumber').value = (accountNumber === 'None' || !accountNumber) ? '' : accountNumber;
@@ -1595,7 +1608,13 @@
             return response.json();
         })
         .then(data => {
-            if (data && data.status !== 'success') {
+            if (data && (data.status === 'success' || data.is_active !== undefined)) {
+                const row = document.getElementById(`staff-row-${staffId}`);
+                if (row) {
+                    row.dataset.active = data.is_active ? "true" : "false";
+                }
+                triggerLiveStaffAjaxSearch();
+            } else {
                 alert('Failed to update status.');
             }
         })
@@ -1881,6 +1900,14 @@
             const len = sInput.value.length;
             sInput.setSelectionRange(len, len);
         }
+        ['statusFilterSelect', 'branchFilterSelect', 'roleFilterSelect'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', function() {
+                    triggerLiveStaffAjaxSearch(1);
+                });
+            }
+        });
     });
 
     function filterStaff(resetPage = true) {

@@ -613,23 +613,17 @@
                                             </div>
                                             <div class="mt-1 d-flex flex-wrap gap-1 align-items-center">
                                                 <span class="badge bg-light text-secondary border px-2 py-0.5" style="font-size: 0.62rem;">{{ item.user.role_display }}</span>
-                                                {% if item.user.active_branch in item.user.branches.all %}
-                                                     <span class="badge border" style="background-color: #dbeafe; color: #1e40af; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;" title="Primary Main Branch">
-                                                         <i class="bi bi-house-door-fill me-1"></i>Primary: {{ item.user.active_branch.name }}
+                                                 {% if item.user.has_all_branches or item.user.role == 'owner' or item.user.role == 'regional_manager' or item.user.role == 'admin' or item.user.is_superuser %}
+                                                     <span class="badge border" style="background-color: #dbeafe; color: #1e40af; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;"><i class="bi bi-globe me-1"></i>All Branches</span>
+                                                 {% elif item.user.active_branch %}
+                                                     <span class="badge border" style="background-color: #dbeafe; color: #1e40af; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;" title="Primary Branch">
+                                                         <i class="bi bi-house-door-fill me-1"></i>{{ item.user.active_branch.name }}
                                                      </span>
-                                                 {% endif %}
-                                                 {% if not item.user.has_all_branches and item.user.role != 'owner' and item.user.role != 'regional_manager' %}
-                                                 {% for b in item.user.branches.all %}
-                                                     {% if b != item.user.active_branch %}
-                                                         <span class="badge border" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;" title="Secondary Access Branch">
-                                                             <i class="bi bi-shop me-1"></i>Access: {{ b.name }}
-                                                         </span>
-                                                     {% endif %}
-                                                 {% endfor %}
-                                                 {% endif %}
-                                                 {% if item.user.has_all_branches or item.user.role == 'owner' or item.user.role == 'regional_manager' %}
-                                                     <span class="badge border" style="background-color: #fef3c7; color: #b45309; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;"><i class="bi bi-globe me-1"></i>All Branches Access</span>
-                                                 {% elif not item.user.active_branch and not item.user.branches.all %}
+                                                 {% elif item.user.branches.all %}
+                                                     <span class="badge border" style="background-color: #dbeafe; color: #1e40af; font-size: 0.62rem; padding: 0.15rem 0.4rem; font-weight: 700;" title="Primary Branch">
+                                                         <i class="bi bi-house-door-fill me-1"></i>{{ item.user.branches.all.0.name }}
+                                                     </span>
+                                                 {% else %}
                                                      <span class="badge bg-light text-muted border" style="font-size: 0.62rem; font-style: italic;">No branch assigned</span>
                                                  {% endif %}
                                             </div>

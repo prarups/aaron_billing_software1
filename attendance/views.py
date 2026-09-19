@@ -657,7 +657,7 @@ def attendance_reports(request):
     elif status_filter == 'inactive':
         users = users.filter(is_active=False)
 
-    users = users.order_by('-is_active', 'employee_id', 'username')
+    users = users.prefetch_related('branches').order_by('-is_active', 'employee_id', 'username')
         
     # Filters for detailed list logs
     selected_branch = request.GET.get('branch', '')
@@ -852,10 +852,19 @@ def attendance_reports(request):
             'future': '-'
         }
         
+        from core.models import Branch
+        total_branches_count = Branch.objects.count()
+        
         for item in grid_data:
             u = item['user']
             emp_name = f"{u.first_name} {u.last_name}".strip() or u.username
-            branches_str = ", ".join([b.name for b in u.branches.all()]) if u.branches.exists() else ''
+            u_b_cnt = u.branches.count()
+            if getattr(u, 'has_all_branches', False) or u.is_owner() or u.role in ['owner', 'admin', 'regional_manager'] or getattr(u, 'dashboard_access', '') in ['owner', 'regional_manager'] or (total_branches_count > 0 and u_b_cnt >= total_branches_count):
+                branches_str = "All Branches"
+            elif u_b_cnt > 0:
+                branches_str = ", ".join([b.name for b in u.branches.all()])
+            else:
+                branches_str = "-"
             
             day_cols = [status_map.get(d['status'], '-') for d in item['days']]
             summary = item['summary']
@@ -972,6 +981,112 @@ def attendance_reports(request):
     return render(request, 'attendance/reports.html', context)
 
 
+@login_required
+def select_my_week_offs(request):
+    """
+    Allows logged-in employee to select and update their own monthly Week Off dates.
+    Enforces monthly_off_count limit for the current month only.
+    """
+    user = request.user
+    today = timezone.localdate()
+    month = today.month
+    year = today.year
+    
+    if request.method == 'GET':
+        import calendar
+        num_days = calendar.monthrange(year, month)[1]
+        
+        monthly_quota = getattr(user, 'monthly_off_count', 4) or 4
+        start_date = datetime.date(year, month, 1)
+        end_date = datetime.date(year, month, num_days)
+        
+        existing_week_offs = set(
+            Attendance.objects.filter(
+                user=user,
+                date__range=(start_date, end_date),
+                status='week_off'
+            ).values_list('date', flat=True)
+        )
+        
+        existing_week_off_strs = [d.strftime('%Y-%m-%d') for d in existing_week_offs]
+        
+        return JsonResponse({
+            'status': 'success',
+            'month': month,
+            'year': year,
+            'monthly_quota': monthly_quota,
+            'selected_count': len(existing_week_offs),
+            'remaining_quota': max(0, monthly_quota - len(existing_week_offs)),
+            'week_offs': existing_week_off_strs
+        })
+        
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            date_strs = data.get('dates', [])
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': f'Invalid request data: {str(e)}'}, status=400)
+            
+        import calendar
+        num_days = calendar.monthrange(year, month)[1]
+        start_date = datetime.date(year, month, 1)
+        end_date = datetime.date(year, month, num_days)
+        
+        monthly_quota = getattr(user, 'monthly_off_count', 4) or 4
+        
+        valid_dates = []
+        for ds in date_strs:
+            try:
+                d = datetime.datetime.strptime(ds, '%Y-%m-%d').date()
+                if d.month == month and d.year == year:
+                    valid_dates.append(d)
+            except ValueError:
+                continue
+                
+        valid_dates = sorted(list(set(valid_dates)))
+        
+        if len(valid_dates) > monthly_quota:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'You can select at most {monthly_quota} week offs for this month (you selected {len(valid_dates)}).'
+            }, status=400)
+            
+        branch = user.active_branch or user.get_accessible_branches().first()
+        if not branch:
+            from core.models import Branch
+            branch = Branch.objects.first()
+            
+        current_offs = Attendance.objects.filter(
+            user=user,
+            date__range=(start_date, end_date),
+            status='week_off'
+        )
+        for att in current_offs:
+            if att.date not in valid_dates:
+                if not att.check_in and not att.check_out:
+                    att.delete()
+                else:
+                    att.recalculate_status()
+                    att.save()
+                    
+        for d in valid_dates:
+            att, created = Attendance.objects.get_or_create(
+                user=user,
+                date=d,
+                defaults={'branch': branch, 'status': 'week_off'}
+            )
+            if not created and not att.check_in and not att.check_out:
+                att.status = 'week_off'
+                att.save(update_fields=['status'])
+                
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Successfully saved your Week Offs for {calendar.month_name[month]} {year}!',
+            'selected_count': len(valid_dates),
+            'remaining_quota': max(0, monthly_quota - len(valid_dates))
+        })
+
+
 # --- Salary/Payroll Views ---
 
 @login_required
@@ -1033,10 +1148,10 @@ def ensure_monthly_payrolls(month, year, request_user=None, force_recalculate=Fa
     if force_recalculate:
         # Process users whose payroll is missing or still in 'draft'
         paid_user_ids = set(MonthlyPayroll.objects.filter(month=month, year=year, status='paid').values_list('user_id', flat=True))
-        users_to_process = list(User.objects.exclude(id__in=paid_user_ids).order_by('username'))
+        users_to_process = list(User.objects.filter(is_active=True).exclude(id__in=paid_user_ids).order_by('username'))
     else:
         existing_user_ids = set(MonthlyPayroll.objects.filter(month=month, year=year).values_list('user_id', flat=True))
-        users_to_process = list(User.objects.exclude(id__in=existing_user_ids).order_by('username'))
+        users_to_process = list(User.objects.filter(is_active=True).exclude(id__in=existing_user_ids).order_by('username'))
 
     if not users_to_process:
         return
@@ -1176,10 +1291,10 @@ def pay_slips_view(request):
     selected_month = int(request.GET.get('month', today.month))
     selected_year = int(request.GET.get('year', today.year))
     
-    # Auto-ensure monthly payroll records exist for missing users
+    # Auto-ensure monthly payroll records exist for missing active users
     ensure_monthly_payrolls(selected_month, selected_year, request.user, force_recalculate=False)
     
-    raw_month_payrolls = MonthlyPayroll.objects.filter(month=selected_month, year=selected_year).select_related('user')
+    raw_month_payrolls = MonthlyPayroll.objects.filter(month=selected_month, year=selected_year, user__is_active=True).select_related('user')
     
     aggs = raw_month_payrolls.aggregate(
         base=Sum('base_salary'),
@@ -1312,8 +1427,8 @@ def generate_payroll(request):
             
             ensure_monthly_payrolls(month, year, request.user, force_recalculate=True)
             
-            count = MonthlyPayroll.objects.filter(month=month, year=year).count()
-            messages.success(request, f"Payroll generated successfully for all {count} staff members.")
+            count = MonthlyPayroll.objects.filter(month=month, year=year, user__is_active=True).count()
+            messages.success(request, f"Payroll generated successfully for all {count} active staff members.")
             return redirect(f"{reverse('attendance:pay_slips')}?month={month}&year={year}")
         except Exception as e:
             messages.error(request, f"Error generating payroll: {e}")
@@ -1346,6 +1461,7 @@ def mark_all_payrolls_paid(request):
             updated_count = MonthlyPayroll.objects.filter(
                 month=month,
                 year=year,
+                user__is_active=True,
                 status='draft'
             ).update(status='paid')
             
@@ -1614,18 +1730,22 @@ def management_overview_view(request):
             check_in__isnull=False
         ).values_list('user_id', flat=True)
         
-        # Primary Main Branch filter: Include staff whose active_branch matches, or who checked in here
+        # Primary Main Branch filter: Include active staff whose active_branch matches, or who checked in here
         branch_users = User.objects.filter(
-            Q(active_branch_id=selected_branch_id) |
-            Q(active_branch__isnull=True, branches__id=selected_branch_id) |
-            Q(id__in=checked_in_user_ids)
+            (
+                Q(active_branch_id=selected_branch_id) |
+                Q(active_branch__isnull=True, branches__id=selected_branch_id) |
+                Q(id__in=checked_in_user_ids)
+            ),
+            is_active=True
         ).distinct()
     else:
         if is_owner(request.user) or request.user.has_all_branches:
-            branch_users = User.objects.all()
+            branch_users = User.objects.filter(is_active=True)
         else:
             branch_users = User.objects.filter(
-                Q(branches__in=branches) | Q(active_branch__in=branches)
+                (Q(branches__in=branches) | Q(active_branch__in=branches)),
+                is_active=True
             ).distinct()
             
     branch_users = branch_users.select_related('active_branch').prefetch_related('branches').order_by('employee_id', 'username')

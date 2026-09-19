@@ -14,7 +14,10 @@
             </h5>
             <small class="text-muted" style="font-size: 0.75rem;">Track your daily clock-in history, salary details, and view monthly pay slips.</small>
         </div>
-        <div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-1.5 fw-semibold shadow-xs" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#weekOffModal" onclick="openWeekOffModal()">
+                <i class="bi bi-calendar-check-fill me-1"></i> Select My Week Offs
+            </button>
             <span class="badge bg-light text-dark border px-3 py-1.5 rounded-pill fw-semibold" style="font-size: 0.75rem;">
                 <i class="bi bi-calendar-event me-1 text-primary"></i> {% now "d M Y" %}
             </span>
@@ -561,4 +564,192 @@
         }
     }
 </style>
+<!-- Week Off Selection Modal -->
+<div class="modal fade" id="weekOffModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom-0 pb-2">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-calendar-check-fill text-success fs-4"></i> Select Week Offs
+                </h5>
+                <span class="badge bg-success rounded-pill px-3 py-1.5 text-xs fw-bold ms-auto me-2" id="weekOffQuotaBadge">
+                    Quota: 4 | Selected: 0 | Remaining: 4
+                </span>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3 pt-1">
+
+                <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+                    <div class="fw-bold text-dark fs-6 d-flex align-items-center gap-1.5" id="weekOffMonthTitle">
+                        <i class="bi bi-calendar3 text-primary"></i> <span id="weekOffMonthTitleText">Current Month</span>
+                    </div>
+                </div>
+
+                <!-- Calendar Grid Container -->
+                <div id="weekOffCalendarGrid" class="p-2 border rounded-3 bg-light">
+                    <!-- Dynamic Date Buttons rendered by JS -->
+                </div>
+
+                <div id="weekOffMsgContainer" class="mt-3"></div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm" onclick="saveWeekOffSelection()">
+                    <i class="bi bi-save-fill me-1"></i> Save Selected Week Offs
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentWeekOffQuota = 4;
+let selectedWeekOffDates = new Set();
+let weekOffMonth = new Date().getMonth() + 1;
+let weekOffYear = new Date().getFullYear();
+
+function openWeekOffModal() {
+    const today = new Date();
+    weekOffMonth = today.getMonth() + 1;
+    weekOffYear = today.getFullYear();
+    loadWeekOffCalendar();
+}
+
+function loadWeekOffCalendar() {
+    const grid = document.getElementById('weekOffCalendarGrid');
+    const msg = document.getElementById('weekOffMsgContainer');
+    if (msg) msg.innerHTML = '';
+    if (grid) grid.innerHTML = '<div class="text-center py-4"><span class="spinner-border spinner-border-sm text-success"></span> Loading week off data...</div>';
+
+    fetch(`/attendance/my-week-offs/`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                currentWeekOffQuota = data.monthly_quota || 4;
+                selectedWeekOffDates = new Set(data.week_offs || []);
+                updateWeekOffQuotaBadge();
+                renderWeekOffCalendarGrid(data.month, data.year);
+            } else {
+                if (grid) grid.innerHTML = `<div class="alert alert-danger p-2 small">${data.message || 'Error loading week offs'}</div>`;
+            }
+        })
+        .catch(err => {
+            console.error('Error fetching week offs:', err);
+            if (grid) grid.innerHTML = '<div class="alert alert-danger p-2 small">Failed to load week off data.</div>';
+        });
+}
+
+function updateWeekOffQuotaBadge() {
+    const badge = document.getElementById('weekOffQuotaBadge');
+    const count = selectedWeekOffDates.size;
+    const remaining = Math.max(0, currentWeekOffQuota - count);
+    if (badge) {
+        badge.innerHTML = `Quota: <strong>${currentWeekOffQuota}</strong> | Selected: <strong>${count}</strong> | Remaining: <strong>${remaining}</strong>`;
+        if (count > currentWeekOffQuota) {
+            badge.className = "badge bg-danger rounded-pill px-3 py-1.5 text-xs fw-bold ms-auto me-2";
+        } else {
+            badge.className = "badge bg-success rounded-pill px-3 py-1.5 text-xs fw-bold ms-auto me-2";
+        }
+    }
+}
+
+function renderWeekOffCalendarGrid(month, year) {
+    const grid = document.getElementById('weekOffCalendarGrid');
+    if (!grid) return;
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const monthNames = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const titleEl = document.getElementById('weekOffMonthTitleText');
+    if (titleEl) titleEl.textContent = `${monthNames[month]} ${year}`;
+
+    let html = '';
+    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    html += '<div class="row g-1 mb-2 text-center">';
+    dayLabels.forEach(d => {
+        html += `<div class="col text-uppercase text-muted" style="font-size:0.68rem; font-weight:700;">${d}</div>`;
+    });
+    html += '</div><div class="row g-1 text-center">';
+
+    const firstDayIndex = new Date(year, month - 1, 1).getDay();
+    for (let i = 0; i < firstDayIndex; i++) {
+        html += `<div class="col mb-1" style="min-width: 14%; flex: 0 0 14.28%;"></div>`;
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const isSelected = selectedWeekOffDates.has(dateStr);
+        const dayOfWeek = dayLabels[new Date(year, month - 1, d).getDay()];
+        
+        const btnClass = isSelected 
+            ? "btn btn-sm btn-success w-100 py-2 rounded-3 shadow-xs border-0 fw-bold" 
+            : "btn btn-sm btn-outline-secondary w-100 py-2 rounded-3 border-1 text-dark bg-white";
+
+        html += `
+            <div class="col mb-1" style="min-width: 14%; flex: 0 0 14.28%;">
+                <button type="button" class="${btnClass}" onclick="toggleWeekOffDate('${dateStr}')" style="font-size:0.75rem;">
+                    <div>${d}</div>
+                    <div style="font-size:0.6rem;" class="opacity-75">${dayOfWeek}</div>
+                </button>
+            </div>
+        `;
+    }
+    html += `</div>`;
+    grid.innerHTML = html;
+}
+
+function toggleWeekOffDate(dateStr) {
+    if (selectedWeekOffDates.has(dateStr)) {
+        selectedWeekOffDates.delete(dateStr);
+    } else {
+        if (selectedWeekOffDates.size >= currentWeekOffQuota) {
+            alert(`You have reached your monthly week off quota of ${currentWeekOffQuota} days.`);
+            return;
+        }
+        selectedWeekOffDates.add(dateStr);
+    }
+    updateWeekOffQuotaBadge();
+    renderWeekOffCalendarGrid(weekOffMonth, weekOffYear);
+}
+
+function saveWeekOffSelection() {
+    const csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
+    const msg = document.getElementById('weekOffMsgContainer');
+    if (!csrfEl) { alert('CSRF Token missing'); return; }
+
+    const payload = {
+        month: weekOffMonth,
+        year: weekOffYear,
+        dates: Array.from(selectedWeekOffDates)
+    };
+
+    if (msg) msg.innerHTML = '<div class="alert alert-info p-2 small"><span class="spinner-border spinner-border-sm me-1"></span> Saving week offs...</div>';
+
+    fetch('/attendance/my-week-offs/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfEl.value
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            if (msg) msg.innerHTML = `<div class="alert alert-success p-2 small"><i class="bi bi-check-circle-fill me-1"></i> ${data.message}</div>`;
+            setTimeout(() => {
+                const modalEl = document.getElementById('weekOffModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                window.location.reload();
+            }, 1200);
+        } else {
+            if (msg) msg.innerHTML = `<div class="alert alert-danger p-2 small"><i class="bi bi-exclamation-triangle-fill me-1"></i> ${data.message}</div>`;
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        if (msg) msg.innerHTML = '<div class="alert alert-danger p-2 small">Error saving week offs.</div>';
+    });
+}
+</script>
 {% endblock %}

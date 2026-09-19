@@ -1032,8 +1032,17 @@ def stock_pivot_report(request):
         except ValueError:
             pass
         
-    accessible_branches = request.user.get_accessible_branches().annotate(product_count=Count('productregistry')).order_by('name')
+    from django.db.models.functions import Coalesce
+    accessible_branches = request.user.get_accessible_branches().annotate(
+        product_count=Count('productregistry'),
+        total_stock=Coalesce(Sum('productregistry__stock_quantity'), 0),
+        in_stock_count=Count('productregistry', filter=Q(productregistry__stock_quantity__gt=0)),
+        out_of_stock_count=Count('productregistry', filter=Q(productregistry__stock_quantity=0)),
+        low_stock_count=Count('productregistry', filter=Q(productregistry__stock_quantity__gt=0, productregistry__stock_quantity__lte=F('productregistry__low_stock_threshold')))
+    ).order_by('name')
+    
     branch_id = request.GET.get('branch', '').strip()
+    stock_status = request.GET.get('stock_status', 'all').strip()
     
     selected_branch = None
     if branch_id:
@@ -1047,21 +1056,35 @@ def stock_pivot_report(request):
     else:
         active_branches = list(accessible_branches)
 
+    products_qs = Product.objects.filter(branches__in=active_branches)
     if q:
-        products = Product.objects.filter(
-            Q(barcode__icontains=q) | Q(name__icontains=q),
-            branches__in=active_branches
-        ).distinct().order_by('name')
-    else:
-        products = Product.objects.filter(branches__in=active_branches).distinct().order_by('name')
+        products_qs = products_qs.filter(Q(barcode__icontains=q) | Q(name__icontains=q))
+
+    if stock_status == 'out_of_stock':
+        products_qs = products_qs.filter(
+            Q(productregistry__branch__in=active_branches, productregistry__stock_quantity=0) |
+            ~Q(productregistry__branch__in=active_branches)
+        )
+    elif stock_status == 'in_stock':
+        products_qs = products_qs.filter(productregistry__branch__in=active_branches, productregistry__stock_quantity__gt=0)
+    elif stock_status == 'low_stock':
+        products_qs = products_qs.filter(productregistry__branch__in=active_branches, productregistry__stock_quantity__gt=0, productregistry__stock_quantity__lte=F('productregistry__low_stock_threshold'))
+
+    products = products_qs.distinct().order_by('name')
 
     # Pagination: 10 products per page
     paginator = Paginator(products, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # 1. Fetch current stock via registries (restricted to active branches)
-    registries = ProductRegistry.objects.filter(branch__in=active_branches).values('id', 'product_id', 'branch_id', 'stock_quantity')
+    # Restrict database query aggregations strictly to products on current page for maximum speed & performance
+    page_product_ids = [p.id for p in page_obj]
+
+    # 1. Fetch current stock via registries (restricted to active branches and current page products)
+    registries = ProductRegistry.objects.filter(
+        branch__in=active_branches,
+        product_id__in=page_product_ids
+    ).values('id', 'product_id', 'branch_id', 'stock_quantity')
     stock_map = {(r['product_id'], r['branch_id']): r['stock_quantity'] for r in registries}
     reg_id_map = {(r['product_id'], r['branch_id']): r['id'] for r in registries}
     
@@ -1069,10 +1092,11 @@ def stock_pivot_report(request):
     start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
     end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
 
-    # Period transactions using conditional aggregation
+    # Period transactions using conditional aggregation (filtered by page_product_ids)
     period_txns = StockTransaction.objects.filter(
         created_at__range=(start_datetime, end_datetime),
-        branch__in=active_branches
+        branch__in=active_branches,
+        product_id__in=page_product_ids
     ).values('product_id', 'branch_id').annotate(
         in_std=Sum('quantity', filter=Q(transaction_type='IN') & ~Q(reference__startswith='Return #')),
         ret_good=Sum('quantity', filter=Q(transaction_type='IN') & Q(reference__startswith='Return #')),
@@ -1083,9 +1107,10 @@ def stock_pivot_report(request):
     )
     period_map = {(t['product_id'], t['branch_id']): t for t in period_txns}
 
-    # All-time transactions using conditional aggregation
+    # All-time transactions using conditional aggregation (filtered by page_product_ids)
     all_time_txns = StockTransaction.objects.filter(
-        branch__in=active_branches
+        branch__in=active_branches,
+        product_id__in=page_product_ids
     ).values('product_id', 'branch_id').annotate(
         out_gross=Sum('quantity', filter=Q(transaction_type='OUT')),
         ret_good=Sum('quantity', filter=Q(transaction_type='IN') & Q(reference__startswith='Return #')),
@@ -1099,7 +1124,8 @@ def stock_pivot_report(request):
     if end_date < today:
         future_txns = StockTransaction.objects.filter(
             created_at__gt=end_datetime,
-            branch__in=active_branches
+            branch__in=active_branches,
+            product_id__in=page_product_ids
         ).values('product_id', 'branch_id').annotate(
             in_std=Sum('quantity', filter=Q(transaction_type='IN') & ~Q(reference__startswith='Return #')),
             ret_good=Sum('quantity', filter=Q(transaction_type='IN') & Q(reference__startswith='Return #')),
@@ -1213,6 +1239,25 @@ def stock_pivot_report(request):
             
         report_data.append(item)
         
+    sold_agg = StockTransaction.objects.filter(
+        created_at__range=(start_datetime, end_datetime),
+        branch__in=active_branches
+    ).aggregate(
+        out_gross=Coalesce(Sum('quantity', filter=Q(transaction_type='OUT')), 0),
+        ret_good=Coalesce(Sum('quantity', filter=Q(transaction_type='IN', reference__startswith='Return #')), 0),
+        ret_dmg=Coalesce(Sum('quantity', filter=Q(transaction_type='DMG', reference__startswith='Return #')), 0),
+    )
+    sold_txns_period = sold_agg['out_gross'] - sold_agg['ret_good'] - sold_agg['ret_dmg']
+
+    branch_stats = {
+        'total_products': selected_branch.product_count if selected_branch else sum(getattr(b, 'product_count', 0) for b in accessible_branches),
+        'total_stock': selected_branch.total_stock if selected_branch else sum(getattr(b, 'total_stock', 0) for b in accessible_branches),
+        'in_stock_count': selected_branch.in_stock_count if selected_branch else sum(getattr(b, 'in_stock_count', 0) for b in accessible_branches),
+        'out_of_stock_count': selected_branch.out_of_stock_count if selected_branch else sum(getattr(b, 'out_of_stock_count', 0) for b in accessible_branches),
+        'low_stock_count': selected_branch.low_stock_count if selected_branch else sum(getattr(b, 'low_stock_count', 0) for b in accessible_branches),
+        'items_sold': sold_txns_period,
+    }
+
     return render(request, 'core/stock_pivot_report.html', {
         'branches': active_branches,
         'accessible_branches': accessible_branches,
@@ -1224,6 +1269,8 @@ def stock_pivot_report(request):
         'show_op': True,
         'show_in': True,
         'show_out': True,
+        'stock_status': stock_status,
+        'branch_stats': branch_stats,
     })
 
 @login_required

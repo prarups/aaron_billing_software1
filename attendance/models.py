@@ -13,7 +13,7 @@ class Attendance(models.Model):
     )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='attendances')
     branch = models.ForeignKey('core.Branch', on_delete=models.CASCADE)
-    date = models.DateField()
+    date = models.DateField(db_index=True)
     
     # 1. Check-In Details
     check_in = models.DateTimeField(null=True, blank=True)
@@ -33,7 +33,7 @@ class Attendance(models.Model):
     check_out_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     check_out_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='present')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='present', db_index=True)
     notes = models.TextField(blank=True, null=True)
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='edited_attendances')
     updated_at = models.DateTimeField(auto_now=True)
@@ -41,6 +41,10 @@ class Attendance(models.Model):
     class Meta:
         unique_together = ('user', 'date')
         ordering = ['-date']
+        indexes = [
+            models.Index(fields=['date', 'status']),
+            models.Index(fields=['branch', 'date']),
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.date} - {self.status}"

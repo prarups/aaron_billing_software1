@@ -155,6 +155,7 @@ class User(AbstractUser):
     active_branch = models.ForeignKey('core.Branch', on_delete=models.SET_NULL, null=True, blank=True, related_name='active_users')
     employee_id = models.CharField(max_length=50, unique=True, blank=True, null=True)
     date_of_joining = models.DateField(null=True, blank=True)
+    date_of_exit = models.DateField(null=True, blank=True, help_text="Date of exit / relieving date")
     designation = models.CharField(max_length=100, blank=True, null=True, help_text="Job Designation")
     bank_name = models.CharField(max_length=100, blank=True, null=True, help_text="Bank Name")
     account_number = models.CharField(max_length=50, blank=True, null=True, help_text="Bank Account Number")

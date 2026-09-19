@@ -1135,13 +1135,22 @@ def export_staff_csv(request):
     writer.writerow([
         'Employee ID', 'Username', 'First Name', 'Last Name', 'Email', 
         'Role', 'Status', 'Product Rights', 'Bill Edit Rights', 
-        'Date of Joining', 'Mobile Number', 'Address', 'Assigned Branches'
+        'Date of Joining', 'Date of Exit', 'Mobile Number', 'Address', 'Assigned Branches'
     ])
     
+    from core.models import Branch
+    total_branches_count = Branch.objects.count()
     staff_qs = User.objects.all().prefetch_related('branches').order_by('employee_id', 'username')
     
     for s in staff_qs:
-        branches_str = ", ".join([b.name for b in s.branches.all()])
+        assigned_count = s.branches.count()
+        if getattr(s, 'has_all_branches', False) or s.is_owner() or s.role in ['owner', 'admin', 'regional_manager'] or getattr(s, 'dashboard_access', '') in ['owner', 'regional_manager'] or (total_branches_count > 0 and assigned_count >= total_branches_count):
+            branches_str = "All Branches"
+        elif assigned_count > 0:
+            branches_str = ", ".join([b.name for b in s.branches.all()])
+        else:
+            branches_str = "-"
+            
         status = "Active" if s.is_active else "Inactive"
         prod_rights = "Yes" if s.has_product_rights else "No"
         bill_rights = "Yes" if s.has_bill_edit_rights else "No"
@@ -1157,9 +1166,10 @@ def export_staff_csv(request):
             prod_rights,
             bill_rights,
             s.date_of_joining.strftime('%Y-%m-%d') if s.date_of_joining else '-',
+            s.date_of_exit.strftime('%Y-%m-%d') if s.date_of_exit else '-',
             s.mobile_number or '-',
             s.address or '-',
-            branches_str or '-'
+            branches_str
         ])
         
     return response
@@ -1200,17 +1210,14 @@ def get_staff_online_status(request):
     for staff in staff_qs:
         is_online = staff.id in online_ids_set
         
-        if staff.has_all_branches or staff.is_owner():
+        if staff.has_all_branches or staff.is_owner() or staff.role in ['owner', 'admin', 'regional_manager'] or staff.is_superuser:
             branches_str = 'All Branches'
+        elif staff.active_branch:
+            branches_str = staff.active_branch.name
+        elif staff.branches.exists():
+            branches_str = staff.branches.first().name
         else:
-            assigned_branches = list(staff.branches.all())
-            if total_branches_count > 0 and len(assigned_branches) >= total_branches_count:
-                branches_str = 'All Branches'
-            else:
-                branch_names = [b.name for b in assigned_branches]
-                if staff.active_branch and staff.active_branch.name not in branch_names:
-                    branch_names.insert(0, f"Primary: {staff.active_branch.name}")
-                branches_str = ', '.join(branch_names) if branch_names else 'None'
+            branches_str = 'None'
         
         details.append({
             'id': staff.id,

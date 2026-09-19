@@ -59,82 +59,239 @@
         font-weight: 700;
     }
     
-    /* Hover animations */
-    .hover-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    /* Custom dashboard panel styling with clean light theme */
+    .stock-dashboard-panel {
+        background: linear-gradient(135deg, #f0f4ff 0%, #f8fafc 100%);
+        border: 1px solid #dbeafe;
+        border-top: 4px solid #4f46e5;
+        border-radius: 16px;
+        padding: 14px 16px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(15, 23, 42, 0.04);
     }
-    .hover-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08) !important;
+    .kpi-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 8px 12px;
+        transition: all 0.2s ease-in-out;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06) !important;
+    }
+    .kpi-icon-box {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+    }
+    .light-badge {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        color: #334155;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="mb-3 animate-fade-in">
-    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3">
-        <div>
-            <h5 class="fw-bold m-0 text-primary">Stock Report</h5>
-            <p class="text-muted text-xxs mb-0">Inventory overview across all branches</p>
-        </div>
-        <div class="d-flex gap-2 w-100 w-sm-auto justify-content-start justify-content-sm-end">
+<div class="stock-dashboard-panel animate-fade-in p-3">
+    <!-- Top Centered Header Title -->
+    <div class="text-center mb-2">
+        <h5 class="fw-bold m-0 text-dark" style="letter-spacing: -0.01em;">Stock Report</h5>
+    </div>
+
+    <!-- Second Line: Back Button (Left), Branch Name & Code (Middle), Action Buttons (Right) -->
+    <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-2 mb-3 pb-2.5" style="border-bottom: 1px solid #e2e8f0;">
+        <!-- Left: Back Button -->
+        <div class="d-flex align-items-center justify-content-start w-100 w-md-auto" style="min-width: 180px;">
             {% if selected_branch %}
-            <a href="{% url 'export_stock_pivot_excel' %}?q={{ request.GET.q|default:'' }}&branch={{ request.GET.branch|default:'' }}&from_date={{ start_date }}&to_date={{ end_date }}" class="btn btn-outline-success rounded-2 px-2.5 py-1.5 shadow-sm btn-sm text-xs fw-semibold">
-                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export
+            <a href="?branch=" class="btn light-badge btn-sm rounded-pill px-2.5 py-1 text-xxs fw-semibold shadow-sm d-inline-flex align-items-center gap-1 hover-card">
+                <i class="bi bi-arrow-left text-primary"></i> Back to all branches
             </a>
             {% endif %}
-            <a href="{% url 'product_list' %}" class="btn btn-primary rounded-2 px-2.5 py-1.5 shadow-sm btn-sm text-xs fw-semibold text-white">
-                <i class="bi bi-box-seam me-1"></i> Products
+        </div>
+
+        <!-- Middle: Branch Name & Code -->
+        <div class="d-flex align-items-center justify-content-center gap-2 text-center flex-grow-1 my-1 my-md-0 text-nowrap">
+            {% if selected_branch %}
+            <div class="d-inline-flex align-items-center gap-1.5 bg-white shadow-sm border border-slate-200 rounded-pill px-3 py-1 text-nowrap flex-nowrap" style="white-space: nowrap;">
+                <i class="bi bi-shop text-primary text-xs flex-shrink-0"></i>
+                <span class="fw-bold text-dark text-xs text-nowrap">{{ selected_branch.name }}</span>
+                {% if selected_branch.code %}<span class="badge bg-secondary-subtle text-secondary rounded-pill px-1.5 py-0.5 text-xxs fw-bold font-monospace text-nowrap" style="font-size: 0.6rem; white-space: nowrap;">CODE: {{ selected_branch.code }}</span>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right: Action Buttons -->
+        <div class="d-flex gap-1.5 align-items-center justify-content-end w-100 w-md-auto" style="min-width: 180px;">
+            {% if selected_branch %}
+            <a href="{% url 'export_stock_pivot_excel' %}?q={{ request.GET.q|default:'' }}&branch={{ request.GET.branch|default:'' }}&from_date={{ start_date }}&to_date={{ end_date }}" class="btn light-badge rounded-pill px-2.5 py-1 shadow-sm btn-sm text-xxs fw-semibold d-inline-flex align-items-center gap-1 hover-card">
+                <i class="bi bi-file-earmark-spreadsheet text-success"></i> Export Excel
+            </a>
+            {% endif %}
+            <a href="{% url 'product_list' %}" class="btn btn-primary rounded-pill px-3 py-1 shadow-sm btn-sm text-xxs fw-semibold text-white d-inline-flex align-items-center gap-1" style="background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); border: none;">
+                <i class="bi bi-box-seam"></i> Products List
             </a>
         </div>
     </div>
-</div>
 
-{% if selected_branch %}
-<div class="mb-3 animate-fade-in">
-    <a href="?branch=" class="text-primary text-xs fw-semibold text-decoration-none d-inline-flex align-items-center gap-1">
-        <i class="bi bi-arrow-left"></i> Back to all branches
-    </a>
-</div>
+    {% if selected_branch %}
+    <!-- 5 Micro-Compact KPI Filter Cards -->
+    <div class="row g-1.5 mb-2.5">
+        <!-- 1. Current Stock (All Items) -->
+        <div class="col-6 col-sm-4 col-lg">
+            <a href="?branch={{ selected_branch.id }}&stock_status=all{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" class="text-decoration-none">
+                <div class="kpi-card shadow-sm cursor-pointer py-1.5 px-2.5" style="{% if stock_status == 'all' or not stock_status %}border: 2px solid #4f46e5; background: #f5f3ff;{% endif %}">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted text-xxs text-uppercase fw-bold" style="font-size: 0.58rem; letter-spacing: 0.03em;">Current Stock</div>
+                            <div class="d-flex align-items-baseline gap-1">
+                                <span class="fw-extrabold text-dark text-xs" style="line-height: 1;">{{ branch_stats.total_stock|default:0 }}</span>
+                                <span class="text-xxs text-muted fw-bold" style="font-size: 0.55rem;">Units</span>
+                            </div>
+                        </div>
+                        <div class="kpi-icon-box" style="width: 22px; height: 22px; border-radius: 6px; font-size: 0.7rem; background: rgba(99, 102, 241, 0.15); color: #4f46e5;">
+                            <i class="bi bi-boxes"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
 
-<!-- Filters -->
-<div class="card border-0 shadow-sm p-2.5 mb-3 bg-white animate-fade-in">
-    <form method="GET" class="row g-2 align-items-center" id="filterForm">
-        <input type="hidden" name="branch" value="{{ selected_branch.id }}">
-        <div class="col-12 col-md-4">
-            <div class="input-group input-group-sm">
-                <input type="text" name="q" class="form-control border-0 bg-light text-xs rounded-pill-start py-1.5" placeholder="Search product name or barcode..." value="{{ request.GET.q }}">
-                {% if request.GET.q %}
-                <a href="?q=&branch={{ request.GET.branch|default:'' }}&from_date={{ start_date }}&to_date={{ end_date }}" class="btn border-0 bg-light text-muted py-1.5 d-flex align-items-center justify-content-center" title="Clear Search" style="z-index: 4;">
-                    <i class="bi bi-x-lg" style="font-size: 0.75rem;"></i>
-                </a>
-                {% endif %}
-                <button type="submit" class="btn border-0 bg-light rounded-pill-end text-primary py-1.5"><i class="bi bi-search"></i></button>
+        <!-- 2. Items Sold (Today/Period Out) -->
+        <div class="col-6 col-sm-4 col-lg">
+            <div class="kpi-card shadow-sm py-1.5 px-2.5" style="background: #fff5f5; border-color: #fecdd3;">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted text-xxs text-uppercase fw-bold" style="font-size: 0.58rem; letter-spacing: 0.03em;">Items Sold</div>
+                        <div class="d-flex align-items-baseline gap-1">
+                            <span class="fw-extrabold text-danger text-xs" style="line-height: 1;">{{ branch_stats.items_sold|default:0 }}</span>
+                            <span class="text-xxs text-muted fw-bold" style="font-size: 0.55rem;">Sold</span>
+                        </div>
+                    </div>
+                    <div class="kpi-icon-box" style="width: 22px; height: 22px; border-radius: 6px; font-size: 0.7rem; background: rgba(225, 29, 72, 0.15); color: #e11d48;">
+                        <i class="bi bi-cart-check-fill"></i>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="input-group input-group-sm">
-                <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2">From</span>
-                <input type="date" name="from_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ start_date }}">
+        
+        <!-- 3. In Stock -->
+        <div class="col-6 col-sm-4 col-lg">
+            <a href="?branch={{ selected_branch.id }}&stock_status=in_stock{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" class="text-decoration-none">
+                <div class="kpi-card shadow-sm cursor-pointer py-1.5 px-2.5" style="{% if stock_status == 'in_stock' %}border: 2px solid #059669; background: #f0fdf4;{% endif %}">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted text-xxs text-uppercase fw-bold" style="font-size: 0.58rem; letter-spacing: 0.03em;">In Stock</div>
+                            <div class="d-flex align-items-baseline gap-1">
+                                <span class="fw-extrabold text-success text-xs" style="line-height: 1;">{{ branch_stats.in_stock_count|default:0 }}</span>
+                                <span class="text-xxs text-muted fw-semibold" style="font-size: 0.55rem;">Items</span>
+                            </div>
+                        </div>
+                        <div class="kpi-icon-box" style="width: 22px; height: 22px; border-radius: 6px; font-size: 0.7rem; background: rgba(16, 185, 129, 0.15); color: #059669;">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 4. Out of Stock -->
+        <div class="col-6 col-sm-4 col-lg">
+            <a href="?branch={{ selected_branch.id }}&stock_status=out_of_stock{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" class="text-decoration-none">
+                <div class="kpi-card shadow-sm cursor-pointer py-1.5 px-2.5" style="{% if stock_status == 'out_of_stock' %}border: 2px solid #dc2626; background: #fff1f2;{% elif branch_stats.out_of_stock_count > 0 %}border-color: #fecdd3; background: #fff5f5;{% endif %}">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted text-xxs text-uppercase fw-bold" style="font-size: 0.58rem; letter-spacing: 0.03em;">Out of Stock</div>
+                            <div class="d-flex align-items-baseline gap-1">
+                                <span class="fw-extrabold text-xs {% if branch_stats.out_of_stock_count > 0 %}text-danger{% else %}text-dark{% endif %}" style="line-height: 1;">{{ branch_stats.out_of_stock_count|default:0 }}</span>
+                                {% if branch_stats.out_of_stock_count > 0 %}
+                                <span class="badge bg-danger text-white rounded-pill px-1 py-0 text-xxs fw-bold" style="font-size: 0.5rem;">Alert</span>
+                                {% else %}
+                                <span class="text-xxs text-muted fw-semibold" style="font-size: 0.55rem;">Items</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="kpi-icon-box" style="width: 22px; height: 22px; border-radius: 6px; font-size: 0.7rem; background: rgba(239, 68, 68, 0.15); color: #dc2626;">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 5. Low Stock Alert -->
+        <div class="col-6 col-sm-4 col-lg">
+            <a href="?branch={{ selected_branch.id }}&stock_status=low_stock{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}&from_date={{ start_date }}&to_date={{ end_date }}" class="text-decoration-none">
+                <div class="kpi-card shadow-sm cursor-pointer py-1.5 px-2.5" style="{% if stock_status == 'low_stock' %}border: 2px solid #d97706; background: #fffbeb;{% elif branch_stats.low_stock_count > 0 %}border-color: #fef08a; background: #fffbeb;{% endif %}">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted text-xxs text-uppercase fw-bold" style="font-size: 0.58rem; letter-spacing: 0.03em;">Low Stock Alert</div>
+                            <div class="d-flex align-items-baseline gap-1">
+                                <span class="fw-extrabold text-xs {% if branch_stats.low_stock_count > 0 %}text-warning-emphasis{% else %}text-dark{% endif %}" style="line-height: 1; color: #d97706;">{{ branch_stats.low_stock_count|default:0 }}</span>
+                                {% if branch_stats.low_stock_count > 0 %}
+                                <span class="badge bg-warning text-dark rounded-pill px-1 py-0 text-xxs fw-bold" style="font-size: 0.5rem;">Low Alert</span>
+                                {% else %}
+                                <span class="text-xxs text-muted fw-semibold" style="font-size: 0.55rem;">Items</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="kpi-icon-box" style="width: 22px; height: 22px; border-radius: 6px; font-size: 0.7rem; background: rgba(245, 158, 11, 0.15); color: #d97706;">
+                            <i class="bi bi-bell-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Search Bar & Date Filter Container -->
+    <div class="bg-white p-3 rounded-3 shadow-sm border border-light-subtle">
+
+        <!-- Search & Date Range Form -->
+        <form method="GET" class="row g-2 align-items-center" id="filterForm">
+            <input type="hidden" name="branch" value="{{ selected_branch.id }}">
+            <input type="hidden" name="stock_status" value="{{ stock_status }}">
+            <div class="col-12 col-md-5">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text border-0 bg-light rounded-pill-start text-muted ps-3"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control border-0 bg-light text-xs py-1.5" placeholder="Search product name or barcode..." value="{{ request.GET.q }}">
+                    {% if request.GET.q %}
+                    <a href="?q=&branch={{ request.GET.branch|default:'' }}&stock_status={{ stock_status }}&from_date={{ start_date }}&to_date={{ end_date }}" class="btn border-0 bg-light text-muted py-1.5 d-flex align-items-center justify-content-center" title="Clear Search" style="z-index: 4;">
+                        <i class="bi bi-x-lg" style="font-size: 0.75rem;"></i>
+                    </a>
+                    {% endif %}
+                    <button type="submit" class="btn border-0 bg-light rounded-pill-end text-primary py-1.5 pe-3"><i class="bi bi-arrow-right"></i></button>
+                </div>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="input-group input-group-sm">
-                <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2">To</span>
-                <input type="date" name="to_date" class="form-control border-0 bg-light text-xs {% if request.GET.from_date or request.GET.to_date %}rounded-0{% else %}rounded-pill-end{% endif %} py-1.5" value="{{ end_date }}">
-                {% if request.GET.from_date or request.GET.to_date %}
-                <a href="?q={{ request.GET.q|default:'' }}&branch={{ request.GET.branch|default:'' }}&from_date=&to_date=" class="btn border-0 bg-light text-muted py-1.5 d-flex align-items-center justify-content-center rounded-pill-end" title="Clear Dates" style="z-index: 4;">
-                    <i class="bi bi-x-lg" style="font-size: 0.75rem;"></i>
-                </a>
-                {% endif %}
+            <div class="col-6 col-md-3">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2">From</span>
+                    <input type="date" name="from_date" class="form-control border-0 bg-light text-xs rounded-pill-end py-1.5" value="{{ start_date }}">
+                </div>
             </div>
-        </div>
-        <div class="col-12 col-md-2">
-            <button class="btn btn-primary rounded-pill w-100 btn-sm py-1.5 text-xs fw-semibold" type="submit">
-                Filter
-            </button>
-        </div>
-    </form>
+            <div class="col-6 col-md-3">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text border-0 bg-light rounded-pill-start text-xxs text-uppercase fw-bold text-muted px-2">To</span>
+                    <input type="date" name="to_date" class="form-control border-0 bg-light text-xs {% if request.GET.from_date or request.GET.to_date %}rounded-0{% else %}rounded-pill-end{% endif %} py-1.5" value="{{ end_date }}">
+                    {% if request.GET.from_date or request.GET.to_date %}
+                    <a href="?q={{ request.GET.q|default:'' }}&branch={{ request.GET.branch|default:'' }}&stock_status={{ stock_status }}&from_date=&to_date=" class="btn border-0 bg-light text-muted py-1.5 d-flex align-items-center justify-content-center rounded-pill-end" title="Clear Dates" style="z-index: 4;">
+                        <i class="bi bi-x-lg" style="font-size: 0.75rem;"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-12 col-md-1">
+                <button class="btn btn-primary rounded-pill w-100 btn-sm py-1.5 text-xs fw-semibold" type="submit">
+                    Filter
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Desktop Table View -->
@@ -163,11 +320,16 @@
             <tbody>
                 {% for item in report_data %}
                 {% for stock_info in item.branch_stocks %}
-                <tr class="text-center text-xs">
+                <tr class="text-center text-xs {% if stock_info.cl == 0 %}bg-danger bg-opacity-10{% endif %}">
                     <td class="ps-3 text-start">
                         <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-semibold">{{ stock_info.branch.name }}</span>
                     </td>
-                    <td class="text-start fw-bold text-dark">{{ item.product.name }}</td>
+                    <td class="text-start fw-bold text-dark">
+                        {{ item.product.name }}
+                        {% if stock_info.cl == 0 %}
+                        <span class="badge bg-danger text-white rounded-pill px-1.5 py-0.5 text-xxs fw-bold ms-1" style="font-size: 0.55rem;">OUT OF STOCK</span>
+                        {% endif %}
+                    </td>
                     <td class="text-nowrap"><code class="bg-light text-muted px-1.5 py-0.5 rounded-pill font-monospace border border-light text-xxs text-nowrap">{{ item.product.barcode }}</code></td>
                     <td class="fw-bold text-primary">₹{{ item.product.price|floatformat:0 }}</td>
                     <td class="bg-light bg-opacity-25">{{ stock_info.op }}</td>
@@ -176,7 +338,13 @@
                     <td class="bg-light bg-opacity-25 fw-semibold text-danger">{{ stock_info.out }}</td>
                     <td class="bg-light bg-opacity-25 fw-semibold text-warning">{{ stock_info.dmg }}</td>
                     <td class="bg-light bg-opacity-25 fw-semibold text-danger">{{ stock_info.ret_dmg }}</td>
-                    <td class="bg-light bg-opacity-50 fw-bold">{{ stock_info.cl }}</td>
+                    <td class="bg-light bg-opacity-50 fw-bold">
+                        {% if stock_info.cl == 0 %}
+                        <span class="badge bg-danger text-white rounded-pill px-2 py-0.5 text-xxs fw-bold"><i class="bi bi-x-circle me-1"></i>0</span>
+                        {% else %}
+                        <span class="fw-bold text-dark">{{ stock_info.cl }}</span>
+                        {% endif %}
+                    </td>
                     <td class="border-start"><span class="stock-num num-received">{{ stock_info.rec }}</span></td>
                     <td><span class="stock-num num-sold">{{ stock_info.all_time_out }}</span></td>
                     <td><span class="stock-num {% if stock_info.all_time_dmg > 0 %}num-damaged{% endif %}">{{ stock_info.all_time_dmg }}</span></td>
@@ -389,9 +557,24 @@
                     <p class="text-muted text-xxs mb-2">
                         <i class="bi bi-geo-alt me-1 text-danger"></i> {{ b.location|default:"No location specified" }}
                     </p>
-                    <div class="mb-3 d-flex align-items-center gap-1.5 text-xxs text-secondary fw-semibold">
-                        <i class="bi bi-box-seam text-primary"></i>
-                        <span>Products: {{ b.product_count|default:"0" }}</span>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center text-xxs mb-1">
+                            <span class="text-secondary fw-semibold"><i class="bi bi-box-seam me-1 text-primary"></i>Products: {{ b.product_count|default:"0" }}</span>
+                            <span class="fw-bold text-dark"><i class="bi bi-layers me-1 text-indigo"></i>Stock: {{ b.total_stock|default:0 }} Units</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-1 pt-1.5 border-top border-light">
+                            {% if b.out_of_stock_count > 0 %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-0.5 text-xxs fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Out: {{ b.out_of_stock_count }}</span>
+                            {% else %}
+                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-0.5 text-xxs fw-semibold"><i class="bi bi-check-circle me-1"></i>Out: 0</span>
+                            {% endif %}
+                            
+                            {% if b.low_stock_count > 0 %}
+                            <span class="badge bg-warning bg-opacity-15 text-warning-emphasis rounded-pill px-2 py-0.5 text-xxs fw-bold"><i class="bi bi-bell me-1"></i>Low: {{ b.low_stock_count }}</span>
+                            {% else %}
+                            <span class="badge bg-light text-muted rounded-pill px-2 py-0.5 text-xxs">Low: 0</span>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
                 <a href="?branch={{ b.id }}" class="btn btn-primary rounded-2 w-100 py-1.5 text-xxs fw-semibold text-white d-flex align-items-center justify-content-center gap-1.5">

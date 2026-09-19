@@ -62,13 +62,13 @@
             <!-- Compact Search & Filter Bar -->
             <form method="get" action="{% url 'attendance:payroll_list' %}" class="mb-3">
                 <div class="row g-2 align-items-center">
-                    <div class="col-md-5">
+                    <div class="col-md-4">
                         <div class="input-group input-group-sm">
                             <span class="input-group-text bg-light border-end-0 rounded-start-pill"><i class="bi bi-search text-muted"></i></span>
                             <input type="text" name="q_staff" value="{{ q_staff }}" class="form-control border-start-0 rounded-end-pill" placeholder="Search staff by name or ID...">
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <select name="branch_staff" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
                             <option value="">All Branches</option>
                             {% for b in branches %}
@@ -76,11 +76,18 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-3 d-flex gap-1.5">
+                    <div class="col-md-3">
+                        <select name="status_filter" class="form-select form-select-sm rounded-pill" onchange="this.form.submit()">
+                            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active Only</option>
+                            <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive Only</option>
+                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Staff</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex gap-1.5">
                         <button type="submit" class="btn btn-sm btn-primary rounded-pill w-100">
                             <i class="bi bi-funnel me-1"></i> Filter
                         </button>
-                        <a href="{% url 'attendance:payroll_list' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                        <a href="{% url 'attendance:payroll_list' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3" title="Reset Filters">
                             <i class="bi bi-arrow-counterclockwise"></i>
                         </a>
                     </div>
@@ -115,17 +122,21 @@
                                 <td>
                                     <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1">{{ item.role_display }}</span>
                                 </td>
-                                {% if not selected_branch_id %}
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            {% for b in item.branches.all %}
-                                                <span class="badge text-purple border" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.65rem;">{{ b.name }}</span>
-                                            {% empty %}
-                                                <span class="text-muted text-xxs fst-italic">None</span>
-                                            {% endfor %}
-                                        </div>
-                                    </td>
-                                {% endif %}
+                                 {% if not selected_branch_id %}
+                                     <td>
+                                         <div class="d-flex flex-wrap gap-1">
+                                             {% if item.has_all_branches or item.role == 'owner' or item.role == 'regional_manager' or item.role == 'admin' or item.is_superuser %}
+                                                 <span class="badge bg-primary-subtle text-primary border rounded-pill px-2.5 py-1" style="font-size: 0.65rem;"><i class="bi bi-globe me-1"></i>All Branches</span>
+                                             {% elif item.active_branch %}
+                                                 <span class="badge text-purple border" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.65rem;"><i class="bi bi-house-door-fill me-1"></i>{{ item.active_branch.name }}</span>
+                                             {% elif item.branches.all %}
+                                                 <span class="badge text-purple border" style="background-color: #ede9fe; color: #7c3aed; font-size: 0.65rem;"><i class="bi bi-house-door-fill me-1"></i>{{ item.branches.all.0.name }}</span>
+                                             {% else %}
+                                                 <span class="text-muted text-xxs fst-italic">None</span>
+                                             {% endif %}
+                                         </div>
+                                     </td>
+                                 {% endif %}
                                 <td class="fw-bold text-dark">₹ {{ item.salary_config.monthly_base_salary|default:"0.00" }}</td>
                                 <td>
                                     <span class="badge rounded-pill px-2 py-0.5" style="background-color: #fef3c7; color: #b45309; font-size: 0.65rem;">
