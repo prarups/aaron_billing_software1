@@ -132,6 +132,8 @@ def combo_create(request):
             messages.error(request, "Combo Name is required.")
         elif not target_branch_ids:
             messages.error(request, "Please select at least one branch for availability.")
+        elif not selected_barcodes:
+            messages.error(request, "Please select at least one product for the combo offer.")
         elif check_combo_barcode_overlap(request, target_branch_ids, selected_barcodes, is_active):
             pass
         else:
@@ -141,7 +143,7 @@ def combo_create(request):
             
             # Map products by barcode across target branches
             if selected_barcodes:
-                all_matching_products = Product.objects.filter(branch_id__in=target_branch_ids, barcode__in=selected_barcodes)
+                all_matching_products = Product.objects.filter(barcode__in=selected_barcodes)
                 combo.products.set(all_matching_products)
                 
 
@@ -212,6 +214,8 @@ def combo_edit(request, pk):
             messages.error(request, "Combo Name is required.")
         elif not target_branch_ids:
             messages.error(request, "Please select at least one branch for availability.")
+        elif not selected_barcodes:
+            messages.error(request, "Please select at least one product for the combo offer.")
         elif check_combo_barcode_overlap(request, target_branch_ids, selected_barcodes, is_active, exclude_combo_id=combo.id):
             pass
         else:
@@ -224,7 +228,7 @@ def combo_edit(request, pk):
             
             # Find matching products by barcode across target branches
             if selected_barcodes:
-                all_matching_products = Product.objects.filter(branch_id__in=target_branch_ids, barcode__in=selected_barcodes)
+                all_matching_products = Product.objects.filter(barcode__in=selected_barcodes)
                 combo.products.set(all_matching_products)
                 
 
@@ -392,11 +396,11 @@ def get_branch_combo_data(request):
 def global_products_ajax(request):
     q = request.GET.get('q', '').strip()
     if not q:
-        return JsonResponse({'products': []})
-        
-    products = Product.objects.filter(
-        Q(barcode__icontains=q) | Q(name__icontains=q)
-    ).values('name', 'barcode').distinct()[:30]
+        products = Product.objects.values('name', 'barcode').distinct()[:20]
+    else:
+        products = Product.objects.filter(
+            Q(barcode__icontains=q) | Q(name__icontains=q)
+        ).values('name', 'barcode').distinct()[:30]
     
     product_list = [
         {

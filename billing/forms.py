@@ -260,12 +260,14 @@ class ReturnCreateForm(forms.Form):
             # `is_combo` (balanced combo swap) only applies if the replacement product
             # is inside the returned item's combo group.
             is_combo = False
-            if item and combo_map.get(item.id, False):
-                combo_group = combo_group_map.get(item.id)
+            if item:
+                combo_group = item.combo_group or combo_group_map.get(item.id)
                 if combo_group:
                     cg_product_ids = {p.id for p in combo_group.products.all()}
                     if rep_product.id in cg_product_ids:
                         is_combo = True
+                elif combo_map.get(item.id, False):
+                    is_combo = True
 
             if is_combo:
                 # Balanced combo swap: add replacement price to both totals so they cancel out
@@ -329,12 +331,15 @@ class ReturnCreateForm(forms.Form):
             rep_qty = vi['replacement_quantity']
             
             is_combo = False
-            if item and item.is_combo_purchase:
-                is_combo = ComboGroup.objects.filter(
-                    products=item.product,
-                    branches=bill.branch,
-                    is_active=True
-                ).filter(products=rep_product).exists()
+            if item:
+                if item.combo_group:
+                    is_combo = item.combo_group.products.filter(id=rep_product.id).exists()
+                elif item.is_combo_purchase:
+                    is_combo = ComboGroup.objects.filter(
+                        products=item.product,
+                        branches=bill.branch,
+                        is_active=True
+                    ).filter(products=rep_product).exists()
 
             if not is_combo:
                 unit_price = item.unit_price if item else 0
@@ -363,12 +368,15 @@ class ReturnCreateForm(forms.Form):
 
             # Check if combo product to determine price difference
             is_combo = False
-            if item and item.is_combo_purchase:
-                is_combo = ComboGroup.objects.filter(
-                    products=item.product,
-                    branches=bill.branch,
-                    is_active=True
-                ).filter(products=rep_product).exists()
+            if item:
+                if item.combo_group:
+                    is_combo = item.combo_group.products.filter(id=rep_product.id).exists()
+                elif item.is_combo_purchase:
+                    is_combo = ComboGroup.objects.filter(
+                        products=item.product,
+                        branches=bill.branch,
+                        is_active=True
+                    ).filter(products=rep_product).exists()
 
             if is_combo:
                 price_diff = 0

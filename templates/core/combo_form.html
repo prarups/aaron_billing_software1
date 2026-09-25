@@ -72,64 +72,92 @@
 
     /* ── TomSelect overrides for Products multi-select ── */
     .ts-wrapper.multi .ts-control {
-        border-radius: 0.6rem !important;
-        padding: 0.45rem 0.75rem !important;
-        min-height: 42px;
-        border: 1px solid #dee2e6 !important;
-        background: #fff !important;
+        border-radius: 0.75rem !important;
+        padding: 0.5rem 0.85rem !important;
+        min-height: 48px;
+        border: 1.5px solid #cbd5e1 !important;
+        background: #ffffff !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+        transition: all 0.2s ease;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        gap: 5px !important;
+    }
+    .ts-wrapper.multi .ts-control > input {
+        margin: 0 !important;
+        padding: 0 !important;
+        min-width: 180px !important;
+        flex-grow: 1 !important;
         box-shadow: none !important;
-        transition: border-color 0.15s ease;
+        background: transparent !important;
+        border: none !important;
     }
     .ts-wrapper.multi .ts-control:focus-within {
-        border-color: #86b7fe !important;
-        box-shadow: 0 0 0 0.2rem rgba(13,110,253,.15) !important;
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15) !important;
     }
     .ts-wrapper .ts-dropdown {
-        border-radius: 0.6rem !important;
-        border: 1px solid #dee2e6 !important;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important;
-        margin-top: 4px !important;
+        border-radius: 0.85rem !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12) !important;
+        margin-top: 6px !important;
+        overflow: hidden !important;
     }
     .ts-wrapper .ts-dropdown .ts-dropdown-content .option {
-        padding: 0.45rem 0.85rem !important;
-        font-size: 0.82rem !important;
-        color: #334155;
+        padding: 0.6rem 0.95rem !important;
+        font-size: 0.84rem !important;
+        color: #1e293b;
+        transition: background 0.15s ease;
     }
     .ts-wrapper .ts-dropdown .ts-dropdown-content .option:hover,
     .ts-wrapper .ts-dropdown .ts-dropdown-content .option.active {
-        background: #eef2ff !important;
-        color: #4338ca !important;
+        background: #f1f5f9 !important;
+        color: #4f46e5 !important;
     }
     .ts-wrapper .ts-control .item {
-        background: #eef2ff !important;
+        background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%) !important;
         border: 1px solid #c7d2fe !important;
-        border-radius: 0.45rem !important;
+        border-radius: 50px !important;
         color: #4338ca !important;
-        font-size: 0.74rem !important;
-        padding: 0.18rem 0.5rem !important;
-        font-weight: 600;
+        font-size: 0.76rem !important;
+        padding: 0.25rem 0.65rem 0.25rem 0.75rem !important;
+        font-weight: 600 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        margin: 2px !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
     }
+    /* Rounded smooth circular remove button */
     .ts-wrapper .ts-control .item .remove {
-        border-left: 1px solid #c7d2fe !important;
+        border: none !important;
+        border-left: none !important;
         color: #6366f1 !important;
-        margin-left: 4px;
-        padding-left: 4px;
+        background: rgba(99, 102, 241, 0.12) !important;
+        border-radius: 50% !important;
+        width: 18px !important;
+        height: 18px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 11px !important;
+        line-height: 1 !important;
+        margin-left: 2px !important;
+        padding: 0 !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer !important;
     }
-    /* remove_button plugin — the × on each selected product pill */
     .ts-wrapper .ts-control .item .remove:hover {
-        background: #fca5a5 !important;
-        color: #dc2626 !important;
-        border-radius: 3px;
+        background: #ef4444 !important;
+        color: #ffffff !important;
     }
-    .ts-wrapper .ts-control .item [data-value] .remove {
-        font-size: 0.75rem;
-    }
-    .ts-wrapper .ts-control input { font-size: 0.82rem !important; }
-    .ts-wrapper .ts-dropdown .dropdown-input-wrap { padding: 0.5rem !important; }
+    .ts-wrapper .ts-control input { font-size: 0.85rem !important; }
+    .ts-wrapper .ts-dropdown .dropdown-input-wrap { padding: 0.6rem !important; background: #f8fafc; }
     .ts-wrapper .ts-dropdown .dropdown-input-wrap input {
-        border-radius: 0.5rem !important;
-        border: 1px solid #e2e8f0 !important;
-        padding: 0.4rem 0.75rem !important;
+        border-radius: 0.6rem !important;
+        border: 1px solid #cbd5e1 !important;
+        padding: 0.5rem 0.85rem !important;
         font-size: 0.82rem !important;
     }
 </style>
@@ -138,60 +166,65 @@
 {% block content %}
 <div class="row justify-content-center animate-fade-in">
     <div class="col-12 col-md-10 col-lg-8">
-        <div class="card border-0 shadow-sm p-4 bg-white glass-card">
-            <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-tag-fill me-2"></i>{{ title }}</h5>
+        <div class="card border-0 shadow-sm p-4 bg-white glass-card position-relative">
+            <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom border-light">
+                <h5 class="fw-bold m-0 text-primary"><i class="bi bi-tag-fill me-2"></i>{{ title }}</h5>
+                <a href="{% url 'combo_list' %}" class="btn btn-light btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center shadow-sm" style="width: 34px; height: 34px; background: #f8fafc; border: 1px solid #cbd5e1; transition: all 0.2s ease;" title="Close & Cancel">
+                    <i class="bi bi-x-lg text-secondary fs-6"></i>
+                </a>
+            </div>
             
             <form method="post" id="combo-form">
                 <input type="hidden" name="page" value="{{ request.GET.page|default:'' }}">
                 {% csrf_token %}
                 
                 <!-- Combo Info Section -->
-                <div class="bg-light p-3 rounded-4 mb-4 border border-light shadow-sm bg-opacity-50">
-                    <h6 class="fw-bold mb-3 text-secondary text-xxs text-uppercase"><i class="bi bi-info-circle me-1"></i>Combo Information</h6>
+                <div class="p-3.5 rounded-4 mb-4 shadow-sm" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(217, 70, 239, 0.06) 100%); border: 1px solid rgba(99, 102, 241, 0.18);">
+                    <h6 class="fw-bold mb-3 text-uppercase" style="font-size: 0.72rem; color: #4338ca; letter-spacing: 0.05em;"><i class="bi bi-info-circle-fill me-1.5 text-primary"></i>1. Combo Details</h6>
                     <div class="row g-3">
                         {% if combo.combo_id %}
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted">Combo ID</label>
-                            <input type="text" class="form-control rounded-3 text-xs px-3 shadow-none border bg-light font-monospace text-secondary" value="{{ combo.combo_id }}" readonly disabled>
+                            <label class="form-label small fw-bold text-secondary">Combo ID</label>
+                            <input type="text" class="form-control rounded-3 text-xs px-3 shadow-none border bg-light font-monospace fw-bold text-primary" value="{{ combo.combo_id }}" readonly disabled>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted">Combo Name</label>
-                            <input type="text" name="name" class="form-control rounded-3 text-xs px-3 shadow-none border" placeholder="e.g. Mix & Match Summer Combo" value="{{ combo.name|default:'' }}" required>
+                            <label class="form-label small fw-bold text-dark">Combo Offer Name <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control rounded-3 text-xs px-3 shadow-sm border border-primary-subtle" placeholder="e.g. Jeans Buy 2 Get Special Price" value="{{ combo.name|default:'' }}" required style="height: 38px;">
                         </div>
                         {% else %}
                         <div class="col-md-9">
-                            <label class="form-label small fw-bold text-muted">Combo Name</label>
-                            <input type="text" name="name" class="form-control rounded-3 text-xs px-3 shadow-none border" placeholder="e.g. Mix & Match Summer Combo" value="{{ combo.name|default:'' }}" required>
+                            <label class="form-label small fw-bold text-dark">Combo Offer Name <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control rounded-3 text-xs px-3 shadow-sm border border-primary-subtle" placeholder="e.g. Jeans Buy 2 Get Special Price" value="{{ combo.name|default:'' }}" required style="height: 38px;">
                         </div>
                         {% endif %}
                         <div class="col-md-3 d-flex align-items-end">
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {% if combo is None or combo.is_active %}checked{% endif %}>
-                                <label class="form-check-label small fw-bold text-muted" for="is_active">Active Status</label>
+                            <div class="form-check form-switch mb-1.5">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {% if combo is None or combo.is_active %}checked{% endif %} style="width: 2.2em; height: 1.2em;">
+                                <label class="form-check-label small fw-bold text-success ms-1" for="is_active"><i class="bi bi-check-circle-fill me-1"></i>Active</label>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Assignment Section -->
-                <div class="bg-light p-3 rounded-4 mb-4 border border-light shadow-sm bg-opacity-50" style="overflow: visible;">
-                    <h6 class="fw-bold mb-3 text-secondary text-xxs text-uppercase"><i class="bi bi-diagram-3 me-1"></i>Assignments & Availability</h6>
-                    <div class="mb-4">
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input animate-switch" type="checkbox" name="apply_to_all_branches" id="apply-to-all-branches" {% if applied_to_all %}checked{% endif %}>
-                            <label class="form-check-label small fw-bold text-muted" for="apply-to-all-branches">
-                                <i class="bi bi-globe me-1"></i> Apply to All Branches
+                <div class="p-3.5 rounded-4 mb-4 shadow-sm" style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%); border: 1px solid rgba(124, 58, 237, 0.18); overflow: visible;">
+                    <h6 class="fw-bold mb-3 text-uppercase" style="font-size: 0.72rem; color: #6b21a8; letter-spacing: 0.05em;"><i class="bi bi-diagram-3-fill me-1.5" style="color: #9333ea;"></i>2. Eligible Products & Branches</h6>
+                    <div class="mb-3.5">
+                        <div class="form-check form-switch mb-3 p-2 rounded-3" style="background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(226, 232, 240, 0.8);">
+                            <input class="form-check-input animate-switch ms-0 me-2" type="checkbox" name="apply_to_all_branches" id="apply-to-all-branches" {% if applied_to_all %}checked{% endif %} style="width: 2.2em; height: 1.2em;">
+                            <label class="form-check-label small fw-bold text-dark" for="apply-to-all-branches">
+                                <i class="bi bi-globe2 me-1 text-primary"></i> Apply to All Branches
                             </label>
-                            <div class="form-text x-small mt-0 text-muted">This combo will be active across all branches in the system.</div>
+                            <span class="badge bg-indigo-subtle text-indigo rounded-pill px-2 py-0.5 ms-2 text-xxs" style="background: #eef2ff; color: #4338ca;">Global Offer</span>
                         </div>
 
                         <!-- Specific branches selection -->
-                        <div class="p-3 bg-white rounded-4 border border-light shadow-sm {% if applied_to_all %}d-none{% endif %}" id="specific-branches-container">
-                            <label class="form-label small fw-bold text-muted mb-2"><i class="bi bi-branches me-1 text-primary"></i>Select Target Branches</label>
+                        <div class="p-3 bg-white rounded-4 border border-primary-subtle shadow-sm {% if applied_to_all %}d-none{% endif %}" id="specific-branches-container">
+                            <label class="form-label small fw-bold text-primary mb-2"><i class="bi bi-geo-alt-fill me-1"></i>Select Target Branches</label>
                             
                             <!-- Search branch input -->
                             <div class="input-group input-group-sm mb-2 shadow-xs" style="max-width: 350px;">
-                                <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted small"></i></span>
+                                <span class="input-group-text bg-light border-0"><i class="bi bi-search text-primary small"></i></span>
                                 <input type="text" id="branch-search-input" class="form-control rounded-end-pill text-xs px-2 shadow-none border-0 bg-light" placeholder="Type branch name or code to filter...">
                             </div>
 
@@ -200,8 +233,8 @@
                                 <div class="col-sm-6 branch-checkbox-item" data-branch-name="{{ branch.name|lower }}" data-branch-code="{{ branch.code }}">
                                     <div class="form-check">
                                         <input class="form-check-input target-branch-cb" type="checkbox" name="selected_branches" value="{{ branch.id }}" id="target-branch-{{ branch.id }}" {% if branch.id in selected_branch_ids %}checked{% endif %}>
-                                        <label class="form-check-label small text-secondary" for="target-branch-{{ branch.id }}">
-                                            {{ branch.name }} ({{ branch.code }})
+                                        <label class="form-check-label small text-dark fw-medium" for="target-branch-{{ branch.id }}">
+                                            {{ branch.name }} <span class="badge bg-light text-secondary border font-monospace ms-1">{{ branch.code }}</span>
                                         </label>
                                     </div>
                                 </div>
@@ -210,16 +243,19 @@
                         </div>
                     </div>
                     
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted">Select Eligible Products</label>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1.5">
+                            <label class="form-label small fw-bold text-dark mb-0"><i class="bi bi-box-seam me-1 text-primary"></i>Select Eligible Products for this Combo <span class="text-danger">*</span></label>
+                            <span class="badge bg-primary-subtle text-primary rounded-pill px-2.5 py-1 text-xxs fw-bold" style="background:#eef2ff; color:#4338ca;"><i class="bi bi-info-circle me-1"></i>Auto suggestions on click</span>
+                        </div>
                         <select name="products" id="products-select" class="form-select" multiple required data-no-search>
                             {% for product in selected_products %}
                             <option value="{{ product.barcode }}" selected>{{ product.name }} ({{ product.barcode }})</option>
                             {% endfor %}
                         </select>
-                        <div class="d-flex justify-content-between align-items-center mt-1.5">
-                            <div class="form-text x-small m-0" id="product-filter-hint">Search for products by name or barcode to add them.</div>
-                            <button type="button" id="select-all-visible-btn" class="btn btn-outline-secondary btn-xs rounded-pill px-2.5 py-1 text-xxs fw-bold shadow-none" style="border-color: #dee2e6; color: #475569;">
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <div class="form-text x-small m-0 text-muted" id="product-filter-hint"><i class="bi bi-lightbulb text-warning me-1"></i>Search name or barcode to add products to this combo rule.</div>
+                            <button type="button" id="select-all-visible-btn" class="btn btn-outline-primary btn-xs rounded-pill px-3 py-1 text-xxs fw-bold shadow-sm" style="border-color: #c7d2fe; background: #ffffff; color: #4338ca;">
                                 <i class="bi bi-check-all me-1"></i> Select All Sizes of Selected
                             </button>
                         </div>
@@ -227,20 +263,20 @@
                 </div>
 
                 <!-- Pricing Tiers Section -->
-                <div class="bg-light p-3 rounded-4 mb-4 border border-light shadow-sm bg-opacity-50">
+                <div class="p-3.5 rounded-4 mb-4 shadow-sm" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(20, 184, 166, 0.05) 100%); border: 1px solid rgba(16, 185, 129, 0.18);">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold m-0 text-secondary text-xxs text-uppercase"><i class="bi bi-layers-half me-1"></i>Combo Pricing Tiers</h6>
-                        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1 text-xxs fw-bold" onclick="addTierRow()">
+                        <h6 class="fw-bold m-0 text-uppercase" style="font-size: 0.72rem; color: #047857; letter-spacing: 0.05em;"><i class="bi bi-layers-half me-1.5 text-success"></i>3. Combo Pricing Milestones</h6>
+                        <button type="button" class="btn btn-emerald btn-sm rounded-pill px-3 py-1.5 text-xxs fw-bold text-white shadow-sm" onclick="addTierRow()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none;">
                             <i class="bi bi-plus-lg me-1"></i> Add Tier
                         </button>
                     </div>
 
                     <div id="tier-headers" class="row g-2 mb-2">
                         <div class="col-5">
-                            <label class="form-label x-small fw-bold text-muted ps-2">Quantity Milestone</label>
+                            <label class="form-label x-small fw-bold text-dark ps-2"><i class="bi bi-box me-1 text-primary"></i>Quantity Milestone (Pcs)</label>
                         </div>
                         <div class="col-5">
-                            <label class="form-label x-small fw-bold text-muted ps-2">Combo Price (₹)</label>
+                            <label class="form-label x-small fw-bold text-dark ps-2"><i class="bi bi-currency-rupee me-1 text-success"></i>Combo Offer Price (₹)</label>
                         </div>
                         <div class="col-2"></div>
                     </div>
@@ -248,32 +284,44 @@
                     <div id="tier-rows">
                         {% if combo %}
                             {% for tier in combo.tiers.all %}
-                            <div class="row g-2 align-items-center mb-2 tier-row animate-fade-in">
+                            <div class="row g-2 align-items-center mb-2.5 tier-row animate-fade-in">
                                 <div class="col-5">
-                                    <input type="number" name="tier_quantity[]" class="form-control rounded-pill text-xs px-3" placeholder="Qty (e.g. 5)" min="1" value="{{ tier.quantity }}" required>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white border-end-0 rounded-start-pill text-muted px-2.5"><i class="bi bi-box-seam text-primary"></i></span>
+                                        <input type="number" name="tier_quantity[]" class="form-control rounded-end-pill text-xs px-2.5 border-start-0 border-primary-subtle fw-bold text-dark" placeholder="Qty (e.g. 2)" min="1" value="{{ tier.quantity }}" required style="height: 38px;">
+                                    </div>
                                 </div>
                                 <div class="col-5">
-                                    <input type="number" name="tier_price[]" class="form-control rounded-pill text-xs px-3" placeholder="Price (₹)" min="0" value="{{ tier.price|floatformat:0 }}" required>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white border-end-0 rounded-start-pill text-success fw-bold px-2.5">₹</span>
+                                        <input type="number" name="tier_price[]" class="form-control rounded-end-pill text-xs px-2.5 border-start-0 border-success-subtle fw-bold text-success" placeholder="Price (e.g. 900)" min="0" value="{{ tier.price|floatformat:0 }}" required style="height: 38px;">
+                                    </div>
                                 </div>
                                 <div class="col-2">
-                                    <button type="button" class="btn btn-outline-danger btn-sm rounded-pill w-100 py-1.5" onclick="removeTierRow(this)">
-                                        <i class="bi bi-trash"></i>
+                                    <button type="button" class="btn btn-outline-danger btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center mx-auto shadow-none" onclick="removeTierRow(this)" style="width: 34px; height: 34px;">
+                                        <i class="bi bi-trash-fill"></i>
                                     </button>
                                 </div>
                             </div>
                             {% endfor %}
                         {% else %}
                             <!-- Default starting row -->
-                            <div class="row g-2 align-items-center mb-2 tier-row animate-fade-in">
+                            <div class="row g-2 align-items-center mb-2.5 tier-row animate-fade-in">
                                 <div class="col-5">
-                                    <input type="number" name="tier_quantity[]" class="form-control rounded-pill text-xs px-3" placeholder="Qty (e.g. 2)" min="1" required>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white border-end-0 rounded-start-pill text-muted px-2.5"><i class="bi bi-box-seam text-primary"></i></span>
+                                        <input type="number" name="tier_quantity[]" class="form-control rounded-end-pill text-xs px-2.5 border-start-0 border-primary-subtle fw-bold text-dark" placeholder="Qty (e.g. 2)" min="1" required style="height: 38px;">
+                                    </div>
                                 </div>
                                 <div class="col-5">
-                                    <input type="number" name="tier_price[]" class="form-control rounded-pill text-xs px-3" placeholder="Price (₹)" min="0" required>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white border-end-0 rounded-start-pill text-success fw-bold px-2.5">₹</span>
+                                        <input type="number" name="tier_price[]" class="form-control rounded-end-pill text-xs px-2.5 border-start-0 border-success-subtle fw-bold text-success" placeholder="Price (e.g. 900)" min="0" required style="height: 38px;">
+                                    </div>
                                 </div>
                                 <div class="col-2">
-                                    <button type="button" class="btn btn-outline-danger btn-sm rounded-pill w-100 py-1.5" onclick="removeTierRow(this)">
-                                        <i class="bi bi-trash"></i>
+                                    <button type="button" class="btn btn-outline-danger btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center mx-auto shadow-none" onclick="removeTierRow(this)" style="width: 34px; height: 34px;">
+                                        <i class="bi bi-trash-fill"></i>
                                     </button>
                                 </div>
                             </div>
@@ -281,11 +329,11 @@
                     </div>
                 </div>
 
-                <div class="d-grid gap-2 d-md-flex mt-4">
-                    <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 flex-grow-1 fw-bold shadow-sm">
-                        <i class="bi bi-save me-1"></i> Save Combo
+                <div class="d-grid gap-2 d-md-flex mt-4 pt-2 border-top border-light">
+                    <button type="submit" class="btn rounded-pill px-4 py-2.5 flex-grow-1 fw-bold text-white shadow-lg d-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, #4f46e5 0%, #9333ea 50%, #d946ef 100%); font-size: 0.92rem; letter-spacing: 0.03em; border: none;">
+                        <i class="bi bi-check-circle-fill me-2 fs-5"></i> SAVE COMBO OFFER
                     </button>
-                    <a href="{% url 'combo_list' %}" class="btn btn-light rounded-pill px-4 py-2">Cancel</a>
+                    <a href="{% url 'combo_list' %}" class="btn btn-light rounded-pill px-4 py-2.5 text-secondary fw-bold border shadow-sm" style="font-size: 0.9rem;">Cancel</a>
                 </div>
             </form>
         </div>
@@ -296,17 +344,23 @@
 function addTierRow() {
     const container = document.getElementById('tier-rows');
     const row = document.createElement('div');
-    row.className = 'row g-2 align-items-center mb-2 tier-row animate-fade-in';
+    row.className = 'row g-2 align-items-center mb-2.5 tier-row animate-fade-in';
     row.innerHTML = `
         <div class="col-5">
-            <input type="number" name="tier_quantity[]" class="form-control rounded-pill text-xs px-3" placeholder="Qty" min="1" required>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white border-end-0 rounded-start-pill text-muted px-2.5"><i class="bi bi-box-seam text-primary"></i></span>
+                <input type="number" name="tier_quantity[]" class="form-control rounded-end-pill text-xs px-2.5 border-start-0 border-primary-subtle fw-bold text-dark" placeholder="Qty (e.g. 5)" min="1" required style="height: 38px;">
+            </div>
         </div>
         <div class="col-5">
-            <input type="number" name="tier_price[]" class="form-control rounded-pill text-xs px-3" placeholder="Price (₹)" min="0" required>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white border-end-0 rounded-start-pill text-success fw-bold px-2.5">₹</span>
+                <input type="number" name="tier_price[]" class="form-control rounded-end-pill text-xs px-2.5 border-start-0 border-success-subtle fw-bold text-success" placeholder="Price (e.g. 1500)" min="0" required style="height: 38px;">
+            </div>
         </div>
         <div class="col-2">
-            <button type="button" class="btn btn-outline-danger btn-sm rounded-pill w-100 py-1.5" onclick="removeTierRow(this)">
-                <i class="bi bi-trash"></i>
+            <button type="button" class="btn btn-outline-danger btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center mx-auto shadow-none" onclick="removeTierRow(this)" style="width: 34px; height: 34px;">
+                <i class="bi bi-trash-fill"></i>
             </button>
         </div>
     `;
@@ -343,11 +397,7 @@ document.addEventListener('DOMContentLoaded', function () {
         searchField: 'label',
         maxOptions: 50,
         load: function(query, callback) {
-            if (!query.length) {
-                callback();
-                return;
-            }
-            fetch(`/core/combos/global-products-ajax/?q=${encodeURIComponent(query)}`)
+            fetch(`/core/combos/global-products-ajax/?q=${encodeURIComponent(query || '')}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.products) {
@@ -375,10 +425,31 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         render: {
             option: function(data, escape) {
-                return `<div class="py-1 px-2" style="font-size:0.82rem;">${escape(data.label)}</div>`;
+                let name = data.name || data.label;
+                let barcode = data.barcode || '';
+                return `
+                    <div class="d-flex align-items-center justify-content-between py-2 px-2.5 border-bottom border-light">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-search text-primary me-1" style="font-size: 0.85rem;"></i>
+                            <div>
+                                <div class="fw-bold text-dark text-xs mb-0.5">${escape(name)}</div>
+                                <div class="text-muted font-monospace" style="font-size: 0.68rem;"><i class="bi bi-barcode me-1"></i>${escape(barcode)}</div>
+                            </div>
+                        </div>
+                        <span class="badge bg-light text-primary border rounded-pill px-2.5 py-1" style="font-size: 0.65rem;">+ Add Item</span>
+                    </div>
+                `;
             },
             item: function(data, escape) {
-                return `<div class="d-flex align-items-center gap-1">${escape(data.label)}</div>`;
+                let name = data.name || data.label;
+                let barcode = data.barcode || '';
+                return `
+                    <div class="d-inline-flex align-items-center gap-1.5">
+                        <i class="bi bi-tag-fill text-primary" style="font-size: 0.72rem;"></i>
+                        <span>${escape(name)}</span>
+                        ${barcode ? `<span class="badge bg-white text-primary font-monospace border ms-1" style="font-size: 0.64rem;">${escape(barcode)}</span>` : ''}
+                    </div>
+                `;
             }
         }
     });

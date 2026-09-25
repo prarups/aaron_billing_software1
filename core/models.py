@@ -40,7 +40,7 @@ class Branch(models.Model):
 
 class Product(models.Model):
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='branch_products', null=True, blank=True)
-    name = models.CharField(max_length=200, blank=True, default='')
+    name = models.CharField(max_length=200, blank=True, default='', db_index=True)
     barcode = models.CharField(max_length=50, db_index=True)
     price = models.DecimalField(max_digits=10, decimal_places=0)
 
@@ -176,6 +176,10 @@ class ProductRegistry(models.Model):
         unique_together = ('branch', 'product')
         verbose_name = "Branch-wise Product"
         verbose_name_plural = "Branch-wise Products"
+        indexes = [
+            models.Index(fields=['branch', 'stock_quantity']),
+            models.Index(fields=['branch', 'product']),
+        ]
 
     def __str__(self):
         return f"{self.product.name} at {self.branch.name}"

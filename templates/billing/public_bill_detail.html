@@ -18,7 +18,7 @@
             color: #1e293b;
         }
         .receipt-card {
-            max-width: 440px;
+            max-width: 680px;
             margin: 1.25rem auto;
             border: none;
             border-radius: 1.25rem;
@@ -51,11 +51,11 @@
         .xxs-text {
             font-size: 0.68rem !important;
         }
+        @page {
+            size: auto;
+            margin: 0mm !important;
+        }
         @media print {
-            @page {
-                size: auto;
-                margin: 4mm 2mm;
-            }
 
             /* Hide all non-print elements */
             .no-print, .social-section, .btn, button, footer {
@@ -81,7 +81,7 @@
                 width: 100% !important;
             }
 
-            .container {
+            main, .main-wrapper, .container-fluid, .container, .row, [class*="col-"] {
                 padding: 0 !important;
                 margin: 0 !important;
                 width: 100% !important;
@@ -104,19 +104,28 @@
                 margin: 0 !important;
             }
 
-            /* Header styles */
+            /* Header styles - minimal top margin */
             .card-body > .text-center {
                 border-bottom: 1.5px dashed #000000 !important;
-                padding-bottom: 4px !important;
-                margin-bottom: 8px !important;
+                padding-bottom: 3px !important;
+                margin-bottom: 4px !important;
+            }
+
+            .receipt-logo {
+                height: 28px !important;
+                width: auto !important;
+                filter: contrast(300%) grayscale(100%) brightness(0.6) !important;
+                -webkit-filter: contrast(300%) grayscale(100%) brightness(0.6) !important;
+                display: inline-block !important;
+                vertical-align: middle !important;
             }
 
             /* General spacing reduction */
             .mb-3, .mb-4, .pb-3, .mt-3, .pt-3, .my-3, .mb-2, .mt-2, .py-2 {
-                margin-bottom: 4px !important;
-                margin-top: 4px !important;
-                padding-bottom: 2px !important;
-                padding-top: 2px !important;
+                margin-bottom: 2px !important;
+                margin-top: 2px !important;
+                padding-bottom: 1px !important;
+                padding-top: 1px !important;
             }
 
             .border-top {
@@ -131,7 +140,7 @@
             table {
                 width: 100% !important;
                 border-collapse: collapse !important;
-                margin: 4px 0 !important;
+                margin: 2px 0 !important;
             }
 
             thead tr {
@@ -145,9 +154,9 @@
             }
 
             th, td {
-                padding: 3px 1px !important;
+                padding: 2px 1px !important;
                 border-bottom: 1px dashed #e5e7eb !important;
-                font-size: 10px !important;
+                font-size: 9.5px !important;
             }
 
             tr:last-child td {
@@ -157,31 +166,37 @@
             /* Totals styling */
             .bg-light {
                 border: 1.5px dashed #000000 !important;
-                padding: 6px !important;
-                margin: 8px 0 !important;
+                padding: 4px !important;
+                margin: 4px 0 !important;
                 border-radius: 0 !important;
-                font-size: 10px !important;
+                font-size: 9.5px !important;
             }
 
             .bg-light .border-top {
                 border-top: 1px dashed #000000 !important;
-                padding-top: 4px !important;
-                margin-top: 4px !important;
+                padding-top: 2px !important;
+                margin-top: 2px !important;
             }
 
-            /* Receipt Footer */
+            /* Receipt Footer - strictly final line on thermal receipt */
             #receiptFooter {
                 border-top: 1.5px dashed #000000 !important;
-                border-bottom: 1.5px dashed #000000 !important;
-                padding: 6px 0 !important;
-                margin: 8px 0 !important;
+                border-bottom: none !important;
+                padding: 2px 0 0 0 !important;
+                margin: 4px 0 0 0 !important;
                 font-size: 9px !important;
                 text-align: center !important;
                 font-weight: bold !important;
             }
 
             #receiptFooter p {
-                margin: 0 !important;
+                margin: 1px 0 !important;
+                padding: 0 !important;
+            }
+
+            #receiptFooter .receipt-divider {
+                border-top: 1px dashed #000000 !important;
+                margin: 2px 0 !important;
             }
 
             /* Returns section formatting */
@@ -189,15 +204,15 @@
                 border: 1.5px dashed #000000 !important;
                 border-radius: 0 !important;
                 background: transparent !important;
-                padding: 4px !important;
-                margin-bottom: 8px !important;
+                padding: 2px !important;
+                margin-bottom: 4px !important;
             }
 
             .border-warning .bg-white {
                 border: 1px dashed #000000 !important;
                 border-radius: 0 !important;
-                padding: 4px !important;
-                margin-bottom: 4px !important;
+                padding: 2px !important;
+                margin-bottom: 2px !important;
             }
         }
     </style>
@@ -210,7 +225,7 @@
                 <!-- Header -->
                 <div class="text-center mb-3">
                     <div class="d-flex align-items-center justify-content-center gap-1.5 mb-2">
-                        <img src="{% static 'images/aronlogonow.png' %}" alt="Aaron Garments" style="height:28px; width:auto;"/>
+                        <img src="{% static 'images/aronlogoone.png' %}" alt="Aaron Garments" class="receipt-logo" style="height:32px; width:auto;"/>
                         <span class="fw-bold fs-4 tracking-tight text-primary">Aaron <span class="text-secondary">Garments</span></span>
                     </div>
                     <h5 class="fw-bold mb-1 text-dark">{{ bill.branch.name }}</h5>
@@ -303,9 +318,9 @@
                     </div>
                     {% endif %}
                     {% if bill.retail_price > 0 %}
-                    <div class="d-flex justify-content-between mb-1.5">
-                        <span class="text-muted">Retail Price</span>
-                        <span class="text-dark fw-bold">+ ₹{{ bill.retail_price|floatformat:0 }}</span>
+                    <div class="d-flex justify-content-between align-items-center mb-1.5 p-1.5 rounded" style="background: rgba(99, 102, 241, 0.08);">
+                        <span class="fw-bold small" style="color: #4f46e5;"><i class="bi bi-tag-fill me-1"></i>Retail Price</span>
+                        <span class="fw-bold" style="color: #4f46e5;">+ ₹{{ bill.retail_price|floatformat:0 }}</span>
                     </div>
                     {% endif %}
                     <div class="d-flex justify-content-between align-items-center mb-0 {% if bill.total_savings > 0 or bill.retail_price > 0 %}border-top pt-2 mt-2{% endif %}">
@@ -333,42 +348,7 @@
                     {% endif %}
                 </div>
 
-                <!-- Terms & Conditions Footer -->
-                <div class="text-center my-2 pb-2 border-bottom text-muted" style="font-size: 0.75rem;" id="receiptFooter">
-                    <p class="mb-0 fw-semibold"><i class="bi bi-info-circle me-1"></i>No refund. Exchange should be within 3 days.</p>
-                </div>
-                <!-- Actions (Print) -->
-                <div class="d-grid gap-2 mb-3.5 no-print">
-                    <button onclick="window.print()" class="btn btn-outline-primary rounded-pill py-2.5 fw-semibold shadow-sm">
-                        <i class="bi bi-printer-fill me-1.5"></i>Print Receipt
-                    </button>
-                    <p class="text-center xxs-text text-muted mb-0">
-                        <i class="bi bi-info-circle me-1"></i> Use your browser's "Print to PDF" to save a copy.
-                    </p>
-                </div>
-
-                <!-- Social Connect / Lead Generation -->
-                <div class="border-top pt-3 text-center social-section no-print">
-                    <h6 class="fw-bold text-dark mb-1" style="font-size: 0.85rem;">
-                        <i class="bi bi-gift-fill text-warning me-1 animate-bounce"></i>Get Exclusive Offers & Updates!
-                    </h6>
-                    <p class="xxs-text text-muted mb-2.5">Join our community and follow us to stay updated.</p>
-                    
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <a href="https://chat.whatsapp.com/CjsuRAf3g1EHUbzMVU4VpE" target="_blank" class="btn btn-whatsapp rounded-pill py-2 fw-bold text-white d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-decoration-none" style="font-size: 0.76rem;">
-                                <i class="bi bi-whatsapp fs-6"></i> WhatsApp Group
-                            </a>
-                        </div>
-                        <div class="col-6">
-                            <a href="https://www.instagram.com/aaron_garments?igsh=YWpkdWE0emkyZjNv" target="_blank" class="btn btn-instagram rounded-pill py-2 fw-bold text-white d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-decoration-none" style="font-size: 0.76rem;">
-                                <i class="bi bi-instagram fs-6"></i> Instagram
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Returns section if applicable (Printed at the end of the bill) -->
+                <!-- Returns section if applicable (Printed before footer) -->
                 {% if returns %}
                 <div class="border border-warning border-opacity-50 rounded-3 mb-3 bg-warning bg-opacity-5 p-2.5 mt-3">
                     <h6 class="fw-bold text-warning-emphasis mb-2 d-flex align-items-center gap-1.5" style="font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase;">
@@ -443,11 +423,57 @@
                 </div>
                 {% endif %}
 
-                <div class="text-center mt-3 pt-1">
+                <!-- Terms & Conditions Footer (Strictly final printed line) -->
+                <div class="text-center my-2 pb-0 text-muted" style="font-size: 0.75rem;" id="receiptFooter">
+                    <p class="mb-1 fw-semibold"><i class="bi bi-info-circle me-1"></i>No refund. Exchange should be within 3 days.</p>
+                    <div class="receipt-divider border-top border-dark border-dashed my-1"></div>
+                    <p class="mb-0 fw-bold">Thank you, Visit again!</p>
+                </div>
+
+                <!-- Actions (Print) -->
+                <div class="d-grid gap-2 mb-3.5 no-print">
+                    <button onclick="window.print()" class="btn btn-outline-primary rounded-pill py-2.5 fw-semibold shadow-sm">
+                        <i class="bi bi-printer-fill me-1.5"></i>Print Receipt
+                    </button>
+                    <p class="text-center xxs-text text-muted mb-0">
+                        <i class="bi bi-info-circle me-1"></i> Use your browser's "Print to PDF" to save a copy.
+                    </p>
+                </div>
+
+                <!-- Social Connect / Lead Generation -->
+                <div class="border-top pt-3 text-center social-section no-print">
+                    <h6 class="fw-bold text-dark mb-1" style="font-size: 0.85rem;">
+                        <i class="bi bi-gift-fill text-warning me-1 animate-bounce"></i>Get Exclusive Offers & Updates!
+                    </h6>
+                    <p class="xxs-text text-muted mb-2.5">Join our community and follow us to stay updated.</p>
+                    
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <a href="https://chat.whatsapp.com/CjsuRAf3g1EHUbzMVU4VpE" target="_blank" class="btn btn-whatsapp rounded-pill py-2 fw-bold text-white d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-decoration-none" style="font-size: 0.76rem;">
+                                <i class="bi bi-whatsapp fs-6"></i> WhatsApp Group
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="https://www.instagram.com/aaron_garments?igsh=YWpkdWE0emkyZjNv" target="_blank" class="btn btn-instagram rounded-pill py-2 fw-bold text-white d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-decoration-none" style="font-size: 0.76rem;">
+                                <i class="bi bi-instagram fs-6"></i> Instagram
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-3 pt-1 no-print">
                     <p class="text-muted small mb-0">Thank you for your purchase!</p>
                 </div>
-            </div>
-        </div>
-    </div>
+    <script>
+        window.addEventListener('beforeprint', () => {
+            window._origTitle = document.title;
+            document.title = "";
+        });
+        window.addEventListener('afterprint', () => {
+            if (window._origTitle) {
+                document.title = window._origTitle;
+            }
+        });
+    </script>
 </body>
 </html>

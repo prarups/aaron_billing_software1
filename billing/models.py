@@ -25,6 +25,13 @@ class Bill(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     has_returns = models.BooleanField(default=False)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['branch', 'created_at']),
+            models.Index(fields=['staff', 'created_at']),
+            models.Index(fields=['payment_method', 'created_at']),
+        ]
+
 
     @property
     def item_savings(self):
@@ -173,6 +180,11 @@ class BillItem(models.Model):
     exchange_from = models.CharField(max_length=150, blank=True, null=True)
     combo_group = models.ForeignKey('core.ComboGroup', on_delete=models.SET_NULL, null=True, blank=True, related_name='bill_items')
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['bill', 'product']),
+        ]
+
     @property
     def regular_total(self):
         from decimal import Decimal
@@ -180,6 +192,9 @@ class BillItem(models.Model):
 
     @property
     def savings(self):
+        if not self.is_combo_purchase:
+            from decimal import Decimal
+            return Decimal('0')
         from decimal import Decimal
         reg_total = self.regular_total
         sub = Decimal(str(self.subtotal))
@@ -235,8 +250,7 @@ class BillItem(models.Model):
     def is_combo_purchase(self):
         if self.combo_group_id:
             return True
-        from core.models import ComboGroup
-        from django.db.models import Sum, Min
+        from core.models import ComboGroup, ComboPrice
 
         combo_group = ComboGroup.objects.filter(
             products=self.product,
@@ -244,20 +258,25 @@ class BillItem(models.Model):
             is_active=True
         ).prefetch_related('tiers', 'products').first()
         
-        if not combo_group:
-            return False
+        if combo_group:
+            tiers = list(combo_group.tiers.all())
+            if tiers:
+                min_combo_qty = min(t.quantity for t in tiers)
+                cg_product_ids = {p.id for p in combo_group.products.all()}
+                total_group_qty = sum(item.quantity for item in self.bill.items.all() if item.product_id in cg_product_ids)
+                if total_group_qty >= min_combo_qty:
+                    return True
 
-        # Get minimum quantity required for the combo using prefetched tiers
-        tiers = list(combo_group.tiers.all())
-        if not tiers:
-            return False
-        min_combo_qty = min(t.quantity for t in tiers)
+        # Check fallback single-product ComboPrice
+        single_combos = ComboPrice.objects.filter(product=self.product, branch=self.bill.branch)
+        if not single_combos.exists():
+            single_combos = ComboPrice.objects.filter(product=self.product, branch__isnull=True)
+            
+        for sc in single_combos:
+            if self.quantity >= sc.quantity:
+                return True
 
-        # Calculate total quantity of items in this bill belonging to this combo group using prefetched items
-        cg_product_ids = {p.id for p in combo_group.products.all()}
-        total_group_qty = sum(item.quantity for item in self.bill.items.all() if item.product_id in cg_product_ids)
-
-        return total_group_qty >= min_combo_qty
+        return False
 
     def save(self, *args, **kwargs):
         if self.subtotal is None:

@@ -467,7 +467,7 @@
                             <a href="{% url 'bill_detail' bill.id %}" class="btn-view-action">
                                 View
                             </a>
-                            {% if request.user.is_superuser or request.user.is_owner or request.user.has_bill_edit_rights %}
+                            {% if request.user.is_superuser or request.user.is_owner or request.user.is_manager or request.user.has_bill_edit_rights or request.user.role == 'admin' or request.user.role == 'owner' or request.user.role == 'manager' %}
                             <a href="{% url 'edit_bill_back' bill.id %}" class="btn btn-outline-primary rounded-pill text-xs fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 0.72rem; padding: 4px 12px; border: 1px solid rgba(13, 110, 253, 0.3); background: rgba(13, 110, 253, 0.04); color: #0d6efd; text-decoration: none;">
                                 Edit
                             </a>
@@ -565,27 +565,49 @@
     </div>
 </div>
 
-{% if page_obj.has_other_pages %}
-<nav aria-label="Page navigation" class="mt-3">
-    <ul class="pagination justify-content-center pagination-sm">
-        {% if page_obj.has_previous %}
-        <li class="page-item"><a class="page-link text-decoration-none rounded-pill me-2 shadow-sm" href="?page={{ page_obj.previous_page_number }}&q={{ query|default:'' }}&branch={{ selected_branch|default:'' }}&start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}&payment_method={{ selected_payment|default:'' }}">Previous</a></li>
-        {% endif %}
-        
-        {% for i in page_obj.paginator.page_range %}
-        {% if page_obj.number == i %}
-        <li class="page-item active"><span class="page-link rounded-pill mx-1 shadow-sm">{{ i }}</span></li>
-        {% else %}
-        <li class="page-item"><a class="page-link text-decoration-none rounded-pill mx-1 shadow-sm" href="?page={{ i }}&q={{ query|default:'' }}&branch={{ selected_branch|default:'' }}&start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}&payment_method={{ selected_payment|default:'' }}">{{ i }}</a></li>
-        {% endif %}
-        {% endfor %}
-        
-        {% if page_obj.has_next %}
-        <li class="page-item"><a class="page-link text-decoration-none rounded-pill ms-2 shadow-sm" href="?page={{ page_obj.next_page_number }}&q={{ query|default:'' }}&branch={{ selected_branch|default:'' }}&start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}&payment_method={{ selected_payment|default:'' }}">Next</a></li>
-        {% endif %}
-    </ul>
-</nav>
-{% endif %}
+<!-- Sales Report Pagination Bar -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-3 border-top gap-2 px-2">
+    <div class="text-muted small fw-semibold">
+        <i class="bi bi-list-ol me-1 text-primary"></i>Showing <strong>{{ page_obj.start_index|default:0 }}</strong> &ndash; <strong>{{ page_obj.end_index|default:0 }}</strong> of <strong>{{ page_obj.paginator.count|default:0 }}</strong> bills <span class="text-muted opacity-75">(10 per page)</span>
+    </div>
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Sales Report Page navigation">
+        <ul class="pagination pagination-sm m-0 align-items-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link rounded-pill px-3 me-1 shadow-sm fw-semibold" href="?page={{ page_obj.previous_page_number }}&q={{ query|default:'' }}&branch={{ selected_branch|default:'' }}&start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}&payment_method={{ selected_payment|default:'' }}">
+                    <i class="bi bi-chevron-left me-1"></i>Previous
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link rounded-pill px-3 me-1 text-muted opacity-50"><i class="bi bi-chevron-left me-1"></i>Previous</span>
+            </li>
+            {% endif %}
+
+            {% for i in page_obj.paginator.page_range %}
+            {% if page_obj.number == i %}
+            <li class="page-item active"><span class="page-link rounded-pill mx-0.5 shadow-sm fw-bold">{{ i }}</span></li>
+            {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}
+            <li class="page-item"><a class="page-link rounded-pill mx-0.5 shadow-sm" href="?page={{ i }}&q={{ query|default:'' }}&branch={{ selected_branch|default:'' }}&start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}&payment_method={{ selected_payment|default:'' }}">{{ i }}</a></li>
+            {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link rounded-pill px-3 ms-1 shadow-sm fw-semibold" href="?page={{ page_obj.next_page_number }}&q={{ query|default:'' }}&branch={{ selected_branch|default:'' }}&start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}&payment_method={{ selected_payment|default:'' }}">
+                    Next<i class="bi bi-chevron-right ms-1"></i>
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link rounded-pill px-3 ms-1 text-muted opacity-50">Next<i class="bi bi-chevron-right ms-1"></i></span>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
 
 {% for bill in page_obj %}
     {% if bill.has_returns %}

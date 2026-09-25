@@ -217,18 +217,76 @@
 @media (min-width: 992px) {
     #section-cart {
         position: sticky;
-        top: 85px;
+        top: 84px;
         display: flex !important;
         flex-direction: column;
     }
     .cart-card {
         display: flex !important;
         flex-direction: column !important;
+        max-height: calc(100vh - 96px) !important;
     }
     .cart-card .card-body {
         display: flex !important;
         flex-direction: column !important;
+        overflow: hidden !important;
     }
+    #cart-container {
+        max-height: 220px !important;
+        overflow-y: auto !important;
+    }
+}
+
+/* Custom Vibrant Payment Option Buttons */
+.pay-option-btn {
+    font-weight: 700 !important;
+    font-size: 0.78rem !important;
+    letter-spacing: 0.04em !important;
+    transition: all 0.2s ease-in-out !important;
+    border: 1.5px solid transparent !important;
+    padding: 0.4rem 0.5rem !important;
+}
+
+/* Cash Button (Green) */
+.pay-btn-cash {
+    background-color: #ecfdf5 !important;
+    color: #047857 !important;
+    border: 1.5px solid #a7f3d0 !important;
+}
+.btn-check:checked + .pay-btn-cash {
+    background: linear-gradient(135deg, #10b981 0%, #047857 100%) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.45) !important;
+    transform: translateY(-1px);
+}
+
+/* Online Button (Blue/Indigo) */
+.pay-btn-online {
+    background-color: #eef2ff !important;
+    color: #4338ca !important;
+    border: 1.5px solid #c7d2fe !important;
+}
+.btn-check:checked + .pay-btn-online {
+    background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.45) !important;
+    transform: translateY(-1px);
+}
+
+/* Split Button (Purple/Fuchsia) */
+.pay-btn-split {
+    background-color: #fdf4ff !important;
+    color: #a21caf !important;
+    border: 1.5px solid #f5d0fe !important;
+}
+.btn-check:checked + .pay-btn-split {
+    background: linear-gradient(135deg, #d946ef 0%, #a21caf 100%) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+    box-shadow: 0 4px 14px rgba(217, 70, 239, 0.45) !important;
+    transform: translateY(-1px);
 }
 </style>
 {% endblock %}
@@ -237,7 +295,7 @@
 <!-- Scan Feedback Toast -->
 <div id="scan-toast"></div>
 
-<div class="pos-wrapper animate-fade-in">
+<div class="pos-wrapper animate-fade-in pt-2">
     <!-- Mobile Tabs Toggle (Shown only on mobile) -->
     <div class="d-lg-none mb-3">
         <div class="glass-card p-1 d-flex">
@@ -343,25 +401,25 @@
         <!-- Cart (Right Side on Desktop) -->
         <div class="col-lg-7 d-none d-lg-block" id="section-cart">
             <div class="glass-card h-100 d-flex flex-column shadow-sm border-0 cart-card">
-                <div class="card-header bg-transparent py-4 px-4 border-0 d-flex justify-content-between align-items-center">
-                    <h5 class="fw-bold m-0 text-primary"><i class="bi bi-bag-check-fill me-2"></i>Checkout</h5>
-                    <span class="badge bg-vibrant rounded-pill px-3 py-2" id="cart-count">0 Items</span>
+                <div class="card-header bg-transparent pt-3.5 pb-2 px-3 border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold m-0 text-primary fs-6"><i class="bi bi-bag-check-fill me-2"></i>Checkout</h5>
+                    <span class="badge bg-vibrant rounded-pill px-3 py-1.5" id="cart-count">0 Items</span>
                 </div>
-                <div class="card-body flex-grow-1 px-4 py-0" style="overflow: visible;">
+                <div class="card-body flex-grow-1 px-3 py-0" style="overflow: hidden;">
                     <!-- Combo Progress Tracker (shown when combo group items are in cart) -->
                     <div id="combo-tracker" class="d-none mb-2"></div>
 
                     <!-- Cart items list (compact height and scrollable) -->
-                    <div id="cart-container">
+                    <div id="cart-container" style="max-height: 220px; overflow-y: auto;">
                         <div class="text-center py-4" id="empty-cart-msg">
                             <i class="bi bi-cart-x fs-1 text-muted opacity-25 d-block mb-2"></i>
                             <p class="text-muted small">No items added to bill.</p>
                         </div>
                     </div>
                 </div>
-                <div class="card-footer bg-transparent p-4 border-0">
+                <div class="card-footer bg-transparent p-3 border-0">
                     <!-- Editing Bill Banner -->
-                    <div id="editing-bill-banner" class="alert alert-warning py-2 px-3 mb-3 small d-none animate-fade-in border-0 rounded-pill-sm d-flex justify-content-between align-items-center shadow-sm">
+                    <div id="editing-bill-banner" class="alert alert-warning py-1.5 px-3 mb-2 small d-none animate-fade-in border-0 rounded-pill-sm d-flex justify-content-between align-items-center shadow-sm">
                         <span><i class="bi bi-pencil-fill me-2"></i>Editing Bill: <strong id="editing-bill-no"></strong></span>
                         <button type="button" class="btn btn-sm btn-link text-warning p-0 border-0 shadow-none" onclick="cancelEditingBill()" title="Cancel editing">
                             <i class="bi bi-x-circle-fill fs-5"></i>
@@ -370,7 +428,7 @@
 
                     <!-- Exchange Customer Banner -->
                     {% if request.session.exchange_customer %}
-                    <div id="exchange-customer-banner" class="alert alert-info py-2.5 px-3 mb-3 small border-0 rounded-3 shadow-sm position-relative animate-fade-in" style="font-size: 0.76rem;">
+                    <div id="exchange-customer-banner" class="alert alert-info py-2 px-3 mb-2 small border-0 rounded-3 shadow-sm position-relative animate-fade-in" style="font-size: 0.76rem;">
                         <div class="fw-bold text-info-emphasis mb-1"><i class="bi bi-arrow-left-right me-1"></i> Exchange Customer Loaded</div>
                         <div>Name: <strong>{{ request.session.exchange_customer.name|default:"Guest" }}</strong></div>
                         {% if request.session.exchange_customer.phone %}
@@ -386,7 +444,7 @@
                     </div>
                     {% endif %}
                    <form id="pos-form">
-    <div class="glass-card p-2.5 mb-2 bg-light bg-opacity-50 border-0">
+    <div class="glass-card p-2 mb-1.5 bg-light bg-opacity-50 border-0">
         <div class="row g-2">
             <div class="col-6">
                 <div class="input-group input-group-sm">
@@ -404,21 +462,28 @@
     </div>
 </form>
                     
-                    <div class="mb-2">
-                        <div class="btn-group w-100 shadow-sm" role="group">
+                    <!-- Vibrant Payment Method Buttons -->
+                    <div class="mb-1.5">
+                        <div class="btn-group w-100 shadow-sm rounded-pill p-1 bg-white border border-light" role="group">
                             <input type="radio" class="btn-check" name="payment_method" id="pay-cash" value="cash" checked autocomplete="off">
-                            <label class="btn btn-outline-secondary border-0 py-1.5 rounded-start-pill text-xs" for="pay-cash">CASH</label>
+                            <label class="btn pay-option-btn pay-btn-cash flex-grow-1 rounded-pill me-1" for="pay-cash">
+                                <i class="bi bi-cash-stack me-1"></i>CASH
+                            </label>
                             
                             <input type="radio" class="btn-check" name="payment_method" id="pay-online" value="online" autocomplete="off">
-                            <label class="btn btn-outline-secondary border-0 py-1.5 text-xs" for="pay-online">ONLINE</label>
+                            <label class="btn pay-option-btn pay-btn-online flex-grow-1 rounded-pill me-1" for="pay-online">
+                                <i class="bi bi-qr-code-scan me-1"></i>ONLINE
+                            </label>
 
                             <input type="radio" class="btn-check" name="payment_method" id="pay-split" value="split" autocomplete="off">
-                            <label class="btn btn-outline-secondary border-0 py-1.5 rounded-end-pill text-xs" for="pay-split">SPLIT</label>
+                            <label class="btn pay-option-btn pay-btn-split flex-grow-1 rounded-pill" for="pay-split">
+                                <i class="bi bi-pie-chart-fill me-1"></i>SPLIT
+                            </label>
                         </div>
                     </div>
 
                     <!-- Split Payment Inputs -->
-                    <div id="split-inputs" class="glass-card p-2.5 mb-2 bg-light bg-opacity-50 border-0 d-none animate-fade-in">
+                    <div id="split-inputs" class="glass-card p-2 mb-1.5 bg-light bg-opacity-50 border-0 d-none animate-fade-in">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <label class="form-label x-small text-muted text-uppercase fw-bold mb-0" style="font-size: 0.65rem;">Split Amounts</label>
                             <span class="badge bg-info-subtle text-info fw-bold text-xxs" id="split-remaining-label">Remaining: ₹0</span>
@@ -440,10 +505,10 @@
                         <div id="split-warning" class="x-small text-danger mt-1.5 d-none fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Sum must match total!</div>
                     </div>
                     
-                    <div class="glass-card p-2 mb-2 bg-light bg-opacity-50 border-0">
+                    <div class="glass-card p-2 mb-1.5 border-0 shadow-sm" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(168, 85, 247, 0.08) 100%); border-left: 3.5px solid #6366f1 !important; border-radius: 10px;">
                         <div class="d-flex align-items-center justify-content-between">
-                            <label class="form-label x-small text-muted text-uppercase fw-bold mb-0" style="font-size: 0.7rem;"><i class="bi bi-tag me-1"></i>Retail Price (₹)</label>
-                            <input type="number" id="retail-price" class="form-control form-control-sm border-0 px-2 rounded-pill bg-white text-xs text-end" placeholder="0" min="0" oninput="if(this.value < 0) this.value = 0; renderCart()" style="max-width: 110px; height: 26px;">
+                            <label class="form-label x-small text-uppercase fw-bold mb-0" style="font-size: 0.72rem; color: #4338ca;"><i class="bi bi-tag-fill me-1 text-primary"></i>Retail Price (₹)</label>
+                            <input type="number" id="retail-price" class="form-control form-control-sm border border-primary-subtle px-2.5 rounded-pill bg-white text-primary fw-bold text-xs text-end shadow-sm" placeholder="0" min="0" oninput="if(this.value < 0) this.value = 0; renderCart()" style="max-width: 110px; height: 28px;">
                         </div>
                     </div>
                     
@@ -453,13 +518,13 @@
                         <span class="text-success small fw-bold">YOU SAVE</span>
                         <span class="text-success small fw-bold" id="cart-savings">₹0</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mb-2.5">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-muted fw-bold text-xxs" style="letter-spacing: 0.05em;">FINAL TOTAL</span>
-                        <h4 class="fw-bold text-primary mb-0" id="cart-total" style="font-size: 1.35rem;">₹0</h4>
+                        <h4 class="fw-bold text-primary mb-0" id="cart-total" style="font-size: 1.3rem;">₹0</h4>
                     </div>
                     
-                    <button class="btn btn-vibrant w-100 rounded-pill py-2.2 px-4 fw-bold shadow-sm d-flex align-items-center justify-content-center" id="checkout-btn" disabled style="font-size: 0.82rem; letter-spacing: 0.05em;">
-                        <i class="bi bi-check-all fs-5 me-1.5"></i> COMPLETE BILLING
+                    <button class="btn btn-vibrant w-100 rounded-pill py-2.5 px-4 fw-bold shadow-lg d-flex align-items-center justify-content-center" id="checkout-btn" disabled style="font-size: 0.88rem; letter-spacing: 0.05em; background: linear-gradient(135deg, #4f46e5 0%, #d946ef 100%);">
+                        <i class="bi bi-check-all fs-4 me-1.5"></i> COMPLETE BILLING
                     </button>
                 </div>
             </div>
@@ -770,7 +835,7 @@
         if (!tracker) return;
 
         tracker.innerHTML = '';
-        let hasActiveCombos = false;
+        let comboHighlights = [];
 
         for (let group of comboGroups) {
             let groupItems = cart.filter(i => group.product_ids.includes(String(i.id)));
@@ -779,56 +844,49 @@
             let groupQty = groupItems.reduce((s, i) => s + i.quantity, 0);
             if (!group.tiers || group.tiers.length === 0) continue;
 
-            hasActiveCombos = true;
-
             let sortedTiers = [...group.tiers].sort((a, b) => a.quantity - b.quantity);
-            let maxQty = sortedTiers[sortedTiers.length - 1].quantity;
-            let pct = Math.min(100, (groupQty / maxQty) * 100);
-
             let currentUnlocked = null, nextLocked = null;
             sortedTiers.forEach(t => {
                 if (groupQty >= t.quantity) currentUnlocked = t;
                 else if (!nextLocked) nextLocked = t;
             });
 
-            let msgText = '';
-            if (!currentUnlocked) {
-                let diff = nextLocked.quantity - groupQty;
-                msgText = `Add ${diff} more item${diff>1?'s':''} → unlock ${nextLocked.quantity}-pc combo!`;
+            if (currentUnlocked) {
+                comboHighlights.push({
+                    type: 'unlocked',
+                    text: `${group.name}: ${currentUnlocked.quantity}-Pc Combo Applied`
+                });
             } else if (nextLocked) {
                 let diff = nextLocked.quantity - groupQty;
-                msgText = `🎉 ${currentUnlocked.quantity}-pc combo! Add ${diff} more → ${nextLocked.quantity}-pc combo!`;
-            } else {
-                msgText = `🔥 Best combo unlocked — ${currentUnlocked.quantity}-pc price applied!`;
-            }
-
-            let cardHtml = `
-                <div class="d-flex align-items-center gap-2 px-2 py-1 rounded-2 mb-1 animate-fade-in" style="background:#f0f4ff; border:1px solid #dde3f8; font-size:0.62rem;">
-                    <i class="bi bi-lightning-charge-fill flex-shrink-0" style="color:#6366f1; font-size:0.65rem;"></i>
-                    <span class="fw-bold text-dark text-truncate" title="${group.name}">${group.name}</span>
-                    <span class="badge text-white px-1 py-0 font-monospace rounded-pill flex-shrink-0" style="background:linear-gradient(135deg,#d946ef,#8b5cf6); font-size:0.5rem;">${group.combo_id || 'Combo'}</span>
-                    <span class="fw-semibold text-secondary text-truncate flex-grow-1" style="font-size:0.58rem;">${msgText}</span>
-                    <div class="flex-shrink-0" style="position:relative; height:3px; background:#e0e7ff; border-radius:2px; width:60px;" id="combo-bar-${group.id}">
-                        <div style="height:100%; background:linear-gradient(90deg,#6366f1,#8b5cf6); border-radius:2px; width:${pct}%; transition:width 0.3s ease;"></div>
-                    </div>
-                </div>
-            `;
-            tracker.insertAdjacentHTML('beforeend', cardHtml);
-
-            // Add dots
-            let bar = document.getElementById(`combo-bar-${group.id}`);
-            if (bar) {
-                sortedTiers.forEach(t => {
-                    let pos = (t.quantity / maxQty) * 100;
-                    let dot = document.createElement('div');
-                    dot.className = 'ct-dot';
-                    dot.style.cssText = `position:absolute;top:50%;left:${pos}%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;border:1px solid #fff;background:${groupQty>=t.quantity?'#6366f1':'#c7d2fe'};`;
-                    bar.appendChild(dot);
+                comboHighlights.push({
+                    type: 'upsell',
+                    text: `Add ${diff} more item${diff > 1 ? 's' : ''} → unlock ${nextLocked.quantity}-Pc Combo!`
                 });
             }
         }
 
-        if (hasActiveCombos) {
+        if (comboHighlights.length > 0) {
+            let html = comboHighlights.map(h => {
+                let isUnlocked = h.type === 'unlocked';
+                let bgStyle = isUnlocked 
+                    ? 'background: linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(217, 70, 239, 0.08) 100%); border: 1px solid rgba(99, 102, 241, 0.2);' 
+                    : 'background: #fff8e6; border: 1px solid #ffe599;';
+                let iconClass = isUnlocked ? 'bi-lightning-charge-fill text-primary' : 'bi-arrow-up-circle-fill text-warning';
+                let badgeClass = isUnlocked ? 'bg-primary' : 'bg-warning text-dark';
+                let badgeText = isUnlocked ? 'COMBO ACTIVE' : 'NEXT OFFER';
+                
+                return `
+                    <div class="d-flex align-items-center justify-content-between px-2.5 py-1.5 rounded-3 mb-1 animate-fade-in" style="${bgStyle} font-size: 0.72rem;">
+                        <div class="d-flex align-items-center text-truncate me-2">
+                            <i class="bi ${iconClass} me-1.5 fs-6"></i>
+                            <span class="fw-bold text-dark text-truncate">${h.text}</span>
+                        </div>
+                        <span class="badge ${badgeClass} rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.6rem; letter-spacing: 0.03em;">${badgeText}</span>
+                    </div>
+                `;
+            }).join('');
+
+            tracker.innerHTML = html;
             tracker.classList.remove('d-none');
         } else {
             tracker.classList.add('d-none');

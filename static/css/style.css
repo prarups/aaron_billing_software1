@@ -275,4 +275,25 @@ input[type="number"] {
     -moz-appearance: textfield;
 }
 
+/* Global Print Styles: Hide topbar header, sidebars, and navbars across all printed pages */
+@media print {
+    header,
+    footer,
+    nav,
+    aside,
+    .navbar,
+    .navbar-header,
+    header.navbar-header,
+    header.d-flex,
+    .d-flex.navbar-header,
+    .app-sidebar,
+    .offcanvas,
+    .sidebar-footer,
+    .footer,
+    .messages-container,
+    .no-print {
+        display: none !important;
+    }
+}
+
 

@@ -182,6 +182,10 @@ class LeaveRequest(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['start_date', 'end_date']),
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.leave_type} ({self.start_date} to {self.end_date}) - {self.status}"
@@ -194,16 +198,20 @@ class PermissionRequest(models.Model):
         ('rejected', 'Rejected'),
     )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='permissions')
-    date = models.DateField()
+    date = models.DateField(db_index=True)
     start_time = models.TimeField()
     end_time = models.TimeField()
     reason = models.TextField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
     approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_permissions')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'date', 'status']),
+            models.Index(fields=['status', 'date']),
+        ]
 
     def __str__(self):
         return f"{self.user.username} - Permission on {self.date} ({self.start_time} - {self.end_time}) - {self.status}"
@@ -300,6 +308,9 @@ class MonthlyPayroll(models.Model):
     class Meta:
         unique_together = ('user', 'month', 'year')
         ordering = ['-year', '-month']
+        indexes = [
+            models.Index(fields=['month', 'year', 'status']),
+        ]
 
     @property
     def late_deduction_amount(self):

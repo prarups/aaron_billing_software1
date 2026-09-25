@@ -48,6 +48,12 @@ class ReturnRequest(models.Model):
     expires_at = models.DateTimeField(blank=True, null=True)
     active_branch = models.ForeignKey('core.Branch', on_delete=models.SET_NULL, null=True, blank=True, related_name='active_returns')
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['invoice', 'status']),
+            models.Index(fields=['status', 'requested_at']),
+        ]
+
     def save(self, *args, **kwargs):
         if not self.expires_at:
             self.expires_at = self.requested_at + timezone.timedelta(days=2)

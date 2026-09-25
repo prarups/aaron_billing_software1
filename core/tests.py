@@ -797,7 +797,7 @@ class BulkInsertTestCase(TestCase):
         self.assertTrue(Product.objects.filter(barcode="TSHIRT01").exists())
         self.assertTrue(Product.objects.filter(barcode="TSHIRT02").exists())
 
-    def test_bulk_insert_duplicate_barcode_in_database(self):
+    def test_bulk_insert_existing_barcode_in_database_increments_stock(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         # Pre-create a product and register it for the branch
         product = Product.objects.create(name="T-Shirt", barcode="TSHIRT01", price=250, branch=self.branch)
@@ -811,10 +811,28 @@ class BulkInsertTestCase(TestCase):
         response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
         self.assertEqual(response.status_code, 200)
         
-        # Verify it wasn't modified or stock added, and the error was raised
-        product.refresh_from_db()
+        # Verify stock was incremented from 10 to 25
         reg = ProductRegistry.objects.get(product=product, branch=self.branch)
-        self.assertEqual(reg.stock_quantity, 10) # Unchanged
+        self.assertEqual(reg.stock_quantity, 25)
+
+    def test_bulk_insert_normalizes_barcode_spaces(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        # Pre-create product with single space barcode
+        product = Product.objects.create(name="T-Shirt", barcode="890100106 M", price=250, branch=self.branch)
+        ProductRegistry.objects.create(branch=self.branch, product=product, stock_quantity=10)
+        
+        # Upload CSV with double space barcode
+        csv_content = (
+            "Name,Barcode,Price,Size,Branch Code,Initial Stock,Low Stock Alert\n"
+            "T-Shirt,890100106  M,250.00,M,10001,15,5\n"
+        )
+        csv_file = SimpleUploadedFile("bulk.csv", csv_content.encode("utf-8"), content_type="text/csv")
+        response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
+        self.assertEqual(response.status_code, 200)
+        
+        # Verify space-normalized barcode match updated stock to 25
+        reg = ProductRegistry.objects.get(product=product, branch=self.branch)
+        self.assertEqual(reg.stock_quantity, 25)
 
     def test_bulk_insert_duplicate_name_in_database(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -850,9 +868,7 @@ class BulkInsertTestCase(TestCase):
         response = self.client.post(reverse('bulk_insert'), {'csv_file': csv_file})
         self.assertEqual(response.status_code, 200)
         
-        # Verify it created a new product and registry for the other branch
-        new_prod = Product.objects.get(barcode="TSHIRT01", branch=other_branch)
-        reg_other = ProductRegistry.objects.get(product=new_prod, branch=other_branch)
+        reg_other = ProductRegistry.objects.get(product__barcode="TSHIRT01", branch=other_branch)
         self.assertEqual(reg_other.stock_quantity, 15)
 
     def test_bulk_insert_missing_price(self):
@@ -1114,7 +1130,7 @@ class BranchScopedComboPriceTestCase(TestCase):
         self.assertEqual(self.product_b.name, 'Combo Shirt')
         self.assertEqual(self.product_b.barcode, '777888')
 
-    def test_add_product_duplicate_barcode_same_branch_validation_error(self):
+    def test_add_product_duplicate_barcode_adds_stock(self):
         url = reverse('product_create')
         post_data = {
             'name': 'Duplicate Product A',
@@ -1122,18 +1138,16 @@ class BranchScopedComboPriceTestCase(TestCase):
             'price': '300',
             'low_stock_threshold': '10',
             'initial_branch': self.branch_a.pk,
-            'initial_stock': '0',
-            'stock_update_type': 'none',
-            'stock_update_qty': '',
-            'stock_update_reason': '',
+            'initial_stock': '15',
             'combos-TOTAL_FORMS': '0',
             'combos-INITIAL_FORMS': '0',
             'combos-MIN_NUM_FORMS': '0',
             'combos-MAX_NUM_FORMS': '1000',
         }
         response = self.client.post(url, post_data)
-        self.assertEqual(response.status_code, 200)
-        self.assertFormError(response.context['form'], 'barcode', "Product with barcode '777888' already exists for this branch.")
+        self.assertEqual(response.status_code, 302)
+        reg = ProductRegistry.objects.get(product=self.product_a, branch=self.branch_a)
+        self.assertEqual(reg.stock_quantity, 65)
 
 
 class ComboBadgeTestCase(TestCase):

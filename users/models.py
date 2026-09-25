@@ -170,7 +170,7 @@ class User(AbstractUser):
     shift_end_time = models.TimeField(default="17:00:00", help_text="Shift end time")
     monthly_off_count = models.IntegerField(default=4, help_text="Monthly week offs count")
     grace_period_minutes = models.IntegerField(default=15, help_text="Grace period in minutes before marked Late")
-    last_activity = models.DateTimeField(null=True, blank=True)
+    last_activity = models.DateTimeField(null=True, blank=True, db_index=True)
 
 
     @property

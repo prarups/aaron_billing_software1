@@ -179,10 +179,20 @@ def product_create(request):
         else:
             branch = request.user.active_branch
 
-        product_instance = Product(branch=branch)
-        form = ProductForm(request.POST, instance=product_instance)
+        raw_barcode = request.POST.get('barcode') or ''
+        norm_barcode = ' '.join(str(raw_barcode).split())
+        
+        # Look for existing product with this barcode globally or for this branch
+        existing_product = Product.objects.filter(barcode__iexact=norm_barcode).first() if norm_barcode else None
+
+        if existing_product:
+            form = ProductForm(request.POST, instance=existing_product)
+        else:
+            product_instance = Product(branch=branch)
+            form = ProductForm(request.POST, instance=product_instance)
+
         from .forms import ComboPriceFormSet
-        combo_formset = ComboPriceFormSet(request.POST)
+        combo_formset = ComboPriceFormSet(request.POST, instance=existing_product if existing_product else None)
         
         has_combo_formset = 'combos-TOTAL_FORMS' in request.POST
         if form.is_valid() and (not has_combo_formset or combo_formset.is_valid()):
@@ -200,13 +210,29 @@ def product_create(request):
             low_threshold = form.cleaned_data.get('low_stock_threshold') or 10
             
             if branch:
-                ProductRegistry.objects.create(
+                registry, created = ProductRegistry.objects.get_or_create(
                     branch=branch,
                     product=product,
-                    stock_quantity=initial_stock,
-                    low_stock_threshold=low_threshold,
+                    defaults={'stock_quantity': 0, 'low_stock_threshold': low_threshold}
                 )
-                # Manual stock input maps to opening stock; no StockTransaction is recorded for this initial quantity.
+                if not created:
+                    registry.stock_quantity = F('stock_quantity') + initial_stock
+                    if low_threshold:
+                        registry.low_stock_threshold = low_threshold
+                    registry.save()
+                else:
+                    registry.stock_quantity = initial_stock
+                    registry.save()
+                
+                if initial_stock > 0:
+                    StockTransaction.objects.create(
+                        product=product,
+                        branch=branch,
+                        transaction_type='IN',
+                        quantity=initial_stock,
+                        reference='Product Add Form Stock In',
+                        user=request.user
+                    )
                 return redirect(next_url)
         else:
             pass
@@ -815,24 +841,30 @@ def bulk_insert(request):
             success_count = 0
             error_count = 0
             errors = []
-            seen_barcodes = set()
-            products_to_create = []
             
             # Pre-query branches to avoid N+1 queries in the loop
             branches_by_code = {b.code: b for b in Branch.objects.exclude(code__isnull=True)}
             branches_by_name = {b.name.lower().strip(): b for b in Branch.objects.all()}
             
-            # Pre-query products matching the barcodes to avoid duplicate queries in the loop
+            # Pre-query products matching the normalized barcodes to avoid duplicate queries in the loop
             barcodes_in_file = set()
             for row in reader_data:
-                bc = (row.get('Barcode') or '').strip()
-                if bc:
-                    barcodes_in_file.add(bc.lower())
+                bc_raw = str(row.get('Barcode') or '').strip()
+                if bc_raw:
+                    barcodes_in_file.add(bc_raw)
+                    bc_norm = ' '.join(bc_raw.split())
+                    if bc_norm:
+                        barcodes_in_file.add(bc_norm)
             
             existing_products = Product.objects.filter(barcode__in=list(barcodes_in_file))
             existing_product_map = {}
             for p in existing_products:
-                existing_product_map[(p.branch_id, p.barcode.lower())] = p
+                norm_p_bc = ' '.join((p.barcode or '').split()).lower()
+                existing_product_map[norm_p_bc] = p
+            
+            seen_barcodes_in_file = set()
+            products_to_create_map = {}
+            existing_updates = {}
             
             with transaction.atomic():
                 for row_num, row in enumerate(reader_data, start=2):
@@ -841,7 +873,8 @@ def bulk_insert(request):
                         # New template: Name, Barcode, Price, Size, Branch Code, Initial Stock, Low Stock Alert
                         # Old template: Branch, Product Name, Barcode, Size, Price, Stock, Low Stock Level
                         product_name = (row.get('Name') or row.get('Product Name') or '').strip()
-                        barcode = (row.get('Barcode') or '').strip()
+                        raw_barcode = row.get('Barcode') or ''
+                        barcode = ' '.join(str(raw_barcode).split())
                         size = (row.get('HSN') or row.get('Size') or '').strip()
                         price = (row.get('Price') or '').strip()
                         stock = (row.get('Initial Stock') or row.get('Stock') or '').strip()
@@ -898,29 +931,36 @@ def bulk_insert(request):
                                     branches_by_code[branch.code] = branch
                         
                         branch_id = branch.id if branch else None
+                        norm_barcode_key = barcode.lower()
                         
-                        # 2. Check for Duplicates in the uploaded file
-                        barcode_key = (branch_id, barcode.lower())
-                        if barcode_key in seen_barcodes:
+                        # 2. Check for Duplicates inside the SAME uploaded file
+                        if (branch_id, norm_barcode_key) in seen_barcodes_in_file:
                             raise ValidationError(f"Row {row_num}: Duplicate barcode '{barcode}' found for branch '{branch.name if branch else ''}' in the file.")
-                        seen_barcodes.add(barcode_key)
+                        seen_barcodes_in_file.add((branch_id, norm_barcode_key))
                         
-                        # 3. Check for Duplicates in the Database for this branch
-                        if barcode_key in existing_product_map:
-                            raise ValidationError(f"Row {row_num}: Product with barcode '{barcode}' already exists for branch '{branch.name}' in the database.")
-                        
-                        # Instantiate product instance in memory
-                        product = Product(
-                            barcode=barcode,
-                            name=product_name,
-                            price=parsed_price,
-                            size=size if size else '',
-                            branch=branch
-                        )
-                        # Store temporary attributes for use after bulk_create
-                        product._temp_stock = parsed_stock
-                        product._temp_low_stock = parsed_low_stock
-                        products_to_create.append(product)
+                        # 3. Upsert logic: Match existing barcode globally, update details & add stock
+                        if norm_barcode_key in existing_product_map:
+                            p = existing_product_map[norm_barcode_key]
+                            existing_updates[p.id] = {
+                                'product': p,
+                                'branch': branch,
+                                'add_stock': parsed_stock,
+                                'new_price': parsed_price,
+                                'new_name': product_name,
+                                'new_size': size,
+                            }
+                        else:
+                            # Instantiate new product instance in memory
+                            product = Product(
+                                barcode=barcode,
+                                name=product_name,
+                                price=parsed_price,
+                                size=size if size else '',
+                                branch=branch
+                            )
+                            product._temp_stock = parsed_stock
+                            product._temp_low_stock = parsed_low_stock
+                            products_to_create_map[norm_barcode_key] = product
                         
                         success_count += 1
                         
@@ -936,11 +976,12 @@ def bulk_insert(request):
                     raise ValidationError(f"Bulk insert failed with {error_count} error(s). Details: {', '.join(errors)}")
                 
                 # Execute bulk operations only if all rows are valid
+                products_to_create = list(products_to_create_map.values())
                 if products_to_create:
                     # 1. Bulk create products
                     created_products = Product.objects.bulk_create(products_to_create)
                     
-                    # 2. Bulk create registries
+                    # 2. Bulk create registries for new products
                     registries_to_create = []
                     for p in created_products:
                         if p.branch:
@@ -953,7 +994,7 @@ def bulk_insert(request):
                     if registries_to_create:
                         ProductRegistry.objects.bulk_create(registries_to_create)
                     
-                    # 3. Bulk create stock transactions
+                    # 3. Bulk create stock transactions for new products
                     transactions_to_create = []
                     for p in created_products:
                         if p.branch and p._temp_stock > 0:
@@ -967,6 +1008,52 @@ def bulk_insert(request):
                             ))
                     if transactions_to_create:
                         StockTransaction.objects.bulk_create(transactions_to_create)
+                
+                # 4. Update product values & stock quantity for existing products
+                if existing_updates:
+                    transactions_to_create_existing = []
+                    for p_id, data in existing_updates.items():
+                        p = data['product']
+                        target_branch = data['branch']
+                        add_qty = data['add_stock']
+                        new_price = data['new_price']
+                        new_name = data['new_name']
+                        new_size = data['new_size']
+                        
+                        # Update product values (Price, Name, Size) on existing product
+                        fields_to_update = []
+                        if new_price is not None and p.price != new_price:
+                            p.price = new_price
+                            fields_to_update.append('price')
+                        if new_name and p.name != new_name:
+                            p.name = new_name
+                            fields_to_update.append('name')
+                        if new_size and p.size != new_size:
+                            p.size = new_size
+                            fields_to_update.append('size')
+                        if fields_to_update:
+                            p.save(update_fields=fields_to_update)
+                        
+                        if target_branch:
+                            registry, _ = ProductRegistry.objects.get_or_create(
+                                branch=target_branch,
+                                product=p,
+                                defaults={'stock_quantity': 0, 'low_stock_threshold': 10}
+                            )
+                            ProductRegistry.objects.filter(id=registry.id).update(
+                                stock_quantity=F('stock_quantity') + add_qty
+                            )
+                            if add_qty > 0:
+                                transactions_to_create_existing.append(StockTransaction(
+                                    product=p,
+                                    branch=target_branch,
+                                    transaction_type='IN',
+                                    quantity=add_qty,
+                                    reference='Bulk Insert (Stock Addition)',
+                                    user=request.user
+                                ))
+                    if transactions_to_create_existing:
+                        StockTransaction.objects.bulk_create(transactions_to_create_existing)
             
             results = {
                 'success_count': success_count,
@@ -1730,18 +1817,22 @@ def pos_view(request):
 
     branches = accessible_branches
 
-    # Serialize all products to JSON for client-side search
-    products_list = []
-    for reg in registrations:
-        products_list.append({
-            'id': reg.product.id,
-            'name': reg.product.name,
-            'barcode': reg.product.barcode,
-            'price': int(reg.product.price),
-            'stock': reg.stock_quantity,
-            'low_stock_threshold': reg.low_stock_threshold,
+    # Serialize products to JSON using fast values() dictionary extraction (avoids ORM overhead)
+    products_vals = registrations.values(
+        'product__id', 'product__name', 'product__barcode', 'product__price', 'stock_quantity', 'low_stock_threshold'
+    )
+    products_list = [
+        {
+            'id': row['product__id'],
+            'name': row['product__name'],
+            'barcode': row['product__barcode'],
+            'price': int(row['product__price']),
+            'stock': row['stock_quantity'],
+            'low_stock_threshold': row['low_stock_threshold'],
             'combos': []
-        })
+        }
+        for row in products_vals
+    ]
     import json
     products_json = json.dumps(products_list)
 

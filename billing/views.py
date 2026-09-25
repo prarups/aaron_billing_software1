@@ -457,8 +457,8 @@ def update_customer_details(request, bill_id):
 def edit_bill_back(request, bill_id):
     bill = get_object_or_404(Bill, id=bill_id)
     
-    # Existing permission check: allow superusers, owners or users with explicit edit rights
-    can_edit = request.user.is_superuser or request.user.is_owner() or getattr(request.user, 'has_bill_edit_rights', False)
+    # Permission check: allow superusers, owners, admins, managers, or users with explicit edit rights
+    can_edit = request.user.is_superuser or request.user.is_owner() or request.user.is_manager() or getattr(request.user, 'has_bill_edit_rights', False) or request.user.role in ['owner', 'admin', 'manager', 'general_manager', 'assistant_manager', 'regional_manager']
 
     # Check permissions (branch ownership & access)
     accessible_branches = request.user.get_accessible_branches()
@@ -558,7 +558,7 @@ def bill_detail(request, bill_id):
     # or sales staff immediately after creating the bill in this session.
     from_pos = request.GET.get('from_pos') == 'true'
     newly_created_id = request.session.get('newly_created_bill_id')
-    can_edit_rights = request.user.is_superuser or request.user.is_owner() or getattr(request.user, 'has_bill_edit_rights', False)
+    can_edit_rights = request.user.is_superuser or request.user.is_owner() or request.user.is_manager() or getattr(request.user, 'has_bill_edit_rights', False) or request.user.role in ['owner', 'admin', 'manager', 'general_manager', 'assistant_manager', 'regional_manager']
     allow_edit = can_edit_rights or (newly_created_id == bill.id)
     
     # Build items list with barcode formatting for Code39 font
