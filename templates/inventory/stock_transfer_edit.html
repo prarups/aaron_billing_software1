@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit Transfer {{ transfer.transfer_number }} - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3" style="max-width: 900px;">
+    <!-- Compact Header -->
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h4 class="fw-bold mb-0 text-dark">Edit Transfer #{{ transfer.transfer_number }}</h4>
+        <a href="{% url 'stock_transfer_detail' transfer.pk %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            Cancel
+        </a>
+    </div>
+
+    <!-- Edit Form Card -->
+    <div class="card border-0 shadow-sm rounded-4 bg-white p-3 p-md-4">
+        <div class="p-2 px-3 bg-light rounded-3 border mb-3 d-flex align-items-center justify-content-between small">
+            <span><strong>From:</strong> {{ transfer.from_branch.name }}</span>
+            <i class="bi bi-arrow-right text-muted"></i>
+            <span><strong>To:</strong> {{ transfer.to_branch.name }}</span>
+        </div>
+
+        <form method="POST" action="">
+            {% csrf_token %}
+            <div class="table-responsive rounded-3 border mb-3">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light small text-uppercase text-muted">
+                        <tr>
+                            <th class="ps-3">Item</th>
+                            <th>Barcode</th>
+                            <th>Old Qty</th>
+                            <th style="width: 130px;">New Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in transfer.items.all %}
+                        <tr>
+                            <td class="ps-3">
+                                <input type="hidden" name="item_id[]" value="{{ item.id }}">
+                                <strong class="small text-dark">{{ item.product.name }}</strong>
+                            </td>
+                            <td><code class="text-primary small">{{ item.product.barcode }}</code></td>
+                            <td><span class="badge bg-light text-dark border">{{ item.quantity }}</span></td>
+                            <td>
+                                <input type="number" name="quantity[]" class="form-control form-control-sm text-center fw-bold" value="{{ item.quantity }}" min="1" required>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mb-3">
+                <input type="text" name="notes" class="form-control form-control-sm rounded-3" value="{{ transfer.notes|default:'' }}" placeholder="Reason for edit...">
+            </div>
+
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary rounded-3 px-4 py-2 fw-bold">
+                    <i class="bi bi-save me-1"></i>Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

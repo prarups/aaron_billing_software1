@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'billing.apps.BillingConfig',
     'audit.apps.AuditConfig',
     'attendance.apps.AttendanceConfig',
+    'inventory.apps.InventoryConfig',
 ]
 
 MIDDLEWARE = [

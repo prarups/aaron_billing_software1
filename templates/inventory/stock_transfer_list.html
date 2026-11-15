@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Stock Transfers - Aaron Billing{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* TomSelect Compact Custom Styling */
+    .ts-wrapper.single {
+        width: 100% !important;
+    }
+    .ts-wrapper.single .ts-control {
+        padding: 0.25rem 0.5rem !important;
+        min-height: 31px !important;
+        font-size: 0.775rem !important;
+        border-radius: 0.375rem !important;
+        background-color: #ffffff !important;
+        border-color: #dee2e6 !important;
+    }
+    .ts-dropdown {
+        font-size: 0.775rem !important;
+        z-index: 1050 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="w-100 p-0" style="font-size: 0.825rem;">
+    <!-- Single-Row Main Toolbar -->
+    <div class="card border-0 shadow-sm rounded-3 mb-2 bg-white w-100">
+        <div class="card-body py-2 px-2.5">
+            <form method="GET" action="" class="d-flex align-items-center justify-content-between flex-wrap gap-2 w-100">
+                <!-- Left: Title -->
+                <div class="d-flex align-items-center gap-2 flex-shrink-0 me-1">
+                    <div class="rounded-2 p-1 bg-primary text-white d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                        <i class="bi bi-arrow-left-right fs-6"></i>
+                    </div>
+                    <h6 class="fw-bold mb-0 text-dark text-nowrap">Stock Transfers</h6>
+                </div>
+
+                <!-- Middle: All Filters & Action Buttons stretching full width -->
+                <div class="d-flex align-items-center gap-2 flex-grow-1 flex-wrap">
+                    <!-- Search Input Box -->
+                    <div class="input-group input-group-sm flex-grow-1" style="min-width: 140px; flex: 3 1 180px;">
+                        <span class="input-group-text bg-light border-end-0 text-muted px-2 py-1"><i class="bi bi-search" style="font-size: 0.75rem;"></i></span>
+                        <input type="text" name="q" value="{{ search_query }}" class="form-control form-control-sm border-start-0 py-1" style="font-size: 0.775rem;" placeholder="Search ref, product...">
+                    </div>
+
+                    <!-- From Branch Searchable Input -->
+                    <div class="flex-grow-1" style="min-width: 130px; flex: 3 1 160px;">
+                        <select name="from_branch" id="from_branch_select" class="form-select form-select-sm">
+                            <option value="">All From Branches</option>
+                            {% for b in branches %}
+                            <option value="{{ b.id }}" {% if selected_from == b.id|stringformat:"i" %}selected{% endif %}>
+                                {{ b.name }} {% if b.code %}({{ b.code }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- To Branch Searchable Input -->
+                    <div class="flex-grow-1" style="min-width: 130px; flex: 3 1 160px;">
+                        <select name="to_branch" id="to_branch_select" class="form-select form-select-sm">
+                            <option value="">All To Branches</option>
+                            {% for b in branches %}
+                            <option value="{{ b.id }}" {% if selected_to == b.id|stringformat:"i" %}selected{% endif %}>
+                                {{ b.name }} {% if b.code %}({{ b.code }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Status Searchable Input -->
+                    <div class="flex-grow-1" style="min-width: 110px; flex: 2 1 130px;">
+                        <select name="status" id="status_select" class="form-select form-select-sm">
+                            <option value="">All Statuses</option>
+                            <option value="COMPLETED" {% if selected_status == 'COMPLETED' %}selected{% endif %}>Completed</option>
+                            <option value="CANCELLED" {% if selected_status == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter & Reset Buttons -->
+                    <div class="d-flex gap-1 align-items-center flex-shrink-0">
+                        <button type="submit" class="btn btn-sm btn-primary rounded-2 px-2.5 py-1 fw-medium text-nowrap" style="font-size: 0.775rem;">Filter</button>
+                        <a href="{% url 'stock_transfer_list' %}" class="btn btn-sm btn-outline-secondary rounded-2 px-2 py-1 text-nowrap" style="font-size: 0.775rem;" title="Reset filters">Reset</a>
+                    </div>
+                </div>
+
+                <!-- Right: New Stock Transfer Button -->
+                <a href="{% url 'stock_transfer_create' %}" class="btn btn-primary btn-sm rounded-2 px-2.5 py-1 fw-medium shadow-sm text-nowrap flex-shrink-0 ms-auto ms-lg-0" style="font-size: 0.775rem;">
+                    <i class="bi bi-plus-lg me-1"></i>New Stock Transfer
+                </a>
+            </form>
+        </div>
+    </div>
+
+    <!-- Data Table Card -->
+    <div class="card border-0 shadow-sm rounded-2 bg-white overflow-hidden w-100">
+        <div class="card-header bg-white py-2 px-3 border-bottom d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-list-task text-primary" style="font-size: 0.85rem;"></i>
+                <span class="fw-bold text-dark" style="font-size: 0.825rem;">Transfer Log</span>
+            </div>
+            <span class="badge bg-light text-muted border rounded-pill px-2.5 py-1" style="font-size: 0.7rem;">{{ transfers.count }} Records</span>
+        </div>
+        <div class="table-responsive w-100">
+            <table class="table table-hover align-middle mb-0 w-100" style="font-size: 0.8rem;">
+                <thead class="bg-light text-uppercase text-muted" style="font-size: 0.7rem; letter-spacing: 0.3px;">
+                    <tr>
+                        <th class="ps-3 py-2" style="width: 12%;">Ref #</th>
+                        <th class="py-2" style="width: 22%;">From Branch</th>
+                        <th class="py-2" style="width: 22%;">To Branch</th>
+                        <th class="py-2 text-center" style="width: 9%;">Items</th>
+                        <th class="py-2" style="width: 10%;">User</th>
+                        <th class="py-2" style="width: 13%;">Date</th>
+                        <th class="py-2 text-center" style="width: 12%;">Status</th>
+                        <th class="text-center pe-3 py-2" style="width: 10%; min-width: 130px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in transfers %}
+                    <tr>
+                        <td class="ps-3 py-2">
+                            <a href="{% url 'stock_transfer_detail' t.pk %}" class="fw-bold text-decoration-none text-primary">
+                                {{ t.transfer_number }}
+                            </a>
+                        </td>
+                        <td class="py-2 text-dark">
+                            <span class="fw-medium">{{ t.from_branch.name }}</span>
+                            {% if t.from_branch.code %}<span class="text-muted" style="font-size: 0.75rem;">({{ t.from_branch.code }})</span>{% endif %}
+                        </td>
+                        <td class="py-2 text-dark">
+                            <span class="fw-medium">{{ t.to_branch.name }}</span>
+                            {% if t.to_branch.code %}<span class="text-muted" style="font-size: 0.75rem;">({{ t.to_branch.code }})</span>{% endif %}
+                        </td>
+                        <td class="py-2 text-center">
+                            <span class="fw-bold text-dark">{{ t.total_items }}</span> <span class="text-muted" style="font-size: 0.725rem;">pcs</span>
+                        </td>
+                        <td class="py-2">
+                            <span class="text-dark fw-medium">{{ t.created_by.username|default:"admin" }}</span>
+                        </td>
+                        <td class="py-2 text-muted" style="font-size: 0.75rem;">{{ t.created_at|date:"d M Y, h:i A" }}</td>
+                        <td class="py-2 text-center">
+                            {% if t.status == 'COMPLETED' %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-2" style="font-size: 0.7rem;">
+                                    Completed
+                                </span>
+                            {% elif t.status == 'DRAFT' %}
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-0.5 rounded-2" style="font-size: 0.7rem;">
+                                    Draft
+                                </span>
+                            {% else %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0.5 rounded-2" style="font-size: 0.7rem;">
+                                    Cancelled
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center pe-3 py-2">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                <a href="{% url 'stock_transfer_detail' t.pk %}" class="btn btn-sm btn-outline-primary rounded-2 px-2 py-0.5" style="font-size: 0.725rem;" title="View Detail">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                {% if t.status != 'CANCELLED' %}
+                                <a href="{% url 'stock_transfer_edit' t.pk %}" class="btn btn-sm btn-outline-secondary rounded-2 px-2 py-0.5" style="font-size: 0.725rem;" title="Edit Transfer">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                                <form method="POST" action="{% url 'stock_transfer_rollback' t.pk %}" class="d-inline" onsubmit="return confirm('Rollback Transfer #{{ t.transfer_number }}? All stock will return to {{ t.from_branch.name }}.');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-2 px-2 py-0.5" style="font-size: 0.725rem;" title="Rollback Transfer">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Rollback
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">
+                            <i class="bi bi-inbox fs-4 d-block mb-1 opacity-50"></i>
+                            <span style="font-size: 0.775rem;">No stock transfers found.</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (window.TomSelect) {
+        new TomSelect('#from_branch_select', {
+            create: false,
+            placeholder: 'From Branch...',
+            allowEmptyOption: true,
+        });
+        new TomSelect('#to_branch_select', {
+            create: false,
+            placeholder: 'To Branch...',
+            allowEmptyOption: true,
+        });
+        new TomSelect('#status_select', {
+            create: false,
+            placeholder: 'Status...',
+            allowEmptyOption: true,
+        });
+    }
+});
+</script>
+{% endblock %}
+

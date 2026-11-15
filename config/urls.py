@@ -13,6 +13,7 @@ urlpatterns = [
     path('core/', include('core.urls')),
     path('billing/', include('billing.urls')),
     path('attendance/', include('attendance.urls')),
+    path('inventory/', include('inventory.urls')),
     path('pos/', core_views.pos_view, name='pos_view'),
     path('', lambda r: redirect('portal_choice' if r.user.is_authenticated else 'login')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

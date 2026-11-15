@@ -106,28 +106,22 @@
 
     <!-- Second Line: Back Button (Left), Branch Name & Code (Middle), Action Buttons (Right) -->
     <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-2 mb-3 pb-2.5" style="border-bottom: 1px solid #e2e8f0;">
-        <!-- Left: Back Button -->
-        <div class="d-flex align-items-center justify-content-start w-100 w-md-auto" style="min-width: 180px;">
+        <!-- Left: Back Button & Branch Info -->
+        <div class="d-flex align-items-center justify-content-start flex-wrap gap-2 w-100 w-md-auto">
             {% if selected_branch %}
             <a href="?branch=" class="btn light-badge btn-sm rounded-pill px-2.5 py-1 text-xxs fw-semibold shadow-sm d-inline-flex align-items-center gap-1 hover-card">
                 <i class="bi bi-arrow-left text-primary"></i> Back to all branches
             </a>
-            {% endif %}
-        </div>
-
-        <!-- Middle: Branch Name & Code -->
-        <div class="d-flex align-items-center justify-content-center gap-2 text-center flex-grow-1 my-1 my-md-0 text-nowrap">
-            {% if selected_branch %}
-            <div class="d-inline-flex align-items-center gap-1.5 bg-white shadow-sm border border-slate-200 rounded-pill px-3 py-1 text-nowrap flex-nowrap" style="white-space: nowrap;">
+            <div class="d-inline-flex align-items-center gap-1.5 bg-white shadow-sm border border-slate-200 rounded-pill px-3 py-1">
                 <i class="bi bi-shop text-primary text-xs flex-shrink-0"></i>
-                <span class="fw-bold text-dark text-xs text-nowrap">{{ selected_branch.name }}</span>
-                {% if selected_branch.code %}<span class="badge bg-secondary-subtle text-secondary rounded-pill px-1.5 py-0.5 text-xxs fw-bold font-monospace text-nowrap" style="font-size: 0.6rem; white-space: nowrap;">CODE: {{ selected_branch.code }}</span>{% endif %}
+                <span class="fw-bold text-dark text-xs">{{ selected_branch.name }}</span>
+                {% if selected_branch.code %}<span class="badge bg-secondary-subtle text-secondary rounded-pill px-1.5 py-0.5 text-xxs fw-bold font-monospace" style="font-size: 0.6rem;">CODE: {{ selected_branch.code }}</span>{% endif %}
             </div>
             {% endif %}
         </div>
 
         <!-- Right: Action Buttons -->
-        <div class="d-flex gap-1.5 align-items-center justify-content-end w-100 w-md-auto" style="min-width: 180px;">
+        <div class="d-flex gap-1.5 align-items-center justify-content-end w-100 w-md-auto ms-auto">
             {% if selected_branch %}
             <a href="{% url 'export_stock_pivot_excel' %}?q={{ request.GET.q|default:'' }}&branch={{ request.GET.branch|default:'' }}&from_date={{ start_date }}&to_date={{ end_date }}" class="btn light-badge rounded-pill px-2.5 py-1 shadow-sm btn-sm text-xxs fw-semibold d-inline-flex align-items-center gap-1 hover-card">
                 <i class="bi bi-file-earmark-spreadsheet text-success"></i> Export Excel
@@ -300,8 +294,7 @@
         <table class="table align-middle mb-0 table-compact">
             <thead>
                 <tr class="border-bottom text-center">
-                    <th class="ps-3 text-start" style="width: 8%;">Branch</th>
-                    <th class="text-start" style="width: 16%;">Product Name</th>
+                    <th class="ps-3 text-start" style="width: 24%;">Product Name</th>
                     <th style="width: 10%;">Barcode</th>
                     <th style="width: 5%;">Price</th>
                     <th style="width: 4%; background: #f8fafc;">Op</th>
@@ -321,10 +314,7 @@
                 {% for item in report_data %}
                 {% for stock_info in item.branch_stocks %}
                 <tr class="text-center text-xs {% if stock_info.cl == 0 %}bg-danger bg-opacity-10{% endif %}">
-                    <td class="ps-3 text-start">
-                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-semibold">{{ stock_info.branch.name }}</span>
-                    </td>
-                    <td class="text-start fw-bold text-dark">
+                    <td class="ps-3 text-start fw-bold text-dark">
                         {{ item.product.name }}
                         {% if stock_info.cl == 0 %}
                         <span class="badge bg-danger text-white rounded-pill px-1.5 py-0.5 text-xxs fw-bold ms-1" style="font-size: 0.55rem;">OUT OF STOCK</span>
@@ -359,7 +349,7 @@
                 {% endfor %}
                 {% empty %}
                 <tr>
-                    <td colspan="15" class="text-center py-4 text-muted">
+                    <td colspan="14" class="text-center py-4 text-muted">
                         No products found in the registry.
                     </td>
                 </tr>
@@ -432,7 +422,6 @@
             </div>
             <div class="text-end">
                 <div class="fw-bold text-primary text-xs">₹{{ item.product.price|floatformat:0 }}</div>
-                <span class="badge bg-secondary-subtle text-secondary rounded-pill text-xxs mt-1">{{ stock_info.branch.name }}</span>
             </div>
         </div>
         
@@ -547,34 +536,19 @@
             <div style="height: 4px; background: linear-gradient(90deg, #6366f1, #4f46e5);"></div>
             <div class="card-body p-3 d-flex flex-column justify-content-between">
                 <div>
-                    <div class="d-flex justify-content-between align-items-center mb-2.5">
-                        <div class="rounded-3 p-1.5 d-inline-flex align-items-center justify-content-center" style="background-color: rgba(99, 102, 241, 0.1); color: #6366f1;">
+                    <div class="d-flex justify-content-between align-items-center mb-3 w-100" style="display: flex !important; justify-content: space-between !important; align-items: center !important; width: 100% !important;">
+                        <div class="rounded-3 p-2 d-inline-flex align-items-center justify-content-center flex-shrink-0" style="background-color: rgba(99, 102, 241, 0.1); color: #6366f1;">
                             <i class="bi bi-shop fs-5"></i>
                         </div>
-                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 text-xxs fw-bold font-monospace" style="font-size: 0.65rem;">CODE: {{ b.code }}</span>
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5 py-1 text-xxs fw-bold font-monospace text-nowrap flex-shrink-0 ms-auto" style="font-size: 0.7rem; margin-left: auto !important; white-space: nowrap !important;">CODE: {{ b.code }}</span>
                     </div>
-                    <h6 class="fw-bold text-dark text-xs mb-1">{{ b.name }}</h6>
-                    <p class="text-muted text-xxs mb-2">
+                    <h6 class="fw-bold text-dark text-xs mb-2 text-uppercase" style="letter-spacing: 0.03em;">{{ b.name }}</h6>
+                    <p class="text-muted text-xxs mb-2 text-uppercase" style="min-height: 2.4em; line-height: 1.4;">
                         <i class="bi bi-geo-alt me-1 text-danger"></i> {{ b.location|default:"No location specified" }}
                     </p>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center text-xxs mb-1">
-                            <span class="text-secondary fw-semibold"><i class="bi bi-box-seam me-1 text-primary"></i>Products: {{ b.product_count|default:"0" }}</span>
-                            <span class="fw-bold text-dark"><i class="bi bi-layers me-1 text-indigo"></i>Stock: {{ b.total_stock|default:0 }} Units</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mt-1 pt-1.5 border-top border-light">
-                            {% if b.out_of_stock_count > 0 %}
-                            <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-0.5 text-xxs fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Out: {{ b.out_of_stock_count }}</span>
-                            {% else %}
-                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-0.5 text-xxs fw-semibold"><i class="bi bi-check-circle me-1"></i>Out: 0</span>
-                            {% endif %}
-                            
-                            {% if b.low_stock_count > 0 %}
-                            <span class="badge bg-warning bg-opacity-15 text-warning-emphasis rounded-pill px-2 py-0.5 text-xxs fw-bold"><i class="bi bi-bell me-1"></i>Low: {{ b.low_stock_count }}</span>
-                            {% else %}
-                            <span class="badge bg-light text-muted rounded-pill px-2 py-0.5 text-xxs">Low: 0</span>
-                            {% endif %}
-                        </div>
+                    <div class="mb-3 d-flex align-items-center gap-1.5 text-xxs text-secondary fw-semibold">
+                        <i class="bi bi-box-seam text-primary"></i>
+                        <span>Products: {{ b.product_count|default:"0" }}</span>
                     </div>
                 </div>
                 <a href="?branch={{ b.id }}" class="btn btn-primary rounded-2 w-100 py-1.5 text-xxs fw-semibold text-white d-flex align-items-center justify-content-center gap-1.5">

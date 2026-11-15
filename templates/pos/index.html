@@ -105,8 +105,8 @@
     flex-direction: column;
 }
 .pos-container {
-    height: 100%;
-    overflow: hidden;
+    min-height: 100%;
+    overflow: visible;
 }
     /* Mobile optimization */
     @media (max-width: 991.98px) {
@@ -213,28 +213,48 @@
     box-shadow: var(--card-shadow);
 }
 
-/* Sticky Cart and Viewport Sizing for POS Desktop */
+/* Cart and Viewport Sizing for POS Desktop */
 @media (min-width: 992px) {
     #section-cart {
-        position: sticky;
-        top: 84px;
         display: flex !important;
         flex-direction: column;
     }
     .cart-card {
         display: flex !important;
         flex-direction: column !important;
-        max-height: calc(100vh - 96px) !important;
+        min-height: auto;
     }
     .cart-card .card-body {
         display: flex !important;
         flex-direction: column !important;
-        overflow: hidden !important;
+        overflow: visible !important;
     }
     #cart-container {
-        max-height: 220px !important;
+        min-height: 140px;
+        max-height: 520px !important;
         overflow-y: auto !important;
+        scroll-behavior: smooth;
     }
+}
+
+/* Custom scrollbar for cart container */
+#cart-container {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f8fafc;
+}
+#cart-container::-webkit-scrollbar {
+    width: 6px;
+}
+#cart-container::-webkit-scrollbar-track {
+    background: #f8fafc;
+    border-radius: 4px;
+}
+#cart-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+#cart-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 /* Custom Vibrant Payment Option Buttons */
@@ -405,12 +425,12 @@
                     <h5 class="fw-bold m-0 text-primary fs-6"><i class="bi bi-bag-check-fill me-2"></i>Checkout</h5>
                     <span class="badge bg-vibrant rounded-pill px-3 py-1.5" id="cart-count">0 Items</span>
                 </div>
-                <div class="card-body flex-grow-1 px-3 py-0" style="overflow: hidden;">
+                <div class="card-body flex-grow-1 px-3 py-0">
                     <!-- Combo Progress Tracker (shown when combo group items are in cart) -->
                     <div id="combo-tracker" class="d-none mb-2"></div>
 
-                    <!-- Cart items list (compact height and scrollable) -->
-                    <div id="cart-container" style="max-height: 220px; overflow-y: auto;">
+                    <!-- Cart items list (expanded to show 10+ items clearly) -->
+                    <div id="cart-container" style="min-height: 140px; max-height: 520px; overflow-y: auto; scroll-behavior: smooth;">
                         <div class="text-center py-4" id="empty-cart-msg">
                             <i class="bi bi-cart-x fs-1 text-muted opacity-25 d-block mb-2"></i>
                             <p class="text-muted small">No items added to bill.</p>
@@ -486,7 +506,6 @@
                     <div id="split-inputs" class="glass-card p-2 mb-1.5 bg-light bg-opacity-50 border-0 d-none animate-fade-in">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <label class="form-label x-small text-muted text-uppercase fw-bold mb-0" style="font-size: 0.65rem;">Split Amounts</label>
-                            <span class="badge bg-info-subtle text-info fw-bold text-xxs" id="split-remaining-label">Remaining: ₹0</span>
                         </div>
                         <div class="row g-2">
                             <div class="col-6">
@@ -507,8 +526,20 @@
                     
                     <div class="glass-card p-2 mb-1.5 border-0 shadow-sm" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(168, 85, 247, 0.08) 100%); border-left: 3.5px solid #6366f1 !important; border-radius: 10px;">
                         <div class="d-flex align-items-center justify-content-between">
-                            <label class="form-label x-small text-uppercase fw-bold mb-0" style="font-size: 0.72rem; color: #4338ca;"><i class="bi bi-tag-fill me-1 text-primary"></i>Retail Price (₹)</label>
-                            <input type="number" id="retail-price" class="form-control form-control-sm border border-primary-subtle px-2.5 rounded-pill bg-white text-primary fw-bold text-xs text-end shadow-sm" placeholder="0" min="0" oninput="if(this.value < 0) this.value = 0; renderCart()" style="max-width: 110px; height: 28px;">
+                            <div>
+                                <label class="form-label x-small text-uppercase fw-bold mb-0 d-block" style="font-size: 0.72rem; color: #4338ca;"><i class="bi bi-tag-fill me-1 text-primary"></i>Retail Price (₹)</label>
+                                <!-- Split mode destination selector -->
+                                <div id="retail-split-selector" class="d-none mt-1 align-items-center gap-1 animate-fade-in">
+                                    <span class="text-muted" style="font-size: 0.62rem; font-weight: 600;">Add into:</span>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <input type="radio" class="btn-check" name="retail_target" id="retail-to-cash" value="cash" checked onchange="onRetailTargetChange('cash')">
+                                        <label class="btn btn-xs py-0 px-2 rounded-pill-start fw-bold" for="retail-to-cash" id="lbl-retail-cash" style="font-size: 0.62rem;">💵 Cash</label>
+                                        <input type="radio" class="btn-check" name="retail_target" id="retail-to-online" value="online" onchange="onRetailTargetChange('online')">
+                                        <label class="btn btn-xs py-0 px-2 rounded-pill-end fw-bold" for="retail-to-online" id="lbl-retail-online" style="font-size: 0.62rem;">📱 Online</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="number" id="retail-price" class="form-control form-control-sm border border-primary-subtle px-2.5 rounded-pill bg-white text-primary fw-bold text-xs text-end shadow-sm" placeholder="0" min="0" oninput="if(this.value < 0) this.value = 0; handleRetailPriceInput()" style="max-width: 110px; height: 28px;">
                         </div>
                     </div>
                     
@@ -551,6 +582,7 @@
 <script>
     let cart = [];
     let editingBillId = null;
+    let dismissedComboGroups = new Set();
     const html5QrCode = new Html5Qrcode("reader");
     let isScannerOpen = false;
     let scanCooldown = false;
@@ -681,7 +713,7 @@
 
         // Step 1: apply multi-product combo group pricing (DP)
         comboGroups.forEach(group => {
-            let groupItems = cart.filter(item => !processedIds.has(item.id) && group.barcodes && group.barcodes.includes(item.barcode));
+            let groupItems = cart.filter(item => !processedIds.has(item.id) && ((group.barcodes && group.barcodes.includes(item.barcode)) || (group.product_ids && group.product_ids.includes(String(item.id)))));
             if (groupItems.length === 0) return;
 
             // Check if total quantity of eligible items satisfies the minimum milestone
@@ -768,6 +800,9 @@
             checkoutBtn.disabled = true;
             
             // Reset split values and warnings
+            dismissedComboGroups.clear();
+            const tracker = document.getElementById('combo-tracker');
+            if (tracker) tracker.classList.add('d-none');
             const cashInput = document.getElementById('split-cash');
             const onlineInput = document.getElementById('split-online');
             if (cashInput) cashInput.value = '0';
@@ -781,14 +816,17 @@
         container.innerHTML = '';
         let count = 0;
 
-        cart.forEach(item => {
+        cart.forEach((item, index) => {
             let itemOriginalSubtotal = item.price * item.quantity;
             count += item.quantity;
             const itemHtml = `
-                <div class="cart-item d-flex align-items-center justify-content-between py-1 mb-1 border-bottom" style="border-bottom: 1px solid #f1f5f9 !important;">
-                    <div class="text-truncate me-2 flex-grow-1" style="max-width: 45%;" title="${item.name}">
-                        <span class="fw-semibold text-xs text-dark d-block text-truncate" style="font-size: 0.8rem;">${item.name}</span>
-                        <span class="text-muted font-monospace d-block text-truncate" style="font-size: 0.65rem; letter-spacing: 0.02em;">${item.barcode || ''}</span>
+                <div class="cart-item d-flex align-items-center justify-content-between py-1 mb-1 border-bottom" style="border-bottom: 1px solid #f1f5f9 !important;" data-cart-index="${index}">
+                    <div class="text-truncate me-2 flex-grow-1" style="max-width: 48%;" title="${item.name}">
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="badge bg-light text-muted border text-xxs px-1 py-0.5" style="font-size: 0.65rem; min-width: 18px; text-align: center;">${index + 1}</span>
+                            <span class="fw-semibold text-xs text-dark d-block text-truncate" style="font-size: 0.8rem;">${item.name}</span>
+                        </div>
+                        <span class="text-muted font-monospace d-block text-truncate" style="font-size: 0.65rem; letter-spacing: 0.02em; padding-left: 22px;">${item.barcode || ''}</span>
                     </div>
                     <div class="d-flex align-items-center justify-content-end gap-2">
                         <div class="qty-adjuster">
@@ -828,6 +866,24 @@
 
         // Update combo progress tracker
         renderComboTracker();
+
+        // 1. Auto-scroll inside cart-container to the newest item
+        container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+        });
+
+        // 2. Smoothly scroll the PAGE downwards as bill items increase
+        setTimeout(() => {
+            const checkoutBtn = document.getElementById('checkout-btn');
+            if (checkoutBtn) {
+                const rect = checkoutBtn.getBoundingClientRect();
+                // If checkout button / bottom of bill extends below visible screen viewport, scroll page down
+                if (rect.bottom > window.innerHeight) {
+                    checkoutBtn.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }
+            }
+        }, 50);
     }
 
     function renderComboTracker() {
@@ -838,7 +894,10 @@
         let comboHighlights = [];
 
         for (let group of comboGroups) {
-            let groupItems = cart.filter(i => group.product_ids.includes(String(i.id)));
+            let groupItems = cart.filter(i => 
+                (group.product_ids && group.product_ids.includes(String(i.id))) || 
+                (group.barcodes && group.barcodes.includes(String(i.barcode)))
+            );
             if (groupItems.length === 0) continue;
 
             let groupQty = groupItems.reduce((s, i) => s + i.quantity, 0);
@@ -854,13 +913,15 @@
             if (currentUnlocked) {
                 comboHighlights.push({
                     type: 'unlocked',
+                    groupId: String(group.id),
                     text: `${group.name}: ${currentUnlocked.quantity}-Pc Combo Applied`
                 });
-            } else if (nextLocked) {
+            } else if (nextLocked && !dismissedComboGroups.has(String(group.id))) {
                 let diff = nextLocked.quantity - groupQty;
                 comboHighlights.push({
                     type: 'upsell',
-                    text: `Add ${diff} more item${diff > 1 ? 's' : ''} → unlock ${nextLocked.quantity}-Pc Combo!`
+                    groupId: String(group.id),
+                    text: `Add ${diff} more from "${group.name}" → unlock ${nextLocked.quantity}-Pc Combo!`
                 });
             }
         }
@@ -874,6 +935,11 @@
                 let iconClass = isUnlocked ? 'bi-lightning-charge-fill text-primary' : 'bi-arrow-up-circle-fill text-warning';
                 let badgeClass = isUnlocked ? 'bg-primary' : 'bg-warning text-dark';
                 let badgeText = isUnlocked ? 'COMBO ACTIVE' : 'NEXT OFFER';
+                let closeBtn = !isUnlocked ? `
+                    <button type="button" class="btn btn-sm btn-link text-muted p-0 ms-2 border-0 shadow-none lh-1" onclick="dismissComboTracker('${h.groupId}')" title="Dismiss" style="font-size: 0.85rem; text-decoration: none;">
+                        <i class="bi bi-x-circle-fill opacity-75"></i>
+                    </button>
+                ` : '';
                 
                 return `
                     <div class="d-flex align-items-center justify-content-between px-2.5 py-1.5 rounded-3 mb-1 animate-fade-in" style="${bgStyle} font-size: 0.72rem;">
@@ -881,7 +947,10 @@
                             <i class="bi ${iconClass} me-1.5 fs-6"></i>
                             <span class="fw-bold text-dark text-truncate">${h.text}</span>
                         </div>
-                        <span class="badge ${badgeClass} rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.6rem; letter-spacing: 0.03em;">${badgeText}</span>
+                        <div class="d-flex align-items-center">
+                            <span class="badge ${badgeClass} rounded-pill px-2 py-0.5 font-monospace" style="font-size: 0.6rem; letter-spacing: 0.03em;">${badgeText}</span>
+                            ${closeBtn}
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -891,6 +960,11 @@
         } else {
             tracker.classList.add('d-none');
         }
+    }
+
+    function dismissComboTracker(groupId) {
+        dismissedComboGroups.add(String(groupId));
+        renderComboTracker();
     }
 
     // Helper to dynamically render a product card for search results
@@ -1070,18 +1144,91 @@ if (isScannerOpen) {
         }
     });
 
+    // Retail Price Split Target & Quick Controls
+    let retailSplitTarget = 'cash'; // 'cash' or 'online'
+    let lastRetailPrice = 0;
+
+    function onRetailTargetChange(target) {
+        const prevTarget = retailSplitTarget;
+        retailSplitTarget = target;
+        updateRetailTargetStyles();
+        
+        // If in split mode and retail price > 0, transfer the retail price difference
+        const currentRetail = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price')?.value)) || 0);
+        if (currentRetail > 0 && document.getElementById('pay-split')?.checked) {
+            const cashInput = document.getElementById('split-cash');
+            const onlineInput = document.getElementById('split-online');
+            let cash = Math.round(parseFloat(cashInput.value)) || 0;
+            let online = Math.round(parseFloat(onlineInput.value)) || 0;
+            
+            if (target === 'cash' && prevTarget === 'online') {
+                cash = cash + currentRetail;
+                online = Math.max(0, online - currentRetail);
+            } else if (target === 'online' && prevTarget === 'cash') {
+                online = online + currentRetail;
+                cash = Math.max(0, cash - currentRetail);
+            }
+            cashInput.value = cash;
+            onlineInput.value = online;
+            calculateSplit('transfer');
+        }
+    }
+
+    function updateRetailTargetStyles() {
+        const cashLbl = document.getElementById('lbl-retail-cash');
+        const onlineLbl = document.getElementById('lbl-retail-online');
+        if (!cashLbl || !onlineLbl) return;
+        if (retailSplitTarget === 'cash') {
+            cashLbl.className = 'btn btn-xs py-0 px-2 rounded-pill-start fw-bold bg-success text-white border-success';
+            onlineLbl.className = 'btn btn-xs py-0 px-2 rounded-pill-end fw-bold bg-white text-muted border';
+        } else {
+            cashLbl.className = 'btn btn-xs py-0 px-2 rounded-pill-start fw-bold bg-white text-muted border';
+            onlineLbl.className = 'btn btn-xs py-0 px-2 rounded-pill-end fw-bold bg-primary text-white border-primary';
+        }
+    }
+
+    function handleRetailPriceInput() {
+        const currentRetail = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price')?.value)) || 0);
+        const retailDiff = currentRetail - lastRetailPrice;
+        lastRetailPrice = currentRetail;
+
+        // If split is active and retail price changed, allocate the difference to the selected target
+        if (document.getElementById('pay-split')?.checked && retailDiff !== 0) {
+            const cashInput = document.getElementById('split-cash');
+            const onlineInput = document.getElementById('split-online');
+            if (retailSplitTarget === 'cash') {
+                let cash = Math.round(parseFloat(cashInput.value)) || 0;
+                cashInput.value = Math.max(0, cash + retailDiff);
+            } else {
+                let online = Math.round(parseFloat(onlineInput.value)) || 0;
+                onlineInput.value = Math.max(0, online + retailDiff);
+            }
+        }
+        renderCart();
+    }
+
     // Payment Method Toggle
     document.querySelectorAll('input[name="payment_method"]').forEach(radio => {
         radio.addEventListener('change', (e) => {
             const splitInputs = document.getElementById('split-inputs');
+            const retailSelector = document.getElementById('retail-split-selector');
             if (e.target.value === 'split') {
                 splitInputs.classList.remove('d-none');
+                if (retailSelector) {
+                    retailSelector.classList.remove('d-none');
+                    retailSelector.classList.add('d-flex');
+                }
                 const total = getCartFinalTotal();
                 document.getElementById('split-cash').value = total;
                 document.getElementById('split-online').value = 0;
+                updateRetailTargetStyles();
                 calculateSplit(null);
             } else {
                 splitInputs.classList.add('d-none');
+                if (retailSelector) {
+                    retailSelector.classList.add('d-none');
+                    retailSelector.classList.remove('d-flex');
+                }
             }
         });
     });
@@ -1093,22 +1240,6 @@ if (isScannerOpen) {
         const onlineInput = document.getElementById('split-online');
         const warning = document.getElementById('split-warning');
 
-        if (!source) {
-            let currentCash = Math.round(parseFloat(cashInput.value)) || 0;
-            let currentOnline = Math.round(parseFloat(onlineInput.value)) || 0;
-            if (currentCash + currentOnline === total) {
-                // Keep loaded/entered splits intact
-            } else {
-                if (currentCash <= total) {
-                    cashInput.value = currentCash;
-                    onlineInput.value = total - currentCash;
-                } else {
-                    cashInput.value = total;
-                    onlineInput.value = 0;
-                }
-            }
-        }
-
         let cash = Math.round(parseFloat(cashInput.value)) || 0;
         let online = Math.round(parseFloat(onlineInput.value)) || 0;
 
@@ -1118,26 +1249,27 @@ if (isScannerOpen) {
         } else if (source === 'online') {
             cash = Math.max(0, total - online);
             cashInput.value = cash;
+        } else if (source !== 'transfer') {
+            const currentSum = cash + online;
+            if (currentSum !== total) {
+                const diff = total - currentSum;
+                if (retailSplitTarget === 'cash') {
+                    cash = Math.max(0, cash + diff);
+                    cashInput.value = cash;
+                } else {
+                    online = Math.max(0, online + diff);
+                    onlineInput.value = online;
+                }
+            }
         }
+
+        // Re-read current values
+        cash = Math.round(parseFloat(cashInput.value)) || 0;
+        online = Math.round(parseFloat(onlineInput.value)) || 0;
 
         // Enforce integer representation in fields
         cashInput.value = cash;
         onlineInput.value = online;
-
-        const remaining = total - (cash + online);
-        const remainingLabel = document.getElementById('split-remaining-label');
-        if (remainingLabel) {
-            if (remaining > 0) {
-                remainingLabel.className = "badge bg-warning-subtle text-warning fw-bold text-xxs";
-                remainingLabel.textContent = `Remaining: ₹${remaining}`;
-            } else if (remaining < 0) {
-                remainingLabel.className = "badge bg-danger-subtle text-danger fw-bold text-xxs";
-                remainingLabel.textContent = `Excess: ₹${Math.abs(remaining)}`;
-            } else {
-                remainingLabel.className = "badge bg-success-subtle text-success fw-bold text-xxs";
-                remainingLabel.textContent = `Split Balanced!`;
-            }
-        }
 
         if (cash + online !== total) {
             warning.classList.remove('d-none');

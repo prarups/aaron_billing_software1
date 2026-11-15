@@ -190,10 +190,12 @@ class StockTransaction(models.Model):
         ('OUT', 'Stock Out (Sale)'),
         ('ADJ', 'Adjustment'),
         ('DMG', 'Damaged'),
+        ('TR_OUT', 'Transfer Out (Branch)'),
+        ('TR_IN', 'Transfer In (Branch)'),
     )
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='transactions')
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='transactions')
-    transaction_type = models.CharField(max_length=5, choices=TRANSACTION_TYPES)
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
     quantity = models.IntegerField()  # Positive for IN/ADJ increase, Positive for OUT increase. We'll stick to absolute changes or always positive with type dictating operation. Let's use ALWAYS POSITIVE and use transaction_type for + or -. Or signed + / -. Let's use positive for quantity and rely on transaction_type.
     reference = models.CharField(max_length=100, blank=True, null=True) # e.g. "Bill #123", "Init", "Manual adjustment"
     user = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True)

@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}New Stock Transfer - Aaron Billing{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Full-Width Header Bar -->
+    <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+        <div class="d-flex align-items-center gap-2">
+            <div class="rounded-3 p-2 bg-primary text-white d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                <i class="bi bi-arrow-left-right fs-5"></i>
+            </div>
+            <div>
+                <h4 class="fw-bold mb-0 text-dark">New Stock Transfer</h4>
+                <span class="text-muted small">Move stock from one branch to another</span>
+            </div>
+        </div>
+        <a href="{% url 'stock_transfer_list' %}" class="btn btn-outline-secondary btn-sm rounded-3 px-3">
+            <i class="bi bi-arrow-left me-1"></i>Back to List
+        </a>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <ul class="nav nav-pills gap-2 mb-3" id="transferTab" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active rounded-pill px-3 py-1.5 small fw-semibold" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-pane" type="button">
+                <i class="bi bi-pencil-square me-1"></i>Manual Entry
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link rounded-pill px-3 py-1.5 small fw-semibold" id="excel-tab" data-bs-toggle="tab" data-bs-target="#excel-pane" type="button">
+                <i class="bi bi-file-earmark-excel text-success me-1"></i>Excel Upload
+            </button>
+        </li>
+    </ul>
+
+    <!-- Main Form Card (Full-Width Edge-to-Edge) -->
+    <div class="card border-0 shadow-sm rounded-3 bg-white p-3 p-md-4">
+        <div class="tab-content" id="transferTabContent">
+            
+            <!-- MANUAL ENTRY PANE -->
+            <div class="tab-pane fade show active" id="manual-pane" role="tabpanel">
+                <form method="POST" action="{% url 'stock_transfer_create' %}" id="manualTransferForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="transfer_method" value="manual">
+
+                    <!-- Branch Selector Row -->
+                    <div class="row g-3 mb-3 bg-light p-3 rounded-3 border">
+                        <div class="col-12 col-md-5">
+                            <label class="form-label small fw-bold text-dark mb-1">From Branch (Source) <span class="text-danger">*</span></label>
+                            <select name="from_branch" id="fromBranchSelect" class="form-select border-secondary-subtle" required>
+                                <option value="">Select Source Branch...</option>
+                                {% for b in branches %}
+                                <option value="{{ b.id }}">{% if b.code %}[Code: {{ b.code }}] - {% endif %}{{ b.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text text-muted small">Stock will be deducted from this branch.</div>
+                        </div>
+
+                        <div class="col-12 col-md-2 text-center d-none d-md-flex align-items-center justify-content-center">
+                            <i class="bi bi-arrow-right fs-3 text-primary"></i>
+                        </div>
+
+                        <div class="col-12 col-md-5">
+                            <label class="form-label small fw-bold text-dark mb-1">To Branch (Destination) <span class="text-danger">*</span></label>
+                            <select name="to_branch" id="toBranchSelect" class="form-select border-secondary-subtle" required>
+                                <option value="">Select Destination Branch...</option>
+                                {% for b in branches %}
+                                <option value="{{ b.id }}">{% if b.code %}[Code: {{ b.code }}] - {% endif %}{{ b.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text text-muted small">Stock will be added to this branch.</div>
+                        </div>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="position-relative mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" id="productSearchInput" class="form-control border-start-0 py-2" placeholder="Search product by name or scan barcode..." disabled>
+                        </div>
+                        <div id="searchResultDropdown" class="list-group shadow-lg position-absolute w-100 mt-1 rounded-3 d-none" style="z-index: 1050; max-height: 250px; overflow-y: auto;">
+                        </div>
+                        <div id="branchAlert" class="form-text text-danger small mt-1 fw-semibold">
+                            <i class="bi bi-exclamation-circle me-1"></i>Please select Source Branch first to enable product search.
+                        </div>
+                    </div>
+
+                    <!-- Items Table -->
+                    <div class="table-responsive rounded-3 border mb-3">
+                        <table class="table table-hover align-middle mb-0" id="transferItemsTable">
+                            <thead class="bg-light small text-uppercase text-muted">
+                                <tr>
+                                    <th class="ps-3" style="width: 40%;">Item</th>
+                                    <th style="width: 20%;">Barcode</th>
+                                    <th style="width: 15%;">Available Stock</th>
+                                    <th style="width: 15%;">Transfer Qty</th>
+                                    <th class="text-end pe-3" style="width: 10%;">Remove</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemsTableBody">
+                                <tr id="emptyRow">
+                                    <td colspan="5" class="text-center py-4 text-muted small">
+                                        No items added yet. Search product name or barcode above to add items to transfer list.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Note & Submit -->
+                    <div class="row g-2 align-items-center">
+                        <div class="col-12 col-md-8">
+                            <input type="text" name="notes" class="form-control rounded-3" placeholder="Optional transfer notes / reason...">
+                        </div>
+                        <div class="col-12 col-md-4 text-end">
+                            <button type="submit" class="btn btn-primary w-100 rounded-3 py-2 fw-bold shadow-sm">
+                                <i class="bi bi-check-circle-fill me-1"></i>Complete Stock Transfer
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- EXCEL UPLOAD PANE -->
+            <div class="tab-pane fade" id="excel-pane" role="tabpanel">
+                <form method="POST" action="{% url 'stock_transfer_create' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="transfer_method" value="excel">
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small fw-bold text-dark mb-1">From Branch (Source) <span class="text-danger">*</span></label>
+                            <select name="from_branch" class="form-select border-secondary-subtle" required>
+                                <option value="">Select Source Branch...</option>
+                                {% for b in branches %}
+                                <option value="{{ b.id }}">{% if b.code %}[Code: {{ b.code }}] - {% endif %}{{ b.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small fw-bold text-dark mb-1">To Branch (Destination) <span class="text-danger">*</span></label>
+                            <select name="to_branch" class="form-select border-secondary-subtle" required>
+                                <option value="">Select Destination Branch...</option>
+                                {% for b in branches %}
+                                <option value="{{ b.id }}">{% if b.code %}[Code: {{ b.code }}] - {% endif %}{{ b.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="p-4 border rounded-3 bg-light text-center mb-3">
+                        <i class="bi bi-file-earmark-excel text-success display-5 d-block mb-2"></i>
+                        <h6 class="fw-bold text-dark mb-1">Upload Excel File (.xlsx)</h6>
+                        <p class="small text-muted mb-3">Sheet must contain <strong>Barcode</strong> and <strong>Quantity</strong> columns</p>
+                        <div class="d-flex justify-content-center gap-2 max-w-md mx-auto">
+                            <input type="file" name="excel_file" class="form-control rounded-3" accept=".xlsx, .xls, .csv" required style="max-width: 350px;">
+                            <a href="{% url 'download_transfer_template' %}" class="btn btn-outline-success rounded-3 text-nowrap">
+                                <i class="bi bi-download me-1"></i>Template
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <input type="text" name="notes" class="form-control rounded-3" placeholder="Optional upload note / reason...">
+                    </div>
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-success rounded-3 px-4 py-2 fw-bold">
+                            <i class="bi bi-upload me-1"></i>Upload & Import
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fromBranchSelect = document.getElementById('fromBranchSelect');
+    const searchInput = document.getElementById('productSearchInput');
+    const searchDropdown = document.getElementById('searchResultDropdown');
+    const itemsTableBody = document.getElementById('itemsTableBody');
+    const emptyRow = document.getElementById('emptyRow');
+    const branchAlert = document.getElementById('branchAlert');
+
+    let addedProductIds = new Set();
+
+    function updateSearchState() {
+        if (fromBranchSelect.value) {
+            searchInput.disabled = false;
+            branchAlert.classList.add('d-none');
+        } else {
+            searchInput.disabled = true;
+            branchAlert.classList.remove('d-none');
+            searchDropdown.classList.add('d-none');
+        }
+    }
+
+    fromBranchSelect.addEventListener('change', updateSearchState);
+
+    let timeoutId = null;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(timeoutId);
+        const query = this.value.trim();
+        const branchId = fromBranchSelect.value;
+
+        if (query.length < 2 || !branchId) {
+            searchDropdown.classList.add('d-none');
+            return;
+        }
+
+        timeoutId = setTimeout(() => {
+            fetch(`{% url 'ajax_product_branch_stock' %}?branch_id=${branchId}&query=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    searchDropdown.innerHTML = '';
+                    if (data.products && data.products.length > 0) {
+                        data.products.forEach(prod => {
+                            if (addedProductIds.has(prod.id)) return;
+
+                            const a = document.createElement('a');
+                            a.href = '#';
+                            a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2 px-3';
+                            a.innerHTML = `
+                                <div>
+                                    <strong class="text-dark">${prod.name}</strong>
+                                    <span class="badge bg-light text-secondary ms-1">Barcode: ${prod.barcode}</span>
+                                </div>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1">Available: ${prod.stock_quantity} units</span>
+                            `;
+                            a.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                addProductRow(prod);
+                                searchInput.value = '';
+                                searchDropdown.classList.add('d-none');
+                            });
+                            searchDropdown.appendChild(a);
+                        });
+                        searchDropdown.classList.remove('d-none');
+                    } else {
+                        searchDropdown.innerHTML = `<div class="list-group-item text-muted small py-3">No products found in source branch with stock.</div>`;
+                        searchDropdown.classList.remove('d-none');
+                    }
+                });
+        }, 250);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+            searchDropdown.classList.add('d-none');
+        }
+    });
+
+    function addProductRow(prod) {
+        if (addedProductIds.has(prod.id)) return;
+
+        if (emptyRow) emptyRow.style.display = 'none';
+
+        addedProductIds.add(prod.id);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="ps-3">
+                <input type="hidden" name="product_id[]" value="${prod.id}">
+                <input type="hidden" name="item_notes[]" value="">
+                <span class="fw-bold text-dark">${prod.name}</span>
+            </td>
+            <td><code class="text-primary fw-bold">${prod.barcode}</code></td>
+            <td><span class="badge bg-light text-dark border px-3 py-1.5">${prod.stock_quantity} units</span></td>
+            <td>
+                <input type="number" name="quantity[]" class="form-control form-control-sm rounded-2 text-center fw-bold" value="1" min="1" max="${prod.stock_quantity}" required style="max-width: 100px;">
+            </td>
+            <td class="text-end pe-3">
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-1 remove-btn">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+
+        tr.querySelector('.remove-btn').addEventListener('click', function() {
+            tr.remove();
+            addedProductIds.delete(prod.id);
+            if (addedProductIds.size === 0 && emptyRow) {
+                emptyRow.style.display = 'table-row';
+            }
+        });
+
+        itemsTableBody.appendChild(tr);
+    }
+});
+</script>
+{% endblock %}

@@ -119,8 +119,23 @@ def export_products_csv(request):
 
     registrations = registrations.order_by('-created_at')
 
+    import re
+    from django.utils import timezone
+
+    today_str = timezone.now().strftime("%Y-%m-%d")
+    if selected_branch:
+        branch_obj = accessible_branches.filter(id=selected_branch).first()
+        if branch_obj:
+            safe_b_name = re.sub(r'[\s\W]+', '_', branch_obj.name).strip('_')
+            b_code = str(branch_obj.code) if branch_obj.code else 'NOCODE'
+            csv_filename = f"products_{safe_b_name}_{b_code}_{today_str}.csv"
+        else:
+            csv_filename = f"products_AllBranches_ALL_{today_str}.csv"
+    else:
+        csv_filename = f"products_AllBranches_ALL_{today_str}.csv"
+
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="products.csv"'
+    response['Content-Disposition'] = f'attachment; filename="{csv_filename}"'
 
     writer = csv.writer(response)
     writer.writerow(['Branch Name', 'Branch Code', 'Product Name', 'Barcode', 'Price', 'Combo', 'Stock', 'Low Stock Level', 'Registered On'])
@@ -272,12 +287,7 @@ def product_update(request, pk):
 
     current_damaged_qty = 0
     if registration:
-        from django.db.models import Sum
-        current_damaged_qty = StockTransaction.objects.filter(
-            product=product,
-            branch=registration.branch,
-            transaction_type='DMG'
-        ).aggregate(t=Sum('quantity'))['t'] or 0
+        current_damaged_qty = registration.damaged_qty or 0
 
     if request.method == 'POST':
         form = ProductForm(request.POST, instance=product)
@@ -541,12 +551,7 @@ def product_update(request, pk):
                             messages.error(request, "Total damaged stock cannot be negative.")
                             has_error = True
                         else:
-                            from django.db.models import Sum
-                            old_damaged_total = StockTransaction.objects.filter(
-                                product=product,
-                                branch=registration.branch,
-                                transaction_type='DMG'
-                            ).aggregate(t=Sum('quantity'))['t'] or 0
+                            old_damaged_total = registration.damaged_qty or 0
                             
                             diff = new_damaged_total - old_damaged_total
                             if diff != 0:
@@ -1468,11 +1473,14 @@ def export_stock_pivot_excel(request):
 
     wb = openpyxl.Workbook()
     
+    branch_name_val = selected_branch.name if selected_branch else "All Branches"
+    branch_code_val = str(selected_branch.code) if (selected_branch and selected_branch.code) else "ALL"
+
     # Sheet 1: Consolidated Totals
     ws1 = wb.active
     ws1.title = "Consolidated Totals"
     header1 = [
-        'Product Name', 'Barcode', 'Price', 
+        'Product Name', 'Barcode', 'Price', 'Branch Name', 'Branch Code',
         'Total Op. Qty', 'Total In Qty', 'Total Ret. Qty', 'Total Out Qty', 
         'Total + Adj Qty', 'Total - Adj Qty', 'Total Damaged Qty', 'Total Ret. Damaged Qty', 
         'Total Cl. Qty', 'Total Received Qty', 'Total Sold (All-Time)', 'Total Damaged (All-Time)'
@@ -1577,7 +1585,7 @@ def export_stock_pivot_excel(request):
             ws2.append(row2)
             
         row1 = [
-            p.name, p.barcode, str(int(p.price)), 
+            p.name, p.barcode, str(int(p.price)), branch_name_val, branch_code_val,
             total_op, total_in, total_ret, total_out, 
             total_adj_plus, total_adj_minus, total_dmg, total_ret_dmg, 
             total_cl, total_rec_sum, total_all_time_out_sum, total_all_time_dmg_sum
