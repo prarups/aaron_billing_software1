@@ -46,7 +46,7 @@ class Bill(models.Model):
     @property
     def subtotal_amount(self):
         from decimal import Decimal
-        return Decimal(str(self.total_amount)) - Decimal(str(self.retail_price))
+        return Decimal(str(self.total_amount))
 
     @property
     def original_subtotal(self):
@@ -192,13 +192,17 @@ class BillItem(models.Model):
 
     @property
     def savings(self):
-        if not self.is_combo_purchase:
-            from decimal import Decimal
-            return Decimal('0')
         from decimal import Decimal
         reg_total = self.regular_total
         sub = Decimal(str(self.subtotal))
-        return reg_total - sub if reg_total > sub else Decimal('0')
+        diff = reg_total - sub
+        if diff <= 0:
+            return Decimal('0')
+        if self.combo_group_id:
+            return diff
+        if not self.is_combo_purchase:
+            return Decimal('0')
+        return diff
 
     @property
     def combo_display_id(self):

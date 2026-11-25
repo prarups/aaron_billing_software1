@@ -317,13 +317,7 @@
                         <span class="text-success fw-bold">- ₹{{ bill.total_savings|floatformat:0 }}</span>
                     </div>
                     {% endif %}
-                    {% if bill.retail_price > 0 %}
-                    <div class="d-flex justify-content-between align-items-center mb-1.5 p-1.5 rounded" style="background: rgba(99, 102, 241, 0.08);">
-                        <span class="fw-bold small" style="color: #4f46e5;"><i class="bi bi-tag-fill me-1"></i>Retail Price</span>
-                        <span class="fw-bold" style="color: #4f46e5;">+ ₹{{ bill.retail_price|floatformat:0 }}</span>
-                    </div>
-                    {% endif %}
-                    <div class="d-flex justify-content-between align-items-center mb-0 {% if bill.total_savings > 0 or bill.retail_price > 0 %}border-top pt-2 mt-2{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center mb-0 {% if bill.total_savings > 0 %}border-top pt-2 mt-2{% endif %}">
                         <span class="fw-bold text-dark">FINAL TOTAL</span>
                         <span class="h5 fw-bold text-primary mb-0">₹{{ bill.total_amount|floatformat:0 }}</span>
                     </div>

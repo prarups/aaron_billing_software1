@@ -354,7 +354,7 @@
                     <div class="mb-3 p-2 rounded-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
                         <label class="text-xxs text-muted text-uppercase fw-bold mb-2 d-block">Customer Details (Optional)</label>
                         <input type="text" id="customer-name" class="form-control form-control-sm border rounded-3 px-3 text-xs mb-2 shadow-none bg-white" placeholder="Customer Name">
-                        <input type="text" id="customer-phone" class="form-control form-control-sm border rounded-3 px-3 text-xs shadow-none bg-white" placeholder="Phone Number">
+                        <input type="tel" id="customer-phone" class="form-control form-control-sm border rounded-3 px-3 text-xs shadow-none bg-white" placeholder="Phone Number" inputmode="numeric" maxlength="10" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10);" onkeypress="return /[0-9]/.test(event.key);">
                         <label class="text-xxs text-muted text-uppercase fw-bold mb-1 mt-2 d-block">Payment Method</label>
                         <div class="btn-group w-100 shadow-none" role="group">
                             <input type="radio" class="btn-check" name="payment_method" id="pay-cash" value="cash" checked autocomplete="off">
@@ -405,7 +405,7 @@
     let branchProducts = [];
     let basket = [];
 
-    // ── DP Optimal Price Calculation ──
+    // ── Proportional Optimal Price Calculation (Solution 2) ──
     function calculateOptimalPrice(items, tiers) {
         let n = items.length;
         if (n === 0) return 0;
@@ -420,9 +420,22 @@
         }
         
         if (achievedTier) {
-            let unitPrice = achievedTier.price / achievedTier.quantity;
-            let comboTotal = n * unitPrice;
+            let tierQty = achievedTier.quantity;
+            let tierPrice = achievedTier.price;
+            
+            let sortedPrices = [...items].sort((a, b) => b - a);
+            let tierMilestoneRegular = 0;
+            for (let i = 0; i < tierQty && i < sortedPrices.length; i++) {
+                tierMilestoneRegular += sortedPrices[i];
+            }
+            
+            let discountRatio = 1.0;
+            if (tierMilestoneRegular > 0) {
+                discountRatio = Math.min(1.0, tierPrice / tierMilestoneRegular);
+            }
+            
             let regularTotal = items.reduce((sum, p) => sum + p, 0);
+            let comboTotal = regularTotal * discountRatio;
             return Math.min(comboTotal, regularTotal);
         } else {
             return items.reduce((sum, p) => sum + p, 0);

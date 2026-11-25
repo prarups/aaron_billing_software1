@@ -44,6 +44,8 @@
     }
     .num-received { background: #dcfce7; color: #166534; }
     .num-sold { background: #fee2e2; color: #991b1b; }
+    .num-sold-pct { background: #eff6ff; color: #1d4ed8; }
+    .num-sold-pct-100 { background: #dcfce7; color: #15803d; }
     .num-damaged { background: #fef3c7; color: #92400e; }
 
     /* Mobile card view */
@@ -294,7 +296,7 @@
         <table class="table align-middle mb-0 table-compact">
             <thead>
                 <tr class="border-bottom text-center">
-                    <th class="ps-3 text-start" style="width: 24%;">Product Name</th>
+                    <th class="ps-3 text-start" style="width: 22%;">Product Name</th>
                     <th style="width: 10%;">Barcode</th>
                     <th style="width: 5%;">Price</th>
                     <th style="width: 4%; background: #f8fafc;">Op</th>
@@ -304,10 +306,11 @@
                     <th style="width: 4%; background: #f8fafc;">Dmg</th>
                     <th style="width: 5%; background: #f8fafc;">Ret Dmg</th>
                     <th style="width: 4%; background: #f8fafc;">Cl</th>
-                    <th class="border-start" style="width: 8%; background: #f0fdf4 !important; color: #166534 !important;">Rec (All)</th>
-                    <th style="width: 8%; background: #fef2f2 !important; color: #991b1b !important;">Sold (All)</th>
-                    <th style="width: 8%; background: #fffbeb !important; color: #92400e !important;">Dmg (All)</th>
-                    <th style="width: 5%;"></th>
+                    <th class="border-start" style="width: 7%; background: #f0fdf4 !important; color: #166534 !important;">Rec (All)</th>
+                    <th style="width: 7%; background: #fef2f2 !important; color: #991b1b !important;">Sold (All)</th>
+                    <th style="width: 7%; background: #eff6ff !important; color: #1e40af !important;">Sold %</th>
+                    <th style="width: 7%; background: #fffbeb !important; color: #92400e !important;">Dmg (All)</th>
+                    <th style="width: 4%;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -337,6 +340,15 @@
                     </td>
                     <td class="border-start"><span class="stock-num num-received">{{ stock_info.rec }}</span></td>
                     <td><span class="stock-num num-sold">{{ stock_info.all_time_out }}</span></td>
+                    <td>
+                        {% if stock_info.sold_pct >= 100 %}
+                        <span class="stock-num num-sold-pct-100">100%</span>
+                        {% elif stock_info.sold_pct > 0 %}
+                        <span class="stock-num num-sold-pct">{{ stock_info.sold_pct|floatformat:"-1" }}%</span>
+                        {% else %}
+                        <span class="text-muted text-xxs font-monospace">0%</span>
+                        {% endif %}
+                    </td>
                     <td><span class="stock-num {% if stock_info.all_time_dmg > 0 %}num-damaged{% endif %}">{{ stock_info.all_time_dmg }}</span></td>
                     <td>
                         {% if stock_info.reg_id %}
@@ -349,7 +361,7 @@
                 {% endfor %}
                 {% empty %}
                 <tr>
-                    <td colspan="14" class="text-center py-4 text-muted">
+                    <td colspan="15" class="text-center py-4 text-muted">
                         No products found in the registry.
                     </td>
                 </tr>
@@ -461,16 +473,22 @@
         </div>
         
         <!-- All-Time Movement -->
-        <div class="row g-2 text-center mb-2 mt-1">
-            <div class="col-4">
+        <div class="row g-1 text-center mb-2 mt-1">
+            <div class="col-3">
                 <div class="stock-card-label" style="font-size: 0.55rem;">Rec (All)</div>
                 <div class="stock-card-value text-success" style="font-size: 0.8rem;">{{ stock_info.rec }}</div>
             </div>
-            <div class="col-4">
+            <div class="col-3">
                 <div class="stock-card-label" style="font-size: 0.55rem;">Sold (All)</div>
                 <div class="stock-card-value text-danger" style="font-size: 0.8rem;">{{ stock_info.all_time_out }}</div>
             </div>
-            <div class="col-4">
+            <div class="col-3">
+                <div class="stock-card-label" style="font-size: 0.55rem;">Sold %</div>
+                <div class="stock-card-value text-primary fw-bold" style="font-size: 0.8rem;">
+                    {% if stock_info.sold_pct >= 100 %}100%{% elif stock_info.sold_pct > 0 %}{{ stock_info.sold_pct|floatformat:"-1" }}%{% else %}0%{% endif %}
+                </div>
+            </div>
+            <div class="col-3">
                 <div class="stock-card-label" style="font-size: 0.55rem;">Dmg (All)</div>
                 <div class="stock-card-value {% if stock_info.all_time_dmg > 0 %}text-warning{% else %}text-muted{% endif %}" style="font-size: 0.8rem;">{{ stock_info.all_time_dmg }}</div>
             </div>

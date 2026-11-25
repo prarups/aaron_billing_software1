@@ -43,13 +43,14 @@ def pos_index(request):
             tiers = [{'quantity': t.quantity, 'price': int(t.price)} for t in grp.tiers.all()]
             if not tiers:
                 continue
+            products_all = list(grp.products.all())
             combo_groups_data.append({
                 'id': grp.id,
                 'combo_id': grp.combo_id,
                 'name': grp.name,
                 'tiers': tiers,
-                'product_ids': [str(p.id) for p in grp.products.all()],
-                'barcodes': list(grp.products.values_list('barcode', flat=True)),
+                'product_ids': [str(p.id) for p in products_all],
+                'barcodes': [p.barcode for p in products_all],
             })
     
     return render(request, 'pos/index.html', {
@@ -145,10 +146,7 @@ def process_bill(request):
                 online_amount = int(round(float(data.get('online_amount', 0))))
             except (ValueError, TypeError):
                 online_amount = 0
-            try:
-                retail_price = max(0, int(round(float(data.get('retail_price', 0)))))
-            except (ValueError, TypeError):
-                retail_price = 0
+            retail_price = 0
             
             if not items:
                 return JsonResponse({'error': 'Cart is empty'}, status=400)
@@ -195,7 +193,7 @@ def process_bill(request):
                     bill.payment_method = payment_method
                     bill.cash_amount = cash_amount
                     bill.online_amount = online_amount
-                    bill.retail_price = retail_price
+                    bill.retail_price = 0
 
                 else:
                     # Create a new Bill
@@ -208,7 +206,7 @@ def process_bill(request):
                         payment_method=payment_method,
                         cash_amount=cash_amount,
                         online_amount=online_amount,
-                        retail_price=retail_price
+                        retail_price=0
                     )
                 
                 subtotal_amount = 0
@@ -398,10 +396,9 @@ def process_bill(request):
                 if stock_transactions_to_create:
                     StockTransaction.objects.bulk_create(stock_transactions_to_create)
                 
-                # Compute total amount by rounding each component (subtotal, retail) like the UI does
+                # Compute total amount by rounding subtotal like the UI does
                 subtotal_rounded = Decimal(subtotal_amount).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
-                retail_rounded   = Decimal(bill.retail_price).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
-                total_amount = int(subtotal_rounded + retail_rounded)
+                total_amount = int(subtotal_rounded)
                 # Ensure non‑negative total
                 if total_amount < 0:
                     total_amount = 0
@@ -519,7 +516,7 @@ def edit_bill_back(request, bill_id):
         'customer_name': bill.customer_name or '',
         'customer_phone': bill.customer_phone or '',
         'payment_method': bill.payment_method,
-        'retail_price': int(bill.retail_price),
+        'retail_price': 0,
         'cash_amount': int(bill.cash_amount),
         'online_amount': int(bill.online_amount),
     }
@@ -801,10 +798,27 @@ def export_sales_csv(request):
     if not (request.user.is_owner() or request.user.is_manager()):
         return HttpResponse("Unauthorized", status=403)
         
+    accessible_branches = request.user.get_accessible_branches()
+    branch_id = request.GET.get('branch', '')
+    
+    target_branch = None
+    if branch_id and branch_id != 'None':
+        target_branch = accessible_branches.filter(id=branch_id).first()
+    elif not request.user.is_owner() and request.user.active_branch:
+        target_branch = request.user.active_branch
+    elif accessible_branches.count() == 1:
+        target_branch = accessible_branches.first()
+
+    import re
     now = timezone.now()
-    # Format: 2026-03-30_12-47-29
-    timestamp = now.strftime('%Y-%m-%d_%H-%M-%p') # added AM/PM for better clarity if user prefers
-    filename = f"sales_report_{timestamp}.csv"
+    timestamp = now.strftime('%Y-%m-%d_%H-%M-%p')
+    if target_branch:
+        safe_b_name = re.sub(r'[\s\W]+', '_', target_branch.name).strip('_')
+        b_code = str(target_branch.code) if target_branch.code else ''
+        b_code_str = f"_{b_code}" if b_code else ''
+        filename = f"Sales_Report_{safe_b_name}{b_code_str}_{timestamp}.csv"
+    else:
+        filename = f"Sales_Report_All_Branches_{timestamp}.csv"
     
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -813,7 +827,6 @@ def export_sales_csv(request):
     writer.writerow(['Invoice Number', 'Branch Name', 'Branch Code', 'Staff', 'Customer', 'Phone', 'Original Total', 'Retail Price', 'Cash', 'Online', 'Payment Method', 'Purchased Items', 'Total Quantity', 'HSN Codes', 'Return Reason', 'Returned Items', 'Replacement Items', 'Exchange Pay Difference', 'Date & Time'])
     
     # Build base queryset with prefetched relations to avoid N+1 queries
-    accessible_branches = request.user.get_accessible_branches()
     bills = Bill.objects.filter(branch__in=accessible_branches).order_by('-created_at').select_related('branch', 'staff').prefetch_related(
         'items__product',
         'return_requests__replacement_product',
@@ -823,7 +836,6 @@ def export_sales_csv(request):
     q = request.GET.get('q', '')
     start_date = request.GET.get('start_date', '')
     end_date = request.GET.get('end_date', '')
-    branch_id = request.GET.get('branch', '')
     payment_method = request.GET.get('payment_method', '')
 
     if q:
@@ -959,7 +971,26 @@ def export_gst_mis_csv(request):
     if not (request.user.is_owner() or request.user.is_manager()):
         return HttpResponse("Unauthorized", status=403)
         
-    filename = "monthlygstmis_to_date.csv"
+    accessible_branches = request.user.get_accessible_branches()
+    branch_id = request.GET.get('branch', '')
+    
+    target_branch = None
+    if branch_id and branch_id != 'None':
+        target_branch = accessible_branches.filter(id=branch_id).first()
+    elif not request.user.is_owner() and request.user.active_branch:
+        target_branch = request.user.active_branch
+    elif accessible_branches.count() == 1:
+        target_branch = accessible_branches.first()
+
+    import re
+    now_str = timezone.now().strftime("%Y-%m-%d")
+    if target_branch:
+        safe_b_name = re.sub(r'[\s\W]+', '_', target_branch.name).strip('_')
+        b_code = str(target_branch.code) if target_branch.code else ''
+        b_code_str = f"_{b_code}" if b_code else ''
+        filename = f"GST_MIS_{safe_b_name}{b_code_str}_{now_str}.csv"
+    else:
+        filename = f"GST_MIS_All_Branches_{now_str}.csv"
     
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -968,13 +999,11 @@ def export_gst_mis_csv(request):
     writer.writerow(['Date', 'Invoice Number', 'Branch Name', 'Branch Code', 'Total Quantity', 'HSN Codes', 'Total Amount'])
     
     # Build base queryset
-    accessible_branches = request.user.get_accessible_branches()
     bills = Bill.objects.filter(branch__in=accessible_branches).order_by('-created_at').select_related('branch', 'staff').prefetch_related('items__product')
     
     q = request.GET.get('q', '')
     start_date = request.GET.get('start_date', '')
     end_date = request.GET.get('end_date', '')
-    branch_id = request.GET.get('branch', '')
     payment_method = request.GET.get('payment_method', '')
 
     if q:

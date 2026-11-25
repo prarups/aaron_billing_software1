@@ -1483,6 +1483,29 @@ class ComboForcedMilestoneTestCase(TestCase):
         optimal = calculate_optimal_combo_price(prices, tiers)
         self.assertEqual(optimal, 1196.0)
 
+    def test_same_price_combo_extra_item_solution_2(self):
+        from core.combo_views import calculate_optimal_combo_price
+        # 3 shirts at 400 each for 1000 tier -> 1000. 4th shirt at 400 -> 1333.33
+        tiers = [(3, 1000)]
+        optimal_3 = calculate_optimal_combo_price([400, 400, 400], tiers)
+        self.assertAlmostEqual(optimal_3, 1000.0, places=1)
+        optimal_4 = calculate_optimal_combo_price([400, 400, 400, 400], tiers)
+        self.assertAlmostEqual(optimal_4, 1333.33, places=1)
+
+    def test_mixed_price_low_high_combo_extra_item_solution_2(self):
+        from core.combo_views import calculate_optimal_combo_price
+        # Mix of High price (800) and Low price (200), combo tier (3, 1000)
+        # Top 3 items: 800 + 200 + 200 = 1200 regular. Discount ratio = 1000/1200 = 0.8333.
+        # Adding a 4th item of 200 (low price):
+        # Regular total: 800 + 200 + 200 + 200 = 1400.
+        # Combo total = 1400 * (1000/1200) = 1166.67.
+        # Crucial check: 4th item does NOT get flat 333 average, but gets 166.67!
+        tiers = [(3, 1000)]
+        optimal_3 = calculate_optimal_combo_price([800, 200, 200], tiers)
+        self.assertAlmostEqual(optimal_3, 1000.0, places=1)
+        optimal_4 = calculate_optimal_combo_price([800, 200, 200, 200], tiers)
+        self.assertAlmostEqual(optimal_4, 1166.67, places=1)
+
 
 class ComboBarcodeOverlapValidationTestCase(TestCase):
     def setUp(self):

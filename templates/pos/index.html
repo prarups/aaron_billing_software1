@@ -475,7 +475,7 @@
             <div class="col-6">
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-white border-0 rounded-pill-sm me-1" style="padding: 0.2rem 0.35rem;"><i class="bi bi-whatsapp"></i></span>
-                    <input type="text" name="customer_phone" id="customer-phone" class="form-control form-control-sm rounded-pill-sm bg-white border-0 px-2" placeholder="Phone">
+                    <input type="tel" name="customer_phone" id="customer-phone" class="form-control form-control-sm rounded-pill-sm bg-white border-0 px-2" placeholder="Phone" inputmode="numeric" maxlength="10" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10);" onkeypress="return /[0-9]/.test(event.key);">
                 </div>
             </div>
         </div>
@@ -522,25 +522,6 @@
                             </div>
                         </div>
                         <div id="split-warning" class="x-small text-danger mt-1.5 d-none fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Sum must match total!</div>
-                    </div>
-                    
-                    <div class="glass-card p-2 mb-1.5 border-0 shadow-sm" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(168, 85, 247, 0.08) 100%); border-left: 3.5px solid #6366f1 !important; border-radius: 10px;">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div>
-                                <label class="form-label x-small text-uppercase fw-bold mb-0 d-block" style="font-size: 0.72rem; color: #4338ca;"><i class="bi bi-tag-fill me-1 text-primary"></i>Retail Price (₹)</label>
-                                <!-- Split mode destination selector -->
-                                <div id="retail-split-selector" class="d-none mt-1 align-items-center gap-1 animate-fade-in">
-                                    <span class="text-muted" style="font-size: 0.62rem; font-weight: 600;">Add into:</span>
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <input type="radio" class="btn-check" name="retail_target" id="retail-to-cash" value="cash" checked onchange="onRetailTargetChange('cash')">
-                                        <label class="btn btn-xs py-0 px-2 rounded-pill-start fw-bold" for="retail-to-cash" id="lbl-retail-cash" style="font-size: 0.62rem;">💵 Cash</label>
-                                        <input type="radio" class="btn-check" name="retail_target" id="retail-to-online" value="online" onchange="onRetailTargetChange('online')">
-                                        <label class="btn btn-xs py-0 px-2 rounded-pill-end fw-bold" for="retail-to-online" id="lbl-retail-online" style="font-size: 0.62rem;">📱 Online</label>
-                                    </div>
-                                </div>
-                            </div>
-                            <input type="number" id="retail-price" class="form-control form-control-sm border border-primary-subtle px-2.5 rounded-pill bg-white text-primary fw-bold text-xs text-end shadow-sm" placeholder="0" min="0" oninput="if(this.value < 0) this.value = 0; handleRetailPriceInput()" style="max-width: 110px; height: 28px;">
-                        </div>
                     </div>
                     
                     <!-- Combo tracker placeholder moved to top -->
@@ -599,7 +580,7 @@
         }
     });
 
-    // DP optimal combo pricing (same algorithm as backend)
+    // Proportional optimal combo pricing (Solution 2 - same algorithm as backend)
     function calculateOptimalPrice(prices, tiers) {
         let n = prices.length;
         if (n === 0) return 0;
@@ -617,9 +598,23 @@
         }
         
         if (achievedTier) {
-            let unitPrice = achievedTier.price / achievedTier.quantity;
-            let comboTotal = n * unitPrice;
+            let tierQty = achievedTier.quantity;
+            let tierPrice = achievedTier.price;
+            
+            // Sort prices descending to find regular total of milestone items
+            let sortedPrices = [...prices].sort((a, b) => b - a);
+            let tierMilestoneRegular = 0;
+            for (let i = 0; i < tierQty && i < sortedPrices.length; i++) {
+                tierMilestoneRegular += sortedPrices[i];
+            }
+            
+            let discountRatio = 1.0;
+            if (tierMilestoneRegular > 0) {
+                discountRatio = Math.min(1.0, tierPrice / tierMilestoneRegular);
+            }
+            
             let regularTotal = prices.reduce((sum, p) => sum + p, 0);
+            let comboTotal = regularTotal * discountRatio;
             return Math.min(comboTotal, regularTotal);
         } else {
             // Fallback to sum of base prices
@@ -774,8 +769,7 @@
 
     function getCartFinalTotal() {
         const totals = getCartTotals();
-        const retailPrice = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price')?.value)) || 0);
-        let total = Math.max(0, totals.discountedSubtotal + retailPrice);
+        let total = Math.max(0, totals.discountedSubtotal);
         if (total === 0 && totals.originalSubtotal > 0) {
             total = Math.round(totals.originalSubtotal);
         }
@@ -1144,91 +1138,18 @@ if (isScannerOpen) {
         }
     });
 
-    // Retail Price Split Target & Quick Controls
-    let retailSplitTarget = 'cash'; // 'cash' or 'online'
-    let lastRetailPrice = 0;
-
-    function onRetailTargetChange(target) {
-        const prevTarget = retailSplitTarget;
-        retailSplitTarget = target;
-        updateRetailTargetStyles();
-        
-        // If in split mode and retail price > 0, transfer the retail price difference
-        const currentRetail = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price')?.value)) || 0);
-        if (currentRetail > 0 && document.getElementById('pay-split')?.checked) {
-            const cashInput = document.getElementById('split-cash');
-            const onlineInput = document.getElementById('split-online');
-            let cash = Math.round(parseFloat(cashInput.value)) || 0;
-            let online = Math.round(parseFloat(onlineInput.value)) || 0;
-            
-            if (target === 'cash' && prevTarget === 'online') {
-                cash = cash + currentRetail;
-                online = Math.max(0, online - currentRetail);
-            } else if (target === 'online' && prevTarget === 'cash') {
-                online = online + currentRetail;
-                cash = Math.max(0, cash - currentRetail);
-            }
-            cashInput.value = cash;
-            onlineInput.value = online;
-            calculateSplit('transfer');
-        }
-    }
-
-    function updateRetailTargetStyles() {
-        const cashLbl = document.getElementById('lbl-retail-cash');
-        const onlineLbl = document.getElementById('lbl-retail-online');
-        if (!cashLbl || !onlineLbl) return;
-        if (retailSplitTarget === 'cash') {
-            cashLbl.className = 'btn btn-xs py-0 px-2 rounded-pill-start fw-bold bg-success text-white border-success';
-            onlineLbl.className = 'btn btn-xs py-0 px-2 rounded-pill-end fw-bold bg-white text-muted border';
-        } else {
-            cashLbl.className = 'btn btn-xs py-0 px-2 rounded-pill-start fw-bold bg-white text-muted border';
-            onlineLbl.className = 'btn btn-xs py-0 px-2 rounded-pill-end fw-bold bg-primary text-white border-primary';
-        }
-    }
-
-    function handleRetailPriceInput() {
-        const currentRetail = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price')?.value)) || 0);
-        const retailDiff = currentRetail - lastRetailPrice;
-        lastRetailPrice = currentRetail;
-
-        // If split is active and retail price changed, allocate the difference to the selected target
-        if (document.getElementById('pay-split')?.checked && retailDiff !== 0) {
-            const cashInput = document.getElementById('split-cash');
-            const onlineInput = document.getElementById('split-online');
-            if (retailSplitTarget === 'cash') {
-                let cash = Math.round(parseFloat(cashInput.value)) || 0;
-                cashInput.value = Math.max(0, cash + retailDiff);
-            } else {
-                let online = Math.round(parseFloat(onlineInput.value)) || 0;
-                onlineInput.value = Math.max(0, online + retailDiff);
-            }
-        }
-        renderCart();
-    }
-
     // Payment Method Toggle
     document.querySelectorAll('input[name="payment_method"]').forEach(radio => {
         radio.addEventListener('change', (e) => {
             const splitInputs = document.getElementById('split-inputs');
-            const retailSelector = document.getElementById('retail-split-selector');
             if (e.target.value === 'split') {
                 splitInputs.classList.remove('d-none');
-                if (retailSelector) {
-                    retailSelector.classList.remove('d-none');
-                    retailSelector.classList.add('d-flex');
-                }
                 const total = getCartFinalTotal();
                 document.getElementById('split-cash').value = total;
                 document.getElementById('split-online').value = 0;
-                updateRetailTargetStyles();
                 calculateSplit(null);
             } else {
                 splitInputs.classList.add('d-none');
-                if (retailSelector) {
-                    retailSelector.classList.add('d-none');
-                    retailSelector.classList.remove('d-flex');
-                }
             }
         });
     });
@@ -1249,17 +1170,12 @@ if (isScannerOpen) {
         } else if (source === 'online') {
             cash = Math.max(0, total - online);
             cashInput.value = cash;
-        } else if (source !== 'transfer') {
+        } else {
             const currentSum = cash + online;
             if (currentSum !== total) {
                 const diff = total - currentSum;
-                if (retailSplitTarget === 'cash') {
-                    cash = Math.max(0, cash + diff);
-                    cashInput.value = cash;
-                } else {
-                    online = Math.max(0, online + diff);
-                    onlineInput.value = online;
-                }
+                cash = Math.max(0, cash + diff);
+                cashInput.value = cash;
             }
         }
 
@@ -1290,7 +1206,6 @@ if (isScannerOpen) {
         
         let cash_amount = 0;
         let online_amount = 0;
-        const retailPrice = Math.max(0, Math.round(parseFloat(document.getElementById('retail-price').value)) || 0);
         const total = getCartFinalTotal();
         
         if (paymentMethod === 'cash') {
@@ -1323,7 +1238,7 @@ if (isScannerOpen) {
                 payment_method: paymentMethod,
                 cash_amount: cash_amount,
                 online_amount: online_amount,
-                retail_price: retailPrice,
+                retail_price: 0,
                 editing_bill_id: editingBillId,
 
             })
@@ -1357,7 +1272,6 @@ if (isScannerOpen) {
             cart = [];
             document.getElementById('customer-name').value = '';
             document.getElementById('customer-phone').value = '';
-            document.getElementById('retail-price').value = '0';
             
             // Reset payment method selection to CASH
             const payCash = document.getElementById('pay-cash');
@@ -1424,9 +1338,6 @@ if (isScannerOpen) {
         // Load customer details
         document.getElementById('customer-name').value = editCartData.customer_name;
         document.getElementById('customer-phone').value = editCartData.customer_phone;
-        
-        // Load retail price
-        document.getElementById('retail-price').value = editCartData.retail_price;
         
         // Load payment method
         const paymentRadio = document.querySelector(`input[name="payment_method"][value="${editCartData.payment_method}"]`);

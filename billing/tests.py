@@ -175,9 +175,9 @@ class MultiProductComboTestCase(TestCase):
 
         # Let's add 3 of p1 and 3 of p2 (total 6 items)
         # Expanded prices: 150, 150, 150, 100, 100, 100
-        # Optimal cost: 5-Combo (400) + 1 single item (p1: 100) = 500
+        # Optimal cost: 5-Combo (400 on 650 milestone) + proportional discount on 6th item
         # Regular total: 3 * 100 + 3 * 150 = 750
-        # Savings: 250
+        # Savings: 288 (bill total: 462)
         payload = {
             'items': [
                 {'id': self.p1.id, 'quantity': 3},
@@ -198,8 +198,8 @@ class MultiProductComboTestCase(TestCase):
         self.assertTrue(data['success'])
 
         bill = Bill.objects.get(id=data['bill_id'])
-        self.assertEqual(bill.total_amount, Decimal('480'))
-        self.assertEqual(bill.total_savings, Decimal('270'))
+        self.assertEqual(bill.total_amount, Decimal('462'))
+        self.assertEqual(bill.total_savings, Decimal('288'))
         self.assertEqual(len(list(bill.applied_combos)), 1)
         self.assertEqual(list(bill.applied_combos)[0].combo_id, self.group.combo_id)
 
@@ -280,8 +280,8 @@ class MultiProductComboTestCase(TestCase):
         import json
         self.client.force_login(self.user)
 
-        # 3 of p1 and 3 of p2 (total 6 items) -> total_amount = 480
-        # Valid split payment matching total: cash_amount=200, online_amount=280
+        # 3 of p1 and 3 of p2 (total 6 items) -> total_amount = 462 under Solution 2
+        # Valid split payment matching total: cash_amount=200, online_amount=262
         payload_valid = {
             'items': [
                 {'id': self.p1.id, 'quantity': 3},
@@ -291,7 +291,7 @@ class MultiProductComboTestCase(TestCase):
             'customer_phone': '1234567890',
             'payment_method': 'split',
             'cash_amount': 200,
-            'online_amount': 280
+            'online_amount': 262
         }
 
         response = self.client.post(
@@ -304,13 +304,13 @@ class MultiProductComboTestCase(TestCase):
         self.assertTrue(data['success'])
 
         bill = Bill.objects.get(id=data['bill_id'])
-        self.assertEqual(bill.total_amount, 480)
+        self.assertEqual(bill.total_amount, 462)
         self.assertEqual(bill.cash_amount, 200)
-        self.assertEqual(bill.online_amount, 280)
+        self.assertEqual(bill.online_amount, 262)
 
-        # Invalid split payment not matching total: cash_amount=200, online_amount=279
+        # Invalid split payment not matching total: cash_amount=200, online_amount=261
         payload_invalid = payload_valid.copy()
-        payload_invalid['online_amount'] = 279
+        payload_invalid['online_amount'] = 261
 
         response_invalid = self.client.post(
             reverse('process_bill'),

@@ -35,6 +35,12 @@
                 <div class="mb-3">
                     <label class="form-label small fw-bold text-muted">Barcode</label>
                     {{ form.barcode }}
+                    <div id="barcode-live-feedback" class="x-small mt-1 fw-bold d-none"></div>
+                    {% if form.barcode.errors %}
+                    <div class="text-danger x-small mt-1 fw-bold error-message">
+                        <i class="bi bi-exclamation-circle-fill me-1"></i>{{ form.barcode.errors.0 }}
+                    </div>
+                    {% endif %}
                     <div class="form-text x-small">Scan or type the barcode for POS</div>
                 </div>
                 <div class="mb-3">
@@ -312,6 +318,54 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (existingErr) existingErr.remove();
                 }
             }
+        });
+    }
+
+    // Live Barcode Uniqueness Checking
+    const barcodeInput = document.getElementById('id_barcode');
+    const barcodeFeedback = document.getElementById('barcode-live-feedback');
+    const saveBtn = document.querySelector('button[type="submit"]');
+    const currentProductId = "{{ form.instance.pk|default:'' }}";
+
+    if (barcodeInput && barcodeFeedback) {
+        let barcodeTimer = null;
+        barcodeInput.addEventListener('input', function() {
+            const val = this.value.trim();
+            if (barcodeTimer) clearTimeout(barcodeTimer);
+            
+            // Clear any server-rendered error
+            const serverErr = barcodeInput.parentElement.querySelector('.error-message');
+            if (serverErr) serverErr.remove();
+
+            if (!val) {
+                barcodeFeedback.classList.add('d-none');
+                barcodeInput.classList.remove('is-invalid', 'is-valid');
+                if (saveBtn) saveBtn.disabled = false;
+                return;
+            }
+
+            barcodeTimer = setTimeout(() => {
+                fetch(`{% url 'check_barcode_ajax' %}?barcode=${encodeURIComponent(val)}&exclude_id=${currentProductId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.exists) {
+                            barcodeInput.classList.add('is-invalid');
+                            barcodeInput.classList.remove('is-valid');
+                            barcodeFeedback.className = 'text-danger x-small mt-1 fw-bold';
+                            barcodeFeedback.innerHTML = `<i class="bi bi-x-circle-fill me-1"></i>${data.message}`;
+                            barcodeFeedback.classList.remove('d-none');
+                            if (saveBtn) saveBtn.disabled = true;
+                        } else {
+                            barcodeInput.classList.remove('is-invalid');
+                            barcodeInput.classList.add('is-valid');
+                            barcodeFeedback.className = 'text-success x-small mt-1 fw-bold';
+                            barcodeFeedback.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>Barcode is available!`;
+                            barcodeFeedback.classList.remove('d-none');
+                            if (saveBtn) saveBtn.disabled = false;
+                        }
+                    })
+                    .catch(err => console.error("Barcode check error:", err));
+            }, 300);
         });
     }
 });

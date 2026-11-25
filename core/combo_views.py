@@ -38,7 +38,7 @@ def calculate_optimal_combo_price(item_prices, tiers_list):
     """
     item_prices: list of floats/Decimals representing base prices of items in the combo.
     tiers_list: list of tuples/dicts with quantity and price, e.g. [(2, 180), (5, 400)]
-    Returns the cost to buy all these items, applying the pro-rated unit price of the highest achieved tier.
+    Returns the cost to buy all these items, applying the proportional discount ratio of the highest achieved tier.
     """
     prices = [float(p) for p in item_prices]
     n = len(prices)
@@ -56,10 +56,18 @@ def calculate_optimal_combo_price(item_prices, tiers_list):
             break
 
     if achieved_tier:
-        qty, tier_price = achieved_tier
-        unit_price = tier_price / qty
-        combo_total = n * unit_price
+        tier_qty, tier_price = achieved_tier
+        # Sort prices descending to find regular total of milestone items
+        sorted_prices = sorted(prices, reverse=True)
+        tier_milestone_regular = sum(sorted_prices[:tier_qty])
+
+        if tier_milestone_regular > 0:
+            discount_ratio = min(1.0, tier_price / tier_milestone_regular)
+        else:
+            discount_ratio = 1.0
+
         regular_total = sum(prices)
+        combo_total = regular_total * discount_ratio
         return min(combo_total, regular_total)
     else:
         return sum(prices)

@@ -46,7 +46,7 @@ class BranchForm(forms.ModelForm):
 
 class ProductForm(forms.ModelForm):
     initial_branch = forms.ModelChoiceField(
-        queryset=Branch.objects.all(),
+        queryset=Branch.objects.all().order_by('code', 'id'),
         required=False,
         empty_label=None,
         label="Branch Location",
@@ -93,8 +93,19 @@ class ProductForm(forms.ModelForm):
     def clean_barcode(self):
         barcode = self.cleaned_data.get('barcode')
         if barcode:
-            return ' '.join(str(barcode).split())
-        return barcode
+            barcode = ' '.join(str(barcode).split())
+            if not barcode:
+                raise forms.ValidationError("Barcode cannot be empty.")
+            qs = Product.objects.filter(barcode__iexact=barcode)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                existing = qs.first()
+                raise forms.ValidationError(
+                    f"A product with barcode '{barcode}' already exists ('{existing.name}'). Barcode must be unique."
+                )
+            return barcode
+        raise forms.ValidationError("Barcode is required.")
 
     def clean(self):
         cleaned_data = super().clean()

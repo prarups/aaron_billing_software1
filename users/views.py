@@ -175,7 +175,8 @@ class OwnerDashboardView(TemplateView):
         context['end_date'] = end_date.strftime('%Y-%m-%d') if end_date else ''
         context['is_filtered'] = is_filtered
 
-        accessible_branches = self.request.user.get_accessible_branches()
+        accessible_branches = list(self.request.user.get_accessible_branches())
+        context['branch_count'] = len(accessible_branches)
         
         # Overall Stats (optimized to fetch all sums in a single query)
         import datetime
@@ -183,143 +184,74 @@ class OwnerDashboardView(TemplateView):
         if is_filtered:
             start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
             end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
-            range_bills = Bill.objects.filter(branch__in=accessible_branches, created_at__range=(start_datetime, end_datetime))
-            
-            aggs = range_bills.aggregate(
-                sales=Sum('total_amount'),
-                cash=Sum('cash_amount'),
-                online=Sum('online_amount')
-            )
-            # Add return exchange payments collected in same period
-            ret_aggs = ReturnRequest.objects.filter(
-                invoice__in=range_bills,
-                status=ReturnRequest.Status.APPROVED
-            ).aggregate(ret_cash=Sum('cash_amount'), ret_online=Sum('online_amount'))
-            context['total_sales_today'] = (aggs['sales'] or 0) + (ret_aggs['ret_cash'] or 0) + (ret_aggs['ret_online'] or 0)
-            context['total_cash_today'] = (aggs['cash'] or 0) + (ret_aggs['ret_cash'] or 0)
-            context['total_online_today'] = (aggs['online'] or 0) + (ret_aggs['ret_online'] or 0)
-            context['transaction_count_today'] = range_bills.count()
+            sold_time_range = (start_datetime, end_datetime)
             context['stats_label'] = f"Sales ({start_date.strftime('%d %b')} - {end_date.strftime('%d %b')})"
             context['trans_label'] = "Transactions (Period)"
         else:
             today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
             today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
-            today_bills = Bill.objects.filter(branch__in=accessible_branches, created_at__range=(today_start, today_end))
-            
-            aggs = today_bills.aggregate(
-                sales=Sum('total_amount'),
-                cash=Sum('cash_amount'),
-                online=Sum('online_amount')
-            )
-            # Add return exchange payments collected today
-            ret_aggs = ReturnRequest.objects.filter(
-                invoice__in=today_bills,
-                status=ReturnRequest.Status.APPROVED
-            ).aggregate(ret_cash=Sum('cash_amount'), ret_online=Sum('online_amount'))
-            context['total_sales_today'] = (aggs['sales'] or 0) + (ret_aggs['ret_cash'] or 0) + (ret_aggs['ret_online'] or 0)
-            context['total_cash_today'] = (aggs['cash'] or 0) + (ret_aggs['ret_cash'] or 0)
-            context['total_online_today'] = (aggs['online'] or 0) + (ret_aggs['ret_online'] or 0)
-            context['transaction_count_today'] = today_bills.count()
+            sold_time_range = (today_start, today_end)
             context['stats_label'] = "Total Sales (Today)"
             context['trans_label'] = "Transactions"
-        context['branch_count'] = accessible_branches.count()
+
+        range_bills = Bill.objects.filter(branch__in=accessible_branches, created_at__range=sold_time_range)
+        aggs = range_bills.aggregate(
+            sales=Sum('total_amount'),
+            cash=Sum('cash_amount'),
+            online=Sum('online_amount'),
+            count=Count('id')
+        )
+        # Add return exchange payments collected in same period
+        ret_aggs = ReturnRequest.objects.filter(
+            invoice__in=range_bills,
+            status=ReturnRequest.Status.APPROVED
+        ).aggregate(ret_cash=Sum('cash_amount'), ret_online=Sum('online_amount'))
+        context['total_sales_today'] = (aggs['sales'] or 0) + (ret_aggs['ret_cash'] or 0) + (ret_aggs['ret_online'] or 0)
+        context['total_cash_today'] = (aggs['cash'] or 0) + (ret_aggs['ret_cash'] or 0)
+        context['total_online_today'] = (aggs['online'] or 0) + (ret_aggs['ret_online'] or 0)
+        context['transaction_count_today'] = aggs['count'] or 0
         context['total_product_count'] = Product.objects.count()
         
         # Low Stock Alerts
         context['low_stock_count'] = ProductRegistry.objects.filter(branch__in=accessible_branches, stock_quantity__lte=F('low_stock_threshold')).count()
         
-        # Stock Summary stats
-        total_current_stock = ProductRegistry.objects.filter(branch__in=accessible_branches).aggregate(Sum('stock_quantity'))['stock_quantity__sum'] or 0
-        if is_filtered:
-            total_items_sold = BillItem.objects.filter(
-                bill__branch__in=accessible_branches,
-                bill__created_at__range=(start_datetime, end_datetime)
-            ).aggregate(Sum('quantity'))['quantity__sum'] or 0
-        else:
-            today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
-            today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
-            total_items_sold = BillItem.objects.filter(
-                bill__branch__in=accessible_branches,
-                bill__created_at__range=(today_start, today_end)
-            ).aggregate(Sum('quantity'))['quantity__sum'] or 0
-            
-        context['total_current_stock'] = total_current_stock
-        context['total_items_sold'] = total_items_sold
+        # Stock Summary stats & branch-wise pre-aggregation
+        stock_by_branch_data = list(ProductRegistry.objects.filter(
+            branch__in=accessible_branches
+        ).values('branch_id').annotate(
+            total_stock=Sum('stock_quantity'),
+            product_count=Count('product_id', distinct=True)
+        ))
+        stock_by_branch = {item['branch_id']: item for item in stock_by_branch_data}
+
+        sold_by_branch_data = list(BillItem.objects.filter(
+            bill__branch__in=accessible_branches,
+            bill__created_at__range=sold_time_range
+        ).values('bill__branch_id').annotate(
+            total_sold=Sum('quantity')
+        ))
+        sold_by_branch = {item['bill__branch_id']: item['total_sold'] or 0 for item in sold_by_branch_data}
+
+        context['total_current_stock'] = sum((item['total_stock'] or 0) for item in stock_by_branch_data)
+        context['total_items_sold'] = sum(sold_by_branch.values())
         
-        # Branch performance - optimized with Subqueries to avoid cartesian join duplication
-        from django.db.models import OuterRef, Subquery
-        from django.db.models.functions import Coalesce
-        
-        # Subquery for active staff count
-        staff_subquery = User.objects.filter(
-            branches=OuterRef('pk'),
+        # Branch performance - aggregated in batch (avoids correlated subqueries per branch)
+        branch_sales_data = list(range_bills.values('branch_id').annotate(
+            total_sales=Sum('total_amount'),
+            total_cash=Sum('cash_amount'),
+            total_online=Sum('online_amount')
+        ))
+        branch_sales_map = {item['branch_id']: item for item in branch_sales_data}
+
+        branch_staff_data = list(User.objects.filter(
+            branches__in=accessible_branches,
             is_active=True
-        ).order_by().values('branches').annotate(cnt=Count('id')).values('cnt')
+        ).values('branches').annotate(cnt=Count('id')))
+        branch_staff_map = {item['branches']: item['cnt'] for item in branch_staff_data}
 
-        # Subquery for sales (today or period range)
-        import datetime
-        if is_filtered:
-            start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
-            end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
-            sales_subquery = Bill.objects.filter(
-                branch=OuterRef('pk'),
-                created_at__range=(start_datetime, end_datetime)
-            ).order_by().values('branch').annotate(total=Sum('total_amount')).values('total')
-            
-            cash_subquery = Bill.objects.filter(
-                branch=OuterRef('pk'),
-                created_at__range=(start_datetime, end_datetime)
-            ).order_by().values('branch').annotate(total=Sum('cash_amount')).values('total')
-            
-            online_subquery = Bill.objects.filter(
-                branch=OuterRef('pk'),
-                created_at__range=(start_datetime, end_datetime)
-            ).order_by().values('branch').annotate(total=Sum('online_amount')).values('total')
-        else:
-            today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
-            today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
-            sales_subquery = Bill.objects.filter(
-                branch=OuterRef('pk'),
-                created_at__range=(today_start, today_end)
-            ).order_by().values('branch').annotate(total=Sum('total_amount')).values('total')
-            
-            cash_subquery = Bill.objects.filter(
-                branch=OuterRef('pk'),
-                created_at__range=(today_start, today_end)
-            ).order_by().values('branch').annotate(total=Sum('cash_amount')).values('total')
-            
-            online_subquery = Bill.objects.filter(
-                branch=OuterRef('pk'),
-                created_at__range=(today_start, today_end)
-            ).order_by().values('branch').annotate(total=Sum('online_amount')).values('total')
-
-        branches = accessible_branches.annotate(
-            today_sales=Coalesce(
-                Subquery(sales_subquery),
-                0,
-                output_field=models.DecimalField()
-            ),
-            today_cash=Coalesce(
-                Subquery(cash_subquery),
-                0,
-                output_field=models.DecimalField()
-            ),
-            today_online=Coalesce(
-                Subquery(online_subquery),
-                0,
-                output_field=models.DecimalField()
-            ),
-            active_staff_count=Coalesce(
-                Subquery(staff_subquery),
-                0,
-                output_field=models.IntegerField()
-            )
-        ).order_by('-today_sales', 'name')
-        
         # Attach current month goal and actual monthly sales
         today = timezone.now().date()
         current_month_start = today.replace(day=1)
-        import datetime
         import calendar
         current_month_start_dt = timezone.make_aware(datetime.datetime(today.year, today.month, 1, 0, 0, 0))
         _, last_day = calendar.monthrange(today.year, today.month)
@@ -333,8 +265,18 @@ class OwnerDashboardView(TemplateView):
             .annotate(total=Sum('total_amount'))
         }
 
-        branches_list = list(branches)
+        branches_list = list(accessible_branches)
         for b in branches_list:
+            bs = branch_sales_map.get(b.id, {})
+            b.today_sales = bs.get('total_sales') or 0
+            b.today_cash = bs.get('total_cash') or 0
+            b.today_online = bs.get('total_online') or 0
+            b.active_staff_count = branch_staff_map.get(b.id, 0)
+
+            stock_info = stock_by_branch.get(b.id, {})
+            b.current_stock_qty = int(stock_info.get('total_stock') or 0)
+            b.current_product_count = int(stock_info.get('product_count') or 0)
+            b.items_sold_qty = int(sold_by_branch.get(b.id, 0))
             b.current_goal = int(goals_dict.get(b.id, 0))
             b.current_month_sales = int(monthly_sales_dict.get(b.id, 0))
             if b.current_goal > 0:
@@ -343,9 +285,12 @@ class OwnerDashboardView(TemplateView):
             else:
                 b.current_goal_percent = 0
                 b.current_goal_percent_exact = 0
+
+        # Sort branches: highest sales first, then by name
+        branches_list.sort(key=lambda b: (-b.today_sales, b.name))
         context['branches'] = branches_list
         
-        # Filter and sort branches_by_code in memory to avoid running the heavy Subquery annotations query twice
+        # Filter and sort branches_by_code in memory
         branch_search = self.request.GET.get('branch_search', '').strip()
         if branch_search:
             search_lower = branch_search.lower()
@@ -359,72 +304,17 @@ class OwnerDashboardView(TemplateView):
         else:
             branches_by_code_list = list(branches_list)
             
-        # Sort in memory by code, fallback to ID
         branches_by_code_list.sort(key=lambda b: (b.code or 0, b.id))
-        
-        for b in branches_by_code_list:
-            b.current_goal = int(goals_dict.get(b.id, 0))
-            b.current_month_sales = int(monthly_sales_dict.get(b.id, 0))
-            if b.current_goal > 0:
-                b.current_goal_percent = min(100, int((b.current_month_sales * 100) / b.current_goal))
-                b.current_goal_percent_exact = round((b.current_month_sales * 100) / b.current_goal, 1)
-            else:
-                b.current_goal_percent = 0
-                b.current_goal_percent_exact = 0
         context['branches_by_code'] = branches_by_code_list
         context['branch_search'] = branch_search
         
-        context['recent_bills'] = Bill.objects.filter(branch__in=accessible_branches).select_related('branch', 'staff').order_by('-created_at')[:5]
-        
-        # Manager employee performance data (filtered directly at DB level for instant load)
-        managers = list(User.objects.filter(role__in=['manager', 'branch_manager', 'regional_manager']).prefetch_related('branches'))
-        manager_data = []
-        import datetime
-        today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
-        today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
-        # Pre-calculate sales for all staff for today to avoid N+1 queries
-        sales_data = Bill.objects.filter(created_at__range=(today_start, today_end)).values('staff').annotate(total=Sum('total_amount'))
-        staff_sales_dict = {item['staff']: item['total'] or 0 for item in sales_data}
-
-        # Prefetch sales_staff to avoid N+1 database hits in managers loop
-        managed_branch_ids = set()
-        for mgr in managers:
-            for b in mgr.branches.all():
-                managed_branch_ids.add(b.id)
-                
-        all_sales_staff = User.objects.filter(
-            branches__in=managed_branch_ids,
-            is_active=True
-        ).prefetch_related('branches').distinct()
-        
-        # Map branch_id -> list of staff
-        branch_staff_map = {}
-        for staff in all_sales_staff:
-            for b in staff.branches.all():
-                branch_staff_map.setdefault(b.id, []).append(staff)
-
-        for mgr in managers:
-            staff_seen = set()
-            staff_info = []
-            for b in mgr.branches.all():
-                for staff in branch_staff_map.get(b.id, []):
-                    if staff.id not in staff_seen:
-                        staff_seen.add(staff.id)
-                        daily_sales = staff_sales_dict.get(staff.id, 0)
-                        staff_info.append({
-                            'employee_id': staff.employee_id,
-                            'date_of_joining': staff.date_of_joining,
-                            'sales': daily_sales,
-                        })
-            manager_data.append({
-                'manager': mgr,
-                'staff': staff_info,
-            })
-        context['manager_performance'] = manager_data
-
-        # Forms for creating new entries
-        context['branch_form'] = BranchForm()
-        context['staff_form'] = StaffForm()
+        # Recent bills: prefetch items and products to eliminate 56 N+1 queries in template render
+        context['recent_bills'] = list(
+            Bill.objects.filter(branch__in=accessible_branches)
+            .select_related('branch', 'staff')
+            .prefetch_related('items__product')
+            .order_by('-created_at')[:5]
+        )
 
         return context
 
@@ -1032,7 +922,7 @@ def toggle_attendance_access(request, staff_id):
 
 @login_required
 def export_dashboard_sales_csv(request):
-    """Exports date-wise and branch-wise total sales amount for the specified date range.
+    """Exports date-wise and branch-wise total sales amount, items sold, and current stock for the specified date range.
     Only owners and managers are authorized.
     """
     if request.user.role == 'sales_staff':
@@ -1041,6 +931,7 @@ def export_dashboard_sales_csv(request):
         
     from_date_str = request.GET.get('from_date')
     to_date_str = request.GET.get('to_date')
+    branch_id = request.GET.get('branch_id')
     
     today = timezone.now().date()
     try:
@@ -1054,19 +945,59 @@ def export_dashboard_sales_csv(request):
     from django.http import HttpResponse
     from django.db.models.functions import TruncDate
     
-    filename = f"branch_sales_report_{start_date}_to_{end_date}.csv"
+    accessible_branches = request.user.get_accessible_branches() if hasattr(request.user, 'get_accessible_branches') else Branch.objects.all()
+    if branch_id and branch_id != 'None':
+        accessible_branches = accessible_branches.filter(id=branch_id)
+        
+    if accessible_branches.count() == 1:
+        target_b = accessible_branches.first()
+        import re
+        safe_b_name = re.sub(r'[^a-zA-Z0-9_-]', '_', target_b.name)
+        b_code = str(target_b.code) if target_b.code else ''
+        b_code_str = f"_{b_code}" if b_code else ''
+        filename = f"Branch_Performance_{safe_b_name}{b_code_str}_{start_date}_to_{end_date}.csv"
+    else:
+        filename = f"Branch_Performance_All_Branches_{start_date}_to_{end_date}.csv"
     
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     
     writer = csv.writer(response)
-    writer.writerow(['Date', 'Branch Code', 'Branch Name', 'Location', 'Total Sales (INR)', 'Cash Sales (INR)', 'Online Sales (INR)'])
+    writer.writerow([
+        'Date', 'Branch Code', 'Branch Name', 'Location', 
+        'Total Sales (INR)', 'Cash Sales (INR)', 'Online Sales (INR)',
+        'Items Sold (Qty)', 'Current Stock (Qty)', 'Available Products Count'
+    ])
     
     # Query date-wise and branch-wise total sales
     import datetime
     start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
     end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
+
+    # 1. Fetch current stock and products count per branch in 1 bulk query
+    stock_by_branch_data = ProductRegistry.objects.filter(
+        branch__in=accessible_branches
+    ).values('branch_id').annotate(
+        total_stock=Sum('stock_quantity'),
+        product_count=Count('product_id', distinct=True)
+    )
+    stock_by_branch = {item['branch_id']: item for item in stock_by_branch_data}
+
+    # 2. Fetch items sold per (date, branch) in 1 bulk query
+    sold_data = BillItem.objects.filter(
+        bill__branch__in=accessible_branches,
+        bill__created_at__range=(start_datetime, end_datetime)
+    ).annotate(
+        date=TruncDate('bill__created_at')
+    ).values(
+        'date', 'bill__branch_id'
+    ).annotate(
+        total_qty_sold=Sum('quantity')
+    )
+    sold_by_date_branch = {(item['date'], item['bill__branch_id']): item['total_qty_sold'] or 0 for item in sold_data}
+
     sales_data = Bill.objects.filter(
+        branch__in=accessible_branches,
         created_at__range=(start_datetime, end_datetime)
     ).annotate(
         date=TruncDate('created_at')
@@ -1078,16 +1009,44 @@ def export_dashboard_sales_csv(request):
         online_sales=Sum('online_amount')
     ).order_by('date', 'branch__name')
     
-    for row in sales_data:
-        writer.writerow([
-            row['date'].strftime('%Y-%m-%d') if row['date'] else '',
-            row['branch__code'] or '',
-            row['branch__name'] or '',
-            row['branch__location'] or '',
-            int(row['total_sales']) if row['total_sales'] is not None else 0,
-            int(row['cash_sales']) if row['cash_sales'] is not None else 0,
-            int(row['online_sales']) if row['online_sales'] is not None else 0
-        ])
+    if sales_data.exists():
+        for row in sales_data:
+            b_id = row['branch__id']
+            row_date = row['date']
+            qty_sold = sold_by_date_branch.get((row_date, b_id), 0)
+            stock_info = stock_by_branch.get(b_id, {})
+            current_stock = stock_info.get('total_stock', 0) or 0
+            prod_count = stock_info.get('product_count', 0) or 0
+            
+            writer.writerow([
+                row['date'].strftime('%Y-%m-%d') if row['date'] else '',
+                row['branch__code'] or '',
+                row['branch__name'] or '',
+                row['branch__location'] or '',
+                int(row['total_sales']) if row['total_sales'] is not None else 0,
+                int(row['cash_sales']) if row['cash_sales'] is not None else 0,
+                int(row['online_sales']) if row['online_sales'] is not None else 0,
+                int(qty_sold),
+                int(current_stock),
+                int(prod_count)
+            ])
+    else:
+        for b in accessible_branches:
+            stock_info = stock_by_branch.get(b.id, {})
+            current_stock = stock_info.get('total_stock', 0) or 0
+            prod_count = stock_info.get('product_count', 0) or 0
+            writer.writerow([
+                start_date.strftime('%Y-%m-%d'),
+                b.code or '',
+                b.name,
+                b.location or '',
+                0,
+                0,
+                0,
+                0,
+                int(current_stock),
+                int(prod_count)
+            ])
         
     return response
 
@@ -1101,23 +1060,35 @@ def export_branches_csv(request):
     response['Content-Disposition'] = 'attachment; filename="branches_report.csv"'
     
     writer = csv.writer(response)
-    writer.writerow(['Branch ID / Code', 'Branch Name', 'Location', 'Contact Number', 'Invoice Prefix', 'Sales Staff Count'])
+    writer.writerow([
+        'Branch ID / Code', 'Branch Name', 'Location', 'Contact Number', 
+        'Invoice Prefix', 'Sales Staff Count', 'Current Stock (Qty)', 'Products Count'
+    ])
     
-    from core.models import Branch
-    from django.db.models import Count
+    from core.models import Branch, ProductRegistry
+    from django.db.models import Count, Sum
     
     branches = Branch.objects.annotate(
         active_staff_count=Count('assigned_users', filter=models.Q(assigned_users__role__in=['sales_staff', 'assistant_manager']))
     ).order_by('code', 'id')
+
+    stock_by_branch_data = ProductRegistry.objects.values('branch_id').annotate(
+        total_stock=Sum('stock_quantity'),
+        product_count=Count('product_id', distinct=True)
+    )
+    stock_dict = {item['branch_id']: item for item in stock_by_branch_data}
     
     for b in branches:
+        s_info = stock_dict.get(b.id, {})
         writer.writerow([
             b.code or b.id,
             b.name,
             b.location,
             b.contact_number or '-',
             b.invoice_prefix,
-            f"{b.active_staff_count} staff"
+            f"{b.active_staff_count} staff",
+            int(s_info.get('total_stock') or 0),
+            int(s_info.get('product_count') or 0)
         ])
         
     return response

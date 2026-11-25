@@ -109,12 +109,6 @@
                         <span class="text-white fw-bold">- ₹{{ bill.total_savings|floatformat:0 }}</span>
                     </div>
                     {% endif %}
-                    {% if bill.retail_price > 0 %}
-                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-white border-opacity-25">
-                        <span class="text-white small fw-bold"><i class="bi bi-tag-fill me-1" style="color: #fbbf24;"></i>Retail Price</span>
-                        <span class="badge bg-white text-primary fw-bold px-2.5 py-1">+ ₹{{ bill.retail_price|floatformat:0 }}</span>
-                    </div>
-                    {% endif %}
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="text-white opacity-75 fw-bold">FINAL TOTAL</span>
                         <h2 class="fw-bold text-white mb-0">₹{{ bill.total_amount|floatformat:0 }}</h2>
@@ -309,8 +303,8 @@
                     </div>
                     <div class="mb-4">
                         <label class="form-label x-small text-muted fw-bold text-uppercase">Phone Number</label>
-                        <input type="text" class="form-control" id="editCustomerPhone"
-                            value="{{ bill.customer_phone|default:'' }}">
+                        <input type="tel" class="form-control" id="editCustomerPhone"
+                            value="{{ bill.customer_phone|default:'' }}" inputmode="numeric" maxlength="10" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10);" onkeypress="return /[0-9]/.test(event.key);">
                     </div>
                     <button type="button" class="btn btn-primary w-100 rounded-pill py-2 fw-bold"
                         onclick="updateCustomer()">Save Changes</button>

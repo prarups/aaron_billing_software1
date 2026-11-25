@@ -12,6 +12,7 @@ class Branch(models.Model):
     class Meta:
         verbose_name = "Adminpage"
         verbose_name_plural = "Adminpage"
+        ordering = ['code', 'id']
 
     def save(self, *args, **kwargs):
         if not self.code:

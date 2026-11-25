@@ -78,21 +78,54 @@
         background-color: rgba(99, 102, 241, 0.01) !important;
     }
 
+    /* Clean Branch Performance Table Styling */
+    .branch-perf-card {
+        border-radius: 0.85rem !important;
+        border: 1px solid #e2e8f0 !important;
+        background: #ffffff !important;
+    }
+    .branch-table {
+        margin-bottom: 0;
+    }
+    .branch-table th {
+        font-size: 0.72rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+        color: #475569;
+        padding: 10px 14px !important;
+        background-color: #f8fafc !important;
+        border-bottom: 2px solid #e2e8f0 !important;
+        white-space: nowrap;
+    }
+    .branch-table td {
+        padding: 10px 14px !important;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .branch-table tbody tr:hover {
+        background-color: #f8fafc !important;
+    }
+
     /* Branch scroll list */
     .branch-scroll-list {
-        max-height: 280px;
+        max-height: 380px;
         overflow-y: auto;
         padding-right: 4px;
     }
     .branch-scroll-list::-webkit-scrollbar {
-        width: 3px;
+        width: 4px;
     }
     .branch-scroll-list::-webkit-scrollbar-track {
-        background: transparent;
+        background: #f8fafc;
+        border-radius: 10px;
     }
     .branch-scroll-list::-webkit-scrollbar-thumb {
         background: #cbd5e1;
         border-radius: 10px;
+    }
+    .branch-scroll-list::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
     }
 </style>
 {% endblock %}
@@ -184,44 +217,70 @@
     <!-- Performance and Details Row -->
     <div class="row g-3">
         <div class="col-md-8">
-            <div class="glass-card p-3">
+            <div class="glass-card branch-perf-card p-3">
+                <!-- Header -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-bar-chart-fill me-1.5"></i>Branch Performance</h6>
-                    <a href="{% url 'export_dashboard_sales_csv' %}?from_date={{ start_date }}&to_date={{ end_date }}" class="btn btn-outline-success btn-sm rounded-pill px-3 py-1 text-xs fw-semibold shadow-sm">
-                        <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i>Export CSV
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">Branch Performance</h6>
+                        <span class="text-muted text-xxs">Branch-wise sales, stock inventory and target metrics</span>
+                    </div>
+                    <a href="{% url 'export_dashboard_sales_csv' %}?from_date={{ start_date }}&to_date={{ end_date }}" class="btn btn-outline-success btn-sm rounded-pill px-3 py-1 text-xs fw-semibold">
+                        Export CSV
                     </a>
                 </div>
                 
                 <!-- Desktop Table View -->
                 <div class="table-responsive branch-scroll-list d-none d-md-block">
-                    <table class="table align-middle table-compact">
+                    <table class="table align-middle branch-table">
                         <thead class="sticky-top bg-white" style="z-index: 2;">
                             <tr class="border-bottom">
                                 <th>Branch Name</th>
-                                <th>Sales ({% if is_filtered %}Period{% else %}Today{% endif %})</th>
-                                <th>Staff Count</th>
-                                <th>Monthly Goal</th>
+                                <th class="text-end">Sales ({% if is_filtered %}Period{% else %}Today{% endif %})</th>
+                                <th class="text-center">Items Sold</th>
+                                <th class="text-center">Current Stock</th>
+                                <th class="text-center">Staff Count</th>
+                                <th style="min-width: 150px;">Monthly Goal</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for branch in branches %}
                             <tr>
-                                <td class="fw-semibold text-dark">{{ branch.name }} ({{ branch.code }})</td>
-                                <td class="fw-bold text-primary">
-                                    <span data-live-branch-sales="{{ branch.id }}">₹{{ branch.today_sales|default:"0" }}</span>
-                                    <div class="text-muted text-xxs mt-0.5" style="font-weight: 500;">
+                                <td>
+                                    <span class="fw-bold text-dark d-block" style="font-size: 0.88rem;">{{ branch.name }}</span>
+                                    <span class="text-muted text-xxs font-monospace">Code: {{ branch.code }}</span>
+                                </td>
+                                <td class="text-end">
+                                    <div class="fw-bold text-dark font-monospace" style="font-size: 0.92rem;">
+                                        <span data-live-branch-sales="{{ branch.id }}">₹{{ branch.today_sales|default:"0" }}</span>
+                                    </div>
+                                    <div class="text-muted text-xxs mt-0.5">
                                         Cash: ₹{{ branch.today_cash|default:"0"|floatformat:0 }} | Online: ₹{{ branch.today_online|default:"0"|floatformat:0 }}
                                     </div>
                                 </td>
-                                <td class="text-muted">{{ branch.active_staff_count }} Assigned</td>
+                                <td class="text-center">
+                                    <span class="badge bg-success-subtle text-success fw-bold px-2.5 py-1 rounded-pill" style="font-size: 0.78rem;">
+                                        {{ branch.items_sold_qty|default:"0" }} pcs
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="fw-bold text-dark font-monospace" style="font-size: 0.88rem;">
+                                        {{ branch.current_stock_qty|default:"0" }} <span class="fw-normal text-muted text-xxs">pcs</span>
+                                    </div>
+                                    <div class="text-muted text-xxs">
+                                        {{ branch.current_product_count|default:"0" }} products
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <span class="text-muted text-xs">{{ branch.active_staff_count }} Assigned</span>
+                                </td>
                                 <td>
                                     {% if branch.current_goal > 0 %}
                                         <div class="d-flex justify-content-between align-items-center mb-1 text-xxs">
-                                            <span class="text-muted">₹{{ branch.current_month_sales|default:"0" }} / ₹{{ branch.current_goal }}</span>
+                                            <span class="text-muted font-monospace">₹{{ branch.current_month_sales|default:"0" }} / ₹{{ branch.current_goal }}</span>
                                             <span class="fw-bold text-success">{{ branch.current_goal_percent_exact }}%</span>
                                         </div>
-                                        <div class="progress" style="height: 6px;" title="{{ branch.current_goal_percent_exact }}% achieved">
-                                            <div class="progress-bar {% if branch.current_goal_percent >= 100 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ branch.current_goal_percent }}%;"></div>
+                                        <div class="progress rounded-pill shadow-none" style="height: 5px; background: #e2e8f0;" title="{{ branch.current_goal_percent_exact }}% achieved">
+                                            <div class="progress-bar rounded-pill {% if branch.current_goal_percent >= 100 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ branch.current_goal_percent }}%;"></div>
                                         </div>
                                     {% else %}
                                         <span class="text-muted text-xxs">Not Set</span>
@@ -236,30 +295,34 @@
                 <!-- Mobile List View -->
                 <div class="d-md-none">
                     {% for branch in branches %}
-                    <div class="p-2.5 mb-2 bg-light bg-opacity-50 rounded-3 border border-light">
+                    <div class="p-2.5 mb-2 bg-white rounded-3 border">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <div>
                                 <span class="fw-bold text-dark text-xs d-block">{{ branch.name }}</span>
                                 <span class="text-muted text-xxs">Code: {{ branch.code }}</span>
                             </div>
                             <div class="text-end">
-                                <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 text-xxs fw-bold">₹{{ branch.today_sales|default:"0" }}</span>
-                                <div class="text-muted" style="font-size: 0.65rem; margin-top: 2px;">
-                                    C: ₹{{ branch.today_cash|default:"0"|floatformat:0 }} | O: ₹{{ branch.today_online|default:"0"|floatformat:0 }}
+                                <span class="fw-bold text-dark text-xs d-block">₹{{ branch.today_sales|default:"0" }}</span>
+                                <div class="text-muted text-xxs">
+                                    Cash: ₹{{ branch.today_cash|default:"0"|floatformat:0 }} | Online: ₹{{ branch.today_online|default:"0"|floatformat:0 }}
                                 </div>
                             </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center text-xxs text-muted mt-2 border-top pt-2">
-                            <span><i class="bi bi-people me-1"></i>{{ branch.active_staff_count }} Sales Staff</span>
+                        <div class="d-flex justify-content-between align-items-center text-xxs bg-light rounded px-2.5 py-1.5 my-1.5">
+                            <span>Stock: <b>{{ branch.current_stock_qty|default:"0" }} pcs</b> ({{ branch.current_product_count|default:"0" }} products)</span>
+                            <span class="text-success fw-bold">Sold: {{ branch.items_sold_qty|default:"0" }} pcs</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center text-xxs text-muted mt-1">
+                            <span>{{ branch.active_staff_count }} Sales Staff</span>
                             {% if branch.current_goal > 0 %}
                                 <span class="text-success fw-bold">Goal: {{ branch.current_goal_percent_exact }}%</span>
                             {% else %}
-                                <span class="text-muted">Goal: Not Set</span>
+                                <span>Goal: Not Set</span>
                             {% endif %}
                         </div>
                         {% if branch.current_goal > 0 %}
-                            <div class="progress mt-1.5" style="height: 4px;" title="₹{{ branch.current_month_sales }} / ₹{{ branch.current_goal }}">
-                                <div class="progress-bar {% if branch.current_goal_percent >= 100 %}bg-success{% else %}bg-primary{% endif %}" style="width: {{ branch.current_goal_percent }}%;"></div>
+                            <div class="progress mt-1.5 rounded-pill shadow-none" style="height: 4px; background: #e2e8f0;" title="₹{{ branch.current_month_sales }} / ₹{{ branch.current_goal }}">
+                                <div class="progress-bar rounded-pill {% if branch.current_goal_percent >= 100 %}bg-success{% else %}bg-primary{% endif %}" style="width: {{ branch.current_goal_percent }}%;"></div>
                             </div>
                         {% endif %}
                     </div>

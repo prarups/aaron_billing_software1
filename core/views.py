@@ -78,9 +78,16 @@ def product_list(request):
                 'productregistry',
                 filter=Q(productregistry__stock_quantity__lte=F('productregistry__low_stock_threshold'))
             )
-        ).filter(low_stock_count__gt=0)
+        ).filter(low_stock_count__gt=0).order_by(F('code').asc(nulls_last=True), 'id')
     else:
-        branches = accessible_branches.annotate(product_count=Count('productregistry'))
+        branches = accessible_branches.annotate(product_count=Count('productregistry')).order_by(F('code').asc(nulls_last=True), 'id')
+
+    current_branch = None
+    if selected_branch:
+        try:
+            current_branch = accessible_branches.filter(id=selected_branch).first()
+        except (ValueError, TypeError):
+            current_branch = None
 
     return render(request, 'core/product_list.html', {
         'page_obj': page_obj,
@@ -88,6 +95,7 @@ def product_list(request):
         'q': q,
         'branches': branches,
         'selected_branch': selected_branch,
+        'current_branch': current_branch,
         'active_filter': active_filter,
     })
 
@@ -123,16 +131,21 @@ def export_products_csv(request):
     from django.utils import timezone
 
     today_str = timezone.now().strftime("%Y-%m-%d")
+    target_branch = None
     if selected_branch:
-        branch_obj = accessible_branches.filter(id=selected_branch).first()
-        if branch_obj:
-            safe_b_name = re.sub(r'[\s\W]+', '_', branch_obj.name).strip('_')
-            b_code = str(branch_obj.code) if branch_obj.code else 'NOCODE'
-            csv_filename = f"products_{safe_b_name}_{b_code}_{today_str}.csv"
-        else:
-            csv_filename = f"products_AllBranches_ALL_{today_str}.csv"
+        target_branch = accessible_branches.filter(id=selected_branch).first()
+    elif not request.user.is_owner() and request.user.active_branch:
+        target_branch = request.user.active_branch
+    elif accessible_branches.count() == 1:
+        target_branch = accessible_branches.first()
+
+    if target_branch:
+        safe_b_name = re.sub(r'[\s\W]+', '_', target_branch.name).strip('_')
+        b_code = str(target_branch.code) if target_branch.code else ''
+        b_code_str = f"_{b_code}" if b_code else ''
+        csv_filename = f"Products_{safe_b_name}{b_code_str}_{today_str}.csv"
     else:
-        csv_filename = f"products_AllBranches_ALL_{today_str}.csv"
+        csv_filename = f"Products_All_Branches_{today_str}.csv"
 
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="{csv_filename}"'
@@ -194,20 +207,11 @@ def product_create(request):
         else:
             branch = request.user.active_branch
 
-        raw_barcode = request.POST.get('barcode') or ''
-        norm_barcode = ' '.join(str(raw_barcode).split())
-        
-        # Look for existing product with this barcode globally or for this branch
-        existing_product = Product.objects.filter(barcode__iexact=norm_barcode).first() if norm_barcode else None
-
-        if existing_product:
-            form = ProductForm(request.POST, instance=existing_product)
-        else:
-            product_instance = Product(branch=branch)
-            form = ProductForm(request.POST, instance=product_instance)
+        product_instance = Product(branch=branch)
+        form = ProductForm(request.POST, instance=product_instance)
 
         from .forms import ComboPriceFormSet
-        combo_formset = ComboPriceFormSet(request.POST, instance=existing_product if existing_product else None)
+        combo_formset = ComboPriceFormSet(request.POST)
         
         has_combo_formset = 'combos-TOTAL_FORMS' in request.POST
         if form.is_valid() and (not has_combo_formset or combo_formset.is_valid()):
@@ -266,7 +270,37 @@ def product_create(request):
         })
         from .forms import ComboPriceFormSet
         combo_formset = ComboPriceFormSet()
-    return render(request, 'core/product_form.html', {'form': form, 'combo_formset': combo_formset, 'action': 'Add New', 'is_admin': True, 'next_url': next_url})
+
+    return render(request, 'core/product_form.html', {
+        'form': form,
+        'combo_formset': combo_formset,
+        'action': 'Add New',
+        'is_admin': True,
+        'next_url': next_url
+    })
+
+@login_required
+def check_barcode_ajax(request):
+    """AJAX endpoint to check if barcode already exists."""
+    barcode = request.GET.get('barcode', '').strip()
+    exclude_id = request.GET.get('exclude_id', '').strip()
+    if not barcode:
+        return JsonResponse({'exists': False})
+    
+    qs = Product.objects.filter(barcode__iexact=barcode)
+    if exclude_id and exclude_id.isdigit():
+        qs = qs.exclude(id=int(exclude_id))
+    
+    if qs.exists():
+        existing = qs.first()
+        price_val = int(existing.price) if existing.price else 0
+        return JsonResponse({
+            'exists': True,
+            'message': f"Barcode '{barcode}' is already registered for '{existing.name}' (₹{price_val}). Barcode must be unique.",
+            'product_name': existing.name,
+            'product_id': existing.id
+        })
+    return JsonResponse({'exists': False})
 
 @login_required
 def product_update(request, pk):
@@ -1099,7 +1133,7 @@ def stock_pivot_report(request):
     if not (request.user.is_owner() or request.user.is_manager()):
         return redirect('dashboard')
     
-    from django.db.models import Sum, Q, F, Count
+    from django.db.models import Sum, Q, F, F, Count
     import datetime
     from django.utils import timezone
     from django.core.paginator import Paginator
@@ -1131,7 +1165,7 @@ def stock_pivot_report(request):
         in_stock_count=Count('productregistry', filter=Q(productregistry__stock_quantity__gt=0)),
         out_of_stock_count=Count('productregistry', filter=Q(productregistry__stock_quantity=0)),
         low_stock_count=Count('productregistry', filter=Q(productregistry__stock_quantity__gt=0, productregistry__stock_quantity__lte=F('productregistry__low_stock_threshold')))
-    ).order_by('name')
+    ).order_by(F('code').asc(nulls_last=True), 'id')
     
     branch_id = request.GET.get('branch', '').strip()
     stock_status = request.GET.get('stock_status', 'all').strip()
@@ -1298,6 +1332,10 @@ def stock_pivot_report(request):
             
             # Net all-time damaged = standard damaged all-time + return damaged all-time
             all_time_dmg_net = all_time_dmg_std + all_time_ret_dmg
+            
+            branch_sold_pct = round((all_time_out_net / total_rec) * 100, 1) if total_rec > 0 else 0
+            if branch_sold_pct < 0:
+                branch_sold_pct = 0
 
             item['total_op'] += opening_stock
             item['total_in'] += period_in_std
@@ -1326,6 +1364,7 @@ def stock_pivot_report(request):
                 'rec': total_rec,
                 'all_time_out': all_time_out_net,
                 'all_time_dmg': all_time_dmg_net,
+                'sold_pct': branch_sold_pct,
                 'reg_id': reg_id_map.get((p.id, b.id)),
             })
             
@@ -1372,7 +1411,7 @@ def export_stock_pivot_excel(request):
         return redirect('dashboard')
         
     # Mirroring logic from view
-    from django.db.models import Sum, Q
+    from django.db.models import Sum, Q, F
     import datetime
     import openpyxl
     from django.http import HttpResponse
@@ -1398,7 +1437,7 @@ def export_stock_pivot_excel(request):
         except ValueError:
             pass
 
-    accessible_branches = request.user.get_accessible_branches().order_by('name')
+    accessible_branches = request.user.get_accessible_branches().order_by(F('code').asc(nulls_last=True), 'id')
     branch_id = request.GET.get('branch', '').strip()
     
     selected_branch = None
@@ -1469,7 +1508,23 @@ def export_stock_pivot_excel(request):
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     timestamp = timezone.now().strftime("%Y%m%d_%H%M%S")
-    response['Content-Disposition'] = f'attachment; filename="stock_report_{start_date}_to_{end_date}.xlsx"'
+    
+    import re
+    target_branch = selected_branch
+    if not target_branch and not request.user.is_owner() and request.user.active_branch:
+        target_branch = request.user.active_branch
+    elif not target_branch and accessible_branches.count() == 1:
+        target_branch = accessible_branches.first()
+
+    if target_branch:
+        safe_b_name = re.sub(r'[\s\W]+', '_', target_branch.name).strip('_')
+        b_code = str(target_branch.code) if target_branch.code else ''
+        b_code_str = f"_{b_code}" if b_code else ''
+        filename = f"Stock_Ledger_{safe_b_name}{b_code_str}_{start_date}_to_{end_date}.xlsx"
+    else:
+        filename = f"Stock_Ledger_All_Branches_{start_date}_to_{end_date}.xlsx"
+        
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     wb = openpyxl.Workbook()
     
@@ -1483,7 +1538,7 @@ def export_stock_pivot_excel(request):
         'Product Name', 'Barcode', 'Price', 'Branch Name', 'Branch Code',
         'Total Op. Qty', 'Total In Qty', 'Total Ret. Qty', 'Total Out Qty', 
         'Total + Adj Qty', 'Total - Adj Qty', 'Total Damaged Qty', 'Total Ret. Damaged Qty', 
-        'Total Cl. Qty', 'Total Received Qty', 'Total Sold (All-Time)', 'Total Damaged (All-Time)'
+        'Total Cl. Qty', 'Total Received Qty', 'Total Sold (All-Time)', 'Sold % (All-Time)', 'Total Damaged (All-Time)'
     ]
     ws1.append(header1)
     
@@ -1493,7 +1548,7 @@ def export_stock_pivot_excel(request):
         'Product', 'Barcode', 'Branch Name', 'Branch Code', 
         'Op Qty', 'In Qty', 'Ret Qty', 'Out Qty', 
         '+ Adj Qty', '- Adj Qty', 'Damaged Qty', 'Ret Damaged Qty', 
-        'Cl Qty', 'Total Received Qty', 'Total Sold (All-Time)', 'Total Damaged (All-Time)'
+        'Cl Qty', 'Total Received Qty', 'Total Sold (All-Time)', 'Sold % (All-Time)', 'Total Damaged (All-Time)'
     ]
     ws2.append(header2)
 
@@ -1576,19 +1631,27 @@ def export_stock_pivot_excel(request):
             total_all_time_out_sum += all_time_out_net
             total_all_time_dmg_sum += all_time_dmg_net
             
+            branch_sold_pct = round((all_time_out_net / total_rec) * 100, 1) if total_rec > 0 else 0
+            if branch_sold_pct < 0:
+                branch_sold_pct = 0
+
             row2 = [
                 p.name, p.barcode, b.name, b.code or '', 
                 opening_stock, period_in_std, period_ret, period_out_net, 
                 period_adj_plus, period_adj_minus, period_dmg_std, period_ret_dmg, 
-                closing_stock, total_rec, all_time_out_net, all_time_dmg_net
+                closing_stock, total_rec, all_time_out_net, f"{branch_sold_pct}%", all_time_dmg_net
             ]
             ws2.append(row2)
             
+        total_sold_pct = round((total_all_time_out_sum / total_rec_sum) * 100, 1) if total_rec_sum > 0 else 0
+        if total_sold_pct < 0:
+            total_sold_pct = 0
+
         row1 = [
             p.name, p.barcode, str(int(p.price)), branch_name_val, branch_code_val,
             total_op, total_in, total_ret, total_out, 
             total_adj_plus, total_adj_minus, total_dmg, total_ret_dmg, 
-            total_cl, total_rec_sum, total_all_time_out_sum, total_all_time_dmg_sum
+            total_cl, total_rec_sum, total_all_time_out_sum, f"{total_sold_pct}%", total_all_time_dmg_sum
         ]
         ws1.append(row1)
 
@@ -1628,7 +1691,7 @@ def stock_adjustment(request, reg_id):
     Wrong-entry correction using reconciliation:
         Closing = Opening Balance + Stock In - Stock Out + Correction
     """
-    from django.db.models import Sum, Q
+    from django.db.models import Sum, Q, F
     import datetime
     from django.utils import timezone
     from .models import StockAdjustment
@@ -1812,16 +1875,10 @@ def pos_view(request):
 
     registrations = registrations.order_by('product__name')
 
-    # Basic stats (optional for POS)
-    stats = registrations.aggregate(
-        product_count=Count('product', distinct=True),
-        registration_count=Count('id'),
-        total_value=Sum(ExpressionWrapper(F('stock_quantity') * F('product__price'), output_field=DecimalField()))
-    )
-
     paginator = Paginator(registrations, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    stats = {}
 
     branches = accessible_branches
 
