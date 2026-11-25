@@ -23,6 +23,8 @@ import calendar
 from decimal import Decimal
 from django.db import transaction
 
+_last_auto_update_time = None
+
 def get_file_from_base64(base64_str, filename):
     if not base64_str:
         return None
@@ -38,14 +40,14 @@ def get_file_from_base64(base64_str, filename):
             if img.mode != 'RGB':
                 img = img.convert('RGB')
             
-            # Resize if dimensions exceed 640px
-            max_size = 640
+            # Resize if dimensions exceed 480px for fast upload & minimal Cloudinary latency
+            max_size = 480
             if img.width > max_size or img.height > max_size:
-                img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+                img.thumbnail((max_size, max_size), Image.Resampling.BILINEAR)
             
             # Compress and save to buffer as JPEG
             output = BytesIO()
-            img.save(output, format='JPEG', quality=60, optimize=True)
+            img.save(output, format='JPEG', quality=65)
             output.seek(0)
             
             return ContentFile(output.read(), name=f"{filename}.jpg")
@@ -66,6 +68,12 @@ def is_manager_or_owner(user):
     return user.is_manager()
 
 def auto_update_past_attendance_statuses():
+    global _last_auto_update_time
+    import time
+    now_ts = time.time()
+    if _last_auto_update_time and (now_ts - _last_auto_update_time) < 600:
+        return
+    _last_auto_update_time = now_ts
     try:
         today = timezone.localdate()
         recent_past_cutoff = today - datetime.timedelta(days=7)
@@ -240,25 +248,45 @@ def check_in(request):
             if on_leave:
                 status = 'on_leave'
 
-            if existing:
-                existing.check_in = timezone.now()
-                existing.check_in_photo = photo_file
-                existing.check_in_lat = lat
-                existing.check_in_lng = lng
-                existing.status = status
-                existing.save()
-                att = existing
-            else:
-                att = Attendance.objects.create(
-                    user=request.user,
-                    branch=branch,
-                    date=today,
-                    check_in=timezone.now(),
-                    check_in_photo=photo_file,
-                    check_in_lat=lat,
-                    check_in_lng=lng,
-                    status=status
-                )
+            try:
+                if existing:
+                    existing.check_in = timezone.now()
+                    existing.check_in_photo = photo_file
+                    existing.check_in_lat = lat
+                    existing.check_in_lng = lng
+                    existing.status = status
+                    existing.save()
+                    att = existing
+                else:
+                    att = Attendance.objects.create(
+                        user=request.user,
+                        branch=branch,
+                        date=today,
+                        check_in=timezone.now(),
+                        check_in_photo=photo_file,
+                        check_in_lat=lat,
+                        check_in_lng=lng,
+                        status=status
+                    )
+            except Exception as save_err:
+                logger.error(f"Error saving check-in photo to storage: {save_err}")
+                if existing:
+                    existing.check_in = timezone.now()
+                    existing.check_in_lat = lat
+                    existing.check_in_lng = lng
+                    existing.status = status
+                    existing.save()
+                    att = existing
+                else:
+                    att = Attendance.objects.create(
+                        user=request.user,
+                        branch=branch,
+                        date=today,
+                        check_in=timezone.now(),
+                        check_in_lat=lat,
+                        check_in_lng=lng,
+                        status=status
+                    )
                 
             return JsonResponse({
                 'success': True, 
@@ -267,6 +295,7 @@ def check_in(request):
                 'time': timezone.localtime(att.check_in).strftime('%I:%M %p')
             })
         except Exception as e:
+            logger.error(f"Check-in error: {e}")
             return JsonResponse({'success': False, 'message': str(e)})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
@@ -307,7 +336,13 @@ def mid_day_check(request):
                 attendance.check_out_lng = None
                 attendance.recalculate_status()
                 
-            attendance.save()
+            try:
+                attendance.mid_day_photo = photo_file
+                attendance.save()
+            except Exception as save_err:
+                logger.error(f"Error saving mid-day photo to storage: {save_err}")
+                attendance.mid_day_photo = None
+                attendance.save()
             
             return JsonResponse({
                 'success': True, 
@@ -315,6 +350,7 @@ def mid_day_check(request):
                 'time': timezone.localtime(attendance.mid_day_time).strftime('%I:%M %p')
             })
         except Exception as e:
+            logger.error(f"Mid-day check error: {e}")
             return JsonResponse({'success': False, 'message': str(e)})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
@@ -349,7 +385,13 @@ def check_out(request):
 
             # Automatically calculate attendance status based on shift & worked duration
             attendance.recalculate_status()
-            attendance.save()
+            try:
+                attendance.check_out_photo = photo_file
+                attendance.save()
+            except Exception as save_err:
+                logger.error(f"Error saving check-out photo to storage: {save_err}")
+                attendance.check_out_photo = None
+                attendance.save()
             
             return JsonResponse({
                 'success': True, 
@@ -357,6 +399,7 @@ def check_out(request):
                 'time': timezone.localtime(attendance.check_out).strftime('%I:%M %p')
             })
         except Exception as e:
+            logger.error(f"Check-out error: {e}")
             return JsonResponse({'success': False, 'message': str(e)})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
@@ -1794,33 +1837,13 @@ def management_overview_view(request):
     # Build dictionary map of date's attendance in 1 single query
     date_records_map = {rec.user_id: rec for rec in date_records.select_related('user', 'branch')}
     
-    # Bulk query past unworked days in this month up to selected_date
-    month_start = selected_date.replace(day=1)
-    month_atts = Attendance.objects.filter(
-        user__in=branch_users,
-        date__gte=month_start,
-        date__lte=selected_date
-    )
-    month_atts_map = {}
-    for att in month_atts:
-        month_atts_map.setdefault(att.user_id, {})[att.date] = att
-
-    month_leaves = LeaveRequest.objects.none()
-    month_leaves_map = {}
-    for l in month_leaves:
-        month_leaves_map.setdefault(l.user_id, []).append((l.start_date, l.end_date))
-
     staff_today_status = []
     for staff in branch_users:
         rec = date_records_map.get(staff.id)
         if rec:
             st = rec.status
         else:
-            staff_lvs = month_leaves_map.get(staff.id, [])
-            on_leave_today = any(sdate <= selected_date <= edate for sdate, edate in staff_lvs)
-            if on_leave_today:
-                st = 'on_leave'
-            elif selected_date > today:
+            if selected_date > today:
                 st = 'future'
             else:
                 st = 'absent'

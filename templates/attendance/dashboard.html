@@ -599,7 +599,7 @@
                     <!-- Left: Camera Viewport -->
                     <div class="col-md-7 mb-3 mb-md-0">
                         <div class="position-relative overflow-hidden bg-black rounded-3 shadow-xs border border-dark" style="aspect-ratio: 4/3;">
-                            <video id="modalVideo" class="w-100 h-100 object-fit-cover" autoplay playsinline></video>
+                            <video id="modalVideo" class="w-100 h-100 object-fit-cover" autoplay playsinline muted></video>
                             <canvas id="modalCanvas" class="d-none"></canvas>
 
                             <!-- Live Camera Indicator -->
@@ -902,22 +902,43 @@
         }
     }
 
-    // Start video stream inside modal
+    // Start video stream inside modal with robust fallbacks
     function startModalCamera() {
         const video = document.getElementById('modalVideo');
         const placeholder = document.getElementById('cameraModalPlaceholder');
         if (placeholder) placeholder.classList.add('d-none');
 
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+        const constraintsList = [
+            { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } },
+            { video: { facingMode: 'user' } },
+            { video: true }
+        ];
+
+        let constraintIndex = 0;
+        function tryNextConstraint() {
+            if (constraintIndex >= constraintsList.length) {
+                console.error("Camera access failed with all constraints");
+                if (placeholder) placeholder.classList.remove('d-none');
+                return;
+            }
+            const constraints = constraintsList[constraintIndex++];
+            navigator.mediaDevices.getUserMedia(constraints)
                 .then(s => {
                     modalStream = s;
-                    if (video) video.srcObject = modalStream;
+                    if (video) {
+                        video.muted = true;
+                        video.srcObject = modalStream;
+                        video.play().catch(e => console.warn("Video play error:", e));
+                    }
                 })
                 .catch(err => {
-                    console.error("Camera access error:", err);
-                    if (placeholder) placeholder.classList.remove('d-none');
+                    console.warn("Camera constraint failed, trying next:", constraints, err);
+                    tryNextConstraint();
                 });
+        }
+
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            tryNextConstraint();
         } else {
             if (placeholder) placeholder.classList.remove('d-none');
         }
@@ -933,24 +954,40 @@
         if (video) video.srcObject = null;
     }
 
-    // Retrieve GPS location
+    // Retrieve GPS location (fast, non-blocking)
     function fetchLocation(onSuccess = null, onFailure = null) {
         const geoText = document.getElementById('modalGeoText');
         const geoStatus = document.getElementById('modalGeoStatus');
         const mockBtn = document.getElementById('modalBtnMockLocation');
 
         if (!navigator.geolocation) {
-            const msg = "Geolocation not supported by browser.";
+            const msg = "Location not supported by browser.";
             if (geoText) geoText.textContent = msg;
-            if (onFailure) onFailure(msg);
+            if (onSuccess) onSuccess();
             return;
         }
 
-        if (geoText) geoText.textContent = "Retrieving GPS coordinates...";
+        if (geoText) geoText.textContent = "Detecting GPS...";
         if (geoStatus) geoStatus.className = "alert alert-secondary py-1.5 px-2 rounded-2 mb-1 text-center border-0 bg-light";
+
+        let finished = false;
+        const timer = setTimeout(() => {
+            if (!finished) {
+                finished = true;
+                if (!userLatitude || !userLongitude) {
+                    if (geoText) geoText.textContent = "GPS weak / indoor. Verification active.";
+                    if (geoStatus) geoStatus.className = "alert alert-warning py-1.5 px-2 rounded-2 mb-1 text-center border-0 text-warning-emphasis bg-warning bg-opacity-10";
+                    if (mockBtn) mockBtn.classList.remove('d-none');
+                }
+                if (onSuccess) onSuccess();
+            }
+        }, 2500);
 
         navigator.geolocation.getCurrentPosition(
             position => {
+                if (finished) return;
+                finished = true;
+                clearTimeout(timer);
                 userLatitude = position.coords.latitude;
                 userLongitude = position.coords.longitude;
                 if (geoText) geoText.textContent = `Location: ${userLatitude.toFixed(4)}, ${userLongitude.toFixed(4)}`;
@@ -959,32 +996,33 @@
                 if (onSuccess) onSuccess();
             },
             error => {
-                console.warn("High accuracy GPS failed, trying low accuracy...", error);
+                if (finished) return;
                 navigator.geolocation.getCurrentPosition(
                     position => {
+                        if (finished) return;
+                        finished = true;
+                        clearTimeout(timer);
                         userLatitude = position.coords.latitude;
                         userLongitude = position.coords.longitude;
-                        if (geoText) geoText.textContent = `Location (Approx): ${userLatitude.toFixed(4)}, ${userLongitude.toFixed(4)}`;
+                        if (geoText) geoText.textContent = `Location: ${userLatitude.toFixed(4)}, ${userLongitude.toFixed(4)}`;
                         if (geoStatus) geoStatus.className = "alert alert-success py-1.5 px-2 rounded-2 mb-1 text-center border-0 fw-semibold text-success bg-success bg-opacity-10";
                         if (mockBtn) mockBtn.classList.add('d-none');
                         if (onSuccess) onSuccess();
                     },
-                    fallbackError => {
-                        console.error("GPS Error:", fallbackError);
-                        let msg = "GPS Error. Grant location access.";
-                        if (fallbackError.code === 1) msg = "Permission Denied. Enable browser location.";
-                        else if (fallbackError.code === 2) msg = "Position Unavailable. Check GPS.";
-                        else if (fallbackError.code === 3) msg = "GPS Timed Out. Try again.";
-                        
-                        if (geoText) geoText.textContent = msg;
-                        if (geoStatus) geoStatus.className = "alert alert-danger py-1.5 px-2 rounded-2 mb-1 text-center border-0 text-danger bg-danger bg-opacity-10";
+                    fallbackErr => {
+                        if (finished) return;
+                        finished = true;
+                        clearTimeout(timer);
+                        console.warn("GPS unavailable:", fallbackErr);
+                        if (geoText) geoText.textContent = "GPS weak / indoor. Verification active.";
+                        if (geoStatus) geoStatus.className = "alert alert-warning py-1.5 px-2 rounded-2 mb-1 text-center border-0 text-warning-emphasis bg-warning bg-opacity-10";
                         if (mockBtn) mockBtn.classList.remove('d-none');
-                        if (onFailure) onFailure(msg);
+                        if (onSuccess) onSuccess();
                     },
-                    { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
+                    { enableHighAccuracy: false, timeout: 2000, maximumAge: 60000 }
                 );
             },
-            { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+            { enableHighAccuracy: true, timeout: 2000, maximumAge: 30000 }
         );
     }
 
@@ -1008,17 +1046,17 @@
         const overlay = document.getElementById('modalSnapOverlay');
 
         if (!modalStream) {
-            showErrorToast("Camera stream is not active. Please grant camera permission.");
+            showErrorToast("Camera is not active. Please allow camera access and retry.");
             startModalCamera();
             return;
         }
 
         const postData = () => {
             const context = canvas.getContext('2d');
-            const nativeW = video.videoWidth || 640;
+            const nativeW = video.videoWidth || 480;
             const nativeH = video.videoHeight || 480;
             
-            const maxDim = 640;
+            const maxDim = 480;
             let targetW = nativeW;
             let targetH = nativeH;
             if (nativeW > maxDim || nativeH > maxDim) {
@@ -1034,7 +1072,7 @@
             canvas.width = targetW;
             canvas.height = targetH;
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataURL = canvas.toDataURL('image/jpeg', 0.6);
+            const dataURL = canvas.toDataURL('image/jpeg', 0.65);
 
             playShutterAudio();
             overlay.classList.remove('d-none');
@@ -1047,11 +1085,19 @@
             else if (currentVerificationType === 'mid_day') endpoint = "{% url 'attendance:mid_day' %}";
             else if (currentVerificationType === 'check_out') endpoint = "{% url 'attendance:check_out' %}";
 
+            function getCSRFToken() {
+                const cookieValue = document.cookie
+                    .split('; ')
+                    .find(row => row.startsWith('csrftoken='))
+                    ?.split('=')[1];
+                return cookieValue || '{{ csrf_token }}';
+            }
+
             fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
+                    'X-CSRFToken': getCSRFToken()
                 },
                 body: JSON.stringify({
                     photo: dataURL,
@@ -1059,11 +1105,23 @@
                     lng: userLongitude
                 })
             })
-            .then(response => response.json())
-            .then(data => {
+            .then(async response => {
                 overlay.classList.add('d-none');
                 overlay.classList.remove('d-flex');
                 submitBtn.disabled = false;
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch(e) {
+                    if (response.status === 403) {
+                        showErrorToast("Session expired or permission denied. Please refresh.");
+                    } else {
+                        showErrorToast(`Server responded with status ${response.status}. Please retry.`);
+                    }
+                    submitBtn.innerHTML = '<i class="bi bi-camera-fill me-1"></i> Retry Capture';
+                    return;
+                }
                 
                 if (data.success) {
                     stopModalCamera();
@@ -1072,7 +1130,7 @@
                         location.reload();
                     });
                 } else {
-                    showErrorToast(data.message);
+                    showErrorToast(data.message || "Verification failed.");
                     submitBtn.innerHTML = '<i class="bi bi-camera-fill me-1"></i> Retry Capture';
                 }
             })
@@ -1081,18 +1139,18 @@
                 overlay.classList.remove('d-flex');
                 submitBtn.disabled = false;
                 console.error("AJAX Error:", err);
-                showErrorToast("Verification failed due to server connection error.");
+                showErrorToast("Connection error. Please check your network and retry.");
                 submitBtn.innerHTML = '<i class="bi bi-camera-fill me-1"></i> Retry Capture';
             });
         };
 
-        if (!userLatitude || !userLongitude) {
+        if (userLatitude && userLongitude) {
+            postData();
+        } else {
             fetchLocation(
                 () => { postData(); },
-                (errorMsg) => { showErrorToast("Failed to resolve GPS coordinates: " + errorMsg); }
+                () => { postData(); }
             );
-        } else {
-            postData();
         }
     }
 
